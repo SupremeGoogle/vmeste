@@ -18,6 +18,25 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Приглашение без персонализации: та же логика, что и на входе по QR.
+        // При упавшем бэкенде браузер и CDN ещё сутки отдают последнюю версию.
+        source: "/i/:slug",
+        headers: [
+          { key: "cache-control", value: "public, max-age=60, stale-while-revalidate=86400" },
+        ],
+      },
+      {
+        // Именная страница — приватная: в ней имя гостя и его ответ.
+        // Ни CDN, ни общий кеш браузера в интернет-кафе её хранить не должны.
+        // `:token+`, а не `:token*`: со звёздочкой шаблон совпадает и с нулём
+        // сегментов, то есть накрывает саму `/i/:slug` и лишает её кеша.
+        source: "/i/:slug/:token+",
+        headers: [
+          { key: "cache-control", value: "private, no-store" },
+          { key: "x-robots-tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           { key: "cache-control", value: "public, max-age=0, must-revalidate" },

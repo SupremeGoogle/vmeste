@@ -50,12 +50,72 @@ const TABLES_A = [
   { label: "Стол 5", shape: "ROUND" as const, x: 640, y: 520, capacity: 8 },
 ];
 
+/**
+ * Блоки приглашения. Наполняются в seed, потому что пустой конструктор
+ * ничего не рассказывает о том, как приглашение выглядит собранным.
+ */
+function inviteBlocks(names: string, dateText: string, venue: string) {
+  return [
+    {
+      type: "COVER" as const, order: 0,
+      content: { v: 1, title: "Мы женимся", names, dateText, subtitle: "", imageUrl: "" },
+    },
+    {
+      type: "TIMELINE" as const, order: 1,
+      content: {
+        v: 1, title: "Тайминг дня",
+        items: [
+          { time: "15:30", title: "Сбор гостей", note: "у входа в парк" },
+          { time: "16:00", title: "Церемония", note: "" },
+          { time: "17:00", title: "Фуршет", note: "" },
+          { time: "18:30", title: "Ужин и танцы", note: "" },
+          { time: "23:00", title: "Прощальный вальс", note: "" },
+        ],
+      },
+    },
+    {
+      type: "VENUE" as const, order: 2,
+      content: {
+        v: 1, title: "Где", name: venue,
+        address: "Московская область, деревня Гребнево, ул. Парковая, 1",
+        note: "Парковка за главными воротами, въезд со стороны пруда.",
+      },
+    },
+    {
+      type: "MAP" as const, order: 3,
+      content: {
+        v: 1, title: "Как добраться",
+        yandexUrl: "https://yandex.ru/maps/",
+        googleUrl: "",
+        note: "От метро ходит трансфер в 15:00 — напишите нам, если нужно место.",
+      },
+    },
+    {
+      type: "DRESSCODE" as const, order: 4,
+      content: {
+        v: 1, title: "Дресс-код",
+        text: "Пастельные тона и никакого белого.\nНа траве каблуки утонут — возьмите вторую пару обуви.",
+        palette: ["#c8b7a6", "#6b705c", "#a5a58d", "#ddbea9"],
+      },
+    },
+    {
+      type: "RSVP_FORM" as const, order: 5,
+      content: {
+        v: 1, title: "Подтвердите присутствие",
+        text: "Ответьте, пожалуйста, до 1 сентября — нам нужно передать список на кухню.",
+        buttonLabel: "Ответить",
+      },
+    },
+  ];
+}
+
 async function seedEvent(opts: {
   orgId: string;
   title: string;
   slug: string;
   date: Date;
   venue: string;
+  dateText: string;
   guests: string[];
   tables: typeof TABLES_A;
   seatEveryone: boolean;
@@ -69,6 +129,12 @@ async function seedEvent(opts: {
       status: "PUBLISHED",
       eventDate: opts.date,
       venueName: opts.venue,
+      rsvpDeadline: new Date(opts.date.getTime() - 12 * 24 * 3600 * 1000),
+      blocks: {
+        // orgId не указываем: во вложенном create Prisma подставляет оба
+        // поля связи сама, а явное значение даёт «Unknown argument» (CLAUDE.md).
+        create: inviteBlocks(opts.title, opts.dateText, opts.venue),
+      },
       mealOptions: {
         create: [
           { title: "Мясо", order: 0 },
@@ -108,8 +174,16 @@ async function seedEvent(opts: {
     orderBy: [{ tableId: "asc" }, { index: "asc" }],
   });
 
+  const meals = await db.mealOption.findMany({
+    where: { eventId: event.id },
+    orderBy: { order: "asc" },
+  });
+
   let seatCursor = 0;
-  for (const displayName of opts.guests) {
+  for (const [index, displayName] of opts.guests.entries()) {
+    // Ответы намеренно вперемешку: сводка на «все придут» выглядит
+    // одинаково правильной при любой ошибке в подсчётах.
+    const rsvpStatus = index % 7 === 3 ? "DECLINED" : index % 5 === 0 ? "PENDING" : "ACCEPTED";
     const guest = await db.guest.create({
       data: {
         orgId: opts.orgId,
@@ -117,7 +191,15 @@ async function seedEvent(opts: {
         displayName,
         searchKey: normalizeName(displayName),
         linkToken: token(),
-        rsvpStatus: "ACCEPTED",
+        rsvpStatus,
+        rsvpAt: rsvpStatus === "PENDING" ? null : new Date(),
+        linkOpenedAt: rsvpStatus === "PENDING" && index % 2 === 0 ? null : new Date(),
+        plusOneAllowed: index % 4 === 0,
+        mealOptionId:
+          rsvpStatus === "ACCEPTED" && meals.length > 0
+            ? meals[index % meals.length].id
+            : null,
+        allergies: index === 2 ? "аллергия на орехи" : null,
         aliases: {
           create: expandGuestName(displayName).map((alias) => ({
             orgId: opts.orgId,
@@ -179,6 +261,7 @@ async function main() {
     slug: "anya-misha",
     date: new Date("2026-09-12T15:00:00Z"),
     venue: "Усадьба Гребнево",
+    dateText: "12 сентября 2026",
     guests: GUESTS_A,
     tables: TABLES_A,
     seatEveryone: true,
@@ -190,6 +273,7 @@ async function main() {
     slug: "lida-petr",
     date: new Date("2026-09-19T14:00:00Z"),
     venue: "Лофт на Мойке",
+    dateText: "19 сентября 2026",
     guests: GUESTS_B,
     tables: TABLES_A.slice(0, 3),
     seatEveryone: true,
@@ -199,7 +283,17 @@ async function main() {
   console.log(`  Организатор:   planner@example.com / password123`);
   console.log(`  «${eventA.title}»  код входа: ${eventA.shortCode}  (${GUESTS_A.length} гостей)`);
   console.log(`  «${eventB.title}»  код входа: ${eventB.shortCode}  (${GUESTS_B.length} гостей)`);
-  console.log(`\n  Вход гостя: http://localhost:3000/e/${eventA.shortCode}`);
+  const sample = await db.guest.findFirst({
+    where: { eventId: eventA.id, rsvpStatus: "PENDING" },
+    orderBy: { createdAt: "asc" },
+  });
+  console.log(`\n  Вход гостя:  http://localhost:3000/e/${eventA.shortCode}`);
+  console.log(`  Приглашение: http://localhost:3000/i/${eventA.slug}`);
+  if (sample) {
+    console.log(
+      `  Именное:     http://localhost:3000/i/${eventA.slug}/${sample.linkToken}  (${sample.displayName})`,
+    );
+  }
 }
 
 main()

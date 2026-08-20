@@ -51,6 +51,20 @@ function hasEventScope(value: unknown): boolean {
   return false;
 }
 
+/**
+ * Единственное исключение из правила «фильтр по eventId обязателен»:
+ * гость приходит по именной ссылке и никакого eventId ещё не знает —
+ * мероприятие определяется как раз из токена. Токен глобально уникален
+ * и несёт 128 бит энтропии (`repositories/guests.ts`), подобрать его нельзя.
+ *
+ * Исключение узкое намеренно: только модель Guest и только когда в where
+ * действительно стоит linkToken.
+ */
+function isLinkTokenEntry(model: string, where: unknown): boolean {
+  if (model !== "Guest") return false;
+  return !!where && typeof where === "object" && "linkToken" in (where as object);
+}
+
 function report(message: string) {
   if (process.env.NODE_ENV === "production") {
     console.error(`[tenancy] ${message}`);
@@ -84,7 +98,11 @@ function createClient() {
         async $allOperations({ model, operation, args, query }) {
           if (model && EVENT_SCOPED.has(model)) {
             const a = args as Record<string, unknown> | undefined;
-            if (FILTERED_OPS.has(operation) && !hasEventScope(a?.where)) {
+            if (
+              FILTERED_OPS.has(operation) &&
+              !hasEventScope(a?.where) &&
+              !isLinkTokenEntry(model, a?.where)
+            ) {
               report(`${model}.${operation}: нет eventId/orgId в where`);
             }
             if (operation === "create" && !hasEventScope(a?.data)) {

@@ -140,3 +140,52 @@ export async function archiveGuest(ctx: EventContext, guestId: string) {
     });
   });
 }
+
+/**
+ * Гость по именной ссылке. Единственный запрос к данным мероприятия без
+ * eventId — его и определяем из токена (см. исключение в `server/db.ts`).
+ * Архивированный гость ссылку теряет: приглашение ему уже не показываем.
+ */
+export async function findGuestByLinkToken(linkToken: string) {
+  if (!linkToken || linkToken.length < 10) return null;
+
+  const guest = await db.guest.findUnique({
+    where: { linkToken },
+    include: {
+      event: {
+        select: {
+          id: true, orgId: true, title: true, slug: true, status: true,
+          eventDate: true, timezone: true, venueName: true, venueAddr: true,
+          rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true,
+        },
+      },
+      mealOption: { select: { id: true, title: true } },
+      plusOnes: {
+        where: { archivedAt: null },
+        select: { id: true, displayName: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!guest || guest.archivedAt) return null;
+  return guest;
+}
+
+/** Отметка первого открытия ссылки. Пишется один раз: организатору важно
+ *  «дошло ли приглашение», а не «сколько раз перечитывали». */
+export async function markLinkOpened(eventId: string, guestId: string) {
+  await db.guest.updateMany({
+    where: { eventId, id: guestId, linkOpenedAt: null },
+    data: { linkOpenedAt: new Date() },
+  });
+}
+
+/** Список блюд мероприятия для формы ответа. */
+export async function listMealOptions(eventId: string) {
+  return db.mealOption.findMany({
+    where: { eventId, active: true },
+    orderBy: { order: "asc" },
+    select: { id: true, title: true },
+  });
+}

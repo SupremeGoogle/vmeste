@@ -18,6 +18,8 @@ export default async function EventLayout({
   const tabs = [
     { href: `/app/e/${eventId}/guests`, label: "Гости" },
     { href: `/app/e/${eventId}/seating`, label: "Рассадка" },
+    { href: `/app/e/${eventId}/invite`, label: "Приглашение" },
+    { href: `/app/e/${eventId}/rsvp`, label: "Ответы" },
     { href: `/app/e/${eventId}/print`, label: "Печать и QR" },
   ];
 

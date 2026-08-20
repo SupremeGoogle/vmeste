@@ -78,3 +78,24 @@ export async function bumpSeatingVersion(eventId: string, orgId: string) {
   });
   return updated.seatingVersion;
 }
+
+/** Публикация приглашения: только опубликованное мероприятие открывается
+ *  по публичной ссылке `/i/{slug}`. */
+export async function setEventStatus(
+  ctx: OrgContext,
+  eventId: string,
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
+) {
+  await db.event.updateMany({
+    where: { id: eventId, orgId: ctx.orgId },
+    data: { status },
+  });
+}
+
+/** Срок ответа на приглашение. Пустая строка — снять срок. */
+export async function setRsvpDeadline(ctx: OrgContext, eventId: string, deadline: Date | null) {
+  await db.event.updateMany({
+    where: { id: eventId, orgId: ctx.orgId },
+    data: { rsvpDeadline: deadline },
+  });
+}

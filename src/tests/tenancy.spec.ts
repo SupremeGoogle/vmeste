@@ -15,6 +15,11 @@ import { db } from "@/server/db";
 import { normalizeName } from "@/lib/name-normalize";
 import { listGuests, createGuest, getGuest, archiveGuest } from "@/server/repositories/guests";
 import { listEvents, findEventByShortCode, getEvent } from "@/server/repositories/events";
+import {
+  addBlock, deleteBlock, listBlocks, moveBlock, setBlockVisible, updateBlockContent,
+} from "@/server/repositories/invites";
+import { findGuestByLinkToken } from "@/server/repositories/guests";
+import { defaultContent } from "@/lib/invite-blocks";
 import type { EventContext, OrgContext } from "@/server/context";
 
 type World = {
@@ -206,5 +211,59 @@ describe("публичный вход по короткому коду", () => {
 
   it("несуществующий код ничего не возвращает", async () => {
     expect(await findEventByShortCode("ZZZZZZ")).toBeNull();
+  });
+});
+
+describe("приглашение: блоки и именные ссылки", () => {
+  it("список блоков не показывает чужие", async () => {
+    await addBlock(a.ctx, "COVER");
+    await addBlock(b.ctx, "COVER");
+
+    const blocks = await listBlocks(a.ctx);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe("COVER");
+  });
+
+  it("правка блока чужого мероприятия ничего не меняет", async () => {
+    const foreign = await addBlock(b.ctx, "TEXT");
+
+    const changed = await updateBlockContent(a.ctx, foreign.id, {
+      ...defaultContent("TEXT"),
+      text: "подмена",
+    });
+    expect(changed).toBe(false);
+
+    const untouched = await testDb.inviteBlock.findUniqueOrThrow({ where: { id: foreign.id } });
+    expect(untouched.content).toEqual(defaultContent("TEXT"));
+  });
+
+  it("скрытие и удаление чужого блока не проходят", async () => {
+    const foreign = await addBlock(b.ctx, "TEXT");
+
+    await setBlockVisible(a.ctx, foreign.id, false);
+    await deleteBlock(a.ctx, foreign.id);
+    await moveBlock(a.ctx, foreign.id, 1);
+
+    const survived = await testDb.inviteBlock.findUnique({ where: { id: foreign.id } });
+    expect(survived?.visible).toBe(true);
+  });
+
+  it("именная ссылка находит гостя вместе с его мероприятием", async () => {
+    const guest = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
+    const found = await findGuestByLinkToken(guest.linkToken);
+    expect(found?.eventId).toBe(a.eventId);
+  });
+
+  it("токен гостя не открывает соседнее мероприятие", async () => {
+    const guest = await testDb.guest.findUniqueOrThrow({ where: { id: b.guestId } });
+    const found = await findGuestByLinkToken(guest.linkToken);
+    expect(found?.eventId).toBe(b.eventId);
+    expect(found?.eventId).not.toBe(a.eventId);
+  });
+
+  it("исключение для токена узкое: запрос к гостям без токена и без eventId по-прежнему падает", async () => {
+    await expect(db.guest.findMany({ where: { displayName: "Анастасия Петрова" } })).rejects.toThrow(
+      /tenancy/,
+    );
   });
 });
