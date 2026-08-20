@@ -1,0 +1,449 @@
+// Схема данных сервиса. Комментарии к решениям — в PLAN.md §1.
+// Правило мультиарендности: каждая дочерняя сущность ссылается на родителя
+// парой (eventId, id), а не одним id. Это делает кросс-арендную связь
+// невозможной на уровне БД, а не на уровне внимательности разработчика.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pg_trgm, citext, pgcrypto]
+}
+
+// ────────────────────────────────────────────────────────────
+// Организация и пользователи
+// ────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Membership[]
+  events  Event[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique @db.Citext
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  memberships Membership[]
+  sessions    Session[]
+
+  @@map("users")
+}
+
+enum OrgRole {
+  OWNER
+  PLANNER
+  STAFF
+}
+
+model Membership {
+  id     String  @id @default(cuid())
+  orgId  String
+  userId String
+  role   OrgRole @default(PLANNER)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ────────────────────────────────────────────────────────────
+// Мероприятие
+// ────────────────────────────────────────────────────────────
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Event {
+  id        String      @id @default(cuid())
+  orgId     String
+  title     String
+  slug      String
+  shortCode String
+  status    EventStatus @default(DRAFT)
+
+  eventDate DateTime
+  timezone  String  @default("Europe/Moscow")
+  venueName String?
+  venueAddr String?
+  venueLat  Float?
+  venueLng  Float?
+
+  rsvpDeadline       DateTime?
+  allowPlusOne       Boolean   @default(true)
+  photoLimitPerGuest Int       @default(5)
+  photosEnabled      Boolean   @default(true)
+  wishesEnabled      Boolean   @default(true)
+  raffleEnabled      Boolean   @default(true)
+
+  // Секрет для подписи гостевых cookie. Ротация обнуляет все гостевые сессии.
+  guestLinkSecret String @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))
+
+  // Версия рассадки: растёт при каждой операции, ловит одновременное
+  // редактирование в двух вкладках (PLAN.md §5.4).
+  seatingVersion Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  blocks       InviteBlock[]
+  guests       Guest[]
+  mealOptions  MealOption[]
+  tables       SeatTable[]
+  seats        Seat[]
+  photos       Photo[]
+  wishes       Wish[]
+  raffles      Raffle[]
+  screens      ScreenToken[]
+
+  @@unique([orgId, id])
+  @@unique([orgId, slug])
+  @@unique([shortCode])
+  @@index([orgId, status])
+  @@map("events")
+}
+
+// ────────────────────────────────────────────────────────────
+// Конструктор приглашения
+// ────────────────────────────────────────────────────────────
+
+enum BlockType {
+  COVER
+  TIMELINE
+  VENUE
+  DRESSCODE
+  MAP
+  TEXT
+  RSVP_FORM
+}
+
+model InviteBlock {
+  id      String    @id @default(cuid())
+  orgId   String
+  eventId String
+  type    BlockType
+  order   Int
+  visible Boolean   @default(true)
+  content Json      @default("{}")
+
+  event Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+
+  @@unique([eventId, order])
+  @@index([eventId])
+  @@map("invite_blocks")
+}
+
+// ВАЖНО про onDelete: составной внешний ключ (eventId, xId) нельзя объявить
+// как SetNull — Postgres обнулил бы обе колонки, включая NOT NULL eventId,
+// и удаление падало бы в рантайме. Поэтому такие связи объявлены как Restrict,
+// а отвязка делается явно в репозитории (guests.archive / guests.remove):
+// сначала обнуляем ссылку, потом удаляем строку.
+
+// ────────────────────────────────────────────────────────────
+// Гости
+// ────────────────────────────────────────────────────────────
+
+enum RsvpStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model MealOption {
+  id      String  @id @default(cuid())
+  orgId   String
+  eventId String
+  title   String
+  order   Int
+  active  Boolean @default(true)
+
+  event  Event   @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  guests Guest[]
+
+  @@unique([eventId, id])
+  @@index([eventId])
+  @@map("meal_options")
+}
+
+model Guest {
+  id      String @id @default(cuid())
+  orgId   String
+  eventId String
+
+  displayName String
+  // Нормализованный ключ поиска: lower + ё→е + латиница→кириллица + без пунктуации.
+  // Заполняется приложением (см. src/lib/name-normalize.ts).
+  searchKey String
+  phone     String?
+  email     String?
+  note      String?
+
+  linkToken    String    @unique
+  linkOpenedAt DateTime?
+
+  rsvpStatus     RsvpStatus @default(PENDING)
+  rsvpAt         DateTime?
+  mealOptionId   String?
+  allergies      String?
+  plusOneAllowed Boolean    @default(false)
+  plusOneName    String?
+  comment        String?
+
+  // Спутник (+1) ссылается на «родителя». Он же связывает семью:
+  // поиск на входе возвращает всю группу, см. PLAN.md §7 вопрос 1.
+  parentGuestId String?
+
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  event         Event         @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  mealOption    MealOption?   @relation(fields: [eventId, mealOptionId], references: [eventId, id], onDelete: Restrict)
+  parentGuest   Guest?        @relation("PlusOne", fields: [eventId, parentGuestId], references: [eventId, id], onDelete: Restrict)
+  plusOnes      Guest[]       @relation("PlusOne")
+  seat          Seat?
+  photos        Photo[]
+  wishes        Wish[]
+  aliases       GuestAlias[]
+  raffleEntries RaffleEntry[]
+
+  @@unique([eventId, id])
+  @@index([eventId, rsvpStatus])
+  @@index([eventId, searchKey])
+  // Триграммный индекс: поиск гостя по имени с опечатками (PLAN.md §1.4)
+  @@index([searchKey(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("guests")
+}
+
+// Дополнительные написания имени: «Настя», девичья фамилия, «мама Лена».
+model GuestAlias {
+  id      String @id @default(cuid())
+  orgId   String
+  eventId String
+  guestId String
+  alias   String
+  source  String @default("auto") // auto | manual
+
+  guest Guest @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Cascade)
+
+  @@unique([guestId, alias])
+  @@index([eventId, alias])
+  @@index([alias(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("guest_aliases")
+}
+
+// ────────────────────────────────────────────────────────────
+// Рассадка
+// ────────────────────────────────────────────────────────────
+
+enum TableShape {
+  ROUND
+  RECT
+  OVAL
+  HEAD
+}
+
+model SeatTable {
+  id      String     @id @default(cuid())
+  orgId   String
+  eventId String
+  label   String
+  shape   TableShape @default(ROUND)
+  // Координаты в условных единицах плана 1000×700 (PLAN.md §4.7), не в пикселях.
+  x        Float
+  y        Float
+  rotation Float      @default(0)
+  width    Float      @default(120)
+  height   Float      @default(120)
+  capacity Int        @default(8)
+
+  event Event  @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  seats Seat[]
+
+  @@unique([eventId, id])
+  @@unique([eventId, label])
+  @@index([eventId])
+  @@map("seat_tables")
+}
+
+model Seat {
+  id      String @id @default(cuid())
+  orgId   String
+  eventId String
+  tableId String
+  index   Int
+  x       Float?
+  y       Float?
+
+  guestId String? @unique
+
+  table SeatTable @relation(fields: [eventId, tableId], references: [eventId, id], onDelete: Cascade)
+  guest Guest?    @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Restrict)
+  event Event     @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+
+  @@unique([tableId, index])
+  @@unique([eventId, guestId])
+  @@index([eventId])
+  @@map("seats")
+}
+
+// ────────────────────────────────────────────────────────────
+// Фото, пожелания, розыгрыш
+// ────────────────────────────────────────────────────────────
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Photo {
+  id      String  @id @default(cuid())
+  orgId   String
+  eventId String
+  guestId String?
+
+  storageKey  String
+  thumbKey    String
+  width       Int
+  height      Int
+  bytes       Int
+  status      ModerationStatus @default(PENDING)
+  moderatedAt DateTime?
+  moderatedBy String?
+  caption     String?
+
+  createdAt DateTime @default(now())
+
+  event Event  @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  guest Guest? @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Restrict)
+
+  @@index([eventId, status, createdAt])
+  @@index([eventId, guestId])
+  @@map("photos")
+}
+
+model Wish {
+  id      String  @id @default(cuid())
+  orgId   String
+  eventId String
+  guestId String?
+
+  authorName String
+  text       String           @db.VarChar(500)
+  status     ModerationStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  event Event  @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  guest Guest? @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Restrict)
+
+  @@index([eventId, status, createdAt])
+  @@map("wishes")
+}
+
+model Raffle {
+  id      String @id @default(cuid())
+  orgId   String
+  eventId String
+  title   String @default("Розыгрыш")
+
+  // Фиксируется при запуске: позволяет повторить розыгрыш и доказать честность.
+  seed          String?
+  drawnAt       DateTime?
+  winnerGuestId String?
+  winnerLabel   String?
+
+  createdAt DateTime @default(now())
+
+  event   Event         @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  entries RaffleEntry[]
+
+  @@unique([eventId, id])
+  @@index([eventId])
+  @@map("raffles")
+}
+
+model RaffleEntry {
+  id       String @id @default(cuid())
+  orgId    String
+  eventId  String
+  raffleId String
+  guestId  String
+  label    String
+
+  raffle Raffle @relation(fields: [eventId, raffleId], references: [eventId, id], onDelete: Cascade)
+  guest  Guest  @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Cascade)
+
+  @@unique([raffleId, guestId])
+  @@index([eventId])
+  @@map("raffle_entries")
+}
+
+// ────────────────────────────────────────────────────────────
+// Экран в зале и журнал
+// ────────────────────────────────────────────────────────────
+
+model ScreenToken {
+  id         String    @id @default(cuid())
+  orgId      String
+  eventId    String
+  token      String    @unique
+  label      String    @default("Проектор")
+  lastSeenAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  event Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("screen_tokens")
+}
+
+model GuestActionLog {
+  id        String   @id @default(cuid())
+  orgId     String
+  eventId   String
+  guestId   String?
+  action    String
+  detail    String?
+  ipHash    String?
+  ua        String?
+  createdAt DateTime @default(now())
+
+  @@index([eventId, createdAt])
+  @@index([eventId, action, createdAt])
+  @@map("guest_action_log")
+}
