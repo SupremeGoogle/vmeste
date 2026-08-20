@@ -76,6 +76,20 @@ export default async function PersonalInvitePage({ params, searchParams }: Props
         </div>
       ) : null}
 
+      {/* Фотографии — отдельная страница: гость приходит на неё вечером,
+          с телефона, когда приглашение уже прочитано. Ссылка нужна здесь,
+          иначе её знает только тот, кому её прислали отдельно. */}
+      {guest.event.photosEnabled ? (
+        <div className="px-6 pb-8 text-center">
+          <a
+            href={`/i/${eventSlug}/${token}/photos`}
+            className="text-sm text-stone-600 underline"
+          >
+            Фотографии со свадьбы
+          </a>
+        </div>
+      ) : null}
+
       <footer className="px-6 pb-10 text-center text-sm text-stone-400">
         {formatEventDateTime(guest.event.eventDate, guest.event.timezone)}
         {deadline ? (

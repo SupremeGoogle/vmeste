@@ -346,6 +346,12 @@ model Photo {
   moderatedBy String?
   caption     String?
 
+  // Превью делает браузер гостя (PLAN.md §4.4), и с ним бывает не судьба:
+  // старый телефон не умеет декодировать HEIC в canvas. Такое фото
+  // принимаем — потерять единственный кадр хуже, — но помечаем: в модерации
+  // видно «превью не получилось», а на экран в зале оно не идёт (§5.5).
+  previewOk Boolean @default(true)
+
   createdAt DateTime @default(now())
 
   event Event  @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)

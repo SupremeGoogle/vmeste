@@ -267,3 +267,19 @@ describe("приглашение: блоки и именные ссылки", ()
     );
   });
 });
+
+describe("фотографии", () => {
+  it("страж не пропускает запрос к фото по одному id", async () => {
+    // Ровно та ошибка, на которую налетел первый вариант `/api/media`:
+    // фото искалось по `photoId` без мероприятия. Адрес медиа-маршрута
+    // теперь несёт eventId, а этот тест держит правило на месте.
+    await expect(db.photo.findUnique({ where: { id: "cmt0000000000000000000" } })).rejects.toThrow(
+      /tenancy/,
+    );
+  });
+
+  it("с фильтром по мероприятию — пропускает", async () => {
+    const photos = await db.photo.findMany({ where: { eventId: a.eventId } });
+    expect(photos).toHaveLength(0);
+  });
+});
