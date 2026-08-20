@@ -18,6 +18,9 @@
 import React from "react";
 import path from "node:path";
 import {
+  PLAN_HEIGHT, PLAN_WIDTH, isRound, labelPosition, seatPosition, shortName,
+} from "@/lib/seating-geometry";
+import {
   Document, Font, Page, StyleSheet, Svg, Circle, Ellipse, Rect, Text as SvgText,
   Text, View,
 } from "@react-pdf/renderer";
@@ -56,9 +59,6 @@ export type PdfInput = {
   generatedAt: Date;
 };
 
-const PLAN_W = 1000;
-const PLAN_H = 700;
-
 const styles = StyleSheet.create({
   page: { fontFamily: "Roboto", fontSize: 10, padding: 32, color: "#2b2622" },
   h1: { fontSize: 18, fontWeight: 700, marginBottom: 2 },
@@ -91,33 +91,6 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Подпись у места: «Анастасия Петрова» → «А. Петрова». Полное имя
- *  не влезает между двумя соседними местами круглого стола. */
-function shortName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length < 2) return parts[0] ?? "";
-  return `${parts[0][0]}. ${parts[1]}`;
-}
-
-function seatPosition(table: PdfTable, index: number) {
-  const count = Math.max(table.capacity, 1);
-  if (table.shape === "ROUND" || table.shape === "OVAL") {
-    const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-    return {
-      x: table.x + Math.cos(angle) * (table.width / 2 + 26),
-      y: table.y + Math.sin(angle) * (table.height / 2 + 26),
-    };
-  }
-  const perSide = Math.ceil(count / 2);
-  const side = index < perSide ? -1 : 1;
-  const pos = index % perSide;
-  const step = table.width / (perSide + 1);
-  return {
-    x: table.x - table.width / 2 + step * (pos + 1),
-    y: table.y + side * (table.height / 2 + 22),
-  };
-}
-
 /**
  * Типы @react-pdf не описывают fontFamily/fontSize у Text внутри Svg, хотя
  * рантайм их учитывает. Без явного шрифта текст на плане падает в Helvetica,
@@ -137,22 +110,11 @@ const PlanText = SvgText as unknown as React.ComponentType<
   }>
 >;
 
-/** Куда отнести подпись места: по направлению «от центра стола наружу». */
-function labelPosition(table: PdfTable, seat: { x: number; y: number }) {
-  const dx = seat.x - table.x;
-  const dy = seat.y - table.y;
-  const len = Math.hypot(dx, dy) || 1;
-  return {
-    x: seat.x + (dx / len) * 6,
-    y: seat.y + (dy / len) * 22 + 5,
-  };
-}
-
 function FloorPlanPdf({ tables }: { tables: PdfTable[] }) {
   return (
-    <Svg viewBox={`0 0 ${PLAN_W} ${PLAN_H}`} style={{ width: "100%", height: 440 }}>
+    <Svg viewBox={`0 0 ${PLAN_WIDTH} ${PLAN_HEIGHT}`} style={{ width: "100%", height: 440 }}>
       {tables.map((table) => {
-        const round = table.shape === "ROUND" || table.shape === "OVAL";
+        const round = isRound(table.shape);
         return (
           <React.Fragment key={table.id}>
             {round ? (

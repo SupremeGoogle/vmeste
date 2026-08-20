@@ -1,28 +1,20 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/*
+ * Панель организатора намеренно светлая, без переключения на тёмную тему.
+ *
+ * Причина: у панели один главный выход — бумага. План рассадки, список
+ * гостей и QR-табличка печатаются, и держать вторую тему ради экрана значит
+ * дважды проверять контрасты там, где итог всё равно чёрным по белому.
+ *
+ * Заготовка из create-next-app переключала фон на тёмный по
+ * prefers-color-scheme, из-за чего у организатора с тёмной темой системы
+ * панель выглядела как светлые карточки на чёрном фоне.
+ */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #fafaf9; /* stone-50 */
+  color: #1c1917;      /* stone-900 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @media print {

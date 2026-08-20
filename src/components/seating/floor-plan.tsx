@@ -1,10 +1,11 @@
 /**
- * План зала в SVG. Серверный компонент — никакого клиентского JS.
- *
- * Координаты столов хранятся в условных единицах 1000×700, а не в пикселях
- * (PLAN.md §4.7): один и тот же план должен одинаково выглядеть на мониторе
- * организатора, на телефоне гостя и в PDF.
+ * План зала в SVG — просмотр и печать. Серверный компонент, клиентского JS нет.
+ * Редактор с перетаскиванием живёт отдельно (components/seating/editor.tsx),
+ * но геометрию оба берут из одного модуля.
  */
+import {
+  PLAN_HEIGHT, PLAN_WIDTH, isRound, labelPosition, seatPosition, shortName,
+} from "@/lib/seating-geometry";
 export type PlanTable = {
   id: string;
   label: string;
@@ -16,37 +17,6 @@ export type PlanTable = {
   capacity: number;
   seats: { id: string; index: number; guest: { id: string; displayName: string } | null }[];
 };
-
-export const PLAN_WIDTH = 1000;
-export const PLAN_HEIGHT = 700;
-
-/** Короткое имя для подписи у места: «Анастасия Петрова» → «А. Петрова». */
-function shortName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length < 2) return parts[0] ?? "";
-  return `${parts[0][0]}. ${parts[1]}`;
-}
-
-function seatPosition(table: PlanTable, index: number) {
-  const count = Math.max(table.capacity, 1);
-
-  if (table.shape === "ROUND" || table.shape === "OVAL") {
-    const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-    const rx = table.width / 2 + 26;
-    const ry = table.height / 2 + 26;
-    return { x: table.x + Math.cos(angle) * rx, y: table.y + Math.sin(angle) * ry };
-  }
-
-  // Прямоугольный стол и президиум: места по длинным сторонам.
-  const perSide = Math.ceil(count / 2);
-  const side = index < perSide ? -1 : 1;
-  const pos = index % perSide;
-  const step = table.width / (perSide + 1);
-  return {
-    x: table.x - table.width / 2 + step * (pos + 1),
-    y: table.y + side * (table.height / 2 + 22),
-  };
-}
 
 export function FloorPlan({
   tables,
@@ -63,10 +33,10 @@ export function FloorPlan({
       aria-label="План зала"
     >
       {tables.map((table) => {
-        const isRound = table.shape === "ROUND" || table.shape === "OVAL";
+        const round = isRound(table.shape);
         return (
           <g key={table.id}>
-            {isRound ? (
+            {round ? (
               <ellipse
                 cx={table.x} cy={table.y} rx={table.width / 2} ry={table.height / 2}
                 fill="#f5f1ea" stroke="#d6cec2"
@@ -88,6 +58,7 @@ export function FloorPlan({
 
             {table.seats.map((seat) => {
               const { x, y } = seatPosition(table, seat.index);
+              const label = labelPosition(table, { x, y });
               const taken = Boolean(seat.guest);
               const highlighted = seat.guest?.id === highlightGuestId;
               return (
@@ -100,7 +71,7 @@ export function FloorPlan({
                   />
                   {seat.guest && (
                     <text
-                      x={x} y={y + 22}
+                      x={label.x} y={label.y}
                       textAnchor="middle" fontSize={10}
                       fill={highlighted ? "#3a2f22" : "#7a7068"}
                       fontWeight={highlighted ? 700 : 400}
