@@ -72,6 +72,13 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
         <p className="text-sm text-stone-600">
           Не рассажено: <b className="text-stone-900">{unseated.length}</b>
         </p>
+
+        <a
+          href={`/api/app/events/${eventId}/seating/pdf`}
+          className="rounded-lg border border-stone-300 px-4 py-1.5 text-sm"
+        >
+          Скачать PDF
+        </a>
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

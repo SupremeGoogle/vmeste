@@ -42,11 +42,17 @@ export default async function PrintPage({ params }: { params: Promise<{ eventId:
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <div className="no-print mb-6 flex items-center justify-between">
+      <div className="no-print mb-6 flex items-start justify-between gap-6">
         <p className="text-sm text-stone-600">
-          Распечатайте обе страницы и отдайте координатору. Это план Б на случай,
-          если в день свадьбы всё упадёт.
+          Распечатайте эту страницу и выгрузите PDF с рассадкой — отдайте
+          координатору. Это план Б на случай, если в день свадьбы всё упадёт.
         </p>
+        <a
+          href={`/api/app/events/${eventId}/seating/pdf`}
+          className="shrink-0 rounded-lg bg-stone-900 px-4 py-2 text-sm text-white"
+        >
+          Скачать план рассадки (PDF)
+        </a>
       </div>
 
       <section className="print-page rounded-xl border border-stone-200 bg-white p-10 text-center">
