@@ -179,6 +179,15 @@ imported = re.search(r"Всего: (\d+)", body)
 step("сто гостей в списке", imported and imported.group(1) == "100",
      f"в списке {imported.group(1) if imported else '?'}")
 
+# Карточка гостя: варианты имени добавляются только здесь.
+status, guests_page, _ = get(f"/app/e/{event_id}/guests")
+card = re.search(rf"/app/e/{event_id}/guests/([a-z0-9]+)", guests_page)
+if card:
+    guest_card = f"/app/e/{event_id}/guests/{card.group(1)}"
+    submit(guest_card, 'placeholder="Например, «мама Лена»"', [("alias", "мама Лена")])
+    body = text_of(get(guest_card)[1])
+    step("вариант имени добавлен в карточке", "мама лена" in body.lower())
+
 print("\n5. Приглашение")
 for block in ["COVER", "TIMELINE", "VENUE", "RSVP_FORM"]:
     submit(f"/app/e/{event_id}/invite", f'value="{block}"', [("type", block)])
@@ -289,12 +298,10 @@ with opener.open(req) as response:
 step("PDF плана рассадки", pdf[:4] == b"%PDF", f"{len(pdf) // 1024} КБ")
 
 print("\n9. Вход по QR: гость ищет свой стол")
-status, page, _ = get(f"/app/e/{event_id}/guests")
-short_code = re.search(r"tracking-widest[^>]*>([A-Z0-9]{6})<", get("/app")[1])
-code = short_code.group(1) if short_code else None
-if not code:
-    body = get(f"/app/e/{event_id}/settings")[1]
-    code = (re.search(r">([A-Z0-9]{6})<", body) or [None, None])[1]
+# Код берём со страницы своего мероприятия, а не из общего списка:
+# в списке первым может стоять чужое, и репетиция уйдёт проверять его.
+_, event_page, _ = get(f"/app/e/{event_id}/guests")
+code = re.search(r"tracking-widest[^>]*>([A-Z0-9]{6})<", event_page).group(1)
 status, entry, _ = get(f"/e/{code}")
 step("страница входа открывается", status == 200 and "введите" in entry.lower(), f"/e/{code}")
 

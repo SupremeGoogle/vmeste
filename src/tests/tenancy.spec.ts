@@ -212,6 +212,15 @@ describe("публичный вход по короткому коду", () => {
   it("несуществующий код ничего не возвращает", async () => {
     expect(await findEventByShortCode("ZZZZZZ")).toBeNull();
   });
+
+  it("код мероприятия в архиве перестаёт работать", async () => {
+    // Иначе табличка с прошлогодней свадьбы остаётся ключом к списку
+    // её гостей: поиск по имени, фамилии, номера столов.
+    await testDb.event.update({ where: { id: a.eventId }, data: { status: "ARCHIVED" } });
+    expect(await findEventByShortCode("AAAAAA")).toBeNull();
+    await testDb.event.update({ where: { id: a.eventId }, data: { status: "PUBLISHED" } });
+    expect(await findEventByShortCode("AAAAAA")).not.toBeNull();
+  });
 });
 
 describe("приглашение: блоки и именные ссылки", () => {
@@ -291,5 +300,58 @@ describe("фотографии", () => {
   it("с фильтром по мероприятию — пропускает", async () => {
     const photos = await db.photo.findMany({ where: { eventId: a.eventId } });
     expect(photos).toHaveLength(0);
+  });
+});
+
+describe("карточка гостя", () => {
+  it("переименование пересобирает автоматические варианты имени, ручные сохраняет", async () => {
+    const { updateGuest, addAlias } = await import("@/server/repositories/guests");
+
+    const guest = await createGuest(a.ctx, { displayName: "Анастасия Петрова" });
+    await addAlias(a.ctx, guest.id, "мама Настя");
+
+    await updateGuest(a.ctx, guest.id, { displayName: "Анастасия Соколова" });
+
+    const aliases = await testDb.guestAlias.findMany({ where: { guestId: guest.id } });
+    const manual = aliases.filter((alias) => alias.source === "manual");
+    const auto = aliases.filter((alias) => alias.source !== "manual");
+
+    expect(manual.map((alias) => alias.alias)).toEqual(["мама настя"]);
+    expect(auto.some((alias) => alias.alias.includes("соколова"))).toBe(true);
+    expect(auto.some((alias) => alias.alias.includes("петрова"))).toBe(false);
+
+    const updated = await testDb.guest.findUniqueOrThrow({ where: { id: guest.id } });
+    expect(updated.searchKey).toBe(normalizeName("Анастасия Соколова"));
+    await archiveGuest(a.ctx, guest.id);
+  });
+
+  it("правка и перевыпуск ссылки не дотягиваются до чужого гостя", async () => {
+    const { updateGuest, reissueLinkToken, addAlias, removeAlias } = await import(
+      "@/server/repositories/guests"
+    );
+
+    const before = await testDb.guest.findUniqueOrThrow({ where: { id: b.guestId } });
+    expect(await updateGuest(a.ctx, b.guestId, { displayName: "Перехват" })).toBe(false);
+    expect(await reissueLinkToken(a.ctx, b.guestId)).toBe(false);
+    expect(await addAlias(a.ctx, b.guestId, "чужой алиас")).toBeNull();
+    expect(await removeAlias(a.ctx, b.guestId, "нет-такого")).toBe(false);
+
+    const after = await testDb.guest.findUniqueOrThrow({ where: { id: b.guestId } });
+    expect(after.displayName).toBe(before.displayName);
+    expect(after.linkToken).toBe(before.linkToken);
+  });
+
+  it("перевыпуск ссылки гасит старую", async () => {
+    const { reissueLinkToken, findGuestByLinkToken } = await import(
+      "@/server/repositories/guests"
+    );
+
+    const guest = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
+    expect(await reissueLinkToken(a.ctx, a.guestId)).toBe(true);
+
+    expect(await findGuestByLinkToken(guest.linkToken)).toBeNull();
+    const after = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
+    expect(await findGuestByLinkToken(after.linkToken)).not.toBeNull();
+    expect(after.linkOpenedAt).toBeNull();
   });
 });

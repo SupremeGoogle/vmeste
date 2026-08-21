@@ -23,7 +23,8 @@ export async function GET(
 ) {
   const { shortCode } = await params;
   const event = await findEventByShortCode(shortCode);
-  if (!event || event.status === "ARCHIVED") {
+  // Архивные сюда не приходят: их отсекает сам поиск по коду.
+  if (!event) {
     return html(page({ title: "Не найдено", body: "<h1>Мероприятие не найдено</h1>" }), {
       status: 404,
     });

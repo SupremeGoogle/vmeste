@@ -113,6 +113,82 @@ export async function getGuest(ctx: EventContext, guestId: string) {
   });
 }
 
+export type GuestPatch = {
+  displayName?: string;
+  phone?: string | null;
+  email?: string | null;
+  note?: string | null;
+};
+
+/**
+ * Правка карточки гостя.
+ *
+ * При смене имени переписываются и ключ поиска, и автоматические алиасы:
+ * иначе гость, записанный с опечаткой и исправленный за день до свадьбы,
+ * на входе найдётся только под старым написанием. Ручные алиасы
+ * («мама Лена») при этом остаются — их добавлял человек, и стирать их
+ * при исправлении фамилии нельзя.
+ */
+export async function updateGuest(ctx: EventContext, guestId: string, patch: GuestPatch) {
+  const guest = await db.guest.findFirst({
+    where: { id: guestId, eventId: ctx.eventId },
+    select: { id: true, displayName: true },
+  });
+  if (!guest) return false;
+
+  const displayName = patch.displayName?.trim();
+  const renamed = !!displayName && displayName !== guest.displayName;
+
+  await db.$transaction(async (tx) => {
+    if (renamed) {
+      await tx.guestAlias.deleteMany({
+        where: { eventId: ctx.eventId, guestId, source: "auto" },
+      });
+    }
+
+    await tx.guest.update({
+      where: { eventId_id: { eventId: ctx.eventId, id: guestId } },
+      data: {
+        ...(renamed ? { displayName, searchKey: normalizeName(displayName) } : {}),
+        ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
+        ...(patch.email !== undefined ? { email: patch.email } : {}),
+        ...(patch.note !== undefined ? { note: patch.note } : {}),
+        ...(renamed
+          ? {
+              aliases: {
+                create: expandGuestName(displayName).map((alias) => ({
+                  orgId: ctx.orgId,
+                  alias,
+                })),
+              },
+            }
+          : {}),
+      },
+    });
+  });
+
+  return true;
+}
+
+/** Удаление ручного алиаса. Автоматические удалять смысла нет —
+ *  они пересоздаются из имени. */
+export async function removeAlias(ctx: EventContext, guestId: string, aliasId: string) {
+  const deleted = await db.guestAlias.deleteMany({
+    where: { id: aliasId, guestId, eventId: ctx.eventId, source: "manual" },
+  });
+  return deleted.count === 1;
+}
+
+/** Перевыпуск именной ссылки: старая перестаёт работать немедленно.
+ *  Нужен, когда ссылка ушла не тому человеку (PLAN.md §1.3). */
+export async function reissueLinkToken(ctx: EventContext, guestId: string) {
+  const updated = await db.guest.updateMany({
+    where: { id: guestId, eventId: ctx.eventId },
+    data: { linkToken: generateLinkToken(), linkOpenedAt: null },
+  });
+  return updated.count === 1;
+}
+
 /** Разрешение привести спутника. По одному гостю: зовут с парой не всех. */
 export async function setPlusOneAllowed(ctx: EventContext, guestId: string, allowed: boolean) {
   const updated = await db.guest.updateMany({
@@ -125,7 +201,19 @@ export async function setPlusOneAllowed(ctx: EventContext, guestId: string, allo
 /** Ручной алиас: «мама Лена», девичья фамилия, прозвище. */
 export async function addAlias(ctx: EventContext, guestId: string, alias: string) {
   const normalized = normalizeName(alias);
-  if (normalized.length < 2) throw new Error("Слишком короткий алиас");
+  if (normalized.length < 2) return null;
+
+  const guest = await db.guest.findFirst({
+    where: { id: guestId, eventId: ctx.eventId },
+    select: { id: true },
+  });
+  if (!guest) return null;
+
+  const existing = await db.guestAlias.findFirst({
+    where: { eventId: ctx.eventId, guestId, alias: normalized },
+    select: { id: true },
+  });
+  if (existing) return null;
 
   return db.guestAlias.create({
     data: { orgId: ctx.orgId, eventId: ctx.eventId, guestId, alias: normalized, source: "manual" },

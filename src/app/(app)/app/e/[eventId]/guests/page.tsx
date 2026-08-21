@@ -217,7 +217,11 @@ export default async function GuestsPage({
         <tbody>
           {guests.map((guest) => (
             <tr key={guest.id} className="border-b border-stone-100">
-              <td className="py-2">{guest.displayName}</td>
+              <td className="py-2">
+                <a href={`/app/e/${eventId}/guests/${guest.id}`} className="hover:underline">
+                  {guest.displayName}
+                </a>
+              </td>
               <td className="py-2 text-stone-600">{RSVP[guest.rsvpStatus]}</td>
               <td className="py-2 text-stone-600">
                 {guest.seat ? guest.seat.table.label : "—"}

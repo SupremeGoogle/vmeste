@@ -77,9 +77,16 @@ export async function createEvent(
   }
 }
 
-/** Публичный вход по QR: мероприятие по короткому коду. Без авторизации. */
+/**
+ * Публичный вход по QR: мероприятие по короткому коду. Без авторизации.
+ *
+ * Архивные не отдаются вовсе. Иначе код с прошлогодней таблички остаётся
+ * рабочим ключом к списку гостей той свадьбы: поиск по имени, чужие
+ * фамилии, номера столов. Проверка стоит здесь, а не в трёх маршрутах,
+ * которые этой функцией пользуются, — забыть её в четвёртом нельзя.
+ */
 export async function findEventByShortCode(shortCode: string) {
-  return db.event.findUnique({
+  const event = await db.event.findUnique({
     where: { shortCode: shortCode.toUpperCase().trim() },
     select: {
       id: true, orgId: true, title: true, slug: true, shortCode: true,
@@ -87,6 +94,8 @@ export async function findEventByShortCode(shortCode: string) {
       photosEnabled: true, wishesEnabled: true,
     },
   });
+
+  return event && event.status !== "ARCHIVED" ? event : null;
 }
 
 export async function getEvent(ctx: OrgContext, eventId: string) {
