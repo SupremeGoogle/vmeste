@@ -56,6 +56,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return session.user;
 }
 
+/** Идентификатор текущей сессии — чтобы не закрыть самому себе дверь,
+ *  выходя из всех остальных. */
+export async function currentSessionId(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(COOKIE)?.value ?? null;
+}
+
 export async function destroySession(): Promise<void> {
   const jar = await cookies();
   const id = jar.get(COOKIE)?.value;

@@ -20,6 +20,15 @@ import { formatEventDateTime } from "@/lib/format-datetime";
 
 export const dynamic = "force-dynamic";
 
+/** Режим экрана человеку показываем словами, а не кодом перечисления. */
+const SCREEN_MODE: Record<string, string> = {
+  MIXED: "фото и пожелания",
+  PHOTOS: "только фото",
+  WISHES: "только пожелания",
+  RAFFLE: "розыгрыш",
+  IDLE: "заставка",
+};
+
 /**
  * «Сейчас» для серверного рендера.
  *
@@ -139,7 +148,7 @@ export default async function EventDashboard({
           <p className="font-medium">Экран в зале</p>
           <p className="mt-1 text-stone-600">
             {liveScreen
-              ? `${liveScreen.label} на связи, режим «${event.screenMode}»`
+              ? `${liveScreen.label} на связи, режим «${SCREEN_MODE[event.screenMode] ?? event.screenMode}»`
               : screens.some((screen) => !screen.revokedAt)
                 ? "ссылка есть, но экран не подключён"
                 : "ссылка для проектора ещё не создана"}
