@@ -13,16 +13,16 @@ import { db } from "@/server/db";
 import type { EventContext } from "@/server/context";
 import type { BlockType } from "@/generated/prisma/enums";
 import { defaultContent, readBlockContent } from "@/lib/invite-blocks";
+import { eventTag as eventCacheTag, inviteSlugTag as inviteCacheTag } from "@/lib/cache-tags";
 import type { AnyBlockContent } from "@/lib/invite-blocks";
 
 /**
- * Теги кеша приглашения (PLAN.md §2.5). Сбрасывает их не репозиторий, а
- * серверное действие, которое правит блоки: `updateTag` разрешён только
- * внутри Server Action, а репозиторий вызывается ещё и из тестов, где
- * никакого запроса Next вокруг нет.
+ * Теги кеша живут в `lib/cache-tags.ts` (PLAN.md §5.7). Сбрасывает их
+ * не репозиторий, а серверное действие, которое правит блоки: `updateTag`
+ * разрешён только внутри Server Action, а репозиторий вызывается ещё и
+ * из тестов, где никакого запроса Next вокруг нет.
  */
-export const eventTag = (eventId: string) => `event:${eventId}`;
-export const inviteSlugTag = (slug: string) => `invite:${slug}`;
+export { eventTag, inviteSlugTag } from "@/lib/cache-tags";
 
 export type InviteBlockView = {
   id: string;
@@ -215,7 +215,7 @@ function reviveDates(invite: PublicInvite | null): PublicInvite | null {
 
 export async function getInviteBySlug(slug: string): Promise<PublicInvite | null> {
   const cached = await unstable_cache(() => loadInviteBySlug(slug), ["invite-by-slug", slug], {
-    tags: [inviteSlugTag(slug)],
+    tags: [inviteCacheTag(slug)],
     revalidate: 60,
   })();
   return reviveDates(cached);
@@ -232,6 +232,6 @@ export function getInviteBlocks(eventId: string): Promise<InviteBlockView[]> {
       return blocks.map(toView);
     },
     ["invite-blocks", eventId],
-    { tags: [eventTag(eventId)], revalidate: 60 },
+    { tags: [eventCacheTag(eventId)], revalidate: 60 },
   )();
 }

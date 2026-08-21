@@ -6,7 +6,7 @@
  * Проверка этапа 8 — «прогон без вмешательства в БД» — по сути про эту
  * страницу: пока чего-то из неё нет, репетиция не проходится.
  */
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import {
@@ -14,6 +14,7 @@ import {
   toggleMealOption, updateEventSettings,
 } from "@/server/repositories/events";
 import { formatEventDateTime } from "@/lib/format-datetime";
+import { allEventTags } from "@/lib/cache-tags";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,25 @@ export default async function SettingsPage({ params, searchParams }: Props) {
     const status = String(formData.get("status"));
     if (status !== "DRAFT" && status !== "PUBLISHED" && status !== "ARCHIVED") return;
     await setEventStatus(ctx, eventId, status);
+    revalidatePath(`/app/e/${eventId}/settings`);
+  }
+
+  /**
+   * Спасательный круг из PLAN.md §5.7.
+   *
+   * Кеш гостевых страниц живёт минутами и сбрасывается сам при правках,
+   * но в день свадьбы «подождите минуту» — плохой ответ, а «я не понимаю,
+   * почему гость видит старое» — обычная ситуация. Кнопка сбрасывает
+   * все теги мероприятия разом, и объяснять ничего не нужно.
+   */
+  async function dropCache() {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const event = await getEvent(ctx, eventId);
+    if (!event) return;
+
+    for (const tag of allEventTags(eventId, event.slug)) updateTag(tag);
+    revalidatePath("/", "layout");
     revalidatePath(`/app/e/${eventId}/settings`);
   }
 
@@ -285,9 +305,16 @@ export default async function SettingsPage({ params, searchParams }: Props) {
               Сбросить гостевые сессии
             </button>
           </form>
+          <form action={dropCache}>
+            <button className="rounded-lg border border-stone-300 px-4 py-2">
+              Сбросить кеш мероприятия
+            </button>
+          </form>
           <span className="text-xs text-stone-500">
             Архив прячет мероприятие от гостей: именные ссылки и вход по QR
             перестают работать, данные остаются.
+            Сброс кеша нужен, если гость видит вчерашние данные и ждать
+            минуту нельзя.
             Сброс разлогинивает всех гостей — если ссылка попала в общий чат.
             Сами именные ссылки продолжают работать.
           </span>
