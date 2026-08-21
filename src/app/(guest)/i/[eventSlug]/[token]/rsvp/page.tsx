@@ -52,6 +52,9 @@ export default async function RsvpPage({ params, searchParams }: Props) {
   if (!guest || guest.event.slug !== eventSlug || guest.event.status === "ARCHIVED") notFound();
 
   const meals = await listMealOptions(guest.eventId);
+  // Спутник уже мог быть заведён прошлым ответом — тогда подставляем
+  // его блюдо, чтобы гость не выбирал заново.
+  const plusOne = guest.plusOnes[0] ?? null;
   const plusOneAllowed =
     guest.event.allowPlusOne && guest.plusOneAllowed && guest.parentGuestId === null;
   const deadline = guest.event.rsvpDeadline;
@@ -68,6 +71,7 @@ export default async function RsvpPage({ params, searchParams }: Props) {
       allergies: String(formData.get("allergies") ?? ""),
       comment: String(formData.get("comment") ?? ""),
       plusOneName: String(formData.get("plusOneName") ?? ""),
+      plusOneMealOptionId: String(formData.get("plusOneMealOptionId") ?? "") || null,
     });
 
     if (!result.ok) {
@@ -151,6 +155,28 @@ export default async function RsvpPage({ params, searchParams }: Props) {
                   <input
                     type="radio" name="mealOptionId" value={meal.id}
                     defaultChecked={guest.mealOptionId === meal.id}
+                  />
+                  <span>{meal.title}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+
+        {meals.length > 0 && plusOneAllowed ? (
+          <fieldset>
+            <legend className="text-sm text-stone-500">
+              Что подать спутнику — если придёте вдвоём
+            </legend>
+            <div className="mt-3 space-y-2">
+              {meals.map((meal) => (
+                <label
+                  key={meal.id}
+                  className="flex items-center gap-3 rounded-xl border border-stone-300 px-4 py-3"
+                >
+                  <input
+                    type="radio" name="plusOneMealOptionId" value={meal.id}
+                    defaultChecked={plusOne?.mealOptionId === meal.id}
                   />
                   <span>{meal.title}</span>
                 </label>

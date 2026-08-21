@@ -1,9 +1,11 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import {
   countGuests, createGuest, listGuests, archiveGuest, setPlusOneAllowed,
 } from "@/server/repositories/guests";
 import { parseGuestCsv } from "@/server/services/csv-import";
+import { peekImportDraft, saveImportDraft, takeImportDraft } from "@/server/services/import-draft";
 import { createGuests } from "@/server/repositories/guests";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +16,18 @@ const RSVP: Record<string, string> = {
   DECLINED: "Не придёт",
 };
 
-export default async function GuestsPage({ params }: { params: Promise<{ eventId: string }> }) {
+export default async function GuestsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ draft?: string }>;
+}) {
   const { eventId } = await params;
+  const { draft: draftId } = await searchParams;
   const ctx = await requireEventContext(eventId);
   const [guests, counts] = await Promise.all([listGuests(ctx), countGuests(ctx)]);
+  const draft = draftId ? peekImportDraft(ctx, draftId) : null;
 
   async function addGuest(formData: FormData) {
     "use server";
@@ -32,15 +42,42 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
     revalidatePath(`/app/e/${eventId}/guests`);
   }
 
-  async function importCsv(formData: FormData) {
+  /**
+   * Импорт в два шага (PLAN.md §5.9): сначала предпросмотр, потом запись.
+   *
+   * Одношаговый импорт уже успел показать, чем он плох: файл заливается
+   * молча, и если разделитель угадан неверно или колонки перепутаны, в
+   * списке гостей оказывается сто строк вида «Иванов;+7999…». Отменять
+   * это некому — гостей уже нельзя просто удалить, у них есть ссылки.
+   *
+   * Разобранный файл кладём в короткоживущий черновик и показываем первые
+   * десять строк с кодировкой, разделителем и предупреждениями. Пишем
+   * в базу только после «Импортировать».
+   */
+  async function previewCsv(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) return;
 
     const parsed = parseGuestCsv(await file.arrayBuffer());
-    if (parsed.rows.length > 0) await createGuests(ctx, parsed.rows);
-    revalidatePath(`/app/e/${eventId}/guests`);
+    const draftId = await saveImportDraft(ctx, parsed);
+    redirect(`/app/e/${eventId}/guests?draft=${draftId}`);
+  }
+
+  async function confirmImport(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const draft = takeImportDraft(ctx, String(formData.get("draftId") ?? ""));
+    if (draft && draft.rows.length > 0) await createGuests(ctx, draft.rows);
+    redirect(`/app/e/${eventId}/guests`);
+  }
+
+  async function cancelImport(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    takeImportDraft(ctx, String(formData.get("draftId") ?? ""));
+    redirect(`/app/e/${eventId}/guests`);
   }
 
   async function togglePlusOne(formData: FormData) {
@@ -90,7 +127,7 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
           </button>
         </form>
 
-        <form action={importCsv} className="rounded-xl border border-stone-200 bg-white p-4">
+        <form action={previewCsv} className="rounded-xl border border-stone-200 bg-white p-4">
           <p className="text-sm font-medium">Импорт из CSV</p>
           <p className="mt-1 text-xs text-stone-500">
             Кодировка и разделитель определяются сами — файл из Excel подойдёт.
@@ -101,10 +138,71 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
             className="mt-3 w-full text-sm"
           />
           <button className="mt-3 rounded-lg border border-stone-300 px-4 py-2 text-sm">
-            Загрузить
+            Посмотреть, что получится
           </button>
         </form>
       </div>
+
+      {draft ? (
+        <section className="mt-6 rounded-xl border border-stone-900 bg-white p-4">
+          <p className="font-medium">Предпросмотр импорта</p>
+          <p className="mt-1 text-sm text-stone-600">
+            Кодировка: {draft.encoding} · разделитель: «{draft.delimiter}» ·
+            строк: {draft.rows.length}
+            {draft.skipped > 0 ? ` · пропущено пустых: ${draft.skipped}` : ""}
+          </p>
+
+          {draft.warnings.length > 0 ? (
+            <ul className="mt-3 space-y-1 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {draft.warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+
+          <table className="mt-3 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-stone-200 text-left text-stone-500">
+                <th className="py-1 font-normal">Гость</th>
+                <th className="py-1 font-normal">Телефон</th>
+                <th className="py-1 font-normal">Заметка</th>
+                <th className="py-1 font-normal">+1</th>
+              </tr>
+            </thead>
+            <tbody>
+              {draft.rows.slice(0, 10).map((row, index) => (
+                <tr key={index} className="border-b border-stone-100">
+                  <td className="py-1">{row.displayName}</td>
+                  <td className="py-1 text-stone-600">{row.phone ?? "—"}</td>
+                  <td className="py-1 text-stone-600">{row.note ?? "—"}</td>
+                  <td className="py-1 text-stone-600">{row.plusOneAllowed ? "да" : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {draft.rows.length > 10 ? (
+            <p className="mt-2 text-xs text-stone-500">
+              …и ещё {draft.rows.length - 10}. Показаны первые десять — если они
+              выглядят правильно, остальные разобраны так же.
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex gap-2">
+            <form action={confirmImport}>
+              <input type="hidden" name="draftId" value={draftId} />
+              <button className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white">
+                Импортировать {draft.rows.length}
+              </button>
+            </form>
+            <form action={cancelImport}>
+              <input type="hidden" name="draftId" value={draftId} />
+              <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
+                Отмена
+              </button>
+            </form>
+          </div>
+        </section>
+      ) : null}
 
       <table className="mt-8 w-full border-collapse text-sm">
         <thead>

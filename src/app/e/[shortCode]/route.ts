@@ -42,7 +42,8 @@ export async function GET(
   <button type="submit">Найти</button>
 </form>
 <p class="hint">Не нашли себя? Попробуйте только фамилию. Если и так нет —
-подойдите к координатору, он найдёт вас в списке.</p>`;
+подойдите к координатору, он найдёт вас в списке.</p>
+<p class="hint"><a href="/e/${code}/plan">Общий план зала</a></p>`;
 
   return html(page({ title: "Найдите свой стол", body, script: ENHANCE }), {
     headers: {

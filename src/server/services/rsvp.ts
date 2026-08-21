@@ -31,6 +31,9 @@ export const rsvpInputSchema = z.object({
   allergies: z.string().trim().max(500).default(""),
   comment: z.string().trim().max(500).default(""),
   plusOneName: z.string().trim().max(120).default(""),
+  // Блюдо спутника: без него он попадал в сводку для кухни как
+  // «не выбрано», и повару приходилось звонить и уточнять.
+  plusOneMealOptionId: z.string().trim().max(40).nullable().default(null),
 });
 
 export type RsvpInput = z.infer<typeof rsvpInputSchema>;
@@ -71,14 +74,23 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
   }
 
   // Блюдо: только из списка мероприятия и только у тех, кто придёт.
-  let mealOptionId: string | null = null;
-  if (input.status === "ACCEPTED" && input.mealOptionId) {
+  const pickMeal = async (id: string | null): Promise<string | null | "invalid"> => {
+    if (input.status !== "ACCEPTED" || !id) return null;
     const meal = await db.mealOption.findFirst({
-      where: { id: input.mealOptionId, eventId: guest.eventId, active: true },
+      where: { id, eventId: guest.eventId, active: true },
       select: { id: true },
     });
-    if (!meal) return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
-    mealOptionId = meal.id;
+    return meal ? meal.id : "invalid";
+  };
+
+  const mealOptionId = await pickMeal(input.mealOptionId);
+  if (mealOptionId === "invalid") {
+    return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
+  }
+
+  const plusOneMealOptionId = await pickMeal(input.plusOneMealOptionId);
+  if (plusOneMealOptionId === "invalid") {
+    return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
   }
 
   // Спутника приводит только приглашённый и только с разрешения обеих сторон.
@@ -109,6 +121,12 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
 
     if (plusOneName) {
       if (existing) {
+        // Блюдо спутника может поменяться и без переименования.
+        await tx.guest.update({
+          where: { eventId_id: { eventId: guest.eventId, id: existing.id } },
+          data: { mealOptionId: plusOneMealOptionId },
+        });
+
         if (existing.displayName !== plusOneName) {
           // Имя спутника поменяли — переписываем и ключ поиска, и алиасы,
           // иначе на входе он найдётся под старым именем.
@@ -120,6 +138,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
               searchKey: normalizeName(plusOneName),
               rsvpStatus: "ACCEPTED",
               rsvpAt: new Date(),
+              mealOptionId: plusOneMealOptionId,
               aliases: {
                 create: expandGuestName(plusOneName).map((alias) => ({ orgId: guest.orgId, alias })),
               },
@@ -136,6 +155,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
             parentGuestId: guest.id,
             rsvpStatus: "ACCEPTED",
             rsvpAt: new Date(),
+            mealOptionId: plusOneMealOptionId,
             linkToken: generateLinkToken(),
             note: "Спутник (+1)",
             aliases: {

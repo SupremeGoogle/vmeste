@@ -172,7 +172,7 @@ export async function findGuestByLinkToken(linkToken: string) {
       mealOption: { select: { id: true, title: true } },
       plusOnes: {
         where: { archivedAt: null },
-        select: { id: true, displayName: true },
+        select: { id: true, displayName: true, mealOptionId: true },
         orderBy: { createdAt: "asc" },
       },
     },

@@ -68,6 +68,7 @@ function seatPage(
   displayName: string,
   tableLabel: string | null,
   claims = "",
+  tableId: string | null = null,
 ) {
   const card = tableLabel
     ? `<p class="sub" style="margin:0">Ваше место</p>
@@ -80,6 +81,7 @@ function seatPage(
     body: `<p class="eyebrow">${esc(eventTitle)}</p>
 <h1>${esc(displayName)}</h1>
 <div class="result">${card}</div>
+${tableId ? `<p class="hint"><a href="/e/${code}/plan?t=${tableId}">Показать на плане зала</a></p>` : ""}
 ${claims}
 <p class="hint">Страница сохранена в телефоне и откроется, даже если связь пропадёт.</p>
 ${backLink(code, "Это не я, искать заново")}`,
@@ -130,7 +132,7 @@ export async function GET(
       where: { id: g, eventId: event.id, archivedAt: null },
       select: {
         displayName: true,
-        seat: { select: { table: { select: { label: true } } } },
+        seat: { select: { table: { select: { id: true, label: true } } } },
       },
     });
     if (!guest) {
@@ -145,6 +147,7 @@ export async function GET(
         guest.displayName,
         guest.seat?.table.label ?? null,
         claimForms(code, g, event.photosEnabled, event.wishesEnabled),
+        guest.seat?.table.id ?? null,
       ),
       // Приватный кеш и ненадолго: страница именная, а на ней теперь ещё
       // и кнопки, выдающие гостевую сессию.

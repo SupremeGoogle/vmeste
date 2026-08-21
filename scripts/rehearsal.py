@@ -160,8 +160,20 @@ step("мероприятие опубликовано", "Снять с публ�
 
 print("\n4. Импорт ста гостей из CSV")
 csv_bytes = open(os.path.join(FIXTURES, "guests100.csv"), "rb").read()
-submit(f"/app/e/{event_id}/guests", 'accept=".csv,text/csv"', (),
-       files=[("file", "guests.csv", csv_bytes, "text/csv")])
+# Шаг первый: предпросмотр. Импорт в один клик из продукта убран
+# намеренно (PLAN.md §5.9) — молча залитый кривой файл не отменить.
+status, preview, preview_url = submit(
+    f"/app/e/{event_id}/guests", 'accept=".csv,text/csv"', (),
+    files=[("file", "guests.csv", csv_bytes, "text/csv")])
+preview_text = text_of(preview)
+step("предпросмотр показан до записи",
+     "Предпросмотр импорта" in preview_text and "windows-1251" not in preview_text,
+     re.search(r"Кодировка: [^·]+· разделитель: «[^»]+» · строк: \d+", preview_text).group(0)
+     if "Кодировка" in preview_text else "")
+
+draft_id = re.search(r"draft=([0-9a-f-]+)", preview_url).group(1)
+submit(f"/app/e/{event_id}/guests?draft={draft_id}", 'Импортировать',
+       [("draftId", draft_id)])
 body = text_of(get(f"/app/e/{event_id}/guests")[1])
 imported = re.search(r"Всего: (\d+)", body)
 step("сто гостей в списке", imported and imported.group(1) == "100",
@@ -204,6 +216,7 @@ for index, token in enumerate(tokens[:60]):
                  ("comment", "")]
         if 'name="plusOneName"' in form_html:
             extra.append(("plusOneName", f"Спутник {index}"))
+            extra.append(("plusOneMealOptionId", meal_ids[(index + 1) % 3]))
             with_partner += 1
         submit(f"/i/{slug}/{token}/rsvp", 'value="ACCEPTED"', extra)
     answered += 1
@@ -220,6 +233,9 @@ step("спутники стали гостями", counts.get("Придут", 0)
 
 kitchen = re.search(r"На кухню (.+?) Из них спутников", body)
 step("кухня видит разбивку по блюдам", bool(kitchen), kitchen.group(1).strip() if kitchen else "")
+step("у спутников тоже выбрано блюдо",
+     bool(kitchen) and "Не выбрано: 0" in kitchen.group(1),
+     "«не выбрано» должно быть нулём")
 
 print("\n7. Рассадка")
 # Через обычные формы — тот самый запасной путь без JavaScript,
@@ -301,6 +317,13 @@ if match:
         table = re.search(r"Стол \d+", me)
         step("гость видит свой стол", bool(table),
              f"{seated_name} → {table.group(0) if table else 'места нет'}")
+
+        plan_link = re.search(r'href="(/e/[A-Z0-9]+/plan\?t=[a-z0-9]+)"', me)
+        if plan_link:
+            _, plan_page, _ = get(plan_link.group(1))
+            step("на плане зала подсвечен его стол",
+                 "<svg" in plan_page and "Ваш стол" in plan_page,
+                 plan_link.group(1))
 
 print("\n10. Фотографии и модерация")
 photo_bytes = open(os.path.join(FIXTURES, "photo.jpg"), "rb").read()

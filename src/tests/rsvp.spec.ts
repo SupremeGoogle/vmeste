@@ -139,6 +139,45 @@ describe("спутник (+1)", () => {
     expect(plusOne.aliases.map((alias) => alias.alias)).toContain("анастасия иванова");
   });
 
+  it("получает своё блюдо — кухне не приходится звонить и уточнять", async () => {
+    const meals = await testDb.mealOption.findMany({
+      where: { eventId: a.eventId },
+      orderBy: { order: "asc" },
+    });
+
+    await submitRsvp(a.guestToken, {
+      status: "ACCEPTED",
+      mealOptionId: meals[0].id,
+      plusOneName: "Настя Иванова",
+      plusOneMealOptionId: meals[1].id,
+    });
+
+    const plusOne = await testDb.guest.findFirstOrThrow({
+      where: { eventId: a.eventId, parentGuestId: a.guestId },
+    });
+    expect(plusOne.mealOptionId).toBe(meals[1].id);
+
+    // И меняется вместе с ответом, без переименования спутника.
+    await submitRsvp(a.guestToken, {
+      status: "ACCEPTED",
+      mealOptionId: meals[0].id,
+      plusOneName: "Настя Иванова",
+      plusOneMealOptionId: meals[0].id,
+    });
+    const updated = await testDb.guest.findFirstOrThrow({ where: { id: plusOne.id } });
+    expect(updated.mealOptionId).toBe(meals[0].id);
+  });
+
+  it("блюдо спутника из чужого меню не проходит", async () => {
+    const foreign = await testDb.mealOption.findFirstOrThrow({ where: { eventId: b.eventId } });
+    const result = await submitRsvp(a.guestToken, {
+      status: "ACCEPTED",
+      plusOneName: "Настя Иванова",
+      plusOneMealOptionId: foreign.id,
+    });
+    expect(result).toMatchObject({ ok: false, reason: "invalid" });
+  });
+
   it("переименование спутника переписывает ключ поиска и алиасы", async () => {
     await submitRsvp(a.guestToken, { status: "ACCEPTED", plusOneName: "Настя Иванова" });
     await submitRsvp(a.guestToken, { status: "ACCEPTED", plusOneName: "Мария Соколова" });

@@ -38,6 +38,7 @@ background:var(--card);border:1px solid var(--line);border-radius:.625rem;outlin
 input[type=text]:focus{border-color:var(--accent)}
 button{width:100%;margin-top:.75rem;padding:.875rem 1rem;font-size:1.0625rem;font-family:inherit;
 font-weight:500;color:#fff;background:var(--accent);border:0;border-radius:.625rem;cursor:pointer}
+.plan{display:block;width:100%;height:auto;margin:1.25rem 0 0;border:1px solid #e7e5e4;border-radius:14px}
 .claims{margin:1.25rem 0 0;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
 .claim{appearance:none;border:1px solid #d6d3d1;background:#fff;border-radius:999px;
 padding:.6rem 1.1rem;font:inherit;font-size:.95rem;color:#1c1917;cursor:pointer}
