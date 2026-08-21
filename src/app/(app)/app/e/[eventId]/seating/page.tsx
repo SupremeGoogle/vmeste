@@ -6,8 +6,9 @@
  * в день свадьбы на планшете координатора не выполнится JS. Обе ветки
  * ходят через один и тот же applyOp.
  */
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireEventContext } from "@/server/context";
+import { seatingTag } from "@/lib/cache-tags";
 import { listTables, listUnseatedGuests } from "@/server/repositories/seating";
 import { getEvent } from "@/server/repositories/events";
 import { applyOp } from "@/server/services/seating-ops";
@@ -35,6 +36,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
     // Версия не передаётся: форма её не знает, а добавление стола
     // ничего не перетирает.
     await applyOp(ctx, { kind: "createTable", label, capacity }, null);
+    updateTag(seatingTag(eventId));
     revalidatePath(`/app/e/${eventId}/seating`);
   }
 
@@ -42,6 +44,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
     "use server";
     const ctx = await requireEventContext(eventId);
     await applyOp(ctx, { kind: "deleteTable", tableId: String(formData.get("tableId")) }, null);
+    updateTag(seatingTag(eventId));
     revalidatePath(`/app/e/${eventId}/seating`);
   }
 
@@ -55,6 +58,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
       { kind: "assign", seatId: String(formData.get("seatId")), guestId },
       null,
     );
+    updateTag(seatingTag(eventId));
     revalidatePath(`/app/e/${eventId}/seating`);
   }
 
@@ -62,6 +66,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
     "use server";
     const ctx = await requireEventContext(eventId);
     await applyOp(ctx, { kind: "clear", seatId: String(formData.get("seatId")) }, null);
+    updateTag(seatingTag(eventId));
     revalidatePath(`/app/e/${eventId}/seating`);
   }
 

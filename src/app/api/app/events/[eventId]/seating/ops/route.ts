@@ -6,9 +6,11 @@
  * рассадку в другом окне, и молча перетирать его работу нельзя.
  */
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireEventContext } from "@/server/context";
 import { applyOp, seatingOpSchema } from "@/server/services/seating-ops";
+import { seatingTag } from "@/lib/cache-tags";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +35,9 @@ export async function POST(
   const result = await applyOp(ctx, parsed.data.op, parsed.data.version);
 
   if (result.ok) {
+    // Гостевой план зала кеширован по этому тегу: без сброса гость увидит
+    // стол, с которого его пересадили пять минут назад (PLAN.md §5.7).
+    revalidateTag(seatingTag(eventId), "max");
     return NextResponse.json({ ok: true, version: result.version, undo: result.undo });
   }
 

@@ -10,8 +10,8 @@
  * `?t=<tableId>` подсвечивает нужный стол — ссылка приходит со страницы
  * «ваше место».
  */
-import { db } from "@/server/db";
 import { findEventByShortCode } from "@/server/repositories/events";
+import { getPublicPlan } from "@/server/repositories/seating";
 import { esc, html, page } from "@/server/guest-html/layout";
 import { floorPlanSvg } from "@/server/guest-html/floor-plan-svg";
 
@@ -32,15 +32,7 @@ export async function GET(
 
   const highlight = new URL(request.url).searchParams.get("t");
 
-  const tables = await db.seatTable.findMany({
-    where: { eventId: event.id },
-    orderBy: { label: "asc" },
-    select: {
-      id: true, label: true, shape: true, x: true, y: true,
-      width: true, height: true, capacity: true,
-      _count: { select: { seats: { where: { guestId: { not: null } } } } },
-    },
-  });
+  const tables = await getPublicPlan(event.id);
 
   if (tables.length === 0) {
     return html(
@@ -54,20 +46,7 @@ export async function GET(
     );
   }
 
-  const svg = floorPlanSvg(
-    tables.map((table) => ({
-      id: table.id,
-      label: table.label,
-      shape: table.shape,
-      x: table.x,
-      y: table.y,
-      width: table.width,
-      height: table.height,
-      capacity: table.capacity,
-      taken: table._count.seats,
-    })),
-    highlight,
-  );
+  const svg = floorPlanSvg(tables, highlight);
 
   const highlighted = highlight ? tables.find((table) => table.id === highlight) : null;
 

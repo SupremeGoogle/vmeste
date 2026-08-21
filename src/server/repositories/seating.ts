@@ -7,7 +7,9 @@
  * весь план»: иначе две открытые вкладки затирают работу друг друга
  * (PLAN.md §5.4).
  */
+import { unstable_cache } from "next/cache";
 import { db } from "@/server/db";
+import { seatingTag } from "@/lib/cache-tags";
 import type { EventContext } from "@/server/context";
 
 export async function listTables(ctx: EventContext) {
@@ -151,4 +153,59 @@ export async function getSeatingPlan(ctx: EventContext) {
   ]);
 
   return { event, tables };
+}
+
+
+export type PublicPlanTable = {
+  id: string;
+  label: string;
+  shape: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  capacity: number;
+  taken: number;
+};
+
+/**
+ * План зала для гостевой страницы.
+ *
+ * Кешируется по тегу `seating:{eventId}` (PLAN.md §2.1): в день свадьбы
+ * рассадка почти не меняется, а на план заходят десятки человек сразу,
+ * стоя в дверях. Сбрасывает тег любая операция рассадки — иначе гость
+ * увидит стол, с которого его пересадили пять минут назад.
+ *
+ * Имён гостей здесь нет вовсе: гостю нужно «где стол», а не «кто где
+ * сидит», а список имён на публичной странице — это выгрузка списка
+ * гостей для любого, кто знает код.
+ */
+export function getPublicPlan(eventId: string): Promise<PublicPlanTable[]> {
+  return unstable_cache(
+    async () => {
+      const tables = await db.seatTable.findMany({
+        where: { eventId },
+        orderBy: { label: "asc" },
+        select: {
+          id: true, label: true, shape: true, x: true, y: true,
+          width: true, height: true, capacity: true,
+          _count: { select: { seats: { where: { guestId: { not: null } } } } },
+        },
+      });
+
+      return tables.map((table) => ({
+        id: table.id,
+        label: table.label,
+        shape: table.shape,
+        x: table.x,
+        y: table.y,
+        width: table.width,
+        height: table.height,
+        capacity: table.capacity,
+        taken: table._count.seats,
+      }));
+    },
+    ["public-plan", eventId],
+    { tags: [seatingTag(eventId)], revalidate: 60 },
+  )();
 }
