@@ -8,6 +8,7 @@
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { cookieSecure } from "@/server/auth/cookies";
 
 const COOKIE_PREFIX = "vmeste_guest_";
 
@@ -33,7 +34,7 @@ export async function setGuestSession(
   jar.set(cookieName(session.eventId), `${payload}.${sign(payload, secret)}`, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     path: "/",
     expires: expiresAt,
   });

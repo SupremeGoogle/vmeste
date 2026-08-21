@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { requireEventContext } from "@/server/context";
-import { countGuests, createGuest, listGuests, archiveGuest } from "@/server/repositories/guests";
+import {
+  countGuests, createGuest, listGuests, archiveGuest, setPlusOneAllowed,
+} from "@/server/repositories/guests";
 import { parseGuestCsv } from "@/server/services/csv-import";
 import { createGuests } from "@/server/repositories/guests";
 
@@ -22,7 +24,11 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
     const ctx = await requireEventContext(eventId);
     const displayName = String(formData.get("displayName") ?? "").trim();
     if (displayName.length < 2) return;
-    await createGuest(ctx, { displayName, phone: String(formData.get("phone") ?? "") || null });
+    await createGuest(ctx, {
+      displayName,
+      phone: String(formData.get("phone") ?? "") || null,
+      plusOneAllowed: formData.get("plusOneAllowed") === "on",
+    });
     revalidatePath(`/app/e/${eventId}/guests`);
   }
 
@@ -34,6 +40,17 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
 
     const parsed = parseGuestCsv(await file.arrayBuffer());
     if (parsed.rows.length > 0) await createGuests(ctx, parsed.rows);
+    revalidatePath(`/app/e/${eventId}/guests`);
+  }
+
+  async function togglePlusOne(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    await setPlusOneAllowed(
+      ctx,
+      String(formData.get("guestId")),
+      formData.get("allowed") === "1",
+    );
     revalidatePath(`/app/e/${eventId}/guests`);
   }
 
@@ -64,6 +81,10 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
             name="phone" placeholder="Телефон (необязательно)"
             className="mt-2 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
           />
+          <label className="mt-2 flex items-center gap-2 text-sm text-stone-600">
+            <input type="checkbox" name="plusOneAllowed" />
+            Может прийти с парой
+          </label>
           <button className="mt-3 rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
             Добавить
           </button>
@@ -73,6 +94,7 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
           <p className="text-sm font-medium">Импорт из CSV</p>
           <p className="mt-1 text-xs text-stone-500">
             Кодировка и разделитель определяются сами — файл из Excel подойдёт.
+            Колонка «+1» («да» / «+») разрешит гостю прийти с парой.
           </p>
           <input
             type="file" name="file" accept=".csv,text/csv"
@@ -90,6 +112,7 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
             <th className="py-2 font-normal">Гость</th>
             <th className="py-2 font-normal">Ответ</th>
             <th className="py-2 font-normal">Стол</th>
+            <th className="py-2 font-normal">+1</th>
             <th className="py-2 font-normal"></th>
           </tr>
         </thead>
@@ -100,6 +123,17 @@ export default async function GuestsPage({ params }: { params: Promise<{ eventId
               <td className="py-2 text-stone-600">{RSVP[guest.rsvpStatus]}</td>
               <td className="py-2 text-stone-600">
                 {guest.seat ? guest.seat.table.label : "—"}
+              </td>
+              <td className="py-2">
+                {/* Разрешение на спутника — по гостю, а не общее: «плюс один»
+                    зовут не всем, и решает это организатор, а не гость. */}
+                <form action={togglePlusOne}>
+                  <input type="hidden" name="guestId" value={guest.id} />
+                  <input type="hidden" name="allowed" value={guest.plusOneAllowed ? "0" : "1"} />
+                  <button className="text-xs text-stone-500 underline">
+                    {guest.plusOneAllowed ? "разрешён" : "разрешить"}
+                  </button>
+                </form>
               </td>
               <td className="py-2 text-right">
                 <form action={remove}>

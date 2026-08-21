@@ -17,6 +17,7 @@ export type ParsedRow = {
   phone?: string;
   email?: string;
   note?: string;
+  plusOneAllowed?: boolean;
 };
 
 export type ParseResult = {
@@ -42,6 +43,15 @@ const NAME_KEYS = ["имя", "фио", "гость", "name", "guest", "фами�
 const PHONE_KEYS = ["телефон", "тел", "phone", "моб"];
 const EMAIL_KEYS = ["почта", "email", "e-mail", "мейл"];
 const NOTE_KEYS = ["заметка", "коммент", "note", "comment"];
+/** Колонка «+1»: в списках её пишут как угодно, лишь бы человек понял. */
+const PLUS_ONE_KEYS = ["+1", "плюс", "спутник", "пара", "plus", "partner"];
+
+/** «да», «+», «1», «true» — всё это согласие. Пустое — нет. */
+function isYes(raw?: string): boolean {
+  if (!raw) return false;
+  const value = raw.trim().toLowerCase();
+  return ["да", "yes", "true", "1", "+", "v", "х", "x", "да+1"].includes(value);
+}
 
 function pick(row: Record<string, string>, keys: string[]): string | undefined {
   for (const [header, value] of Object.entries(row)) {
@@ -103,6 +113,7 @@ export function parseGuestCsv(buffer: ArrayBuffer): ParseResult {
       phone: fixPhone(pick(raw, PHONE_KEYS)),
       email: pick(raw, EMAIL_KEYS),
       note: pick(raw, NOTE_KEYS),
+      plusOneAllowed: isYes(pick(raw, PLUS_ONE_KEYS)),
     });
   }
 

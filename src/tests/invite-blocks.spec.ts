@@ -13,6 +13,7 @@ import {
   blockContentFromForm, parsePalette, parseTimelineText, timelineToText,
 } from "@/server/services/invite-forms";
 import { toCsv } from "@/server/services/csv-export";
+import { parseGuestCsv } from "@/server/services/csv-import";
 
 function form(values: Record<string, string>) {
   return { get: (name: string) => values[name] ?? null };
@@ -135,5 +136,21 @@ describe("выгрузка CSV", () => {
 
   it("заключает в кавычки значение с точкой с запятой внутри", () => {
     expect(toCsv(["a"], [["мясо; рыба"]])).toContain('"мясо; рыба"');
+  });
+});
+
+describe("колонка «+1» в импорте", () => {
+  const csv = (text: string) => parseGuestCsv(new TextEncoder().encode(text).buffer as ArrayBuffer);
+
+  it("понимает «да», «+» и «1», а пустое считает отказом", () => {
+    const result = csv(
+      "Имя;+1\nАнна Петрова;да\nБорис Смирнов;+\nВера Иванова;1\nГлеб Орлов;\n",
+    );
+    expect(result.rows.map((row) => row.plusOneAllowed)).toEqual([true, true, true, false]);
+  });
+
+  it("файл без такой колонки никому +1 не раздаёт", () => {
+    const result = csv("Имя;Телефон\nАнна Петрова;+79990000000\n");
+    expect(result.rows[0].plusOneAllowed).toBe(false);
   });
 });

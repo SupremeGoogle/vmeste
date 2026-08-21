@@ -113,6 +113,15 @@ export async function getGuest(ctx: EventContext, guestId: string) {
   });
 }
 
+/** Разрешение привести спутника. По одному гостю: зовут с парой не всех. */
+export async function setPlusOneAllowed(ctx: EventContext, guestId: string, allowed: boolean) {
+  const updated = await db.guest.updateMany({
+    where: { id: guestId, eventId: ctx.eventId },
+    data: { plusOneAllowed: allowed },
+  });
+  return updated.count === 1;
+}
+
 /** Ручной алиас: «мама Лена», девичья фамилия, прозвище. */
 export async function addAlias(ctx: EventContext, guestId: string, alias: string) {
   const normalized = normalizeName(alias);

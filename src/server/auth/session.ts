@@ -7,6 +7,7 @@
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { db } from "@/server/db";
+import { cookieSecure } from "@/server/auth/cookies";
 
 const COOKIE = "vmeste_session";
 const TTL_DAYS = 30;
@@ -21,7 +22,7 @@ export async function createSession(userId: string): Promise<string> {
   jar.set(COOKIE, session.id, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     path: "/",
     expires: expiresAt,
   });

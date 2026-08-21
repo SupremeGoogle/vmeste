@@ -19,7 +19,15 @@ export default async function EventsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <h1 className="text-2xl font-semibold">Мероприятия</h1>
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-2xl font-semibold">Мероприятия</h1>
+        <Link
+          href="/app/events/new"
+          className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white"
+        >
+          Новое мероприятие
+        </Link>
+      </div>
 
       {events.length === 0 && (
         <p className="mt-6 text-stone-600">Мероприятий пока нет.</p>
@@ -27,7 +35,12 @@ export default async function EventsPage() {
 
       <ul className="mt-6 space-y-3">
         {events.map((event) => (
-          <li key={event.id} className="rounded-xl border border-stone-200 bg-white p-5">
+          <li
+            key={event.id}
+            className={`rounded-xl border border-stone-200 p-5 ${
+              event.status === "ARCHIVED" ? "bg-stone-100 opacity-70" : "bg-white"
+            }`}
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <Link href={`/app/e/${event.id}/guests`} className="text-lg font-medium hover:underline">

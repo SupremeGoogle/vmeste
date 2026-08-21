@@ -33,6 +33,10 @@ export default async function PhotosPage({
     listApprovedPhotos(ctx.eventId, 48),
   ]);
 
+  // Фото без превью на проектор не идут (телефон не смог их уменьшить).
+  // Молча — значит «экран пустой, и непонятно почему», поэтому считаем вслух.
+  const withoutPreview = approved.filter((photo) => !photo.previewOk).length;
+
   async function setStatus(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
@@ -65,6 +69,13 @@ export default async function PhotosPage({
           }))}
         />
       </section>
+
+      {withoutPreview > 0 ? (
+        <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Без превью: {withoutPreview}. Такие фото видны в галерее, но на экран
+          в зале не попадают — телефон гостя не смог сделать уменьшенную копию.
+        </p>
+      ) : null}
 
       <section className="mt-10">
         <h2 className="text-sm text-stone-500">Опубликованные</h2>

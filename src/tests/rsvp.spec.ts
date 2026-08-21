@@ -213,6 +213,27 @@ describe("спутник (+1)", () => {
   });
 });
 
+describe("разрешение на спутника", () => {
+  it("ставится и снимается по одному гостю", async () => {
+    const { setPlusOneAllowed } = await import("@/server/repositories/guests");
+    const ctx = { kind: "org" as const, userId: "u1", orgId: a.orgId, role: "OWNER" as const, eventId: a.eventId };
+
+    expect(await setPlusOneAllowed(ctx, a.guestId, false)).toBe(true);
+    let guest = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
+    expect(guest.plusOneAllowed).toBe(false);
+
+    await setPlusOneAllowed(ctx, a.guestId, true);
+    guest = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
+    expect(guest.plusOneAllowed).toBe(true);
+  });
+
+  it("не дотягивается до гостя чужого мероприятия", async () => {
+    const { setPlusOneAllowed } = await import("@/server/repositories/guests");
+    const ctx = { kind: "org" as const, userId: "u1", orgId: a.orgId, role: "OWNER" as const, eventId: a.eventId };
+    expect(await setPlusOneAllowed(ctx, b.guestId, true)).toBe(false);
+  });
+});
+
 describe("именная ссылка", () => {
   it("находит гостя вместе с мероприятием", async () => {
     const guest = await findGuestByLinkToken(a.guestToken);

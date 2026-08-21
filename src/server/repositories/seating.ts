@@ -24,12 +24,35 @@ export async function listTables(ctx: EventContext) {
 }
 
 /** Гости, которым место ещё не назначено. */
+/**
+ * Нерассаженные гости.
+ *
+ * Отказавшиеся не исчезают из списка, но уходят в конец и помечаются:
+ * посадить человека, который написал «не приду», — ошибка, которую
+ * инструмент должен делать заметной, а не невозможной. Иногда гость
+ * передумывает по телефону, и координатору проще посадить его сразу,
+ * чем сначала править ответ.
+ */
 export async function listUnseatedGuests(ctx: EventContext) {
-  return db.guest.findMany({
+  const guests = await db.guest.findMany({
     where: { eventId: ctx.eventId, archivedAt: null, seat: null },
     orderBy: { searchKey: "asc" },
-    select: { id: true, displayName: true },
+    select: { id: true, displayName: true, rsvpStatus: true },
   });
+
+  const weight = (status: string) => (status === "ACCEPTED" ? 0 : status === "PENDING" ? 1 : 2);
+  return guests
+    .sort((a, b) => weight(a.rsvpStatus) - weight(b.rsvpStatus))
+    .map((guest) => ({
+      id: guest.id,
+      displayName:
+        guest.rsvpStatus === "DECLINED"
+          ? `${guest.displayName} (не придёт)`
+          : guest.rsvpStatus === "PENDING"
+            ? `${guest.displayName} (не ответил)`
+            : guest.displayName,
+      rsvpStatus: guest.rsvpStatus,
+    }));
 }
 
 export async function createTable(

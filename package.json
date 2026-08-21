@@ -13,7 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:test:setup": "DATABASE_URL=$TEST_DATABASE_URL prisma migrate deploy",
-    "db:seed:photos": "tsx prisma/seed-photos.ts"
+    "db:seed:photos": "tsx prisma/seed-photos.ts",
+    "rehearsal": "python3 scripts/rehearsal.py"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1115.0",
