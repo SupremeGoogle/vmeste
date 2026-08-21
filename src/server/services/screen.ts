@@ -84,6 +84,9 @@ export type ScreenSnapshot = {
     winnerLabel: string | null;
     drawnAt: string | null;
     entries: number;
+    /** Имена для «барабана» на экране. Ограничены: крутится всё равно
+     *  быстрее, чем глаз читает, а тащить на проектор триста строк незачем. */
+    entryLabels: string[];
   } | null;
   /** Номер последнего события на момент снимка: с него экран продолжает поток. */
   seq: number;
@@ -124,6 +127,7 @@ export async function screenSnapshot(access: ScreenAccess, limit = 40): Promise<
       select: {
         id: true, title: true, winnerLabel: true, drawnAt: true,
         _count: { select: { entries: true } },
+        entries: { select: { label: true }, orderBy: { label: "asc" }, take: 60 },
       },
     }),
   ]);
@@ -145,6 +149,7 @@ export async function screenSnapshot(access: ScreenAccess, limit = 40): Promise<
           winnerLabel: raffle.winnerLabel,
           drawnAt: raffle.drawnAt?.toISOString() ?? null,
           entries: raffle._count.entries,
+          entryLabels: raffle.entries.map((entry) => entry.label),
         }
       : null,
     seq: bus.lastSeq(access.eventId),

@@ -79,14 +79,18 @@ export default async function PersonalInvitePage({ params, searchParams }: Props
       {/* Фотографии — отдельная страница: гость приходит на неё вечером,
           с телефона, когда приглашение уже прочитано. Ссылка нужна здесь,
           иначе её знает только тот, кому её прислали отдельно. */}
-      {guest.event.photosEnabled ? (
-        <div className="px-6 pb-8 text-center">
-          <a
-            href={`/i/${eventSlug}/${token}/photos`}
-            className="text-sm text-stone-600 underline"
-          >
-            Фотографии со свадьбы
-          </a>
+      {guest.event.photosEnabled || guest.event.wishesEnabled ? (
+        <div className="flex justify-center gap-6 px-6 pb-8 text-sm text-stone-600">
+          {guest.event.photosEnabled ? (
+            <a href={`/i/${eventSlug}/${token}/photos`} className="underline">
+              Фотографии со свадьбы
+            </a>
+          ) : null}
+          {guest.event.wishesEnabled ? (
+            <a href={`/i/${eventSlug}/${token}/wish`} className="underline">
+              Написать пожелание
+            </a>
+          ) : null}
         </div>
       ) : null}
 

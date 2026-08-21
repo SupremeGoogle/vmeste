@@ -116,11 +116,19 @@ export class MemoryEventBus implements EventBus {
   }
 }
 
-// В dev Next перезагружает модули на каждое изменение — без глобального
-// кеша у каждой пересборки была бы своя шина, и экран перестал бы получать
-// события от панели.
+/**
+ * Шина одна на процесс — и в проде тоже.
+ *
+ * Это не «удобство для dev», а условие работоспособности. Next собирает
+ * маршруты отдельными бандлами, и один и тот же модуль оказывается
+ * загружен по нескольку раз: серверное действие панели публикует событие
+ * в свой экземпляр шины, а SSE-маршрут слушает свой. Соединение при этом
+ * живое, события идут — просто мимо. Ловится это только на собранном
+ * приложении: в dev глобальный кеш всё склеивал, и ошибки не было видно.
+ *
+ * Когда инстансов приложения станет больше одного, здесь появится
+ * реализация на LISTEN/NOTIFY, и разговор про «одна на процесс» закончится.
+ */
 const globalForBus = globalThis as unknown as { screenBus?: MemoryEventBus };
 
-export const bus: MemoryEventBus = globalForBus.screenBus ?? new MemoryEventBus();
-
-if (process.env.NODE_ENV !== "production") globalForBus.screenBus = bus;
+export const bus: MemoryEventBus = (globalForBus.screenBus ??= new MemoryEventBus());

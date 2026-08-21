@@ -191,16 +191,59 @@ function Wish({ wish }: { wish: ScreenSnapshot["wishes"][number] }) {
   );
 }
 
+/**
+ * Розыгрыш на экране.
+ *
+ * Пока победителя нет — крутится барабан из имён участников. Смена имени
+ * идёт по `requestAnimationFrame` с проверкой реального времени, а не по
+ * таймеру: в фоне таймеры душат, а кадры браузер и так не рисует. Заодно
+ * это ровно то, что нужно для «60 fps на слабом ноутбуке»: за кадр
+ * меняется одна строка текста, без анимации размеров и теней.
+ *
+ * Когда победитель объявлен, барабан останавливается на его имени —
+ * событие о розыгрыше приходит тем же потоком, что и всё остальное.
+ */
 function Raffle({ raffle }: { raffle: NonNullable<ScreenSnapshot["raffle"]> }) {
+  const [tick, setTick] = useState(0);
+  const spinning = !raffle.winnerLabel && raffle.entryLabels.length > 0;
+
+  useEffect(() => {
+    if (!spinning) return;
+    let raf = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      if (now - last >= 90) {
+        last = now;
+        setTick((prev) => prev + 1);
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [spinning]);
+
+  const rolling = spinning
+    ? raffle.entryLabels[tick % raffle.entryLabels.length]
+    : null;
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
       <p className="text-3xl text-white/60">{raffle.title}</p>
+
       {raffle.winnerLabel ? (
-        <p className="screen-fade mt-8 text-7xl font-semibold">{raffle.winnerLabel}</p>
+        <>
+          <p className="screen-fade mt-8 text-7xl font-semibold">{raffle.winnerLabel}</p>
+          <p className="mt-6 text-2xl text-white/40">
+            из {raffle.entries} участников
+          </p>
+        </>
+      ) : rolling ? (
+        <>
+          <p className="mt-8 text-6xl font-semibold text-white/90">{rolling}</p>
+          <p className="mt-6 text-2xl text-white/40">Участников: {raffle.entries}</p>
+        </>
       ) : (
-        <p className="mt-8 text-4xl text-white/70">
-          Участников: {raffle.entries}
-        </p>
+        <p className="mt-8 text-4xl text-white/70">Участников: {raffle.entries}</p>
       )}
     </div>
   );
