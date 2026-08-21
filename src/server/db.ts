@@ -53,16 +53,27 @@ function hasEventScope(value: unknown): boolean {
 
 /**
  * Единственное исключение из правила «фильтр по eventId обязателен»:
- * гость приходит по именной ссылке и никакого eventId ещё не знает —
- * мероприятие определяется как раз из токена. Токен глобально уникален
- * и несёт 128 бит энтропии (`repositories/guests.ts`), подобрать его нельзя.
+ * вход по глобально уникальному секрету.
  *
- * Исключение узкое намеренно: только модель Guest и только когда в where
- * действительно стоит linkToken.
+ * Гость приходит по именной ссылке, а проектор в зале — по своему токену,
+ * и ни тот ни другой никакого eventId не знают: мероприятие определяется
+ * как раз из токена. Оба секрета случайные и длинные (128 и 192 бита),
+ * подобрать их нельзя.
+ *
+ * Список закрытый и именно по паре «модель + поле»: обычный `id` сюда
+ * не попадает никогда — забытый фильтр по мероприятию должен падать,
+ * ради этого страж и написан. Когда `/api/media` понадобилось читать фото,
+ * в адрес добавили eventId, а не строку в этот список.
  */
-function isLinkTokenEntry(model: string, where: unknown): boolean {
-  if (model !== "Guest") return false;
-  return !!where && typeof where === "object" && "linkToken" in (where as object);
+const TOKEN_ENTRY_POINTS: Record<string, string> = {
+  Guest: "linkToken",
+  ScreenToken: "token",
+};
+
+function isTokenEntry(model: string, where: unknown): boolean {
+  const field = TOKEN_ENTRY_POINTS[model];
+  if (!field) return false;
+  return !!where && typeof where === "object" && field in (where as object);
 }
 
 function report(message: string) {
@@ -101,7 +112,7 @@ function createClient() {
             if (
               FILTERED_OPS.has(operation) &&
               !hasEventScope(a?.where) &&
-              !isLinkTokenEntry(model, a?.where)
+              !isTokenEntry(model, a?.where)
             ) {
               report(`${model}.${operation}: нет eventId/orgId в where`);
             }

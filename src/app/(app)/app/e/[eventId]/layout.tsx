@@ -21,6 +21,7 @@ export default async function EventLayout({
     { href: `/app/e/${eventId}/invite`, label: "Приглашение" },
     { href: `/app/e/${eventId}/rsvp`, label: "Ответы" },
     { href: `/app/e/${eventId}/photos`, label: "Фото" },
+    { href: `/app/e/${eventId}/screen`, label: "Экран" },
     { href: `/app/e/${eventId}/print`, label: "Печать и QR" },
   ];
 

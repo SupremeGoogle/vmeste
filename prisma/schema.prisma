@@ -80,6 +80,18 @@ model Session {
 // Мероприятие
 // ────────────────────────────────────────────────────────────
 
+/**
+ * Что показывает экран в зале прямо сейчас. Переключает организатор
+ * из панели; экран узнаёт об этом из потока событий, не перезагружаясь.
+ */
+enum ScreenMode {
+  PHOTOS
+  WISHES
+  MIXED
+  RAFFLE
+  IDLE
+}
+
 enum EventStatus {
   DRAFT
   PUBLISHED
@@ -107,6 +119,7 @@ model Event {
   photosEnabled      Boolean   @default(true)
   wishesEnabled      Boolean   @default(true)
   raffleEnabled      Boolean   @default(true)
+  screenMode         ScreenMode @default(MIXED)
 
   // Секрет для подписи гостевых cookie. Ротация обнуляет все гостевые сессии.
   guestLinkSecret String @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))

@@ -261,6 +261,16 @@ describe("приглашение: блоки и именные ссылки", ()
     expect(found?.eventId).not.toBe(a.eventId);
   });
 
+  it("исключение распространяется на токен экрана — и только на него", async () => {
+    // Список исключений — закрытый: модель + конкретное поле-секрет.
+    await expect(
+      db.screenToken.findUnique({ where: { token: "нет-такого-токена" } }),
+    ).resolves.toBeNull();
+    await expect(db.screenToken.findMany({ where: { label: "Проектор" } })).rejects.toThrow(
+      /tenancy/,
+    );
+  });
+
   it("исключение для токена узкое: запрос к гостям без токена и без eventId по-прежнему падает", async () => {
     await expect(db.guest.findMany({ where: { displayName: "Анастасия Петрова" } })).rejects.toThrow(
       /tenancy/,

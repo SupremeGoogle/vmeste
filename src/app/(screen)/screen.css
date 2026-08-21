@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/*
+ * Экран висит на проекторе весь вечер, поэтому:
+ *   — фон чёрный: белый прямоугольник в тёмном зале слепит и съедает
+ *     контраст самих фотографий;
+ *   — курсор прячется: мышь координатора не должна остаться на стене;
+ *   — выделение текста отключено, чтобы случайный клик не подсветил пол-экрана.
+ */
+body {
+  background: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+@keyframes screen-fade-in {
+  from { opacity: 0; transform: scale(1.02); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Анимация только на CSS: вкладка в фоне душит таймеры JS (PLAN.md §5.6),
+   а браузер продолжает крутить композитные анимации сам. */
+.screen-fade {
+  animation: screen-fade-in 700ms ease-out;
+}

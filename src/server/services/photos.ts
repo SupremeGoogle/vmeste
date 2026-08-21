@@ -14,6 +14,7 @@
  * была бы дырой в галерее.
  */
 import { db } from "@/server/db";
+import { bus } from "@/server/events/bus";
 import {
   ALLOWED_TYPES, MAX_THUMB_BYTES, MAX_UPLOAD_BYTES,
   deleteObjects, headObject, keyBelongsToEvent, photoKeys, presignUpload,
@@ -240,7 +241,13 @@ export async function moderatePhoto(
       moderatedBy: status === "PENDING" ? null : ctx.userId,
     },
   });
-  return updated.count === 1;
+  if (updated.count !== 1) return false;
+
+  // Экран в зале узнаёт о решении событием. Событие шлём на любое решение,
+  // включая снятие с публикации: «убрали с экрана» должно означать
+  // именно это, а не «убрали, но там ещё висит».
+  await bus.publish(ctx.eventId, "photo", photoId);
+  return true;
 }
 
 /**
@@ -263,5 +270,6 @@ export async function deletePhoto(
 
   await db.photo.deleteMany({ where: { id: photo.id, eventId: ctx.eventId } });
   await deleteObjects([photo.storageKey, photo.thumbKey]).catch(() => {});
+  await bus.publish(ctx.eventId, "photo", photo.id);
   return true;
 }
