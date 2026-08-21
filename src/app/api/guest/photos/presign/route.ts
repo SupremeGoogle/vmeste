@@ -5,7 +5,7 @@
  * кода, который сам режет превью в canvas и кладёт оба файла в хранилище.
  */
 import { z } from "zod";
-import { identifyByToken } from "@/server/guest-access/identify";
+import { identifyByToken, identifyByEventSession } from "@/server/guest-access/identify";
 import { startUpload } from "@/server/services/photos";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,9 @@ export const dynamic = "force-dynamic";
  * «некорректный запрос», которое гость увидел бы от zod.
  */
 const bodySchema = z.object({
-  token: z.string().min(10).max(64),
+  // Одно из двух: токен именной ссылки или мероприятие плюс гостевая cookie.
+  token: z.string().min(10).max(64).optional(),
+  eventId: z.string().min(1).max(40).optional(),
   contentType: z.string().min(1).max(100),
   bytes: z.number().int().positive().max(10 * 1024 * 1024 * 1024),
 });
@@ -28,7 +30,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 
-  const guest = await identifyByToken(parsed.data.token);
+  const guest = parsed.data.token
+    ? await identifyByToken(parsed.data.token)
+    : parsed.data.eventId
+      ? await identifyByEventSession(parsed.data.eventId)
+      : null;
   // 404, а не 403: существование чужого мероприятия — тоже утечка.
   if (!guest) return Response.json({ error: "Приглашение не найдено" }, { status: 404 });
 

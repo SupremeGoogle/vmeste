@@ -84,6 +84,7 @@ export async function findEventByShortCode(shortCode: string) {
     select: {
       id: true, orgId: true, title: true, slug: true, shortCode: true,
       status: true, eventDate: true, timezone: true, venueName: true,
+      photosEnabled: true, wishesEnabled: true,
     },
   });
 }

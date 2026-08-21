@@ -65,12 +65,20 @@ async function imageSize(file: File): Promise<{ width: number; height: number }>
   }
 }
 
+/**
+ * Гость опознаётся одним из двух способов, и загрузчику всё равно каким:
+ * токеном именной ссылки (пришёл из приглашения) или гостевой cookie
+ * (вошёл по QR в зале и подтвердил «это я»). Во втором случае нужен
+ * `eventId` — иначе сервер не знает, чью cookie проверять.
+ */
 export function PhotoUploader({
   token,
+  eventId,
   left: initialLeft,
   limit,
 }: {
-  token: string;
+  token?: string;
+  eventId?: string;
   left: number;
   limit: number;
 }) {
@@ -89,7 +97,7 @@ export function PhotoUploader({
     const presign = await fetch("/api/guest/photos/presign", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, contentType: file.type, bytes: file.size }),
+      body: JSON.stringify({ token, eventId, contentType: file.type, bytes: file.size }),
     });
     if (!presign.ok) {
       const body = await presign.json().catch(() => ({ error: "Не получилось загрузить" }));
@@ -130,6 +138,7 @@ export function PhotoUploader({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         token,
+        eventId,
         storageKey: ticket.storageKey,
         thumbKey: ticket.thumbKey,
         width: size.width,

@@ -4,13 +4,14 @@
  * (см. `services/photos.ts`).
  */
 import { z } from "zod";
-import { identifyByToken } from "@/server/guest-access/identify";
+import { identifyByToken, identifyByEventSession } from "@/server/guest-access/identify";
 import { completeUpload } from "@/server/services/photos";
 
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
-  token: z.string().min(10).max(64),
+  token: z.string().min(10).max(64).optional(),
+  eventId: z.string().min(1).max(40).optional(),
   storageKey: z.string().min(1).max(200),
   thumbKey: z.string().min(1).max(200),
   width: z.number().int().min(0).max(50000),
@@ -24,8 +25,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Некорректный запрос" }, { status: 400 });
   }
 
-  const { token, ...input } = parsed.data;
-  const guest = await identifyByToken(token);
+  const { token, eventId, ...input } = parsed.data;
+  const guest = token
+    ? await identifyByToken(token)
+    : eventId
+      ? await identifyByEventSession(eventId)
+      : null;
   if (!guest) return Response.json({ error: "Приглашение не найдено" }, { status: 404 });
 
   const result = await completeUpload(guest, input);

@@ -59,6 +59,74 @@ export async function identifyByToken(token: string): Promise<GuestIdentity | nu
 }
 
 /**
+ * Гость по cookie, когда на руках только адрес мероприятия.
+ *
+ * Так приходит тот, кто вошёл по QR в день свадьбы: именной ссылки
+ * у него нет, зато есть cookie, выданная после «это я» (PLAN.md §1.3).
+ */
+export async function identifyBySlugSession(slug: string): Promise<GuestIdentity | null> {
+  const event = await db.event.findFirst({
+    where: { slug, status: { not: "ARCHIVED" } },
+    orderBy: { eventDate: "asc" },
+    select: {
+      id: true, orgId: true, title: true, guestLinkSecret: true,
+      photosEnabled: true, wishesEnabled: true,
+    },
+  });
+  if (!event) return null;
+
+  const session = await readGuestSession(event.id, event.guestLinkSecret);
+  if (!session) return null;
+
+  const guest = await db.guest.findFirst({
+    where: { id: session.guestId, eventId: event.id, archivedAt: null },
+    select: { id: true, displayName: true },
+  });
+  if (!guest) return null;
+
+  return {
+    orgId: event.orgId,
+    eventId: event.id,
+    guestId: guest.id,
+    displayName: guest.displayName,
+    eventTitle: event.title,
+    photosEnabled: event.photosEnabled,
+    wishesEnabled: event.wishesEnabled,
+  };
+}
+
+/** Полная личность гостя по мероприятию и его cookie. */
+export async function identifyByEventSession(eventId: string): Promise<GuestIdentity | null> {
+  const event = await db.event.findFirst({
+    where: { id: eventId, status: { not: "ARCHIVED" } },
+    select: {
+      id: true, orgId: true, title: true, guestLinkSecret: true,
+      photosEnabled: true, wishesEnabled: true,
+    },
+  });
+  if (!event) return null;
+
+  const session = await readGuestSession(event.id, event.guestLinkSecret);
+  if (!session) return null;
+
+  const guest = await db.guest.findFirst({
+    where: { id: session.guestId, eventId: event.id, archivedAt: null },
+    select: { id: true, displayName: true },
+  });
+  if (!guest) return null;
+
+  return {
+    orgId: event.orgId,
+    eventId: event.id,
+    guestId: guest.id,
+    displayName: guest.displayName,
+    eventTitle: event.title,
+    photosEnabled: event.photosEnabled,
+    wishesEnabled: event.wishesEnabled,
+  };
+}
+
+/**
  * Гость по cookie конкретного мероприятия. Подпись проверяется секретом
  * мероприятия: его ротация гасит все гостевые сессии разом.
  */

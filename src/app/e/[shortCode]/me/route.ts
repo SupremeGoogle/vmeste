@@ -41,7 +41,34 @@ localStorage.setItem('vmeste_seat_'+c,${JSON.stringify(payload)})}catch(e){}
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}})();`;
 }
 
-function seatPage(code: string, eventTitle: string, displayName: string, tableLabel: string | null) {
+/**
+ * Кнопки «это я» ведут на выдачу гостевой cookie (PLAN.md §1.3): дальше
+ * гость может загрузить фото и написать пожелание, не вводя имя заново.
+ * Обычные формы — на этой странице JavaScript по-прежнему не нужен.
+ */
+function claimForms(code: string, guestId: string, photos: boolean, wishes: boolean) {
+  if (!photos && !wishes) return "";
+
+  const button = (next: string, label: string) => `
+<form method="post" action="/api/e/${code}/claim" style="display:inline">
+  <input type="hidden" name="guestId" value="${esc(guestId)}"/>
+  <input type="hidden" name="next" value="${next}"/>
+  <button class="claim">${label}</button>
+</form>`;
+
+  return `<div class="claims">
+${photos ? button("photos", "Загрузить фото") : ""}
+${wishes ? button("wish", "Написать пожелание") : ""}
+</div>`;
+}
+
+function seatPage(
+  code: string,
+  eventTitle: string,
+  displayName: string,
+  tableLabel: string | null,
+  claims = "",
+) {
   const card = tableLabel
     ? `<p class="sub" style="margin:0">Ваше место</p>
        <p class="table-label">${esc(tableLabel)}</p>`
@@ -53,6 +80,7 @@ function seatPage(code: string, eventTitle: string, displayName: string, tableLa
     body: `<p class="eyebrow">${esc(eventTitle)}</p>
 <h1>${esc(displayName)}</h1>
 <div class="result">${card}</div>
+${claims}
 <p class="hint">Страница сохранена в телефоне и откроется, даже если связь пропадёт.</p>
 ${backLink(code, "Это не я, искать заново")}`,
     script: rememberScript(displayName, tableLabel),
@@ -110,9 +138,18 @@ export async function GET(
         status: 404,
       });
     }
-    return html(seatPage(code, event.title, guest.displayName, guest.seat?.table.label ?? null), {
-      headers: { "cache-control": "private, max-age=300" },
-    });
+    return html(
+      seatPage(
+        code,
+        event.title,
+        guest.displayName,
+        guest.seat?.table.label ?? null,
+        claimForms(code, g, event.photosEnabled, event.wishesEnabled),
+      ),
+      // Приватный кеш и ненадолго: страница именная, а на ней теперь ещё
+      // и кнопки, выдающие гостевую сессию.
+      { headers: { "cache-control": "private, max-age=60" } },
+    );
   }
 
   const result = await searchGuests(event.id, q!);

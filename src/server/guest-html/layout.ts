@@ -38,6 +38,9 @@ background:var(--card);border:1px solid var(--line);border-radius:.625rem;outlin
 input[type=text]:focus{border-color:var(--accent)}
 button{width:100%;margin-top:.75rem;padding:.875rem 1rem;font-size:1.0625rem;font-family:inherit;
 font-weight:500;color:#fff;background:var(--accent);border:0;border-radius:.625rem;cursor:pointer}
+.claims{margin:1.25rem 0 0;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.claim{appearance:none;border:1px solid #d6d3d1;background:#fff;border-radius:999px;
+padding:.6rem 1.1rem;font:inherit;font-size:.95rem;color:#1c1917;cursor:pointer}
 .hint{font-size:.875rem;color:var(--muted);margin-top:1.25rem}
 .result{background:var(--card);border:1px solid var(--line);border-radius:.875rem;padding:1.5rem;margin-top:1.5rem}
 .table-label{font-size:3rem;font-weight:600;line-height:1.1;margin:.25rem 0 0}

@@ -274,3 +274,26 @@ describe("модерация", () => {
     expect(list[0].id).toBe(mine.photoId);
   });
 });
+
+describe("вход по QR: гость опознан по cookie", () => {
+  it("сессия из «это я» даёт то же, что именная ссылка", async () => {
+    // Проверяем связку на уровне сервиса: и токен, и cookie сводятся
+    // к одному и тому же `GuestRef`, дальше код общий.
+    const result = await upload(a.ref);
+    expect(result.ok).toBe(true);
+
+    const quota = await guestQuota(a.ref);
+    expect(quota.used).toBe(1);
+    expect(quota.left).toBe(4);
+  });
+
+  it("чужое мероприятие в ссылке на загрузку не подставить", async () => {
+    const started = await startUpload(a.ref, {
+      contentType: "image/png",
+      bytes: PNG.byteLength,
+    });
+    if (!started.ok) throw new Error("не выдалась ссылка");
+    expect(started.ticket.storageKey.startsWith(`events/${a.eventId}/`)).toBe(true);
+    expect(started.ticket.storageKey.includes(b.eventId)).toBe(false);
+  });
+});

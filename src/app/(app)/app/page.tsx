@@ -43,7 +43,7 @@ export default async function EventsPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <Link href={`/app/e/${event.id}/guests`} className="text-lg font-medium hover:underline">
+                <Link href={`/app/e/${event.id}`} className="text-lg font-medium hover:underline">
                   {event.title}
                 </Link>
                 <p className="mt-1 text-sm text-stone-600">

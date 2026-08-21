@@ -16,6 +16,7 @@ export default async function EventLayout({
   if (!event) notFound();
 
   const tabs = [
+    { href: `/app/e/${eventId}`, label: "Обзор" },
     { href: `/app/e/${eventId}/guests`, label: "Гости" },
     { href: `/app/e/${eventId}/seating`, label: "Рассадка" },
     { href: `/app/e/${eventId}/invite`, label: "Приглашение" },
