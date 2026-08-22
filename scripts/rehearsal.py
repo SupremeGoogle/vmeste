@@ -299,7 +299,9 @@ step("счётчик рассадки виден", "Рассажено" in body,
 
 # Молодожёны: роль ставится в карточке гостя и видна на плане зала.
 _, seating_page, _ = get(f"/app/e/{event_id}/seating")
-seated_names = re.findall(r'<span class="flex-1">([^<]+)</span>', seating_page)
+# Разметка страницы повторяется в RSC-потоке, поэтому имена дедуплицируем:
+# иначе невеста и жених достанутся одному и тому же человеку.
+seated_names = list(dict.fromkeys(re.findall(r'<span class="flex-1">([^<]+)</span>', seating_page)))
 roles_set = 0
 for name, role in zip(seated_names[:2], ["BRIDE", "GROOM"]):
     _, guests_page, _ = get(f"/app/e/{event_id}/guests")
@@ -357,10 +359,13 @@ if match:
             step("на плане зала подсвечен его стол",
                  "<svg" in plan_page and "Ваш стол" in plan_page,
                  plan_link.group(1))
+            # Проверяем сам план, а не легенду: в легенде значки стоят
+            # всегда, и по ней проверка проходила бы даже без молодожёнов.
+            plan_svg = plan_page[plan_page.index("<svg") : plan_page.index("</svg>")]
             step("на плане видно, где сидят молодожёны",
-                 'aria-label="невеста"' in plan_page and 'aria-label="жених"' in plan_page
+                 'aria-label="невеста"' in plan_svg and 'aria-label="жених"' in plan_svg
                  and "невеста</span>" in plan_page,
-                 "значки и легенда")
+                 "значки на местах и легенда под планом")
 
 print("\n10. Фотографии и модерация")
 photo_bytes = open(os.path.join(FIXTURES, "photo.jpg"), "rb").read()

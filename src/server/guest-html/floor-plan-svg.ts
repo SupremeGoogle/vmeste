@@ -39,14 +39,14 @@ function coupleLegend(): string {
 }
 
 function coupleGlyph(role: GuestRole): string {
-  return `<svg class="glyph" viewBox="-16 -16 32 32" aria-hidden="true">${coupleMark(role, 0, 0)}</svg>`;
+  return `<svg class="glyph" viewBox="-16 -16 32 32" aria-hidden="true">${coupleMark(role, 0, 0, true)}</svg>`;
 }
 
 /** Округление до трёх знаков: длинные дроби раздувают разметку без пользы. */
 const n = (value: number) => Math.round(value * 1000) / 1000;
 
 /** Значок молодожёнов: те же фигуры, что в панели и в PDF. */
-function coupleMark(role: GuestRole, x: number, y: number): string {
+function coupleMark(role: GuestRole, x: number, y: number, decorative = false): string {
   const mark = markFor(role);
   if (!mark) return "";
 
@@ -60,7 +60,13 @@ function coupleMark(role: GuestRole, x: number, y: number): string {
       `<circle cx="${mark.bow.knot.x}" cy="${mark.bow.knot.y}" r="${mark.bow.knot.r}" fill="${COLORS.accent}"/>`
     : "";
 
-  return `<g transform="translate(${n(x)} ${n(y)})" role="img" aria-label="${esc(mark.label)}">
+  // В легенде значок декоративный: рядом с ним стоит слово, и читать
+  // «невеста невеста» экранному диктору незачем.
+  const label = decorative
+    ? ` aria-hidden="true"`
+    : ` role="img" aria-label="${esc(mark.label)}"`;
+
+  return `<g transform="translate(${n(x)} ${n(y)})"${label}>
 <circle r="${MARK_RADIUS}" fill="${COLORS.accent}" stroke="${COLORS.card}" stroke-width="1.5"/>
 ${petals}${bow}</g>`;
 }

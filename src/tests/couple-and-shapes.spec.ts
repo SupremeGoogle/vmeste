@@ -175,6 +175,23 @@ describe("отметки молодожёнов", () => {
     expect(svg).toContain("невеста</span>");
   });
 
+  it("значок на месте подписан, а в легенде — декоративный", () => {
+    // Иначе экранный диктор читает «невеста невеста»: один раз значок,
+    // второй — слово рядом с ним в легенде.
+    const svg = floorPlanSvg([
+      {
+        id: "t1", label: "Президиум", shape: "HEAD", x: 500, y: 200,
+        width: 240, height: 76, capacity: 2, taken: 2, roles: ["BRIDE", "GROOM"],
+      },
+    ]);
+    const plan = svg.slice(0, svg.indexOf("</svg>"));
+    const legend = svg.slice(svg.indexOf("</svg>"));
+
+    expect(plan).toContain('aria-label="невеста"');
+    expect(legend).not.toContain('aria-label="невеста"');
+    expect(legend).toContain('aria-hidden="true"');
+  });
+
   it("без молодожёнов легенды нет", () => {
     const svg = floorPlanSvg([
       {

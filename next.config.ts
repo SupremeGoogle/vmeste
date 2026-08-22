@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // package-lock.json из домашнего каталога.
   turbopack: { root: path.resolve(".") },
 
+  // Своя страница «не найдено» вместо стандартной английской (Next 16).
+  experimental: { globalNotFound: true },
+
   async headers() {
     return [
       {
