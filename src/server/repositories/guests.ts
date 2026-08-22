@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import type { EventContext } from "@/server/context";
 import { normalizeName } from "@/lib/name-normalize";
 import { expandGuestName } from "@/server/services/diminutives";
+import type { GuestRole } from "@/generated/prisma/enums";
 
 /** 128 бит энтропии в base64url — 22 символа. Подбирать бессмысленно. */
 export function generateLinkToken(): string {
@@ -26,7 +27,7 @@ export async function listGuests(ctx: EventContext) {
     where: { eventId: ctx.eventId, archivedAt: null },
     orderBy: { searchKey: "asc" },
     select: {
-      id: true, displayName: true, phone: true, rsvpStatus: true,
+      id: true, displayName: true, phone: true, rsvpStatus: true, role: true,
       plusOneAllowed: true, linkToken: true, linkOpenedAt: true,
       seat: { select: { index: true, table: { select: { label: true } } } },
     },
@@ -185,6 +186,22 @@ export async function reissueLinkToken(ctx: EventContext, guestId: string) {
   const updated = await db.guest.updateMany({
     where: { id: guestId, eventId: ctx.eventId },
     data: { linkToken: generateLinkToken(), linkOpenedAt: null },
+  });
+  return updated.count === 1;
+}
+
+/**
+ * Кто это на свадьбе: гость, невеста или жених.
+ *
+ * Роль нужна ровно для плана зала — показать, где сидят молодожёны.
+ * Ограничения «ровно одна невеста» в схеме нет намеренно: свадьбы бывают
+ * разные, и упереться в проверку в день торжества — худшее, что может
+ * сделать инструмент.
+ */
+export async function setGuestRole(ctx: EventContext, guestId: string, role: GuestRole) {
+  const updated = await db.guest.updateMany({
+    where: { id: guestId, eventId: ctx.eventId },
+    data: { role },
   });
   return updated.count === 1;
 }

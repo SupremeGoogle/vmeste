@@ -9,6 +9,8 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { requireEventContext } from "@/server/context";
 import { seatingTag } from "@/lib/cache-tags";
+import { SHAPES, SHAPE_LABEL } from "@/lib/seating-geometry";
+import type { TableShape } from "@/generated/prisma/enums";
 import { listTables, listUnseatedGuests } from "@/server/repositories/seating";
 import { getEvent } from "@/server/repositories/events";
 import { applyOp } from "@/server/services/seating-ops";
@@ -32,10 +34,20 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
     const ctx = await requireEventContext(eventId);
     const label = String(formData.get("label") ?? "").trim();
     const capacity = Number(formData.get("capacity") ?? 8);
+    const shape = String(formData.get("shape") ?? "ROUND") as TableShape;
     if (!label) return;
     // Версия не передаётся: форма её не знает, а добавление стола
     // ничего не перетирает.
-    await applyOp(ctx, { kind: "createTable", label, capacity }, null);
+    await applyOp(
+      ctx,
+      {
+        kind: "createTable",
+        label,
+        capacity,
+        shape: SHAPES.includes(shape) ? shape : "ROUND",
+      },
+      null,
+    );
     updateTag(seatingTag(eventId));
     revalidatePath(`/app/e/${eventId}/seating`);
   }
@@ -44,6 +56,22 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
     "use server";
     const ctx = await requireEventContext(eventId);
     await applyOp(ctx, { kind: "deleteTable", tableId: String(formData.get("tableId")) }, null);
+    updateTag(seatingTag(eventId));
+    revalidatePath(`/app/e/${eventId}/seating`);
+  }
+
+  /** Форму стола меняют уже после того, как он поставлен: круглый стол
+   *  оказался президиумом, президиум — прямоугольным. */
+  async function changeShape(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const shape = String(formData.get("shape") ?? "") as TableShape;
+    if (!SHAPES.includes(shape)) return;
+    await applyOp(
+      ctx,
+      { kind: "setShape", tableId: String(formData.get("tableId")), shape },
+      null,
+    );
     updateTag(seatingTag(eventId));
     revalidatePath(`/app/e/${eventId}/seating`);
   }
@@ -89,6 +117,17 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
             />
           </div>
           <div>
+            <label className="block text-xs text-stone-500">Форма</label>
+            <select
+              name="shape" defaultValue="ROUND"
+              className="mt-1 rounded-lg border border-stone-300 px-3 py-1.5 text-sm"
+            >
+              {SHAPES.map((shape) => (
+                <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs text-stone-500">Мест</label>
             <input
               name="capacity" type="number" min={1} max={20} defaultValue={8}
@@ -114,8 +153,22 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {tables.map((table) => (
             <div key={table.id} className="rounded-xl border border-stone-200 bg-white p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="font-medium">{table.label}</p>
+                <form action={changeShape} className="ml-auto">
+                  <input type="hidden" name="tableId" value={table.id} />
+                  <select
+                    name="shape" defaultValue={table.shape}
+                    className="rounded border border-stone-200 px-2 py-1 text-xs text-stone-600"
+                  >
+                    {SHAPES.map((shape) => (
+                      <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+                    ))}
+                  </select>
+                  <button className="ml-1 text-xs text-stone-500 hover:text-stone-900">
+                    сменить
+                  </button>
+                </form>
                 <form action={removeTable}>
                   <input type="hidden" name="tableId" value={table.id} />
                   <button className="text-xs text-stone-400 hover:text-red-700">Удалить стол</button>

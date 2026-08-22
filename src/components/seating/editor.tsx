@@ -21,9 +21,11 @@ import {
   type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
 import {
-  PLAN_HEIGHT, PLAN_WIDTH, clampToPlan, isRound, labelPosition, seatPosition,
+  PLAN_HEIGHT, PLAN_WIDTH, clampToPlan, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition,
   shortName, snap,
 } from "@/lib/seating-geometry";
+import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
+import type { GuestRole } from "@/generated/prisma/enums";
 import {
   useSeating, type EditorGuest, type EditorSeat, type EditorTable,
 } from "./use-seating";
@@ -58,6 +60,34 @@ const pct = (value: number, total: number) => `${((value / total) * 100).toFixed
  */
 const HIT_SIZE = 36;
 
+/** Значок невесты или жениха: фигуры общие с планом гостя и PDF. */
+function CoupleGlyph({ role, active }: { role: GuestRole; active: boolean }) {
+  const mark = markFor(role);
+  if (!mark) return null;
+
+  return (
+    <svg
+      viewBox="-16 -16 32 32"
+      width={26}
+      height={26}
+      aria-label={mark.label}
+      className={active ? "opacity-80" : ""}
+    >
+      <circle r={MARK_RADIUS} fill="#8b6f47" stroke="#fffdf9" strokeWidth={1.5} />
+      {mark.petals?.map((petal, index) => (
+        <circle key={index} cx={petal.x} cy={petal.y} r={petal.r} fill="#fffdf9" />
+      ))}
+      {mark.bow ? (
+        <>
+          <polygon points={mark.bow.left} fill="#fffdf9" />
+          <polygon points={mark.bow.right} fill="#fffdf9" />
+          <circle cx={mark.bow.knot.x} cy={mark.bow.knot.y} r={mark.bow.knot.r} fill="#8b6f47" />
+        </>
+      ) : null}
+    </svg>
+  );
+}
+
 function SeatDot({
   table, seat, selected, onSelect, onPlace,
 }: {
@@ -69,7 +99,8 @@ function SeatDot({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `seat:${seat.id}` });
   const pos = seatPosition(table, seat.index);
-  const label = labelPosition(table, pos);
+  const role = seat.guest?.role ?? "GUEST";
+  const label = labelPosition(table, pos, role === "GUEST" ? 0 : MARK_LABEL_SHIFT);
 
   const draggable = useDraggable({
     id: `seated:${seat.id}`,
@@ -118,25 +149,38 @@ function SeatDot({
           opacity: draggable.isDragging ? 0.3 : 1,
         }}
       >
-        <span
-          className={`block rounded-full border transition-colors ${
-            isOver || isSelected
-              ? "border-stone-900 bg-stone-900"
-              : seat.guest
-                ? "border-stone-400 bg-stone-300"
-                : selected
-                  ? "border-stone-500 bg-white"
-                  : "border-stone-300 bg-white"
-          }`}
-          style={{ width: 22, height: 22 }}
-        />
+        {/* Место молодожёнов помечено значком — тем же, что видит гость
+            на плане и координатор в распечатке. */}
+        {seat.guest?.role && seat.guest.role !== "GUEST" ? (
+          <CoupleGlyph role={seat.guest.role} active={isOver || isSelected} />
+        ) : (
+          <span
+            className={`block rounded-full border transition-colors ${
+              isOver || isSelected
+                ? "border-stone-900 bg-stone-900"
+                : seat.guest
+                  ? "border-stone-400 bg-stone-300"
+                  : selected
+                    ? "border-stone-500 bg-white"
+                    : "border-stone-300 bg-white"
+            }`}
+            style={{ width: 22, height: 22 }}
+          />
+        )}
       </button>
 
       {seat.guest && (
         <span
+          /*
+           * У молодожёнов вместо кружка значок, он крупнее, и подпись над
+           * ним приходится сдвигать вверх целиком — иначе текст растёт вниз
+           * от точки привязки и ложится на значок. Обычным местам этот сдвиг
+           * не нужен и даже вреден: подписи соседних мест круглого стола
+           * начинают наезжать друг на друга.
+           */
           className={`pointer-events-none absolute -translate-x-1/2 select-none whitespace-nowrap text-[10px] ${
-            isSelected ? "font-semibold text-stone-900" : "text-stone-600"
-          }`}
+            role !== "GUEST" && label.y < pos.y ? "-translate-y-full" : ""
+          } ${isSelected ? "font-semibold text-stone-900" : "text-stone-600"}`}
           style={{ left: pct(label.x, PLAN_WIDTH), top: pct(label.y, PLAN_HEIGHT) }}
         >
           {shortName(seat.guest.displayName)}
@@ -225,6 +269,9 @@ function GuestChip({
         style={{ opacity: draggable.isDragging ? 0.3 : 1 }}
       >
         {guest.displayName}
+        {guest.role && guest.role !== "GUEST" ? (
+          <span className="ml-2 text-xs opacity-70">{ROLE_LABEL[guest.role]}</span>
+        ) : null}
       </button>
     </li>
   );

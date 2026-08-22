@@ -13,7 +13,7 @@
 import { z } from "zod";
 import { db } from "@/server/db";
 import type { EventContext } from "@/server/context";
-import { PLAN_HEIGHT, PLAN_WIDTH } from "@/lib/seating-geometry";
+import { PLAN_HEIGHT, PLAN_WIDTH, shapeSize } from "@/lib/seating-geometry";
 
 export const seatingOpSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("assign"), seatId: z.string(), guestId: z.string() }),
@@ -34,6 +34,11 @@ export const seatingOpSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("deleteTable"), tableId: z.string() }),
   z.object({ kind: z.literal("renameTable"), tableId: z.string(), label: z.string().min(1).max(40) }),
+  z.object({
+    kind: z.literal("setShape"),
+    tableId: z.string(),
+    shape: z.enum(["ROUND", "RECT", "OVAL", "HEAD"]),
+  }),
   z.object({
     kind: z.literal("setCapacity"),
     tableId: z.string(),
@@ -136,6 +141,7 @@ export async function applyOp(
               label: op.label,
               shape: op.shape ?? "ROUND",
               capacity: op.capacity,
+              ...shapeSize(op.shape ?? "ROUND", op.capacity),
               x: op.x ?? PLAN_WIDTH / 2,
               y: op.y ?? PLAN_HEIGHT / 2,
               seats: {
@@ -167,10 +173,31 @@ export async function applyOp(
           break;
         }
 
+        /**
+         * Форма стола — не украшение: круглый стол сажает гостей лицом
+         * друг к другу, прямоугольный вдоль сторон, президиум только с
+         * одной стороны. Поэтому смена формы меняет и габариты, иначе
+         * восьмиместный «квадрат» получается размером с круглый и места
+         * налезают друг на друга.
+         */
+        case "setShape": {
+          const table = await tx.seatTable.findFirst({
+            where: { id: op.tableId, eventId: ctx.eventId },
+            select: { id: true, capacity: true },
+          });
+          if (!table) return { ok: false, reason: "gone", message: "Стол не найден" };
+
+          await tx.seatTable.updateMany({
+            where: { id: op.tableId, eventId: ctx.eventId },
+            data: { shape: op.shape, ...shapeSize(op.shape, table.capacity) },
+          });
+          break;
+        }
+
         case "setCapacity": {
           const table = await tx.seatTable.findFirst({
             where: { id: op.tableId, eventId: ctx.eventId },
-            select: { id: true, capacity: true, seats: { orderBy: { index: "asc" } } },
+            select: { id: true, capacity: true, shape: true, seats: { orderBy: { index: "asc" } } },
           });
           if (!table) return { ok: false, reason: "gone", message: "Стол не найден" };
 
@@ -203,7 +230,9 @@ export async function applyOp(
 
           await tx.seatTable.update({
             where: { eventId_id: { eventId: ctx.eventId, id: table.id } },
-            data: { capacity: op.capacity },
+            // Габариты идут за вместимостью: иначе двадцать мест вокруг
+            // стола прежнего размера встают вплотную и план не читается.
+            data: { capacity: op.capacity, ...shapeSize(table.shape, op.capacity) },
           });
           break;
         }
@@ -271,6 +300,15 @@ async function computeUndo(
       });
       if (!table) return null;
       return { kind: "renameTable", tableId: op.tableId, label: table.label };
+    }
+
+    case "setShape": {
+      const table = await tx.seatTable.findFirst({
+        where: { id: op.tableId, eventId: ctx.eventId },
+        select: { shape: true },
+      });
+      if (!table) return null;
+      return { kind: "setShape", tableId: op.tableId, shape: table.shape };
     }
 
     case "setCapacity": {

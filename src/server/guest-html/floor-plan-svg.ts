@@ -11,7 +11,10 @@
  * и 174 КБ там неуместны. SVG рисуется теми же тремя примитивами.
  */
 import { PLAN_HEIGHT, PLAN_WIDTH, isRound, seatPosition } from "@/lib/seating-geometry";
+import { MARK_RADIUS, markFor, hasCouple } from "@/lib/couple-marks";
+import { COLORS } from "@/server/guest-html/theme";
 import { esc } from "@/server/guest-html/layout";
+import type { GuestRole } from "@/generated/prisma/enums";
 
 export type PlanTable = {
   id: string;
@@ -23,10 +26,44 @@ export type PlanTable = {
   height: number;
   capacity: number;
   taken: number;
+  /** Роль сидящего на каждом месте: по ней рисуются значки молодожёнов. */
+  roles?: GuestRole[];
 };
+
+/** Легенда под планом: без неё букет и бабочка — просто два кружка. */
+function coupleLegend(): string {
+  return `<p class="legend">
+<span>${coupleGlyph("BRIDE")} невеста</span>
+<span>${coupleGlyph("GROOM")} жених</span>
+</p>`;
+}
+
+function coupleGlyph(role: GuestRole): string {
+  return `<svg class="glyph" viewBox="-16 -16 32 32" aria-hidden="true">${coupleMark(role, 0, 0)}</svg>`;
+}
 
 /** Округление до трёх знаков: длинные дроби раздувают разметку без пользы. */
 const n = (value: number) => Math.round(value * 1000) / 1000;
+
+/** Значок молодожёнов: те же фигуры, что в панели и в PDF. */
+function coupleMark(role: GuestRole, x: number, y: number): string {
+  const mark = markFor(role);
+  if (!mark) return "";
+
+  const petals = (mark.petals ?? [])
+    .map((petal) => `<circle cx="${n(petal.x)}" cy="${n(petal.y)}" r="${petal.r}" fill="${COLORS.card}"/>`)
+    .join("");
+
+  const bow = mark.bow
+    ? `<polygon points="${mark.bow.left}" fill="${COLORS.card}"/>` +
+      `<polygon points="${mark.bow.right}" fill="${COLORS.card}"/>` +
+      `<circle cx="${mark.bow.knot.x}" cy="${mark.bow.knot.y}" r="${mark.bow.knot.r}" fill="${COLORS.accent}"/>`
+    : "";
+
+  return `<g transform="translate(${n(x)} ${n(y)})" role="img" aria-label="${esc(mark.label)}">
+<circle r="${MARK_RADIUS}" fill="${COLORS.accent}" stroke="${COLORS.card}" stroke-width="1.5"/>
+${petals}${bow}</g>`;
+}
 
 export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | null): string {
   if (tables.length === 0) return "";
@@ -43,11 +80,16 @@ export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | nu
         : `<rect x="${n(table.x - table.width / 2)}" y="${n(table.y - table.height / 2)}" width="${n(table.width)}" height="${n(table.height)}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
 
       // Места рисуем точками: гостю важно «этот стол вон там», а не номер
-      // стула — номер он и так услышит от координатора.
+      // стула — номер он и так услышит от координатора. Исключение —
+      // молодожёны: их места помечены значком, потому что «а где сидят
+      // молодые» спрашивают все.
       const seats = Array.from({ length: table.capacity }, (_, index) => {
         const point = seatPosition(table, index);
+        const role = table.roles?.[index] ?? "GUEST";
+        if (role !== "GUEST") return coupleMark(role, point.x, point.y);
+
         const occupied = index < table.taken;
-        return `<circle cx="${n(point.x)}" cy="${n(point.y)}" r="7" fill="${occupied ? "#a8a29e" : "#f5f5f4"}" stroke="#d6d3d1" stroke-width="1.5"/>`;
+        return `<circle cx="${n(point.x)}" cy="${n(point.y)}" r="7" fill="${occupied ? "#cfc4b2" : COLORS.card}" stroke="#d6cec2" stroke-width="1.5"/>`;
       }).join("");
 
       const label = `<text x="${n(table.x)}" y="${n(table.y + 6)}" text-anchor="middle" font-size="20" font-family="sans-serif" fill="${textFill}">${esc(table.label)}</text>`;
@@ -56,8 +98,10 @@ export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | nu
     })
     .join("");
 
+  const roles = tables.flatMap((table) => table.roles ?? []);
+
   return `<svg viewBox="0 0 ${PLAN_WIDTH} ${PLAN_HEIGHT}" class="plan" role="img" aria-label="План зала">
-<rect x="0" y="0" width="${PLAN_WIDTH}" height="${PLAN_HEIGHT}" fill="#fbfaf8"/>
+<rect x="0" y="0" width="${PLAN_WIDTH}" height="${PLAN_HEIGHT}" fill="${COLORS.card}"/>
 ${shapes}
-</svg>`;
+</svg>${hasCouple(roles) ? coupleLegend() : ""}`;
 }

@@ -5,6 +5,7 @@ import {
   countGuests, createGuest, listGuests, archiveGuest, setPlusOneAllowed,
 } from "@/server/repositories/guests";
 import { parseGuestCsv } from "@/server/services/csv-import";
+import { ROLE_LABEL } from "@/lib/couple-marks";
 import { peekImportDraft, saveImportDraft, takeImportDraft } from "@/server/services/import-draft";
 import { createGuests } from "@/server/repositories/guests";
 
@@ -221,6 +222,11 @@ export default async function GuestsPage({
                 <a href={`/app/e/${eventId}/guests/${guest.id}`} className="hover:underline">
                   {guest.displayName}
                 </a>
+                {guest.role !== "GUEST" ? (
+                  <span className="ml-2 text-xs text-stone-500">
+                    {ROLE_LABEL[guest.role]}
+                  </span>
+                ) : null}
               </td>
               <td className="py-2 text-stone-600">{RSVP[guest.rsvpStatus]}</td>
               <td className="py-2 text-stone-600">

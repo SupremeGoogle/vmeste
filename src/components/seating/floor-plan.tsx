@@ -4,8 +4,35 @@
  * но геометрию оба берут из одного модуля.
  */
 import {
-  PLAN_HEIGHT, PLAN_WIDTH, isRound, labelPosition, seatPosition, shortName,
+  PLAN_HEIGHT, PLAN_WIDTH, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName,
 } from "@/lib/seating-geometry";
+import { MARK_RADIUS, markFor } from "@/lib/couple-marks";
+import type { GuestRole } from "@/generated/prisma/enums";
+
+/**
+ * Значок молодожёнов у места. Фигуры описаны в `lib/couple-marks.ts`,
+ * чтобы план в панели, план для гостя и PDF рисовали их одинаково.
+ */
+function CoupleMark({ role, x, y }: { role: GuestRole; x: number; y: number }) {
+  const mark = markFor(role);
+  if (!mark) return null;
+
+  return (
+    <g transform={`translate(${x} ${y})`} aria-label={mark.label}>
+      <circle r={MARK_RADIUS} fill="#8b6f47" stroke="#fffdf9" strokeWidth={1.5} />
+      {mark.petals?.map((petal, index) => (
+        <circle key={index} cx={petal.x} cy={petal.y} r={petal.r} fill="#fffdf9" />
+      ))}
+      {mark.bow ? (
+        <>
+          <polygon points={mark.bow.left} fill="#fffdf9" />
+          <polygon points={mark.bow.right} fill="#fffdf9" />
+          <circle cx={mark.bow.knot.x} cy={mark.bow.knot.y} r={mark.bow.knot.r} fill="#8b6f47" />
+        </>
+      ) : null}
+    </g>
+  );
+}
 export type PlanTable = {
   id: string;
   label: string;
@@ -15,7 +42,11 @@ export type PlanTable = {
   width: number;
   height: number;
   capacity: number;
-  seats: { id: string; index: number; guest: { id: string; displayName: string } | null }[];
+  seats: {
+    id: string;
+    index: number;
+    guest: { id: string; displayName: string; role?: GuestRole } | null;
+  }[];
 };
 
 export function FloorPlan({
@@ -58,17 +89,29 @@ export function FloorPlan({
 
             {table.seats.map((seat) => {
               const { x, y } = seatPosition(table, seat.index);
-              const label = labelPosition(table, { x, y });
+              const role = seat.guest?.role ?? "GUEST";
+              const label = labelPosition(
+                table,
+                { x, y },
+                role === "GUEST" ? 0 : MARK_LABEL_SHIFT,
+              );
               const taken = Boolean(seat.guest);
               const highlighted = seat.guest?.id === highlightGuestId;
               return (
                 <g key={seat.id}>
-                  <circle
-                    cx={x} cy={y} r={9}
-                    fill={highlighted ? "#8b6f47" : taken ? "#cfc4b2" : "#ffffff"}
-                    stroke={highlighted ? "#6d5637" : "#d6cec2"}
-                    strokeWidth={highlighted ? 2 : 1}
-                  />
+                  {role === "GUEST" ? (
+                    <circle
+                      cx={x} cy={y} r={9}
+                      fill={highlighted ? "#8b6f47" : taken ? "#cfc4b2" : "#ffffff"}
+                      stroke={highlighted ? "#6d5637" : "#d6cec2"}
+                      strokeWidth={highlighted ? 2 : 1}
+                    />
+                  ) : (
+                    // Место молодожёнов рисуется значком вместо кружка:
+                    // «где сидят молодые» — второй вопрос гостя после
+                    // «где сижу я», и искать его глазами не должно быть нужно.
+                    <CoupleMark role={role} x={x} y={y} />
+                  )}
                   {seat.guest && (
                     <text
                       x={label.x} y={label.y}

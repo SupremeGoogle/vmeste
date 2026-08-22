@@ -10,6 +10,7 @@
 import { unstable_cache } from "next/cache";
 import { db } from "@/server/db";
 import { seatingTag } from "@/lib/cache-tags";
+import type { GuestRole } from "@/generated/prisma/enums";
 import type { EventContext } from "@/server/context";
 
 export async function listTables(ctx: EventContext) {
@@ -19,7 +20,7 @@ export async function listTables(ctx: EventContext) {
     include: {
       seats: {
         orderBy: { index: "asc" },
-        include: { guest: { select: { id: true, displayName: true } } },
+        include: { guest: { select: { id: true, displayName: true, role: true } } },
       },
     },
   });
@@ -39,7 +40,7 @@ export async function listUnseatedGuests(ctx: EventContext) {
   const guests = await db.guest.findMany({
     where: { eventId: ctx.eventId, archivedAt: null, seat: null },
     orderBy: { searchKey: "asc" },
-    select: { id: true, displayName: true, rsvpStatus: true },
+    select: { id: true, displayName: true, rsvpStatus: true, role: true },
   });
 
   const weight = (status: string) => (status === "ACCEPTED" ? 0 : status === "PENDING" ? 1 : 2);
@@ -47,6 +48,7 @@ export async function listUnseatedGuests(ctx: EventContext) {
     .sort((a, b) => weight(a.rsvpStatus) - weight(b.rsvpStatus))
     .map((guest) => ({
       id: guest.id,
+      role: guest.role,
       displayName:
         guest.rsvpStatus === "DECLINED"
           ? `${guest.displayName} (не придёт)`
@@ -166,6 +168,7 @@ export type PublicPlanTable = {
   height: number;
   capacity: number;
   taken: number;
+  roles: GuestRole[];
 };
 
 /**
@@ -189,7 +192,10 @@ export function getPublicPlan(eventId: string): Promise<PublicPlanTable[]> {
         select: {
           id: true, label: true, shape: true, x: true, y: true,
           width: true, height: true, capacity: true,
-          _count: { select: { seats: { where: { guestId: { not: null } } } } },
+          seats: {
+            orderBy: { index: "asc" },
+            select: { index: true, guestId: true, guest: { select: { role: true } } },
+          },
         },
       });
 
@@ -202,7 +208,11 @@ export function getPublicPlan(eventId: string): Promise<PublicPlanTable[]> {
         width: table.width,
         height: table.height,
         capacity: table.capacity,
-        taken: table._count.seats,
+        taken: table.seats.filter((seat) => seat.guestId).length,
+        // Роли на местах: гостю нужно знать, где сидят молодожёны, но не
+        // кто где сидит поимённо — список имён на публичной странице был бы
+        // выгрузкой списка гостей для любого, кто знает код.
+        roles: table.seats.map((seat) => seat.guest?.role ?? "GUEST"),
       }));
     },
     ["public-plan", eventId],

@@ -15,10 +15,12 @@
 import { useCallback, useRef, useState } from "react";
 import type { SeatingOp } from "@/server/services/seating-ops";
 
+import type { GuestRole } from "@/generated/prisma/enums";
+
 export type EditorSeat = {
   id: string;
   index: number;
-  guest: { id: string; displayName: string } | null;
+  guest: { id: string; displayName: string; role?: GuestRole } | null;
 };
 
 export type EditorTable = {
@@ -33,7 +35,7 @@ export type EditorTable = {
   seats: EditorSeat[];
 };
 
-export type EditorGuest = { id: string; displayName: string };
+export type EditorGuest = { id: string; displayName: string; role?: GuestRole };
 
 export type Status =
   | { kind: "idle" }

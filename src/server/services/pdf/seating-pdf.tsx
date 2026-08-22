@@ -18,13 +18,15 @@
 import React from "react";
 import path from "node:path";
 import {
-  PLAN_HEIGHT, PLAN_WIDTH, isRound, labelPosition, seatPosition, shortName,
+  PLAN_HEIGHT, PLAN_WIDTH, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName,
 } from "@/lib/seating-geometry";
 import { COLORS } from "@/server/guest-html/theme";
 import {
-  Document, Font, Page, StyleSheet, Svg, Circle, Ellipse, Rect, Text as SvgText,
-  Text, View,
+  Document, Font, G, Page, Polygon, StyleSheet, Svg, Circle, Ellipse, Rect,
+  Text as SvgText, Text, View,
 } from "@react-pdf/renderer";
+import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
+import type { GuestRole } from "@/generated/prisma/enums";
 
 const FONT_DIR = path.join(process.cwd(), "public", "fonts");
 
@@ -49,7 +51,11 @@ export type PdfTable = {
   width: number;
   height: number;
   capacity: number;
-  seats: { id: string; index: number; guest: { id: string; displayName: string } | null }[];
+  seats: {
+    id: string;
+    index: number;
+    guest: { id: string; displayName: string; role?: GuestRole } | null;
+  }[];
 };
 
 export type PdfInput = {
@@ -91,12 +97,40 @@ const styles = StyleSheet.create({
   },
   indexTable: { color: COLORS.accentDeep, fontWeight: 700 },
 
+  legend: { fontSize: 9, color: COLORS.muted, marginTop: 6 },
+
   footer: {
     position: "absolute", bottom: 18, left: 32, right: 32,
     fontSize: 8, color: "#a09488",
     flexDirection: "row", justifyContent: "space-between",
   },
 });
+
+/**
+ * Значок молодожёнов в PDF — те же фигуры, что на экране
+ * (`lib/couple-marks.ts`). Распечатку кладут на стол у входа, и «где
+ * сидят молодые» там спрашивают ровно так же, как в зале.
+ */
+function CoupleMark({ role, x, y }: { role: GuestRole; x: number; y: number }) {
+  const mark = markFor(role);
+  if (!mark) return null;
+
+  return (
+    <G transform={`translate(${x} ${y})`}>
+      <Circle cx={0} cy={0} r={MARK_RADIUS} fill={COLORS.accent} stroke="#ffffff" strokeWidth={1.5} />
+      {mark.petals?.map((petal, index) => (
+        <Circle key={index} cx={petal.x} cy={petal.y} r={petal.r} fill="#ffffff" />
+      ))}
+      {mark.bow ? (
+        <>
+          <Polygon points={mark.bow.left} fill="#ffffff" />
+          <Polygon points={mark.bow.right} fill="#ffffff" />
+          <Circle cx={mark.bow.knot.x} cy={mark.bow.knot.y} r={mark.bow.knot.r} fill={COLORS.accent} />
+        </>
+      ) : null}
+    </G>
+  );
+}
 
 /**
  * Типы @react-pdf не описывают fontFamily/fontSize у Text внутри Svg, хотя
@@ -144,14 +178,23 @@ function FloorPlanPdf({ tables }: { tables: PdfTable[] }) {
             </PlanText>
             {table.seats.map((seat) => {
               const { x, y } = seatPosition(table, seat.index);
-              const label = labelPosition(table, { x, y });
+              const role = seat.guest?.role ?? "GUEST";
+              const label = labelPosition(
+                table,
+                { x, y },
+                role === "GUEST" ? 0 : MARK_LABEL_SHIFT,
+              );
               return (
                 <React.Fragment key={seat.id}>
-                  <Circle
-                    cx={x} cy={y} r={11}
-                    fill={seat.guest ? "#cfc4b2" : "#ffffff"}
-                    stroke="#c9bfb0" strokeWidth={1.5}
-                  />
+                  {role === "GUEST" ? (
+                    <Circle
+                      cx={x} cy={y} r={11}
+                      fill={seat.guest ? "#cfc4b2" : "#ffffff"}
+                      stroke="#c9bfb0" strokeWidth={1.5}
+                    />
+                  ) : (
+                    <CoupleMark role={role} x={x} y={y} />
+                  )}
                   {seat.guest && (
                     <PlanText
                       x={label.x} y={label.y} textAnchor="middle"
@@ -213,6 +256,13 @@ export function SeatingDocument({ eventTitle, eventDate, venueName, tables, gene
           {subtitle} · {seated.length} гостей за {tables.length} столами
         </Text>
         <FloorPlanPdf tables={tables} />
+        {tables.some((table) =>
+          table.seats.some((seat) => seat.guest?.role && seat.guest.role !== "GUEST"),
+        ) ? (
+          <Text style={styles.legend}>
+            Значками на схеме отмечены места невесты и жениха.
+          </Text>
+        ) : null}
         <Footer generatedAt={generatedAt} title={`${eventTitle} — схема зала`} />
       </Page>
 
@@ -230,6 +280,9 @@ export function SeatingDocument({ eventTitle, eventDate, venueName, tables, gene
                   <Text style={styles.seatNum}>{seat.index + 1}</Text>
                   <Text style={seat.guest ? styles.seatName : styles.empty}>
                     {seat.guest ? seat.guest.displayName : "—"}
+                    {seat.guest?.role && seat.guest.role !== "GUEST"
+                      ? ` — ${ROLE_LABEL[seat.guest.role]}`
+                      : ""}
                   </Text>
                 </View>
               ))}

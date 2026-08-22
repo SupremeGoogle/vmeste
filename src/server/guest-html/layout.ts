@@ -46,6 +46,10 @@ font-weight:500;color:#fff;background:var(--accent);border:0;border-radius:999px
 button:active{background:var(--accent-deep)}
 .plan{display:block;width:100%;height:auto;margin:1.5rem 0 0;background:var(--card);
 border:1px solid var(--line);border-radius:1rem}
+.legend{display:flex;gap:1.25rem;justify-content:center;align-items:center;margin:.75rem 0 0;
+font-size:.875rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.glyph{width:1.35rem;height:1.35rem;vertical-align:middle}
 .claims{margin:1.5rem 0 0;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
 .claim{width:auto;margin:0;appearance:none;border:1px solid var(--line);background:var(--card);
 border-radius:999px;padding:.6rem 1.25rem;font:inherit;font-family:var(--sans);font-size:.9375rem;

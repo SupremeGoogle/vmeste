@@ -14,8 +14,10 @@ import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import {
   addAlias, archiveGuest, getGuest, removeAlias, reissueLinkToken,
-  setPlusOneAllowed, updateGuest,
+  setGuestRole, setPlusOneAllowed, updateGuest,
 } from "@/server/repositories/guests";
+import { ROLE_LABEL } from "@/lib/couple-marks";
+import type { GuestRole } from "@/generated/prisma/enums";
 import { listGuestWishes } from "@/server/services/wishes";
 import { listGuestPhotos } from "@/server/services/photos";
 
@@ -80,6 +82,17 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
     "use server";
     const ctx = await requireEventContext(eventId);
     await setPlusOneAllowed(ctx, guestId, formData.get("allowed") === "1");
+    revalidatePath(`/app/e/${eventId}/guests/${guestId}`);
+  }
+
+  /** Кто это на свадьбе. Роль видна на плане зала: место молодожёнов
+   *  помечается значком — «а где сидят молодые» спрашивают все. */
+  async function changeRole(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const role = String(formData.get("role") ?? "GUEST") as GuestRole;
+    if (!["GUEST", "BRIDE", "GROOM"].includes(role)) return;
+    await setGuestRole(ctx, guestId, role);
     revalidatePath(`/app/e/${eventId}/guests/${guestId}`);
   }
 
@@ -154,6 +167,27 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
         </label>
         <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">Сохранить</button>
       </form>
+
+      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+        <h2 className="text-sm font-medium">Кто это на свадьбе</h2>
+        <form action={changeRole} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <select
+            name="role" defaultValue={guest.role}
+            className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          >
+            {(["GUEST", "BRIDE", "GROOM"] as GuestRole[]).map((role) => (
+              <option key={role} value={role}>{ROLE_LABEL[role]}</option>
+            ))}
+          </select>
+          <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
+            Сохранить
+          </button>
+          <span className="text-xs text-stone-400">
+            Невеста и жених отмечаются значком на плане зала — и в панели,
+            и у гостя, и в распечатке.
+          </span>
+        </form>
+      </section>
 
       <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
         <h2 className="text-sm font-medium">Как его могут искать на входе</h2>

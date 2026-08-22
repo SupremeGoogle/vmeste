@@ -253,8 +253,17 @@ for index in range(8):
     submit(f"/app/e/{event_id}/seating", 'placeholder="Стол 6"',
            [("label", f"Стол {index + 1}"), ("capacity", "8")])
 status, page, _ = get(f"/app/e/{event_id}/seating")
-tables = page.count('name="tableId"')
+# Считаем уникальные идентификаторы: у каждого стола две формы (удалить и
+# сменить форму), а сама разметка ещё раз повторяется в RSC-потоке страницы.
+tables = len(set(re.findall(r'name="tableId" value="([^"]+)"', page)))
 step("восемь столов созданы", tables == 8, f"столов: {tables}")
+
+# Стол другой формы: круглый по умолчанию, президиум и прямоугольный —
+# выбором в форме.
+submit(f"/app/e/{event_id}/seating", 'placeholder="Стол 6"',
+       [("label", "Президиум"), ("capacity", "4"), ("shape", "HEAD")])
+body = text_of(get(f"/app/e/{event_id}/seating")[1])
+step("стол-президиум создан выбором формы", "Президиум" in body)
 
 # Разбираем страницу один раз: поля серверного действия у всех форм
 # рассадки одинаковые, различаются только seatId и выбранный гость.
@@ -287,6 +296,21 @@ step("гости рассажены формами", seated >= 50,
 body = text_of(get(f"/app/e/{event_id}/guests")[1])
 step("счётчик рассадки виден", "Рассажено" in body,
      re.search(r"Рассажено: (\d+)", body).group(0) if "Рассажено" in body else "")
+
+# Молодожёны: роль ставится в карточке гостя и видна на плане зала.
+_, seating_page, _ = get(f"/app/e/{event_id}/seating")
+seated_names = re.findall(r'<span class="flex-1">([^<]+)</span>', seating_page)
+roles_set = 0
+for name, role in zip(seated_names[:2], ["BRIDE", "GROOM"]):
+    _, guests_page, _ = get(f"/app/e/{event_id}/guests")
+    match = re.search(
+        rf'href="/app/e/{event_id}/guests/([a-z0-9]+)"[^>]*>\s*{re.escape(name)}', guests_page)
+    if not match:
+        continue
+    card = f"/app/e/{event_id}/guests/{match.group(1)}"
+    submit(card, 'name="role"', [("role", role)])
+    roles_set += 1
+step("невеста и жених отмечены", roles_set == 2, ", ".join(seated_names[:2]))
 
 print("\n8. Печать и PDF")
 status, page, _ = get(f"/app/e/{event_id}/print")
@@ -321,9 +345,11 @@ if match:
     if found.get("matches"):
         guest_id = found["matches"][0]["guestId"]
         _, me, _ = get(f"/e/{code}/me?g={guest_id}")
-        table = re.search(r"Стол \d+", me)
+        # Название стола может быть любым («Стол 3», «Президиум»), поэтому
+        # ищем сам блок с номером места, а не конкретное слово.
+        table = re.search(r'class="table-label">([^<]+)<', me)
         step("гость видит свой стол", bool(table),
-             f"{seated_name} → {table.group(0) if table else 'места нет'}")
+             f"{seated_name} → {table.group(1) if table else 'места нет'}")
 
         plan_link = re.search(r'href="(/e/[A-Z0-9]+/plan\?t=[a-z0-9]+)"', me)
         if plan_link:
@@ -331,6 +357,10 @@ if match:
             step("на плане зала подсвечен его стол",
                  "<svg" in plan_page and "Ваш стол" in plan_page,
                  plan_link.group(1))
+            step("на плане видно, где сидят молодожёны",
+                 'aria-label="невеста"' in plan_page and 'aria-label="жених"' in plan_page
+                 and "невеста</span>" in plan_page,
+                 "значки и легенда")
 
 print("\n10. Фотографии и модерация")
 photo_bytes = open(os.path.join(FIXTURES, "photo.jpg"), "rb").read()
