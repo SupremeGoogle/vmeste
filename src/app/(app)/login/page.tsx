@@ -43,8 +43,9 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto max-w-sm px-6 py-24">
-      <h1 className="text-2xl font-semibold">Вход</h1>
-      <p className="mt-2 text-sm text-stone-600">Панель организатора</p>
+      <h1 className="text-center text-3xl">Вход</h1>
+      <p className="mt-2 text-center text-sm text-stone-600">Панель организатора</p>
+      <div className="mx-auto my-7 h-px w-12 bg-stone-200" />
 
       <form action={login} className="mt-8 space-y-4">
         <div>

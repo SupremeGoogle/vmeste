@@ -1,20 +1,73 @@
 @import "tailwindcss";
 
 /*
- * Панель организатора намеренно светлая, без переключения на тёмную тему.
+ * Свадебная палитра для панели организатора.
+ *
+ * Панель написана на утилитах Tailwind — `bg-stone-50`, `border-stone-200`,
+ * `bg-stone-900` и так далее, — и переписывать классы на полутора десятках
+ * страниц ради цвета было бы дорого и бессмысленно. Вместо этого
+ * переопределены сами токены палитры: серая шкала stone заменена на тёплую
+ * бумажную, `white` — на цвет карточки, а `bg-stone-900` (кнопки) стал
+ * тёплым золотом. Разметка не тронута, вид меняется целиком.
+ *
+ * Значения — те же, что в `src/server/guest-html/theme.ts`, откуда их берут
+ * гостевые страницы. Один продукт должен выглядеть одним продуктом:
+ * координатор и гость смотрят на одну свадьбу.
+ */
+@theme {
+  --color-white: #fffdf9;
+
+  --color-stone-50: #faf7f2;
+  --color-stone-100: #f3ede3;
+  --color-stone-200: #e6ddd1;
+  --color-stone-300: #d8ccbb;
+  --color-stone-400: #b3a695;
+  --color-stone-500: #8c8071;
+  --color-stone-600: #7c7168;
+  --color-stone-700: #5d534b;
+  --color-stone-800: #403833;
+  --color-stone-900: #8b6f47;
+  --color-stone-950: #2b2622;
+
+  /* Тревога и предупреждение — приглушённые: в свадебной палитре
+     аварийный красный выглядит как сообщение о пожаре. */
+  --color-red-50: #fdeeee;
+  --color-red-700: #8a2b2b;
+  --color-red-800: #7c2626;
+  --color-amber-50: #fbf3e2;
+  --color-amber-100: #f5e7c8;
+  --color-amber-900: #7a5a1f;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+}
+
+/*
+ * Панель намеренно светлая, без переключения на тёмную тему.
  *
  * Причина: у панели один главный выход — бумага. План рассадки, список
  * гостей и QR-табличка печатаются, и держать вторую тему ради экрана значит
  * дважды проверять контрасты там, где итог всё равно чёрным по белому.
- *
- * Заготовка из create-next-app переключала фон на тёмный по
- * prefers-color-scheme, из-за чего у организатора с тёмной темой системы
- * панель выглядела как светлые карточки на чёрном фоне.
  */
 body {
-  background: #fafaf9; /* stone-50 */
-  color: #1c1917;      /* stone-900 */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-stone-50);
+  color: #2b2622;
+  font-family: var(--font-sans);
+}
+
+/* Заголовки — антиквой. Это единственное, ради чего стоит трогать
+   разметку глобально: гротескный «Аня и Миша» над списком гостей
+   выглядит как строка из CRM, а не как свадьба. */
+h1,
+h2 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Крупные числа на плитках дашборда — тоже антиквой: они здесь главные. */
+.tile-value {
+  font-family: var(--font-serif);
 }
 
 @media print {

@@ -62,7 +62,7 @@ export default async function RsvpSummaryPage({
           { label: "Ссылка не открыта", value: summary.notOpened },
         ].map((tile) => (
           <div key={tile.label} className="rounded-xl border border-stone-200 bg-white p-4">
-            <p className="text-2xl font-semibold">{tile.value}</p>
+            <p className="tile-value text-2xl">{tile.value}</p>
             <p className="text-sm text-stone-500">{tile.label}</p>
           </div>
         ))}

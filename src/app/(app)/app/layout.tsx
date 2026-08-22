@@ -17,7 +17,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     <div>
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <Link href="/app" className="font-semibold">Вместе</Link>
+          <Link href="/app" className="font-serif text-lg tracking-wide">Вместе</Link>
           <div className="flex items-center gap-4 text-sm text-stone-600">
             <Link href="/app/settings" className="hover:text-stone-900">{user.name}</Link>
             <form action={logout}>

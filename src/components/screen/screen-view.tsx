@@ -114,7 +114,7 @@ export function ScreenView({
   if (connection === "revoked") {
     return (
       <main className="flex h-screen w-screen items-center justify-center">
-        <p className="text-3xl text-white/50">Экран отключён организатором</p>
+        <p className="text-3xl text-[#f6f1e9]/50">Экран отключён организатором</p>
       </main>
     );
   }
@@ -141,7 +141,7 @@ export function ScreenView({
       {mode === "MIXED" && wish ? (
         <div key={wish.id} className="screen-fade absolute inset-x-0 bottom-0 bg-black/70 p-8">
           <p className="text-center text-3xl leading-snug">«{wish.text}»</p>
-          <p className="mt-2 text-center text-xl text-white/60">{wish.authorName}</p>
+          <p className="mt-2 text-center text-xl text-[#f6f1e9]/60">{wish.authorName}</p>
         </div>
       ) : null}
 
@@ -176,7 +176,9 @@ function Photo({
         className="h-full w-full object-contain"
       />
       {photo.guestName ? (
-        <p className="absolute bottom-6 left-8 text-xl text-white/70">{photo.guestName}</p>
+        <p className="absolute bottom-6 left-8 text-xl tracking-wide text-[#f6f1e9]/70">
+          {photo.guestName}
+        </p>
       ) : null}
     </div>
   );
@@ -186,7 +188,7 @@ function Wish({ wish }: { wish: ScreenSnapshot["wishes"][number] }) {
   return (
     <div className="screen-fade absolute inset-0 flex flex-col items-center justify-center px-24 text-center">
       <p className="text-5xl leading-snug">«{wish.text}»</p>
-      <p className="mt-8 text-2xl text-white/60">{wish.authorName}</p>
+      <p className="mt-8 text-2xl text-[#f6f1e9]/60">{wish.authorName}</p>
     </div>
   );
 }
@@ -228,22 +230,22 @@ function Raffle({ raffle }: { raffle: NonNullable<ScreenSnapshot["raffle"]> }) {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-      <p className="text-3xl text-white/60">{raffle.title}</p>
+      <p className="text-3xl tracking-wide text-[#f6f1e9]/60">{raffle.title}</p>
 
       {raffle.winnerLabel ? (
         <>
-          <p className="screen-fade mt-8 text-7xl font-semibold">{raffle.winnerLabel}</p>
-          <p className="mt-6 text-2xl text-white/40">
+          <p className="screen-fade mt-8 text-7xl font-medium">{raffle.winnerLabel}</p>
+          <p className="mt-6 text-2xl text-[#f6f1e9]/40">
             из {raffle.entries} участников
           </p>
         </>
       ) : rolling ? (
         <>
-          <p className="mt-8 text-6xl font-semibold text-white/90">{rolling}</p>
-          <p className="mt-6 text-2xl text-white/40">Участников: {raffle.entries}</p>
+          <p className="mt-8 text-6xl font-medium text-[#f6f1e9]/90">{rolling}</p>
+          <p className="mt-6 text-2xl text-[#f6f1e9]/40">Участников: {raffle.entries}</p>
         </>
       ) : (
-        <p className="mt-8 text-4xl text-white/70">Участников: {raffle.entries}</p>
+        <p className="mt-8 text-4xl text-[#f6f1e9]/70">Участников: {raffle.entries}</p>
       )}
     </div>
   );
@@ -252,7 +254,7 @@ function Raffle({ raffle }: { raffle: NonNullable<ScreenSnapshot["raffle"]> }) {
 function Idle({ title }: { title: string }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <p className="text-5xl text-white/80">{title}</p>
+      <p className="text-5xl tracking-wide text-[#f6f1e9]/80">{title}</p>
     </div>
   );
 }
@@ -260,7 +262,7 @@ function Idle({ title }: { title: string }) {
 /** Индикатор связи. Маленький и в углу: координатору он нужен, гостям — нет. */
 function Indicator({ connection }: { connection: Connection }) {
   return (
-    <div className="absolute top-4 right-4 flex items-center gap-2 text-sm text-white/40">
+    <div className="absolute top-4 right-4 flex items-center gap-2 font-sans text-sm text-[#f6f1e9]/40">
       <span
         className={`inline-block h-2 w-2 rounded-full ${
           connection === "online" ? "bg-emerald-400" : "bg-amber-400"

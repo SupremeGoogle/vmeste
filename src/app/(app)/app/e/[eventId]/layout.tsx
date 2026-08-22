@@ -34,14 +34,14 @@ export default async function EventLayout({
       <div className="border-b border-stone-200 bg-white">
         <div className="mx-auto max-w-5xl px-6 pt-5">
           <div className="flex items-baseline justify-between">
-            <h1 className="text-xl font-semibold">{event.title}</h1>
+            <h1 className="text-2xl">{event.title}</h1>
             <span className="font-mono text-sm tracking-widest text-stone-500">
               {event.shortCode}
             </span>
           </div>
           <nav className="mt-4 flex gap-5 text-sm">
             {tabs.map((tab) => (
-              <Link key={tab.href} href={tab.href} className="pb-3 text-stone-600 hover:text-stone-900">
+              <Link key={tab.href} href={tab.href} className="border-b-2 border-transparent pb-3 text-stone-600 hover:border-stone-900 hover:text-stone-900">
                 {tab.label}
               </Link>
             ))}

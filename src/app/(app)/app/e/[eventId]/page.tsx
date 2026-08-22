@@ -126,7 +126,7 @@ export default async function EventDashboard({
             href={tile.href}
             className="rounded-xl border border-stone-200 bg-white p-4 hover:border-stone-400"
           >
-            <p className="text-3xl font-semibold">{tile.value}</p>
+            <p className="tile-value text-3xl">{tile.value}</p>
             <p className="text-sm text-stone-600">{tile.label}</p>
             <p className="mt-1 text-xs text-stone-400">{tile.hint}</p>
           </Link>

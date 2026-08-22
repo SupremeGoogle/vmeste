@@ -9,68 +9,75 @@
  * нечего гидрировать, незачем — тем более что открывают её с телефона,
  * иногда в дороге.
  *
- * Стиль отдельный от страниц входа в зал: у входа задача «прочитать номер
- * стола за три секунды», здесь — «прочитать приглашение и не поморщиться».
+ * Палитра и шрифты — общие (`guest-html/theme.ts`), разная только плотность:
+ * у входа в зал задача «прочитать номер стола за три секунды», здесь —
+ * «прочитать приглашение и не поморщиться». Поэтому тут антиква в теле
+ * текста, крупные поля и воздух, а там гротеск и плотная вёрстка.
  */
 import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
+import { BASE_CSS } from "@/server/guest-html/theme";
 
-const CSS = `
-:root{--bg:#f6f3ee;--fg:#241f1b;--muted:#7c7168;--line:#e2dad0;--card:#fffefb;--accent:#8b6f47}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
-font:17px/1.6 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;-webkit-text-size-adjust:100%}
+const CSS = (BASE_CSS + `
+body{font:17px/1.65 var(--serif)}
 .sheet{max-width:34rem;margin:0 auto;background:var(--card);min-height:100vh;
-box-shadow:0 1px 40px rgba(36,31,27,.06)}
-.who{margin:0;padding:2rem 1.5rem 0;text-align:center;font-size:.8125rem;letter-spacing:.16em;
-text-transform:uppercase;color:var(--muted);font-family:-apple-system,BlinkMacSystemFont,sans-serif}
-.ok{margin:0;padding:.875rem 1.5rem;background:var(--fg);color:#fff;text-align:center;font-size:.9375rem}
-section{padding:2rem 1.5rem}
-.cover{padding-top:2.5rem;text-align:center}
-.cover img{display:block;width:100%;height:auto;margin:0 0 1.5rem}
-.names{margin:0;font-size:1.5rem;letter-spacing:.18em;text-transform:uppercase;font-weight:400}
-h1{margin:.5rem 0 0;font-size:2rem;font-weight:500;line-height:1.2}
-.date{margin:.75rem 0 0;font-size:1.125rem;color:var(--muted)}
-h2{margin:0 0 1.25rem;text-align:center;font-size:1.25rem;font-weight:500;letter-spacing:.02em}
+box-shadow:0 1px 60px rgba(43,38,34,.07)}
+.who{margin:0;padding:2.25rem 1.5rem 0;text-align:center;font-size:.75rem;letter-spacing:.2em;
+text-transform:uppercase;color:var(--muted);font-family:var(--sans)}
+.ok{margin:0;padding:.875rem 1.5rem;background:var(--accent);color:#fff;text-align:center;
+font-size:.9375rem;font-family:var(--sans)}
+section{padding:2.25rem 1.5rem}
+.cover{padding-top:2.75rem;text-align:center}
+.cover img{display:block;width:100%;height:auto;margin:0 0 1.75rem}
+.names{margin:0;font-size:1.375rem;letter-spacing:.22em;text-transform:uppercase;font-weight:400;
+font-family:var(--serif)}
+h1{margin:.75rem 0 0;font-size:2.125rem;line-height:1.15}
+.date{margin:1rem 0 0;font-size:1.0625rem;color:var(--muted);letter-spacing:.04em}
+h2{margin:0 0 1.5rem;text-align:center;font-size:1.3125rem}
+h2::after{content:"";display:block;width:2.5rem;height:1px;background:var(--line);margin:.75rem auto 0}
 p{margin:0}
 .center{text-align:center}
 .pre{white-space:pre-line}
 .muted{color:var(--muted)}
 .small{font-size:.9375rem}
 .timeline{list-style:none;margin:0;padding:0}
-.timeline li{display:flex;gap:1rem;margin-bottom:1rem}
-.timeline time{flex:0 0 3.5rem;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-font-size:.9375rem;color:var(--muted);padding-top:.15rem}
-.timeline .what{border-left:1px solid var(--line);padding-left:1rem}
+.timeline li{display:flex;gap:1.25rem;margin-bottom:1.125rem}
+.timeline time{flex:0 0 3.5rem;text-align:right;font-family:var(--mono);
+font-size:.875rem;color:var(--muted);padding-top:.3rem;letter-spacing:.02em}
+.timeline .what{border-left:1px solid var(--line);padding-left:1.25rem}
 .timeline .note{display:block;font-size:.875rem;color:var(--muted)}
-.palette{display:flex;gap:.75rem;justify-content:center;margin-top:1.25rem}
-.swatch{width:2.25rem;height:2.25rem;border-radius:50%;border:1px solid var(--line)}
-.links{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
-.links a{display:inline-block;padding:.6rem 1.25rem;border:1px solid var(--line);border-radius:999px;
-color:var(--fg);text-decoration:none;font-size:.9375rem}
-.cta{display:inline-block;margin-top:1.25rem;padding:.9rem 2rem;background:var(--fg);color:#fff;
-border-radius:999px;text-decoration:none;font-size:1.0625rem}
-.foot{padding:0 1.5rem 3rem;text-align:center;color:var(--muted);font-size:.9375rem}
+.palette{display:flex;gap:.875rem;justify-content:center;margin-top:1.5rem}
+.swatch{width:2.5rem;height:2.5rem;border-radius:50%;border:1px solid var(--line)}
+.links{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.25rem;
+padding:0 1.5rem}
+.links a{display:inline-block;padding:.65rem 1.5rem;border:1px solid var(--line);border-radius:999px;
+color:var(--fg);text-decoration:none;font-size:.9375rem;font-family:var(--sans);background:var(--card)}
+.cta{display:inline-block;margin-top:1.5rem;padding:.95rem 2.25rem;background:var(--accent);color:#fff;
+border-radius:999px;text-decoration:none;font-size:1.0625rem;font-family:var(--sans)}
+.foot{padding:0 1.5rem 3.5rem;text-align:center;color:var(--muted);font-size:.9375rem}
 .foot a{color:var(--muted)}
-a{color:var(--accent)}
-form{padding:0 1.5rem 2rem;max-width:34rem;margin:0 auto}
-fieldset{border:0;margin:0 0 1.5rem;padding:0}
-legend{padding:0;margin-bottom:.75rem;font-size:.9375rem;color:var(--muted);
-font-family:-apple-system,BlinkMacSystemFont,sans-serif}
-.choice{display:flex;align-items:center;gap:.75rem;padding:.875rem 1rem;border:1px solid var(--line);
-border-radius:.75rem;margin-bottom:.5rem;background:var(--card);cursor:pointer}
-.field{display:block;margin-bottom:1.25rem}
+form{padding:0 1.5rem 2.5rem;max-width:34rem;margin:0 auto}
+fieldset{border:0;margin:0 0 1.75rem;padding:0}
+legend{padding:0;margin-bottom:.875rem;font-size:.9375rem;color:var(--muted);font-family:var(--sans)}
+.choice{display:flex;align-items:center;gap:.875rem;padding:.95rem 1.125rem;border:1px solid var(--line);
+border-radius:.875rem;margin-bottom:.5rem;background:var(--bg);cursor:pointer;font-family:var(--sans);
+font-size:1rem}
+.choice:has(input:checked){border-color:var(--accent);background:var(--card)}
+.field{display:block;margin-bottom:1.5rem}
 .field span{display:block;margin-bottom:.5rem;font-size:.9375rem;color:var(--muted);
-font-family:-apple-system,BlinkMacSystemFont,sans-serif}
-.field input,.field textarea{width:100%;padding:.875rem 1rem;font:inherit;font-size:1.0625rem;
-color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:.75rem;outline:none}
+font-family:var(--sans)}
+.field input,.field textarea{width:100%;padding:.95rem 1.125rem;font-family:var(--sans);
+font-size:1.0625rem;color:var(--fg);background:var(--card);border:1px solid var(--line);
+border-radius:.875rem;outline:none}
 .field input:focus,.field textarea:focus{border-color:var(--accent)}
-.submit{width:100%;padding:1rem;font:inherit;font-size:1.0625rem;color:#fff;background:var(--fg);
-border:0;border-radius:999px;cursor:pointer}
-.error{margin:0 1.5rem 1.5rem;padding:.875rem 1rem;background:#fdeeee;border:1px solid #f0c9c9;
-border-radius:.75rem;font-size:.9375rem;color:#8a2b2b}
-`.replace(/\n/g, "");
+.submit{width:100%;padding:1.05rem;font-family:var(--sans);font-size:1.0625rem;color:#fff;
+background:var(--accent);border:0;border-radius:999px;cursor:pointer}
+.submit:active{background:var(--accent-deep)}
+.error{margin:0 1.5rem 1.5rem;padding:.875rem 1.125rem;background:var(--alarm-bg);
+border:1px solid #f0c9c9;border-radius:.875rem;font-size:.9375rem;color:var(--alarm);
+font-family:var(--sans)}
+`).replace(/\n/g, "");
 
 export function invitePage(opts: {
   title: string;

@@ -20,6 +20,7 @@ import path from "node:path";
 import {
   PLAN_HEIGHT, PLAN_WIDTH, isRound, labelPosition, seatPosition, shortName,
 } from "@/lib/seating-geometry";
+import { COLORS } from "@/server/guest-html/theme";
 import {
   Document, Font, Page, StyleSheet, Svg, Circle, Ellipse, Rect, Text as SvgText,
   Text, View,
@@ -59,11 +60,17 @@ export type PdfInput = {
   generatedAt: Date;
 };
 
+/**
+ * Цвета берутся из общей палитры (`guest-html/theme.ts`), чтобы распечатка
+ * и экран были одной свадьбой. Шрифт — намеренно гротеск: PDF это рабочий
+ * документ координатора, его читают в полутьме и по диагонали, а тащить
+ * ради стиля ещё один шрифтовой файл с кириллицей незачем.
+ */
 const styles = StyleSheet.create({
-  page: { fontFamily: "Roboto", fontSize: 10, padding: 32, color: "#2b2622" },
-  h1: { fontSize: 18, fontWeight: 700, marginBottom: 2 },
-  meta: { fontSize: 9, color: "#7a7068", marginBottom: 16 },
-  h2: { fontSize: 13, fontWeight: 700, marginBottom: 8 },
+  page: { fontFamily: "Roboto", fontSize: 10, padding: 32, color: COLORS.ink },
+  h1: { fontSize: 18, fontWeight: 700, marginBottom: 2, color: COLORS.ink },
+  meta: { fontSize: 9, color: COLORS.muted, marginBottom: 16 },
+  h2: { fontSize: 13, fontWeight: 700, marginBottom: 8, color: COLORS.accentDeep },
 
   tablesGrid: { flexDirection: "row", flexWrap: "wrap" },
   tableCard: {
@@ -80,9 +87,9 @@ const styles = StyleSheet.create({
   indexRow: {
     flexDirection: "row", justifyContent: "space-between",
     marginBottom: 2.5,
-    borderBottomWidth: 0.5, borderBottomColor: "#eee7dc", paddingBottom: 1.5,
+    borderBottomWidth: 0.5, borderBottomColor: COLORS.line, paddingBottom: 1.5,
   },
-  indexTable: { color: "#57504a", fontWeight: 700 },
+  indexTable: { color: COLORS.accentDeep, fontWeight: 700 },
 
   footer: {
     position: "absolute", bottom: 18, left: 32, right: 32,

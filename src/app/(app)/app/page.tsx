@@ -54,7 +54,7 @@ export default async function EventsPage() {
               </div>
               <div className="text-right">
                 <span className="text-xs text-stone-500">{STATUS[event.status]}</span>
-                <p className="mt-1 font-mono text-lg tracking-widest">{event.shortCode}</p>
+                <p className="mt-1 font-mono text-lg tracking-widest text-stone-600">{event.shortCode}</p>
               </div>
             </div>
 
