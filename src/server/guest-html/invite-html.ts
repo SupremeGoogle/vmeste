@@ -72,13 +72,24 @@ border:0;border-radius:999px;cursor:pointer}
 border-radius:.75rem;font-size:.9375rem;color:#8a2b2b}
 `.replace(/\n/g, "");
 
-export function invitePage(opts: { title: string; body: string; noindex?: boolean }): string {
+export function invitePage(opts: {
+  title: string;
+  body: string;
+  noindex?: boolean;
+  /** Дополнительные стили страницы — например, для загрузчика фотографий. */
+  extraCss?: string;
+  /** Свой скрипт инлайном. Отдельный файл — ещё один запрос по сети,
+   *  которой в зале почти нет. */
+  script?: string;
+}): string {
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="#f6f3ee">
-<title>${esc(opts.title)}</title><style>${CSS}</style></head>
-<body><main class="sheet">${opts.body}</main></body></html>`;
+<title>${esc(opts.title)}</title><style>${CSS}${opts.extraCss ?? ""}</style></head>
+<body><main class="sheet">${opts.body}</main>${
+    opts.script ? `<script>${opts.script}</script>` : ""
+  }</body></html>`;
 }
 
 /** Пользовательский текст: переносы строк сохраняем, разметку — нет. */
