@@ -1,0 +1,183 @@
+/*
+ * Оформление титульной страницы.
+ *
+ * Панель организатора живёт на утилитах Tailwind, и почти всё здесь тоже.
+ * В отдельный файл вынесено ровно то, чего утилитами не сказать: анимации,
+ * бумажная текстура фона и мягкие пятна света за первым экраном.
+ *
+ * Файл подключается только страницей `/`, поэтому ни грамма этих правил
+ * не уезжает ни в панель, ни тем более на гостевые страницы, где мы
+ * считаем килобайты.
+ */
+
+/* ── Появление при прокрутке ──────────────────────────────────
+   Элемент ждёт, пока IntersectionObserver повесит data-shown.
+   Начальное состояние задаётся в CSS, а не в JS: до гидратации
+   страница уже должна выглядеть законченной, если скрипт не доехал —
+   поэтому при отключённом JS всё видно (см. media-запрос ниже). */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal[data-shown="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Уважение к системной настройке: анимация свадебного сайта не стоит
+   ничьей головной боли. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-shown="true"] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .float-slow,
+  .petal,
+  .ring-draw circle,
+  .shimmer {
+    animation: none !important;
+  }
+}
+
+/* ── Первый экран ─────────────────────────────────────────────
+   Два мягких пятна тёплого света и едва заметная сетка. Никаких
+   картинок: фон должен быть бесплатным по весу. */
+.hero-glow {
+  background:
+    radial-gradient(58% 48% at 18% 12%, rgba(212, 175, 122, 0.28), transparent 70%),
+    radial-gradient(52% 46% at 86% 6%, rgba(199, 164, 176, 0.24), transparent 72%),
+    radial-gradient(70% 60% at 50% 100%, rgba(246, 238, 226, 0.9), transparent 70%);
+}
+
+.paper {
+  background-image:
+    linear-gradient(rgba(139, 111, 71, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 111, 71, 0.045) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(72% 60% at 50% 30%, #000 30%, transparent 100%);
+}
+
+/* ── Лепестки ─────────────────────────────────────────────────
+   Восемь кружков, медленно уходящих вниз. Дёшево и не отвлекает. */
+.petal {
+  position: absolute;
+  border-radius: 50% 50% 50% 0;
+  animation: petal-fall linear infinite;
+  will-change: transform;
+}
+
+@keyframes petal-fall {
+  0% {
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% { opacity: 0.75; }
+  88% { opacity: 0.5; }
+  100% {
+    transform: translate3d(24px, 108vh, 0) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+.float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Кольца, которые «рисуются» при появлении, — обручальные, по смыслу. */
+.ring-draw circle {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  pathLength: 1;
+  animation: ring-draw 2.6s ease-out forwards;
+}
+
+.ring-draw circle:nth-child(2) { animation-delay: 0.35s; }
+
+@keyframes ring-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Блик, проезжающий по главной кнопке раз в несколько секунд. */
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.42) 50%, transparent 62%);
+  transform: translateX(-140%);
+  animation: shimmer 5.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 62% { transform: translateX(-140%); }
+  86%, 100% { transform: translateX(140%); }
+}
+
+/* ── Бегущая строка возможностей ──────────────────────────────
+   Дублируется в разметке дважды, поэтому сдвиг на -50% бесшовный. */
+.marquee-track {
+  animation: marquee 38s linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* ── Мелочи ───────────────────────────────────────────────────*/
+
+/* Плавная прокрутка по якорям шапки, с поправкой на саму шапку. */
+html {
+  scroll-behavior: smooth;
+}
+
+section[id] {
+  scroll-margin-top: 84px;
+}
+
+.card-lift {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -24px rgba(64, 56, 51, 0.45);
+}
+
+/* Полоска обратного отсчёта на самопереключающейся вкладке. */
+@keyframes marquee-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Плавная прокрутка тоже отключается вместе с остальной анимацией. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* Место на демонстрационном плане доступно с клавиатуры, но браузерная
+   синяя рамка в свадебной палитре смотрится как ошибка ввода. */
+.seat:focus {
+  outline: none;
+}
+
+.seat:focus-visible {
+  outline: 2px solid #8b6f47;
+  outline-offset: 3px;
+  border-radius: 999px;
+}
