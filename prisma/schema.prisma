@@ -32,16 +32,58 @@ model Organization {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique @db.Citext
-  passwordHash String
+  id String @id @default(cuid())
+
+  email String @unique @db.Citext
+  // Пароля может не быть вовсе: у пришедшего через Google его никогда не
+  // было, и придумывать ему случайный хеш — значит завести в базе строку,
+  // которой никто не сможет воспользоваться, но которая выглядит как пароль.
+  passwordHash String?
   name         String
-  createdAt    DateTime @default(now())
+  // Подтверждена ли почта. Google подтверждает её за нас; у входа по паролю
+  // подтверждения пока нет, и поле честно остаётся false.
+  emailVerified Boolean @default(false)
+  // Аватар из профиля Google: единственная картинка, которую мы не рисуем сами.
+  avatarUrl String?
+  createdAt DateTime @default(now())
 
   memberships Membership[]
   sessions    Session[]
+  accounts    OAuthAccount[]
 
   @@map("users")
+}
+
+/// Вход через внешнего поставщика (пока только Google).
+///
+/// Отдельная таблица, а не колонка `googleId` в `users`: завтра появится
+/// второй поставщик, и переписывать схему на живой базе ради этого не
+/// хочется. Пара «поставщик + его идентификатор» уникальна — она и есть
+/// ключ, по которому мы узнаём вернувшегося человека. Почта для этого не
+/// годится: её в Google можно сменить, а `sub` неизменен.
+model OAuthAccount {
+  id String @id @default(cuid())
+
+  userId   String
+  provider AuthProvider
+
+  /// `sub` из id_token — вечный идентификатор человека у поставщика.
+  providerAccountId String
+  /// Почта на момент привязки: нужна только для журнала и поддержки.
+  email String @db.Citext
+
+  createdAt DateTime @default(now())
+  lastLogin DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+enum AuthProvider {
+  GOOGLE
 }
 
 enum OrgRole {

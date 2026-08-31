@@ -114,7 +114,7 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
   const auto = guest.aliases.filter((alias) => alias.source !== "manual");
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <Link href={`/app/e/${eventId}/guests`} className="text-sm text-stone-500 underline">
         ← ко всем гостям
       </Link>

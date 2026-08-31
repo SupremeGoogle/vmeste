@@ -78,7 +78,7 @@ export default async function RafflePage({ params, searchParams }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       {error ? (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}

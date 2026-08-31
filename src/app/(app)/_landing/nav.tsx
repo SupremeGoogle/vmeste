@@ -11,10 +11,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+/**
+ * Разделы шапки. `wide` — то, что показывается только на широком экране:
+ * на планшете семь ссылок в ряд уже наезжают на кнопку кабинета, а
+ * выбрасывать их из меню телефона незачем — там они помещаются все.
+ */
 const LINKS = [
+  { href: "#rolik", label: "Ролик" },
   { href: "#vozmozhnosti", label: "Возможности" },
-  { href: "#kak", label: "Как это работает" },
+  { href: "#kak", label: "Как это работает", wide: true },
   { href: "#demo", label: "Демо" },
+  { href: "#galereya", label: "Галерея", wide: true },
   { href: "#ceny", label: "Цены" },
   { href: "#voprosy", label: "Вопросы" },
 ];
@@ -89,20 +96,20 @@ export function Nav({ userName }: { userName: string | null }) {
           : "border-b border-transparent"
       }`}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5">
         <Link href="/" className="flex items-center gap-2.5">
           <RingsGlyph />
-          <span className="font-serif text-xl tracking-wide">Вместе</span>
+          <span className="font-serif text-lg tracking-wide sm:text-xl">Вместе</span>
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm text-stone-600 md:flex">
+        <nav className="hidden items-center gap-5 text-sm text-stone-600 md:flex lg:gap-7">
           {LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
               className={`relative py-1 transition-colors hover:text-stone-950 ${
-                active === link.href ? "text-stone-950" : ""
-              }`}
+                link.wide ? "hidden lg:inline-block" : ""
+              } ${active === link.href ? "text-stone-950" : ""}`}
             >
               {link.label}
               <span
@@ -158,7 +165,7 @@ export function Nav({ userName }: { userName: string | null }) {
       </div>
 
       {open && (
-        <div className="border-t border-stone-200/70 bg-[#fffdf9] px-5 pb-6 md:hidden">
+        <div className="max-h-[calc(100dvh-56px)] overflow-y-auto border-t border-stone-200/70 bg-[#fffdf9] px-4 pb-8 md:hidden">
           <nav className="flex flex-col">
             {LINKS.map((link) => (
               <a

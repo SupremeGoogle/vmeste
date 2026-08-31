@@ -32,16 +32,26 @@ export default async function EventLayout({
   return (
     <div>
       <div className="border-b border-stone-200 bg-white">
-        <div className="mx-auto max-w-5xl px-6 pt-5">
-          <div className="flex items-baseline justify-between">
-            <h1 className="text-2xl">{event.title}</h1>
-            <span className="font-mono text-sm tracking-widest text-stone-500">
+        <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6 sm:pt-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h1 className="truncate text-xl sm:text-2xl">{event.title}</h1>
+            <span className="shrink-0 font-mono text-sm tracking-widest text-stone-500">
               {event.shortCode}
             </span>
           </div>
-          <nav className="mt-4 flex gap-5 text-sm">
+          {/* Одиннадцать разделов не помещаются в ряд даже на планшете, а
+              переносить их в три строки значит отодвинуть содержимое
+              страницы вниз на треть экрана. Поэтому лента прокручивается
+              вбок — как в приложениях, откуда координатор сюда и приходит.
+              Поля вытянуты отрицательными отступами, чтобы крайние вкладки
+              не обрезались об край экрана. */}
+          <nav className="-mx-4 mt-4 flex gap-5 overflow-x-auto px-4 text-sm whitespace-nowrap sm:mx-0 sm:px-0">
             {tabs.map((tab) => (
-              <Link key={tab.href} href={tab.href} className="border-b-2 border-transparent pb-3 text-stone-600 hover:border-stone-900 hover:text-stone-900">
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className="shrink-0 border-b-2 border-transparent pb-3 text-stone-600 hover:border-stone-900 hover:text-stone-900"
+              >
                 {tab.label}
               </Link>
             ))}

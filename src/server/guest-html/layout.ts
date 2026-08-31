@@ -33,6 +33,13 @@ export function esc(value: string): string {
 const CSS = (BASE_CSS + `
 body{font:17px/1.55 var(--sans)}
 .wrap{max-width:30rem;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+/* Планшет и ноутбук: колонка та же — читать длинную строку с телефонной
+   вёрсткой неудобно, а вот воздуха сверху можно дать больше. */
+@media(min-width:48rem){.wrap{padding:4rem 1.5rem 5rem}}
+/* Низкий экран в альбомной ориентации: телефон в руках у гостя, который
+   ищет свой стол, часто повёрнут — верхний отступ в 2.5rem съедает
+   половину видимой высоты. */
+@media(max-height:32rem){.wrap{padding-top:1.25rem}}
 .eyebrow{font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
 margin:0 0 .75rem;text-align:center;font-family:var(--sans)}
 h1{font-size:1.875rem;line-height:1.2;margin:0 0 .5rem;text-align:center}

@@ -75,7 +75,12 @@ export async function changeOwnPassword(
   });
   if (!user) return "gone";
 
-  if (!(await verifyPassword(currentPassword, user.passwordHash))) return "wrong";
+  // У пришедшего через Google пароля нет, и требовать текущий не с чего.
+  // Тогда это не смена, а первое назначение: человек добавляет себе второй
+  // способ войти — на случай, если доступ к почте Google потеряется.
+  if (user.passwordHash !== null && !(await verifyPassword(currentPassword, user.passwordHash))) {
+    return "wrong";
+  }
 
   await db.user.update({
     where: { id: user.id },

@@ -113,7 +113,7 @@ export default async function EventDashboard({
   ];
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <p className="text-sm text-stone-500">
         {formatEventDateTime(event.eventDate, event.timezone)} · {daysUntil(event.eventDate, now)}
         {event.venueName ? ` · ${event.venueName}` : ""}

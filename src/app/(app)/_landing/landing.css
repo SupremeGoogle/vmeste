@@ -181,3 +181,57 @@ section[id] {
   outline-offset: 3px;
   border-radius: 999px;
 }
+
+/* ── Ролик ────────────────────────────────────────────────────
+   Наезд камеры внутри кадра. Анимируется только transform —
+   это единственное, что браузер отдаёт видеокарте целиком. */
+.film-move {
+  transform: var(--from);
+  animation: film-move linear forwards;
+  will-change: transform;
+}
+
+@keyframes film-move {
+  from { transform: var(--from); }
+  to { transform: var(--to); }
+}
+
+/* Титр выезжает снизу вместе со сменой кадра. */
+.film-caption {
+  animation: film-caption 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes film-caption {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Полоска текущего кадра — она же индикатор времени. */
+.film-progress {
+  animation: film-progress linear forwards;
+  transform: scaleX(0);
+}
+
+@keyframes film-progress {
+  to { transform: scaleX(1); }
+}
+
+/* Зерно: диагональная рябь поверх кадра, чтобы плоские заливки
+   не выглядели презентацией. Рисуется градиентом, а не картинкой. */
+.film-grain {
+  background-image: repeating-linear-gradient(
+    54deg,
+    rgba(255, 255, 255, 0.035) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film-move,
+  .film-caption,
+  .film-progress {
+    animation: none !important;
+    transform: none !important;
+  }
+}

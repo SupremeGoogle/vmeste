@@ -100,7 +100,7 @@ export default async function GuestsPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap gap-6 text-sm text-stone-600">
         <span>Всего: <b className="text-stone-900">{counts.total}</b></span>
         <span>Придут: <b className="text-stone-900">{counts.accepted}</b></span>

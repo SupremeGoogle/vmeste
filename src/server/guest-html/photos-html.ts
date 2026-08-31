@@ -153,6 +153,9 @@ border-radius:.75rem;margin-bottom:.5rem;font-size:.9375rem}
 .thumb{flex:0 0 3rem;height:3rem;border-radius:.5rem;background:#efeae3 center/cover no-repeat}
 .err{color:#8a2b2b}
 .grid{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:.75rem 0 0;padding:0}
+/* На планшете колонка шире, и три снимка в ряд становятся крупными
+   плитками с пустотой по бокам. Четыре ложатся ровно. */
+@media(min-width:34rem){.grid{grid-template-columns:repeat(4,1fr);gap:.625rem}}
 .grid img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:.5rem}
 .grid figcaption{font-size:.75rem;color:var(--muted);text-align:center;margin-top:.25rem}
 `.replace(/\n/g, "");

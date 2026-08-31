@@ -23,8 +23,12 @@ export async function hashPassword(password: string): Promise<string> {
   return `scrypt$${salt.toString("hex")}$${key.toString("hex")}`;
 }
 
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [scheme, saltHex, keyHex] = stored.split("$");
+/**
+ * Пароля может не быть вовсе — у пришедшего через Google его никогда не
+ * было. Такой проверке нечего сравнивать, и ответ один: не подходит.
+ */
+export async function verifyPassword(password: string, stored: string | null): Promise<boolean> {
+  const [scheme, saltHex, keyHex] = (stored ?? "").split("$");
   if (scheme !== "scrypt" || !saltHex || !keyHex) return false;
 
   const key = await scryptAsync(password.normalize("NFKC"), Buffer.from(saltHex, "hex"), KEYLEN);

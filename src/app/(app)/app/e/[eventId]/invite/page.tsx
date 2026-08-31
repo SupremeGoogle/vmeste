@@ -109,7 +109,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
   const publicHref = `/i/${event.slug}`;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4">
         <div className="text-sm">
           <p className="text-stone-500">Публичная ссылка</p>

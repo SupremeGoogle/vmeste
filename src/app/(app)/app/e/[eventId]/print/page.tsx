@@ -41,7 +41,7 @@ export default async function PrintPage({ params }: { params: Promise<{ eventId:
     .sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="no-print mb-6 flex items-start justify-between gap-6">
         <p className="text-sm text-stone-600">
           Распечатайте эту страницу и выгрузите PDF с рассадкой — отдайте

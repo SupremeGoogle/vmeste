@@ -51,7 +51,7 @@ export function Faq() {
               onClick={() => setOpen(expanded ? null : index)}
               aria-expanded={expanded}
               aria-controls={`faq-${index}`}
-              className="flex w-full items-center justify-between gap-6 py-5 text-left"
+              className="flex w-full items-center justify-between gap-4 py-4 text-left sm:gap-6 sm:py-5"
             >
               <span className={`text-[17px] transition-colors ${expanded ? "text-stone-950" : "text-stone-700"}`}>
                 {item.q}
@@ -73,7 +73,7 @@ export function Faq() {
               style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
             >
               <div className="overflow-hidden">
-                <p className="pb-5 pr-10 text-[15px] leading-relaxed text-stone-600">{item.a}</p>
+                <p className="pb-5 text-[15px] leading-relaxed text-stone-600 sm:pr-10">{item.a}</p>
               </div>
             </div>
           </div>

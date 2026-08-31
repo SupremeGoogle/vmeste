@@ -14,6 +14,7 @@
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Scene } from "./scenes";
 
 type Tab = {
   id: string;
@@ -113,15 +114,19 @@ export function FeatureTabs() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-14">
-      <div>
-        <div className="flex flex-wrap gap-2">
+      {/* `min-w-0` здесь обязателен, а не для красоты: ячейка сетки по
+          умолчанию не даёт себя сжать меньше содержимого, и лента вкладок
+          с горизонтальной прокруткой растягивала не себя, а всю страницу —
+          на телефоне это была прокрутка вбок на четверть экрана. */}
+      <div className="min-w-0">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {TABS.map((item, index) => (
             <button
               key={item.id}
               type="button"
               onClick={() => pick(index)}
               aria-pressed={index === current}
-              className={`relative overflow-hidden rounded-full border px-4 py-2 text-sm transition-colors ${
+              className={`relative shrink-0 overflow-hidden rounded-full border px-4 py-2 text-sm transition-colors ${
                 index === current
                   ? "border-stone-900 bg-stone-900 text-white"
                   : "border-stone-300 bg-white/60 text-stone-600 hover:border-stone-400"
@@ -161,8 +166,15 @@ export function FeatureTabs() {
       </div>
 
       <div className="relative">
-        <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-br from-stone-100 to-transparent" />
-        <div key={tab.id} className="card-lift rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+        {/* Пятно-подложка вылезает за карточку — в этом и смысл. Но вбок
+            вылезать ей нельзя: поля страницы на телефоне 16 px, и вылет
+            в 24 px давал горизонтальную прокрутку — страница «дребезжала»
+            под пальцем, хотя смотреть вбок там не на что.
+            Поэтому вертикальный вылет полный, а боковой подогнан под поля:
+            гнаться за каждой контрольной точкой бессмысленно, вниз и вверх
+            прокрутка и так есть. */}
+        <div className="absolute -inset-y-6 -inset-x-3 -z-10 rounded-[2rem] bg-gradient-to-br from-stone-100 to-transparent sm:-inset-x-4 xl:-inset-x-6" />
+        <div key={tab.id} className="card-lift rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-6">
           {tab.preview}
         </div>
       </div>
@@ -181,11 +193,16 @@ function Check() {
 
 /* ── Макеты ─────────────────────────────────────────────────── */
 
+/** Телефон на подложке-сцене: пустой белый прямоугольник в этом месте
+ *  выглядел как макет в редакторе, а не как страница о свадьбе. */
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto w-[260px] rounded-[2rem] border-[6px] border-stone-800/90 bg-[#fffdf9] p-4 shadow-lg">
-      <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-stone-300" />
-      {children}
+    <div className="relative overflow-hidden rounded-xl">
+      <Scene id="arch" className="absolute inset-0 h-full w-full opacity-60" />
+      <div className="relative mx-auto my-4 w-[236px] rounded-[2rem] border-[6px] border-stone-800/90 bg-[#fffdf9] p-4 shadow-xl sm:w-[260px]">
+        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-stone-300" />
+        {children}
+      </div>
     </div>
   );
 }
@@ -358,12 +375,10 @@ function ScreenPreview() {
     <div>
       <div className="rounded-xl bg-stone-950 p-3">
         <div className="grid grid-cols-3 gap-2">
-          {["#5d534b", "#7c7168", "#8b6f47", "#b3a695", "#403833", "#c2a878"].map((color, index) => (
-            <div
-              key={color}
-              className="aspect-[4/3] rounded-md"
-              style={{ background: color, opacity: 0.55 + index * 0.06 }}
-            />
+          {(["toast", "dance", "cake", "confetti", "candles", "bouquet"] as const).map((scene) => (
+            <div key={scene} className="overflow-hidden rounded-md">
+              <Scene id={scene} className="aspect-[4/3] w-full" />
+            </div>
           ))}
         </div>
         <p className="mt-3 text-center text-[11px] tracking-[0.2em] text-stone-400 uppercase">
@@ -385,11 +400,12 @@ function ScreenPreview() {
 
 function RafflePreview() {
   return (
-    <div className="rounded-xl bg-stone-950 px-6 py-10 text-center">
-      <p className="text-[10px] tracking-[0.3em] text-stone-400 uppercase">Розыгрыш</p>
-      <p className="mt-5 font-serif text-3xl text-stone-100">Павел Крылов</p>
-      <p className="mt-2 text-sm text-stone-400">стол 2 · место 4</p>
-      <div className="mx-auto mt-6 flex w-fit gap-1.5">
+    <div className="relative overflow-hidden rounded-xl bg-stone-950 px-6 py-10 text-center">
+      <Scene id="candles" className="absolute inset-0 h-full w-full opacity-30" />
+      <p className="relative text-[10px] tracking-[0.3em] text-stone-400 uppercase">Розыгрыш</p>
+      <p className="relative mt-5 font-serif text-3xl text-stone-100">Павел Крылов</p>
+      <p className="relative mt-2 text-sm text-stone-400">стол 2 · место 4</p>
+      <div className="relative mx-auto mt-6 flex w-fit gap-1.5">
         {[0, 1, 2, 3, 4].map((index) => (
           <span
             key={index}
@@ -398,7 +414,7 @@ function RafflePreview() {
           />
         ))}
       </div>
-      <p className="mt-6 text-[11px] text-stone-500">
+      <p className="relative mt-6 text-[11px] text-stone-500">
         Порядок задан заранее — победителя нельзя «подкрутить» на месте.
       </p>
     </div>

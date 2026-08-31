@@ -74,7 +74,7 @@ export default async function OrgSettingsPage({ searchParams }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       <Link href="/app" className="text-sm text-stone-500 underline">
         ← к мероприятиям
       </Link>

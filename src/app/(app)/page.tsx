@@ -25,6 +25,9 @@ import { FeatureTabs } from "./_landing/feature-tabs";
 import { SeatingDemo } from "./_landing/seating-demo";
 import { Pricing } from "./_landing/pricing";
 import { Faq } from "./_landing/faq";
+import { Film } from "./_landing/film";
+import { Gallery } from "./_landing/gallery";
+import { Scene } from "./_landing/scenes";
 import "./_landing/landing.css";
 
 export const dynamic = "force-dynamic";
@@ -86,47 +89,47 @@ export default async function HomePage() {
 
       <main>
         {/* ── Первый экран ─────────────────────────────────── */}
-        <section className="hero-glow relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
+        <section className="hero-glow relative overflow-hidden pt-24 pb-16 sm:pt-40 sm:pb-24">
           <div className="paper pointer-events-none absolute inset-0" aria-hidden="true" />
           <Petals />
 
-          <div className="relative mx-auto max-w-6xl px-5">
+          <div className="relative mx-auto max-w-6xl px-4 sm:px-5">
             <div className="mx-auto max-w-3xl text-center">
               <Reveal as="p" className="inline-flex items-center gap-2 rounded-full border border-stone-300/70 bg-white/60 px-4 py-1.5 text-xs text-stone-600 backdrop-blur">
                 <span className="h-1.5 w-1.5 rounded-full bg-stone-900" />
                 Сервис для свадьбы — от приглашения до последнего танца
               </Reveal>
 
-              <Reveal as="h1" delay={80} className="mt-7 font-serif text-4xl leading-[1.1] sm:text-6xl">
+              <Reveal as="h1" delay={80} className="mt-6 font-serif text-[34px] leading-[1.12] sm:text-6xl">
                 Свадьба, где всё
                 <br className="hidden sm:block" /> на своих местах
               </Reveal>
 
-              <Reveal as="p" delay={160} className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-stone-600">
+              <Reveal as="p" delay={160} className="mx-auto mt-5 max-w-xl leading-relaxed text-stone-600 sm:mt-6 sm:text-lg">
                 Приглашения и ответы гостей, план зала с рассадкой, вход по QR-коду,
                 фотографии на экране и розыгрыш. Одно место вместо чата, таблицы
                 и стопки распечаток.
               </Reveal>
 
-              <Reveal delay={240} className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Reveal delay={240} className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 {user ? (
                   <Link
                     href="/app"
-                    className="shimmer relative overflow-hidden rounded-full bg-stone-900 px-8 py-3.5 text-white transition-transform hover:scale-[1.03]"
+                    className="shimmer relative w-full overflow-hidden rounded-full bg-stone-900 px-8 py-3.5 text-center text-white transition-transform hover:scale-[1.03] sm:w-auto"
                   >
                     Перейти в личный кабинет
                   </Link>
                 ) : (
                   <Link
                     href="/register"
-                    className="shimmer relative overflow-hidden rounded-full bg-stone-900 px-8 py-3.5 text-white transition-transform hover:scale-[1.03]"
+                    className="shimmer relative w-full overflow-hidden rounded-full bg-stone-900 px-8 py-3.5 text-center text-white transition-transform hover:scale-[1.03] sm:w-auto"
                   >
                     Создать кабинет бесплатно
                   </Link>
                 )}
                 <a
                   href="#demo"
-                  className="rounded-full border border-stone-300 px-8 py-3.5 text-stone-700 transition-colors hover:border-stone-500"
+                  className="w-full rounded-full border border-stone-300 px-8 py-3.5 text-center text-stone-700 transition-colors hover:border-stone-500 sm:w-auto"
                 >
                   Потрогать рассадку
                 </a>
@@ -137,8 +140,25 @@ export default async function HomePage() {
               </Reveal>
             </div>
 
+            {/* Полоса сцен под первым экраном: страница о свадьбе не может
+                начинаться одним текстом. Три картинки на телефоне
+                превращаются в одну — остальные там только шумят. */}
+            <Reveal delay={380} className="mx-auto mt-14 max-w-4xl">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-3">
+                <div className="overflow-hidden rounded-2xl border border-stone-200/70 shadow-sm">
+                  <Scene id="bouquet" className="aspect-[3/4] w-full sm:aspect-[4/3]" />
+                </div>
+                <div className="col-span-2 overflow-hidden rounded-2xl border border-stone-200/70 shadow-sm sm:col-span-1">
+                  <Scene id="hall" className="aspect-[3/2] w-full sm:aspect-[4/3]" />
+                </div>
+                <div className="hidden overflow-hidden rounded-2xl border border-stone-200/70 shadow-sm sm:block">
+                  <Scene id="rings" className="aspect-[4/3] w-full" />
+                </div>
+              </div>
+            </Reveal>
+
             {/* Три плитки с цифрами: сколько работы снимает сервис. */}
-            <Reveal delay={400} className="mx-auto mt-16 grid max-w-3xl gap-4 sm:grid-cols-3">
+            <Reveal delay={460} className="mx-auto mt-10 grid max-w-3xl gap-3 sm:mt-14 sm:grid-cols-3 sm:gap-4">
               {[
                 { value: 84, suffix: "", label: "гостя в одном списке — без переписки в трёх чатах" },
                 { value: 3, suffix: " мин", label: "от загрузки таблицы до готовых именных ссылок" },
@@ -159,7 +179,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── Бегущая строка ───────────────────────────────── */}
-        <div className="marquee overflow-hidden border-y border-stone-200 bg-white/50 py-3">
+        <div className="marquee overflow-hidden border-y border-stone-200 bg-white/50 py-2.5 sm:py-3">
           <div className="marquee-track flex w-max gap-8 text-sm whitespace-nowrap text-stone-500">
             {[...MARQUEE, ...MARQUEE].map((item, index) => (
               <span key={index} className="flex items-center gap-8">
@@ -170,12 +190,29 @@ export default async function HomePage() {
           </div>
         </div>
 
+        {/* ── Ролик ────────────────────────────────────────── */}
+        <section id="rolik" className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
+          <Reveal className="mx-auto max-w-2xl text-center">
+            <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Ролик</p>
+            <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
+              Свадьба за полминуты
+            </h2>
+            <p className="mt-4 text-stone-600">
+              Шесть кадров о том, что сервис делает от первой ссылки до последнего танца.
+            </p>
+          </Reveal>
+
+          <Reveal delay={120} className="mt-10">
+            <Film />
+          </Reveal>
+        </section>
+
         {/* ── Боль ─────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
             <Reveal>
               <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Знакомо</p>
-              <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
                 Свадьба на 80 человек живёт в семи местах сразу
               </h2>
               <p className="mt-5 text-stone-600">
@@ -205,11 +242,11 @@ export default async function HomePage() {
         </section>
 
         {/* ── Возможности ──────────────────────────────────── */}
-        <section id="vozmozhnosti" className="border-y border-stone-200 bg-white/40 py-20 sm:py-28">
-          <div className="mx-auto max-w-6xl px-5">
+        <section id="vozmozhnosti" className="border-y border-stone-200 bg-white/40 py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-5">
             <Reveal className="max-w-2xl">
               <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Возможности</p>
-              <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
                 Шесть частей одного дня
               </h2>
               <p className="mt-4 text-stone-600">
@@ -225,10 +262,10 @@ export default async function HomePage() {
         </section>
 
         {/* ── Как это работает ─────────────────────────────── */}
-        <section id="kak" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <section id="kak" className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
           <Reveal className="max-w-2xl">
             <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Как это работает</p>
-            <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+            <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
               Четыре шага от списка до свадьбы
             </h2>
           </Reveal>
@@ -255,11 +292,11 @@ export default async function HomePage() {
         </section>
 
         {/* ── Живое демо ───────────────────────────────────── */}
-        <section id="demo" className="border-y border-stone-200 bg-white/40 py-20 sm:py-28">
-          <div className="mx-auto max-w-6xl px-5">
+        <section id="demo" className="border-y border-stone-200 bg-white/40 py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-5">
             <Reveal className="max-w-2xl">
               <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Демо без регистрации</p>
-              <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
                 Рассадите гостей прямо здесь
               </h2>
               <p className="mt-4 text-stone-600">
@@ -276,11 +313,11 @@ export default async function HomePage() {
         </section>
 
         {/* ── Гостю ────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
             <Reveal>
               <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Со стороны гостя</p>
-              <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
                 Ни приложения, ни пароля, ни регистрации
               </h2>
               <div className="mt-7 space-y-5">
@@ -329,11 +366,11 @@ export default async function HomePage() {
         </section>
 
         {/* ── Спокойствие ──────────────────────────────────── */}
-        <section className="border-y border-stone-200 bg-white/40 py-20 sm:py-28">
-          <div className="mx-auto max-w-6xl px-5">
+        <section className="border-y border-stone-200 bg-white/40 py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-5">
             <Reveal className="max-w-2xl">
               <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Чтобы спать спокойно</p>
-              <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
                 День свадьбы бывает один раз
               </h2>
             </Reveal>
@@ -358,11 +395,30 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* ── Галерея ──────────────────────────────────────── */}
+        <section id="galereya" className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
+          <Reveal className="max-w-2xl">
+            <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Галерея</p>
+            <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
+              Двенадцать сцен одного дня
+            </h2>
+            <p className="mt-4 text-stone-600">
+              Иллюстрации нарисованы векторами в палитре сервиса: они тянутся
+              в любой размер, весят килобайты и приходят вместе со страницей —
+              на телефоне в дороге это разница между «открылось» и «грузится».
+            </p>
+          </Reveal>
+
+          <Reveal delay={120} className="mt-10">
+            <Gallery />
+          </Reveal>
+        </section>
+
         {/* ── Тарифы ───────────────────────────────────────── */}
-        <section id="ceny" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+        <section id="ceny" className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
           <Reveal className="text-center">
             <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Цены</p>
-            <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+            <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
               Платить за свадьбу, а не за подписку навсегда
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-stone-600">
@@ -377,11 +433,11 @@ export default async function HomePage() {
         </section>
 
         {/* ── Вопросы ──────────────────────────────────────── */}
-        <section id="voprosy" className="border-t border-stone-200 bg-white/40 py-20 sm:py-28">
-          <div className="mx-auto max-w-3xl px-5">
+        <section id="voprosy" className="border-t border-stone-200 bg-white/40 py-16 sm:py-24">
+          <div className="mx-auto max-w-3xl px-4 sm:px-5">
             <Reveal>
               <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Вопросы</p>
-              <h2 className="mt-4 font-serif text-3xl leading-tight sm:text-4xl">
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
                 О чём спрашивают чаще всего
               </h2>
             </Reveal>
@@ -394,29 +450,29 @@ export default async function HomePage() {
         {/* ── Призыв ───────────────────────────────────────── */}
         <section className="relative overflow-hidden py-24 sm:py-32">
           <div className="hero-glow absolute inset-0" aria-hidden="true" />
-          <Reveal className="relative mx-auto max-w-2xl px-5 text-center">
+          <Reveal className="relative mx-auto max-w-2xl px-4 text-center sm:px-5">
             <svg width="46" height="30" viewBox="0 0 34 24" className="mx-auto" aria-hidden="true">
               <circle cx="13" cy="13" r="8.5" fill="none" stroke="#8b6f47" strokeWidth="1.4" />
               <circle cx="21" cy="13" r="8.5" fill="none" stroke="#c2a878" strokeWidth="1.4" />
             </svg>
-            <h2 className="mt-7 font-serif text-3xl leading-tight sm:text-5xl">
+            <h2 className="mt-7 font-serif text-[28px] leading-tight sm:text-5xl">
               Начните со списка гостей
             </h2>
             <p className="mx-auto mt-5 max-w-lg text-stone-600">
               Кабинет создаётся за минуту. Список можно загрузить из таблицы,
               а приглашение собрать вечером — и уже завтра разослать ссылки.
             </p>
-            <p className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <p className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href={user ? "/app" : "/register"}
-                className="shimmer relative overflow-hidden rounded-full bg-stone-900 px-8 py-3.5 text-white transition-transform hover:scale-[1.03]"
+                className="shimmer relative w-full overflow-hidden rounded-full bg-stone-900 px-8 py-3.5 text-center text-white transition-transform hover:scale-[1.03] sm:w-auto"
               >
                 {user ? "Перейти в личный кабинет" : "Создать кабинет бесплатно"}
               </Link>
               {!user && (
                 <Link
                   href="/login"
-                  className="rounded-full border border-stone-300 px-8 py-3.5 text-stone-700 transition-colors hover:border-stone-500"
+                  className="w-full rounded-full border border-stone-300 px-8 py-3.5 text-center text-stone-700 transition-colors hover:border-stone-500 sm:w-auto"
                 >
                   У меня уже есть кабинет
                 </Link>
@@ -427,7 +483,7 @@ export default async function HomePage() {
 
         {/* ── Подвал ───────────────────────────────────────── */}
         <footer className="border-t border-stone-200 bg-white/60">
-          <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:grid-cols-[1.4fr_1fr_1fr]">
+          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-5 sm:grid-cols-[1.4fr_1fr_1fr]">
             <div>
               <p className="font-serif text-xl tracking-wide">Вместе</p>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-stone-600">
@@ -453,7 +509,7 @@ export default async function HomePage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-stone-200 px-5 py-5">
+          <div className="border-t border-stone-200 px-4 py-5 sm:px-5">
             <p className="mx-auto max-w-6xl text-xs text-stone-500">
               Гостю сюда не нужно: у него есть именная ссылка или QR-код на входе.
             </p>

@@ -164,7 +164,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
   ];
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       {saved ? (
         <p className="mb-4 rounded-lg bg-stone-900 px-4 py-3 text-sm text-white">Сохранено</p>
       ) : null}

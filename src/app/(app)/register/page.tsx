@@ -16,22 +16,13 @@ import { db } from "@/server/db";
 import { hashPassword } from "@/server/auth/password";
 import { createSession, getSessionUser } from "@/server/auth/session";
 import { rateLimit } from "@/server/rate-limit";
-import { slugify } from "@/lib/slugify";
+import { googleEnabled } from "@/server/auth/google";
+import { createAccount } from "@/server/services/signup";
+import { GoogleButton, OrRule } from "../_auth/google-button";
 
 export const dynamic = "force-dynamic";
 
 const MIN_PASSWORD = 8;
-
-/** Свободный адрес организации: «Студия Аня» → studiya-anya, -2, -3… */
-async function freeOrgSlug(name: string): Promise<string> {
-  const base = slugify(name) || "studio";
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const slug = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    const taken = await db.organization.findUnique({ where: { slug }, select: { id: true } });
-    if (!taken) return slug;
-  }
-  return `${base}-${Date.now().toString(36)}`;
-}
 
 async function register(formData: FormData) {
   "use server";
@@ -51,30 +42,19 @@ async function register(formData: FormData) {
   const existing = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) redirect("/register?error=taken");
 
-  const passwordHash = await hashPassword(password);
-  const slug = await freeOrgSlug(orgName);
-
-  const org = await db.organization
-    .create({
-      data: {
-        name: orgName,
-        slug,
-        members: {
-          create: {
-            role: "OWNER",
-            user: { create: { email, name, passwordHash } },
-          },
-        },
-      },
-      include: { members: true },
-    })
+  const userId = await createAccount({
+    name,
+    orgName,
+    email,
+    passwordHash: await hashPassword(password),
+  })
     // Гонка двух одинаковых регистраций: почта уникальна в базе, и это
     // последняя линия обороны. Ответ человеку тот же, что и при проверке выше.
     .catch(() => null);
 
-  if (!org) redirect("/register?error=taken");
+  if (!userId) redirect("/register?error=taken");
 
-  await createSession(org.members[0].userId);
+  await createSession(userId);
   redirect("/app");
 }
 
@@ -94,7 +74,7 @@ export default async function RegisterPage({
   const { error } = await searchParams;
 
   return (
-    <main className="mx-auto max-w-sm px-6 py-20">
+    <main className="mx-auto max-w-sm px-5 py-16 sm:px-6 sm:py-20">
       <p className="text-center">
         <Link href="/" className="font-serif text-2xl tracking-wide">Вместе</Link>
       </p>
@@ -103,6 +83,13 @@ export default async function RegisterPage({
         Бесплатно, первая свадьба целиком
       </p>
       <div className="mx-auto my-7 h-px w-12 bg-stone-200" />
+
+      {googleEnabled() && (
+        <>
+          <GoogleButton label="Продолжить с Google" />
+          <OrRule />
+        </>
+      )}
 
       <form action={register} className="space-y-4">
         <div>

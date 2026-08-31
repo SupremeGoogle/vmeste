@@ -98,7 +98,7 @@ export function SeatingDemo() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_240px] lg:gap-6">
       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white p-2 shadow-sm">
         {/* Поле обрезано по столам: полная сетка 1000×700 рассчитана на зал
             целиком, а в трёх столах нижняя треть осталась бы пустой. */}
@@ -187,7 +187,9 @@ export function SeatingDemo() {
 
       <div>
         <p className="text-sm text-stone-500">Не за столом</p>
-        <ul className="mt-3 space-y-2">
+        {/* На телефоне гости выстраиваются в ленту: вертикальный список
+            из восьми имён отодвинул бы подсказку за нижний край. */}
+        <ul className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-0 lg:space-y-2 lg:overflow-visible">
           {unseated.length === 0 && <li className="text-sm text-stone-500">Все на местах.</li>}
           {unseated.map((guest) => (
             <li key={guest.id}>
@@ -197,7 +199,7 @@ export function SeatingDemo() {
                   setPicked(guest.id);
                   setHint("Теперь ткните в свободное место на плане.");
                 }}
-                className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                className={`w-full shrink-0 rounded-lg border px-3 py-2 text-left text-sm whitespace-nowrap transition-colors ${
                   picked === guest.id
                     ? "border-stone-900 bg-stone-900 text-white"
                     : "border-stone-200 bg-white hover:border-stone-400"

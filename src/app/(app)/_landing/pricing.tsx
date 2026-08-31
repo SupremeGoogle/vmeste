@@ -85,11 +85,14 @@ export function Pricing() {
         ))}
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {PLANS.map((plan) => (
           <div
             key={plan.name}
-            className={`card-lift relative flex flex-col rounded-2xl border p-6 ${
+            // На планшете карточек в ряду две, и третья осталась бы одна
+            // в половину ширины. `sm:last:col-span-2` растягивает её на
+            // всю строку; на широком экране столбцов снова три.
+            className={`card-lift relative flex flex-col rounded-2xl border p-5 sm:last:col-span-2 sm:p-6 lg:last:col-span-1 ${
               plan.accent
                 ? "border-stone-900/25 bg-white shadow-[0_20px_50px_-30px_rgba(64,56,51,0.6)]"
                 : "border-stone-200 bg-white/70"
