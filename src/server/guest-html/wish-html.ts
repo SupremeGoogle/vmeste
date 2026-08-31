@@ -7,6 +7,7 @@
  */
 import { esc } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
+import type { InviteTheme } from "@/lib/invite-theme";
 
 const STATUS: Record<string, string> = {
   PENDING: "ждёт проверки",
@@ -17,6 +18,9 @@ const STATUS: Record<string, string> = {
 export type WishView = { id: string; text: string; status: string };
 
 export function wishPage(opts: {
+  /** Оформление мероприятия: страница гостя должна выглядеть как его
+   *  приглашение, а не как отдельный сервис. */
+  theme?: InviteTheme;
   eventTitle: string;
   authorName: string;
   enabled: boolean;
@@ -50,6 +54,7 @@ ${opts.mine
     : `<section><p class="center small muted">Приём пожеланий закрыт организатором.</p></section>`;
 
   return invitePage({
+    theme: opts.theme,
     title: "Пожелание молодожёнам",
     noindex: true,
     body: `${opts.saved ? `<p class="ok">Спасибо! Покажем на экране после проверки.</p>` : ""}

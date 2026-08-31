@@ -7,7 +7,7 @@
  * мероприятия гостя, это 404, а не «покажем другое».
  */
 import { findGuestByLinkToken, markLinkOpened } from "@/server/repositories/guests";
-import { getInviteBlocks } from "@/server/repositories/invites";
+import { getInviteBlocks, getInviteTheme } from "@/server/repositories/invites";
 import { formatDeadline, formatEventDateTime } from "@/lib/format-datetime";
 import { esc, html } from "@/server/guest-html/layout";
 import { invitePage, renderBlocks } from "@/server/guest-html/invite-html";
@@ -35,7 +35,10 @@ export async function GET(
   // Отметка «ссылка дошла» не должна задерживать отрисовку.
   void markLinkOpened(guest.eventId, guest.id).catch(() => {});
 
-  const blocks = await getInviteBlocks(guest.eventId);
+  const [blocks, theme] = await Promise.all([
+    getInviteBlocks(guest.eventId),
+    getInviteTheme(guest.eventId),
+  ]);
   const rsvpHref = `/i/${eventSlug}/${token}/rsvp`;
   const answered = guest.rsvpStatus === "PENDING" ? null : ANSWER[guest.rsvpStatus];
   const saved = new URL(request.url).searchParams.get("ok");
@@ -70,7 +73,7 @@ ${extras.length > 0 ? `<div class="links">${extras.join("")}</div>` : ""}
 <p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone)}
 ${deadline ? `<br>Ответ ждём до ${formatDeadline(deadline, guest.event.timezone)}` : ""}</p>`;
 
-  return html(invitePage({ title: guest.event.title, body, noindex: true }), {
+  return html(invitePage({ title: guest.event.title, theme, body, noindex: true }), {
     headers: { "cache-control": "private, no-store" },
   });
 }

@@ -17,6 +17,7 @@ import { setGuestSession } from "@/server/guest-access/session";
 import { formatDeadline } from "@/lib/format-datetime";
 import { esc, html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
+import { getInviteTheme } from "@/server/repositories/invites";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,7 @@ export async function GET(
     return notFound();
   }
 
+  const theme = await getInviteTheme(guest.eventId);
   const meals = await listMealOptions(guest.eventId);
   const plusOne = guest.plusOnes[0] ?? null;
   const plusOneAllowed =
@@ -123,7 +125,7 @@ ${error ? `<p class="error">${esc(ERRORS[error] ?? ERRORS.invalid)}</p>` : ""}
 </form>
 <p class="foot"><a href="/i/${eventSlug}/${token}">Вернуться к приглашению</a></p>`;
 
-  return html(invitePage({ title: guest.displayName, body, noindex: true }), {
+  return html(invitePage({ title: guest.displayName, theme, body, noindex: true }), {
     headers: { "cache-control": "private, no-store" },
   });
 }

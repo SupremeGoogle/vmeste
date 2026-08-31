@@ -12,6 +12,7 @@
  */
 import { esc } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
+import type { InviteTheme } from "@/lib/invite-theme";
 
 const SCRIPT = `
 (function(){
@@ -169,6 +170,9 @@ const STATUS: Record<string, string> = {
 };
 
 export function photosPage(opts: {
+  /** Оформление мероприятия: страница гостя должна выглядеть как его
+   *  приглашение, а не как отдельный сервис. */
+  theme?: InviteTheme;
   eventId: string;
   eventTitle: string;
   guestName: string;
@@ -226,6 +230,7 @@ ${opts.gallery
   .join("")}</ul></section>`;
 
   return invitePage({
+    theme: opts.theme,
     title: "Фотографии",
     noindex: true,
     extraCss: EXTRA_CSS,

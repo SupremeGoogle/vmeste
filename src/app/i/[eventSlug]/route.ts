@@ -31,6 +31,7 @@ export async function GET(
   return html(
     invitePage({
       title: invite.event.title,
+      theme: invite.theme,
       body: `${renderBlocks(invite.blocks, null, null)}<p class="foot">${when}</p>`,
     }),
     {

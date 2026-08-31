@@ -1,48 +1,30 @@
 "use client";
 
 /**
- * Галерея свадебных сцен: мозаика, которая на телефоне превращается в
- * ленту с прокруткой пальцем, а на широком экране — в кладку из плиток
- * разного размера.
+ * Галерея: мозаика из фотографий, которые лежат в `public/media`.
  *
- * Одинаковые квадратики читаются как таблица, а не как галерея, поэтому
- * у части плиток задан двойной размер. Раскладка задана вручную, а не
- * случайно: случайная кладка на каждой перерисовке прыгает, а на сервере
- * и на клиенте вообще даёт разную разметку.
+ * Раскладка задана вручную, а не случайно: случайная кладка на каждой
+ * перерисовке прыгает, а на сервере и на клиенте вообще даёт разную
+ * разметку. Три плитки из двенадцати занимают по четыре клетки — иначе
+ * одинаковые квадратики читаются как таблица, а не как галерея.
  *
- * По щелчку сцена открывается во весь экран — не потому, что там больше
- * подробностей, а потому что этого ждут от галереи, и обманывать
- * ожидание хуже, чем сделать.
+ * По щелчку снимок открывается во весь экран. Не потому, что там больше
+ * подробностей, а потому что этого ждут от галереи, и обмануть ожидание
+ * хуже, чем сделать.
  */
 import { useEffect, useState } from "react";
-import { Scene, SCENE_TITLE, type SceneId } from "./scenes";
 
-/** Порядок и размеры плиток. `wide`/`tall` занимают две клетки. */
-const TILES: { id: SceneId; span?: "wide" | "tall" | "big" }[] = [
-  { id: "hall", span: "big" },
-  { id: "rings" },
-  { id: "bouquet" },
-  { id: "invitation", span: "tall" },
-  { id: "table", span: "wide" },
-  { id: "cake" },
-  { id: "arch", span: "wide" },
-  { id: "candles" },
-  { id: "toast" },
-  { id: "dance", span: "big" },
-  { id: "photo" },
-  { id: "confetti" },
-];
+export type GalleryItem = { src: string; alt: string; span?: "wide" | "big" };
 
 const SPAN_CLASS: Record<string, string> = {
   big: "col-span-2 row-span-2",
   wide: "col-span-2",
-  tall: "row-span-2",
 };
 
-export function Gallery() {
-  const [open, setOpen] = useState<SceneId | null>(null);
+export function Gallery({ items }: { items: GalleryItem[] }) {
+  const [open, setOpen] = useState<GalleryItem | null>(null);
 
-  // Открытая сцена закрывается по Escape — на десктопе это первое, что
+  // Открытый снимок закрывается по Escape — на десктопе это первое, что
   // нажимают, и отсутствие реакции читается как зависание.
   useEffect(() => {
     if (!open) return;
@@ -57,46 +39,57 @@ export function Gallery() {
     };
   }, [open]);
 
+  if (items.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">
+        Положите снимки в <code className="font-mono text-stone-700">public/media</code> под именами{" "}
+        <code className="font-mono text-stone-700">gallery-1.jpg</code> …{" "}
+        <code className="font-mono text-stone-700">gallery-12.jpg</code> — они появятся здесь.
+        Подробности в <code className="font-mono text-stone-700">public/media/README.md</code>.
+      </p>
+    );
+  }
+
   return (
     <>
       <div className="grid auto-rows-[112px] grid-cols-2 gap-2.5 sm:auto-rows-[132px] sm:grid-cols-3 sm:gap-3 lg:auto-rows-[150px] lg:grid-cols-4">
-        {TILES.map((tile) => (
+        {items.map((item) => (
           <button
-            key={tile.id}
+            key={item.src}
             type="button"
-            onClick={() => setOpen(tile.id)}
-            aria-label={`Открыть: ${SCENE_TITLE[tile.id]}`}
-            className={`group relative overflow-hidden rounded-xl border border-stone-200/70 bg-white sm:rounded-2xl ${
-              tile.span ? SPAN_CLASS[tile.span] : ""
+            onClick={() => setOpen(item)}
+            aria-label={`Открыть: ${item.alt}`}
+            className={`group relative overflow-hidden rounded-xl border border-stone-200/70 bg-stone-100 sm:rounded-2xl ${
+              item.span ? SPAN_CLASS[item.span] : ""
             }`}
           >
-            <Scene
-              id={tile.id}
-              className="h-full w-full transition-transform duration-700 group-hover:scale-105"
+            <img
+              src={item.src}
+              alt={item.alt}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            {/* Подпись проявляется при наведении; на телефоне наведения
-                нет, поэтому она там просто не мешает. */}
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-stone-950/70 to-transparent p-3 text-left text-xs text-stone-50 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:block">
-              {SCENE_TITLE[tile.id]}
-            </span>
           </button>
         ))}
       </div>
 
       {open && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/85 p-4 backdrop-blur-sm sm:p-8"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/90 p-4 backdrop-blur-sm sm:p-8"
           onClick={() => setOpen(null)}
           role="dialog"
           aria-modal="true"
-          aria-label={SCENE_TITLE[open]}
+          aria-label={open.alt}
         >
-          <div className="w-full max-w-3xl" onClick={(event) => event.stopPropagation()}>
-            <div className="overflow-hidden rounded-2xl">
-              <Scene id={open} className="aspect-[4/3] w-full" />
-            </div>
+          <div className="w-full max-w-4xl" onClick={(event) => event.stopPropagation()}>
+            <img
+              src={open.src}
+              alt={open.alt}
+              className="max-h-[78vh] w-full rounded-2xl object-contain"
+            />
             <div className="mt-4 flex items-center justify-between gap-4">
-              <p className="font-serif text-lg text-stone-100">{SCENE_TITLE[open]}</p>
+              <p className="text-sm text-stone-300">{open.alt}</p>
               <button
                 type="button"
                 onClick={() => setOpen(null)}

@@ -14,14 +14,14 @@
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Scene } from "./scenes";
+import { Photo } from "./photo";
 
 type Tab = {
   id: string;
   title: string;
   lead: string;
   points: string[];
-  preview: React.ReactNode;
+  preview: "invite" | "rsvp" | "seating" | "qr" | "screen" | "raffle";
 };
 
 const TABS: Tab[] = [
@@ -34,7 +34,7 @@ const TABS: Tab[] = [
       "Ссылка именная: гость видит своё имя и отвечает в один тап",
       "Открывается на любом телефоне, весит меньше фотографии",
     ],
-    preview: <InvitePreview />,
+    preview: "invite",
   },
   {
     id: "rsvp",
@@ -45,7 +45,7 @@ const TABS: Tab[] = [
       "Меню и аллергии сразу в списке для ресторана",
       "Выгрузка в CSV и импорт списка из вашей таблицы",
     ],
-    preview: <RsvpPreview />,
+    preview: "rsvp",
   },
   {
     id: "seating",
@@ -56,7 +56,7 @@ const TABS: Tab[] = [
       "Значки невесты и жениха — видно, где сидят молодые",
       "Тот же план уходит в PDF и на печать без единого расхождения",
     ],
-    preview: <SeatingPreview />,
+    preview: "seating",
   },
   {
     id: "qr",
@@ -67,7 +67,7 @@ const TABS: Tab[] = [
       "В ответ — только имя и номер стола, чужих данных не видно",
       "Работает на бумажной табличке, без приложения и без вайфая гостя",
     ],
-    preview: <QrPreview />,
+    preview: "qr",
   },
   {
     id: "screen",
@@ -78,7 +78,7 @@ const TABS: Tab[] = [
       "Модерация горячими клавишами: одобрить, отклонить, дальше",
       "Экран обновляется за секунду, без перезагрузки страницы",
     ],
-    preview: <ScreenPreview />,
+    preview: "screen",
   },
   {
     id: "raffle",
@@ -89,13 +89,23 @@ const TABS: Tab[] = [
       "Порядок задан заранее и повторяем: спорить не о чем",
       "Имя во весь экран — ведущему остаётся объявить",
     ],
-    preview: <RafflePreview />,
+    preview: "raffle",
   },
 ];
 
 const AUTOPLAY_MS = 7000;
 
-export function FeatureTabs() {
+/**
+ * Снимки для макетов. Приходят пропсом, а не читаются здесь: этот
+ * компонент клиентский, а поиск файлов на диске — серверное дело.
+ */
+export type FeaturePhotos = {
+  backdrop: string | null;
+  screen: (string | null)[];
+  raffle: string | null;
+};
+
+export function FeatureTabs({ photos }: { photos: FeaturePhotos }) {
   const [current, setCurrent] = useState(0);
   const [manual, setManual] = useState(false);
 
@@ -175,7 +185,12 @@ export function FeatureTabs() {
             прокрутка и так есть. */}
         <div className="absolute -inset-y-6 -inset-x-3 -z-10 rounded-[2rem] bg-gradient-to-br from-stone-100 to-transparent sm:-inset-x-4 xl:-inset-x-6" />
         <div key={tab.id} className="card-lift rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-6">
-          {tab.preview}
+          {tab.preview === "invite" && <InvitePreview backdrop={photos.backdrop} />}
+          {tab.preview === "rsvp" && <RsvpPreview />}
+          {tab.preview === "seating" && <SeatingPreview />}
+          {tab.preview === "qr" && <QrPreview />}
+          {tab.preview === "screen" && <ScreenPreview photos={photos.screen} />}
+          {tab.preview === "raffle" && <RafflePreview backdrop={photos.raffle} />}
         </div>
       </div>
     </div>
@@ -193,12 +208,12 @@ function Check() {
 
 /* ── Макеты ─────────────────────────────────────────────────── */
 
-/** Телефон на подложке-сцене: пустой белый прямоугольник в этом месте
- *  выглядел как макет в редакторе, а не как страница о свадьбе. */
-function PhoneFrame({ children }: { children: React.ReactNode }) {
+/** Телефон на подложке-фотографии: пустой белый прямоугольник в этом
+ *  месте выглядел как макет в редакторе, а не как страница о свадьбе. */
+function PhoneFrame({ children, backdrop }: { children: React.ReactNode; backdrop: string | null }) {
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      <Scene id="arch" className="absolute inset-0 h-full w-full opacity-60" />
+    <div className="relative overflow-hidden rounded-xl bg-stone-100">
+      <Photo src={backdrop} alt="" className="absolute inset-0 h-full w-full opacity-45" />
       <div className="relative mx-auto my-4 w-[236px] rounded-[2rem] border-[6px] border-stone-800/90 bg-[#fffdf9] p-4 shadow-xl sm:w-[260px]">
         <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-stone-300" />
         {children}
@@ -207,9 +222,9 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function InvitePreview() {
+function InvitePreview({ backdrop }: { backdrop: string | null }) {
   return (
-    <PhoneFrame>
+    <PhoneFrame backdrop={backdrop}>
       <div className="text-center">
         <p className="text-[10px] tracking-[0.25em] text-stone-500 uppercase">15 августа</p>
         <p className="mt-2 font-serif text-2xl">Аня и Миша</p>
@@ -370,14 +385,16 @@ function QrPreview() {
   );
 }
 
-function ScreenPreview() {
+function ScreenPreview({ photos }: { photos: (string | null)[] }) {
   return (
     <div>
       <div className="rounded-xl bg-stone-950 p-3">
+        {/* Экран в зале показывает снимки гостей — здесь на их месте
+            стоят фотографии из галереи. */}
         <div className="grid grid-cols-3 gap-2">
-          {(["toast", "dance", "cake", "confetti", "candles", "bouquet"] as const).map((scene) => (
-            <div key={scene} className="overflow-hidden rounded-md">
-              <Scene id={scene} className="aspect-[4/3] w-full" />
+          {photos.map((src, index) => (
+            <div key={index} className="overflow-hidden rounded-md bg-stone-800">
+              <Photo src={src} alt="" className="aspect-[4/3] w-full" />
             </div>
           ))}
         </div>
@@ -398,10 +415,10 @@ function ScreenPreview() {
   );
 }
 
-function RafflePreview() {
+function RafflePreview({ backdrop }: { backdrop: string | null }) {
   return (
     <div className="relative overflow-hidden rounded-xl bg-stone-950 px-6 py-10 text-center">
-      <Scene id="candles" className="absolute inset-0 h-full w-full opacity-30" />
+      <Photo src={backdrop} alt="" className="absolute inset-0 h-full w-full opacity-35" />
       <p className="relative text-[10px] tracking-[0.3em] text-stone-400 uppercase">Розыгрыш</p>
       <p className="relative mt-5 font-serif text-3xl text-stone-100">Павел Крылов</p>
       <p className="relative mt-2 text-sm text-stone-400">стол 2 · место 4</p>

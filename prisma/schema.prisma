@@ -164,6 +164,11 @@ model Event {
   screenMode         ScreenMode @default(MIXED)
 
   // Секрет для подписи гостевых cookie. Ротация обнуляет все гостевые сессии.
+  /// Оформление приглашения: шаблон и его настройки. JSON, а не колонки,
+  /// потому что набор осей будет меняться чаще, чем хочется писать
+  /// миграции, а читается он всегда целиком и терпимо (`invite-theme.ts`).
+  inviteTheme Json @default("{}")
+
   guestLinkSecret String @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))
 
   // Версия рассадки: растёт при каждой операции, ловит одновременное
@@ -175,6 +180,7 @@ model Event {
 
   organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
   blocks       InviteBlock[]
+  assets       EventAsset[]
   guests       Guest[]
   mealOptions  MealOption[]
   tables       SeatTable[]
@@ -203,6 +209,30 @@ enum BlockType {
   MAP
   TEXT
   RSVP_FORM
+}
+
+/// Картинка, загруженная организатором: обложка приглашения, фон, снимок
+/// пары. Отдельно от `Photo` намеренно: у гостевых фотографий есть
+/// модерация, лимиты и массовое удаление, а обложка живёт, пока живёт
+/// свадьба, и никакой очереди не проходит.
+model EventAsset {
+  id      String @id @default(cuid())
+  orgId   String
+  eventId String
+
+  storageKey  String
+  contentType String
+  bytes       Int
+  /// Подпись для доступности: её пишет организатор, а показывает браузер
+  /// гостя, у которого не загрузилась картинка.
+  alt String @default("")
+
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_assets")
 }
 
 model InviteBlock {

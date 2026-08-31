@@ -22,7 +22,7 @@ import {
 } from "@/lib/seating-geometry";
 import { COLORS } from "@/server/guest-html/theme";
 import {
-  Document, Font, G, Page, Polygon, StyleSheet, Svg, Circle, Ellipse, Rect,
+  Document, Font, G, Page, Path, Polygon, StyleSheet, Svg, Circle, Ellipse, Rect,
   Text as SvgText, Text, View,
 } from "@react-pdf/renderer";
 import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
@@ -118,16 +118,19 @@ function CoupleMark({ role, x, y }: { role: GuestRole; x: number; y: number }) {
   return (
     <G transform={`translate(${x} ${y})`}>
       <Circle cx={0} cy={0} r={MARK_RADIUS} fill={COLORS.accent} stroke="#ffffff" strokeWidth={1.5} />
-      {mark.petals?.map((petal, index) => (
-        <Circle key={index} cx={petal.x} cy={petal.y} r={petal.r} fill="#ffffff" />
-      ))}
-      {mark.bow ? (
-        <>
-          <Polygon points={mark.bow.left} fill="#ffffff" />
-          <Polygon points={mark.bow.right} fill="#ffffff" />
-          <Circle cx={mark.bow.knot.x} cy={mark.bow.knot.y} r={mark.bow.knot.r} fill={COLORS.accent} />
-        </>
-      ) : null}
+      {mark.shapes.map((shape, index) => {
+        // На бумаге полупрозрачность печатается непредсказуемо, поэтому
+        // фата — не прозрачная, а заранее осветлённая заливка.
+        const fill = shape.tone === "hole" ? COLORS.accent : shape.tone === "veil" ? "#e8dcc9" : "#ffffff";
+
+        if (shape.kind === "circle") {
+          return <Circle key={index} cx={shape.cx} cy={shape.cy} r={shape.r} fill={fill} />;
+        }
+        if (shape.kind === "polygon") {
+          return <Polygon key={index} points={shape.points} fill={fill} />;
+        }
+        return <Path key={index} d={shape.d} fill={fill} />;
+      })}
     </G>
   );
 }

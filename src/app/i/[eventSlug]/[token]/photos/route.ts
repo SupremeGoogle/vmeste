@@ -6,6 +6,7 @@ import { guestQuota, listApprovedPhotos, listGuestPhotos } from "@/server/servic
 import { html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import { photosPage } from "@/server/guest-html/photos-html";
+import { getInviteTheme } from "@/server/repositories/invites";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export async function GET(
     );
   }
 
+  const theme = await getInviteTheme(guest.eventId);
   const ref = { orgId: guest.orgId, eventId: guest.eventId, guestId: guest.id };
   const [quota, mine, gallery] = await Promise.all([
     guestQuota(ref),
@@ -35,6 +37,7 @@ export async function GET(
 
   return html(
     photosPage({
+      theme,
       eventId: guest.eventId,
       eventTitle: guest.event.title,
       guestName: guest.displayName,

@@ -18,6 +18,8 @@ import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
 import { BASE_CSS } from "@/server/guest-html/theme";
+import { inviteThemeCss } from "@/server/guest-html/invite-theme-css";
+import { defaultTheme, type InviteTheme } from "@/lib/invite-theme";
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -83,6 +85,12 @@ export function invitePage(opts: {
   title: string;
   body: string;
   noindex?: boolean;
+  /**
+   * Оформление мероприятия. Идёт после базового CSS и перекрывает его —
+   * поэтому здесь не нужны `!important`, и базовые правила остаются
+   * читаемыми. Без темы страница выглядит как раньше.
+   */
+  theme?: InviteTheme;
   /** Дополнительные стили страницы — например, для загрузчика фотографий. */
   extraCss?: string;
   /** Свой скрипт инлайном. Отдельный файл — ещё один запрос по сети,
@@ -92,8 +100,8 @@ export function invitePage(opts: {
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
-<meta name="theme-color" content="#f6f3ee">
-<title>${esc(opts.title)}</title><style>${CSS}${opts.extraCss ?? ""}</style></head>
+<meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
+<title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
 <body><main class="sheet">${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;

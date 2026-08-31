@@ -14,6 +14,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 /** Модели, где строка всегда принадлежит одному мероприятию. */
 const EVENT_SCOPED = new Set([
   "InviteBlock",
+  "EventAsset",
   "Guest",
   "GuestAlias",
   "MealOption",

@@ -5,6 +5,7 @@
 import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { timelineToText } from "@/server/services/invite-forms";
+import { ImagePicker, type PickerAsset } from "@/components/invite/image-picker";
 
 const inputClass = "mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm";
 
@@ -32,7 +33,14 @@ function Field({
   );
 }
 
-export function BlockFields({ block }: { block: InviteBlockView }) {
+export function BlockFields({
+  block, eventId, assets,
+}: {
+  block: InviteBlockView;
+  eventId: string;
+  /** Уже загруженные картинки мероприятия — из них выбирают обложку. */
+  assets: PickerAsset[];
+}) {
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
@@ -42,10 +50,17 @@ export function BlockFields({ block }: { block: InviteBlockView }) {
           <Field label="Заголовок" name="title" value={c.title} />
           <Field label="Дата словами" name="dateText" value={c.dateText} placeholder="12 сентября 2026" />
           <Field label="Подпись" name="subtitle" value={c.subtitle} multiline />
-          <Field
-            label="Ссылка на фотографию" name="imageUrl" value={c.imageUrl}
-            hint="Пока только внешняя ссылка: загрузка файлов появится вместе с фотогалереей."
-          />
+          <div>
+            <span className="text-xs text-stone-500">Фотография на обложке</span>
+            <div className="mt-2">
+              <ImagePicker eventId={eventId} name="imageUrl" value={c.imageUrl} assets={assets} />
+            </div>
+            <span className="mt-2 block text-xs text-stone-400">
+              Загрузите свой снимок или выберите из уже загруженных. Как
+              именно он ляжет — во всю ширину или в рамке — задаётся в
+              «Оформлении» выше.
+            </span>
+          </div>
         </>
       );
     }

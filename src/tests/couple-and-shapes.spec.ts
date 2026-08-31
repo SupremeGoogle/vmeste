@@ -11,7 +11,7 @@ import { testDb, resetDb } from "./helpers/db";
 import { applyOp } from "@/server/services/seating-ops";
 import { setGuestRole } from "@/server/repositories/guests";
 import { SEAT_RADIUS, SHAPES, seatPosition, shapeSize } from "@/lib/seating-geometry";
-import { markFor, hasCouple } from "@/lib/couple-marks";
+import { markFor, hasCouple, MARK_RADIUS } from "@/lib/couple-marks";
 import { floorPlanSvg } from "@/server/guest-html/floor-plan-svg";
 import { normalizeName } from "@/lib/name-normalize";
 import type { EventContext } from "@/server/context";
@@ -141,10 +141,42 @@ describe("форма стола в операциях", () => {
 });
 
 describe("отметки молодожёнов", () => {
-  it("у невесты и жениха разные значки, у гостя — никакого", () => {
-    expect(markFor("BRIDE")?.petals).toBeDefined();
-    expect(markFor("GROOM")?.bow).toBeDefined();
+  it("у невесты и жениха разные фигуры, у гостя — никакой", () => {
+    const bride = markFor("BRIDE");
+    const groom = markFor("GROOM");
+
     expect(markFor("GUEST")).toBeNull();
+    expect(bride?.label).toBe("невеста");
+    expect(groom?.label).toBe("жених");
+
+    // Силуэты обязаны отличаться не подписью, а формой: план читают
+    // издалека и в чёрно-белой распечатке, где подписи нет вовсе.
+    const outline = (mark: typeof bride) =>
+      JSON.stringify(mark?.shapes.map((shape) => (shape.kind === "path" ? shape.d : shape.kind)));
+    expect(outline(bride)).not.toBe(outline(groom));
+
+    // У невесты есть полупрозрачная деталь — фата; у жениха её нет,
+    // зато есть вырез рубашки цвета подложки.
+    expect(bride?.shapes.some((shape) => shape.tone === "veil")).toBe(true);
+    expect(groom?.shapes.some((shape) => shape.tone === "hole")).toBe(true);
+  });
+
+  it("фигура помещается в кружок-подложку", () => {
+    // Иначе значок вылезает за своё место и наезжает на соседнее.
+    for (const role of ["BRIDE", "GROOM"] as const) {
+      for (const shape of markFor(role)!.shapes) {
+        const numbers =
+          shape.kind === "circle"
+            ? [shape.cx + shape.r, shape.cx - shape.r, shape.cy + shape.r, shape.cy - shape.r]
+            : (shape.kind === "polygon" ? shape.points : shape.d)
+                .match(/-?\d+(\.\d+)?/g)!
+                .map(Number);
+
+        for (const value of numbers) {
+          expect(Math.abs(value)).toBeLessThanOrEqual(MARK_RADIUS);
+        }
+      }
+    }
   });
 
   it("роль ставится и снимается", async () => {

@@ -21,7 +21,7 @@ import {
   SEAT_RADIUS,
   type TableGeometry,
 } from "@/lib/seating-geometry";
-import { markFor, MARK_RADIUS } from "@/lib/couple-marks";
+import { markFor, MARK_RADIUS, ROLE_LABEL } from "@/lib/couple-marks";
 import type { GuestRole } from "@/generated/prisma/enums";
 
 type DemoTable = TableGeometry & { id: string; title: string };
@@ -156,22 +156,38 @@ export function SeatingDemo() {
                       stroke={selected ? "#8b6f47" : "#c9bcab"}
                       strokeWidth={selected ? 3 : 1.5}
                     />
-                    {mark?.petals?.map((petal, petalIndex) => (
-                      <circle
-                        key={petalIndex}
-                        cx={point.x + petal.x}
-                        cy={point.y + petal.y}
-                        r={petal.r}
-                        fill={selected ? "#fffdf9" : "#8b6f47"}
-                      />
-                    ))}
-                    {mark?.bow && (
-                      <g transform={`translate(${point.x} ${point.y})`} fill={selected ? "#fffdf9" : "#5d534b"}>
-                        <polygon points={mark.bow.left} />
-                        <polygon points={mark.bow.right} />
-                        <circle cx={mark.bow.knot.x} cy={mark.bow.knot.y} r={mark.bow.knot.r} />
-                      </g>
-                    )}
+                    {mark?.shapes.map((shape, shapeIndex) => {
+                      // Здесь подложка светлая, а выбранное место — золотое,
+                      // поэтому цвета фигуры меняются местами.
+                      const fill =
+                        shape.tone === "hole"
+                          ? selected ? "#8b6f47" : "#e6ddd1"
+                          : selected ? "#fffdf9" : "#5d534b";
+                      const opacity = shape.tone === "veil" ? 0.4 : 1;
+                      const key = `${shapeIndex}`;
+
+                      if (shape.kind === "circle") {
+                        return (
+                          <circle
+                            key={key}
+                            cx={point.x + shape.cx}
+                            cy={point.y + shape.cy}
+                            r={shape.r}
+                            fill={fill}
+                            opacity={opacity}
+                          />
+                        );
+                      }
+                      return (
+                        <g key={key} transform={`translate(${point.x} ${point.y})`}>
+                          {shape.kind === "polygon" ? (
+                            <polygon points={shape.points} fill={fill} opacity={opacity} />
+                          ) : (
+                            <path d={shape.d} fill={fill} opacity={opacity} />
+                          )}
+                        </g>
+                      );
+                    })}
                     {guest && (
                       <text x={label.x} y={label.y} textAnchor="middle" fontSize="15" fill="#5d534b">
                         {shortName(guest.name)}
@@ -216,26 +232,12 @@ export function SeatingDemo() {
         </div>
 
         <div className="mt-4 flex flex-col gap-2 text-xs text-stone-600">
-          <span className="flex items-center gap-2">
-            <svg width="20" height="20" viewBox="-10 -10 20 20" aria-hidden="true">
-              <circle r="9" fill="#e6ddd1" />
-              {markFor("BRIDE")?.petals?.map((petal, index) => (
-                <circle key={index} cx={petal.x} cy={petal.y} r={petal.r} fill="#8b6f47" />
-              ))}
-            </svg>
-            невеста
-          </span>
-          <span className="flex items-center gap-2">
-            <svg width="20" height="20" viewBox="-10 -10 20 20" aria-hidden="true">
-              <circle r="9" fill="#e6ddd1" />
-              <g fill="#5d534b">
-                <polygon points={markFor("GROOM")!.bow!.left} />
-                <polygon points={markFor("GROOM")!.bow!.right} />
-                <circle r="1.9" />
-              </g>
-            </svg>
-            жених
-          </span>
+          {(["BRIDE", "GROOM"] as const).map((role) => (
+            <span key={role} className="flex items-center gap-2">
+              <LegendGlyph role={role} />
+              {ROLE_LABEL[role]}
+            </span>
+          ))}
         </div>
 
         <button
@@ -251,5 +253,32 @@ export function SeatingDemo() {
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Значок для легенды. Декоративный: рядом стоит слово, и читать
+ * «невеста невеста» экранному диктору незачем.
+ */
+function LegendGlyph({ role }: { role: GuestRole }) {
+  const mark = markFor(role);
+  if (!mark) return null;
+
+  return (
+    <svg width="22" height="22" viewBox="-13 -13 26 26" aria-hidden="true">
+      <circle r="12" fill="#e6ddd1" />
+      {mark.shapes.map((shape, index) => {
+        const fill = shape.tone === "hole" ? "#e6ddd1" : "#5d534b";
+        const opacity = shape.tone === "veil" ? 0.4 : 1;
+
+        if (shape.kind === "circle") {
+          return <circle key={index} cx={shape.cx} cy={shape.cy} r={shape.r} fill={fill} opacity={opacity} />;
+        }
+        if (shape.kind === "polygon") {
+          return <polygon key={index} points={shape.points} fill={fill} opacity={opacity} />;
+        }
+        return <path key={index} d={shape.d} fill={fill} opacity={opacity} />;
+      })}
+    </svg>
   );
 }

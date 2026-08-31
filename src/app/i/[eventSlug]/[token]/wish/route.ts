@@ -7,6 +7,7 @@ import { createWish, listGuestWishes } from "@/server/services/wishes";
 import { html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import { wishPage } from "@/server/guest-html/wish-html";
+import { getInviteTheme } from "@/server/repositories/invites";
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +32,12 @@ export async function GET(
   }
 
   const url = new URL(request.url);
+  const theme = await getInviteTheme(guest.eventId);
   const mine = await listGuestWishes({ eventId: guest.eventId, guestId: guest.id });
 
   return html(
     wishPage({
+      theme,
       eventTitle: guest.event.title,
       authorName: guest.displayName,
       enabled: guest.event.wishesEnabled,

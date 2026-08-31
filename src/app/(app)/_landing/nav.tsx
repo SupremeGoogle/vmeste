@@ -17,7 +17,10 @@ import { useEffect, useState } from "react";
  * выбрасывать их из меню телефона незачем — там они помещаются все.
  */
 const LINKS = [
-  { href: "#rolik", label: "Ролик" },
+  // Раздел с видео появляется только когда файл загружен, поэтому ссылка
+  // на него условная: пункт меню, ведущий в никуда, — это обещание,
+  // которого страница не выполняет.
+  { href: "#rolik", label: "Видео", wide: true, needsVideo: true },
   { href: "#vozmozhnosti", label: "Возможности" },
   { href: "#kak", label: "Как это работает", wide: true },
   { href: "#demo", label: "Демо" },
@@ -26,7 +29,9 @@ const LINKS = [
   { href: "#voprosy", label: "Вопросы" },
 ];
 
-export function Nav({ userName }: { userName: string | null }) {
+export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo: boolean }) {
+  const links = LINKS.filter((link) => !link.needsVideo || hasVideo);
+
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string>("");
@@ -39,7 +44,7 @@ export function Nav({ userName }: { userName: string | null }) {
   }, []);
 
   useEffect(() => {
-    const sections = LINKS.map((link) => document.getElementById(link.href.slice(1))).filter(
+    const sections = links.map((link) => document.getElementById(link.href.slice(1))).filter(
       (node): node is HTMLElement => node !== null,
     );
 
@@ -57,7 +62,7 @@ export function Nav({ userName }: { userName: string | null }) {
 
     sections.forEach((node) => io.observe(node));
     return () => io.disconnect();
-  }, []);
+  }, [links]);
 
   // Ссылка вида «/#ceny» приходит из переписки и из подвала другой
   // страницы. Браузер прыгает к якорю до того, как разделы заняли свою
@@ -139,7 +144,7 @@ export function Nav({ userName }: { userName: string | null }) {
         </Link>
 
         <nav className="hidden items-center gap-5 text-sm text-stone-600 md:flex lg:gap-7">
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -203,7 +208,7 @@ export function Nav({ userName }: { userName: string | null }) {
       {open && (
         <div className="max-h-[calc(100dvh-56px)] overflow-y-auto border-t border-stone-200/70 bg-[#fffdf9] px-4 pb-8 md:hidden">
           <nav className="flex flex-col">
-            {LINKS.map((link) => (
+            {links.map((link) => (
               <a
                 key={link.href}
                 href={link.href}

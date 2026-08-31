@@ -39,6 +39,19 @@ const httpUrl = z
     message: "нужна ссылка целиком, вида https://…",
   });
 
+/**
+ * Картинка блока: либо внешняя ссылка, либо наш собственный адрес вида
+ * `/api/asset/{eventId}/{assetId}` — то, что отдаёт загрузчик.
+ *
+ * Свой путь описан отдельным выражением, а не «любой строкой, начинающейся
+ * с /»: относительный адрес в атрибуте `src` — это ровно то место, куда
+ * при небрежности попадает `//evil.example/x` и превращается в запрос на
+ * чужой домен. Здесь пройдут только идентификаторы, которые выдали мы.
+ */
+const imageRef = httpUrl
+  .or(z.string().regex(/^\/api\/asset\/[a-z0-9]+\/[a-z0-9]+$/, "неизвестный адрес картинки"))
+  .or(z.literal(""));
+
 export const blockContentSchemas = {
   COVER: z.object({
     v: version,
@@ -46,7 +59,7 @@ export const blockContentSchemas = {
     names: shortText.default(""),
     dateText: shortText.default(""),
     subtitle: longText.default(""),
-    imageUrl: httpUrl.or(z.literal("")).default(""),
+    imageUrl: imageRef.default(""),
   }),
   TIMELINE: z.object({
     v: version,

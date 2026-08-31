@@ -50,15 +50,22 @@ function coupleMark(role: GuestRole, x: number, y: number, decorative = false): 
   const mark = markFor(role);
   if (!mark) return "";
 
-  const petals = (mark.petals ?? [])
-    .map((petal) => `<circle cx="${n(petal.x)}" cy="${n(petal.y)}" r="${petal.r}" fill="${COLORS.card}"/>`)
-    .join("");
+  const figure = mark.shapes
+    .map((shape) => {
+      // Фигура светлая на золотом кружке; «вырез» — тот же золотой,
+      // фата — светлая вполсилы.
+      const fill = shape.tone === "hole" ? COLORS.accent : COLORS.card;
+      const opacity = shape.tone === "veil" ? ` opacity="0.45"` : "";
 
-  const bow = mark.bow
-    ? `<polygon points="${mark.bow.left}" fill="${COLORS.card}"/>` +
-      `<polygon points="${mark.bow.right}" fill="${COLORS.card}"/>` +
-      `<circle cx="${mark.bow.knot.x}" cy="${mark.bow.knot.y}" r="${mark.bow.knot.r}" fill="${COLORS.accent}"/>`
-    : "";
+      if (shape.kind === "circle") {
+        return `<circle cx="${n(shape.cx)}" cy="${n(shape.cy)}" r="${n(shape.r)}" fill="${fill}"${opacity}/>`;
+      }
+      if (shape.kind === "polygon") {
+        return `<polygon points="${shape.points}" fill="${fill}"${opacity}/>`;
+      }
+      return `<path d="${shape.d}" fill="${fill}"${opacity}/>`;
+    })
+    .join("");
 
   // В легенде значок декоративный: рядом с ним стоит слово, и читать
   // «невеста невеста» экранному диктору незачем.
@@ -68,7 +75,7 @@ function coupleMark(role: GuestRole, x: number, y: number, decorative = false): 
 
   return `<g transform="translate(${n(x)} ${n(y)})"${label}>
 <circle r="${MARK_RADIUS}" fill="${COLORS.accent}" stroke="${COLORS.card}" stroke-width="1.5"/>
-${petals}${bow}</g>`;
+${figure}</g>`;
 }
 
 export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | null): string {

@@ -15,6 +15,8 @@ import type { BlockType } from "@/generated/prisma/enums";
 import { defaultContent, readBlockContent } from "@/lib/invite-blocks";
 import { eventTag as eventCacheTag, inviteSlugTag as inviteCacheTag } from "@/lib/cache-tags";
 import type { AnyBlockContent } from "@/lib/invite-blocks";
+import { readTheme, type InviteTheme } from "@/lib/invite-theme";
+import { findTemplate } from "@/lib/invite-templates";
 
 /**
  * Теги кеша живут в `lib/cache-tags.ts` (PLAN.md §5.7). Сбрасывает их
@@ -160,6 +162,8 @@ export type PublicInvite = {
     allowPlusOne: boolean;
   };
   blocks: InviteBlockView[];
+  /** Оформление. Читается терпимо: мусор в базе не должен ронять страницу. */
+  theme: InviteTheme;
 };
 
 /**
@@ -182,6 +186,7 @@ async function loadInviteBySlug(slug: string): Promise<PublicInvite | null> {
     select: {
       id: true, title: true, slug: true, eventDate: true, timezone: true,
       venueName: true, venueAddr: true, rsvpDeadline: true, allowPlusOne: true,
+      inviteTheme: true,
     },
   });
   if (!event) return null;
@@ -191,7 +196,8 @@ async function loadInviteBySlug(slug: string): Promise<PublicInvite | null> {
     orderBy: { order: "asc" },
   });
 
-  return { event, blocks: blocks.map(toView) };
+  const { inviteTheme, ...rest } = event;
+  return { event: rest, blocks: blocks.map(toView), theme: readTheme(inviteTheme) };
 }
 
 /**
@@ -221,6 +227,25 @@ export async function getInviteBySlug(slug: string): Promise<PublicInvite | null
   return reviveDates(cached);
 }
 
+/**
+ * Оформление мероприятия для гостевых страниц. Кешируется вместе с
+ * блоками и по тому же тегу: тема меняется ровно там же, где блоки, —
+ * в панели, и сбрасывается одним действием.
+ */
+export function getInviteTheme(eventId: string): Promise<InviteTheme> {
+  return unstable_cache(
+    async () => {
+      const event = await db.event.findFirst({
+        where: { id: eventId },
+        select: { inviteTheme: true },
+      });
+      return readTheme(event?.inviteTheme);
+    },
+    ["invite-theme", eventId],
+    { tags: [eventCacheTag(eventId)], revalidate: 60 },
+  )();
+}
+
 /** Блоки конкретного мероприятия — для именной страницы, где гость уже найден. */
 export function getInviteBlocks(eventId: string): Promise<InviteBlockView[]> {
   return unstable_cache(
@@ -234,4 +259,67 @@ export function getInviteBlocks(eventId: string): Promise<InviteBlockView[]> {
     ["invite-blocks", eventId],
     { tags: [eventCacheTag(eventId)], revalidate: 60 },
   )();
+}
+
+// ────────────────────────────────────────────────────────────
+// Оформление
+// ────────────────────────────────────────────────────────────
+
+/** Тема мероприятия для панели. Всегда возвращает пригодную к работе. */
+export async function getTheme(ctx: EventContext): Promise<InviteTheme> {
+  const event = await db.event.findFirst({
+    where: { id: ctx.eventId, orgId: ctx.orgId },
+    select: { inviteTheme: true },
+  });
+  return readTheme(event?.inviteTheme);
+}
+
+/** Сохранение темы. Значения приходят уже проверенными схемой. */
+export async function saveTheme(ctx: EventContext, theme: InviteTheme): Promise<boolean> {
+  const result = await db.event.updateMany({
+    where: { id: ctx.eventId, orgId: ctx.orgId },
+    data: { inviteTheme: theme },
+  });
+  return result.count === 1;
+}
+
+/**
+ * Применение шаблона: тема плюс стартовый набор блоков.
+ *
+ * Прежние блоки удаляются целиком, а не дополняются. Это выглядит грубо,
+ * но альтернатива хуже: приглашение, в котором две обложки и два
+ * расписания, человек будет разбирать руками, ругаясь на нас. Панель
+ * предупреждает об этом перед нажатием, и шаблон меняют один раз в начале.
+ *
+ * Всё одной транзакцией: половина применённого шаблона — это приглашение,
+ * которое уже нельзя показать и ещё нельзя починить.
+ */
+export async function applyTemplate(ctx: EventContext, templateId: string): Promise<boolean> {
+  const template = findTemplate(templateId);
+  if (!template) return false;
+
+  await db.$transaction(async (tx) => {
+    await tx.inviteBlock.deleteMany({ where: { eventId: ctx.eventId } });
+
+    // Порядок создаём явным, а не полагаемся на порядок вставки: на
+    // `@@unique([eventId, order])` любая неожиданность стоит дорого.
+    for (const [index, block] of template.blocks.entries()) {
+      await tx.inviteBlock.create({
+        data: {
+          orgId: ctx.orgId,
+          eventId: ctx.eventId,
+          type: block.type,
+          order: index,
+          content: block.content as object,
+        },
+      });
+    }
+
+    await tx.event.updateMany({
+      where: { id: ctx.eventId, orgId: ctx.orgId },
+      data: { inviteTheme: template.theme },
+    });
+  });
+
+  return true;
 }

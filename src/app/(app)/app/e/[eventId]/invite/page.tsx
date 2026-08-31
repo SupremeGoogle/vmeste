@@ -17,13 +17,18 @@ import { notFound, redirect } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
-  addBlock, deleteBlock, eventTag, inviteSlugTag, listBlocks, moveBlock,
-  setBlockVisible, updateBlockContent,
+  addBlock, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
+  moveBlock, saveTheme, setBlockVisible, updateBlockContent,
 } from "@/server/repositories/invites";
 import { blockContentFromForm } from "@/server/services/invite-forms";
+import { themeFromForm } from "@/server/services/invite-theme-forms";
+import { TemplatePicker } from "@/components/invite/template-picker";
+import { ThemeEditor } from "@/components/invite/theme-editor";
+import { InvitePreview } from "@/components/invite/preview";
 import { BLOCK_LABELS, BLOCK_ORDER } from "@/lib/invite-blocks";
 import type { BlockType } from "@/generated/prisma/enums";
 import { BlockFields } from "@/components/invite/block-form";
+import { listAssets } from "@/server/services/assets";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +43,11 @@ export default async function InvitePage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
-  const blocks = await listBlocks(ctx);
+  const [blocks, theme, assets] = await Promise.all([
+    listBlocks(ctx),
+    getTheme(ctx),
+    listAssets(ctx),
+  ]);
 
   /** Сброс кеша приглашения по обоим тегам: именная страница помечена id,
    *  публичная — слагом (тег задаётся до того, как известен id). */
@@ -106,10 +115,41 @@ export default async function InvitePage({ params, searchParams }: Props) {
     await invalidate(String(formData.get("slug") ?? ""));
   }
 
+  async function chooseTemplate(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    await applyTemplate(ctx, String(formData.get("template") ?? ""));
+    await invalidate(String(formData.get("slug") ?? ""));
+  }
+
+  async function saveLook(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const current = await getTheme(ctx);
+
+    const parsed = themeFromForm(formData, current);
+    if (!parsed.ok) {
+      redirect(`/app/e/${eventId}/invite?error=${encodeURIComponent(parsed.message)}`);
+    }
+    await saveTheme(ctx, parsed.theme);
+    await invalidate(String(formData.get("slug") ?? ""));
+  }
+
   const publicHref = `/i/${event.slug}`;
 
+  const themeKey = JSON.stringify(theme);
+
+  // Предпросмотру нужен признак «что-то изменилось». Считаем дёшево и
+  // честно: тема плюс состав и содержимое блоков. Хеш не нужен — строка
+  // никуда не уходит дальше атрибута `key`.
+  const version = [
+    event.status,
+    JSON.stringify(theme),
+    blocks.map((block) => `${block.id}:${block.order}:${block.visible}:${JSON.stringify(block.content)}`).join("|"),
+  ].join("~").length.toString(36) + "-" + blocks.length;
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4">
         <div className="text-sm">
           <p className="text-stone-500">Публичная ссылка</p>
@@ -143,7 +183,63 @@ export default async function InvitePage({ params, searchParams }: Props) {
         <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}
 
-      <form action={add} className="mt-6 flex flex-wrap items-center gap-2">
+      <section className="mt-8">
+        <h2 className="text-lg">Шаблон</h2>
+        <p className="mt-1 text-sm text-stone-600">
+          С чего начать. Дальше можно поменять в нём что угодно — шаблон
+          задаёт отправную точку, а не рамки.
+        </p>
+        <div className="mt-4">
+          <TemplatePicker
+            action={chooseTemplate}
+            currentId={theme.template}
+            slug={event.slug}
+            hasBlocks={blocks.length > 0}
+          />
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg">Оформление</h2>
+        <p className="mt-1 text-sm text-stone-600">
+          Цвета и типографика приглашения. Те же значения подхватят страницы
+          ответа, пожеланий и фотографий — у гостя всё выглядит одним целым.
+        </p>
+        {/*
+          Ключ по самой теме — не украшение, а необходимость. Поля формы
+          не управляемые: `defaultValue` React ставит только при монтаже, а
+          после применения шаблона он честно переиспользует те же <select>
+          и <input type=color> — и они показывают прежние значения при уже
+          изменившейся теме. Человек, нажав «Сохранить оформление», откатил
+          бы шаблон, который только что выбрал. Ключ заставляет форму
+          пересобраться заново.
+        */}
+        <form
+          key={themeKey}
+          action={saveLook}
+          className="mt-4 rounded-xl border border-stone-200 bg-white p-4 sm:p-5"
+        >
+          <input type="hidden" name="slug" value={event.slug} />
+          <ThemeEditor theme={theme} />
+          <div className="mt-5 flex items-center gap-3">
+            <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
+              Сохранить оформление
+            </button>
+            <span className="text-xs text-stone-500">
+              Предпросмотр справа обновится сразу.
+            </span>
+          </div>
+        </form>
+      </section>
+
+      {/* Ниже — две колонки: слева правка, справа то, что получится.
+          На узком экране предпросмотр уходит наверх: смотреть на телефоне
+          «как это выглядит» важнее, чем править там же. */}
+      <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 lg:order-1">
+          <h2 className="text-lg">Блоки</h2>
+
+          <form action={add} className="mt-3 flex flex-wrap items-center gap-2">
         <input type="hidden" name="slug" value={event.slug} />
         <span className="text-sm text-stone-500">Добавить блок:</span>
         {BLOCK_ORDER.map((type) => (
@@ -156,7 +252,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
         ))}
       </form>
 
-      <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-4">
         {blocks.map((block, index) => (
           <div key={block.id} className="rounded-xl border border-stone-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3">
@@ -220,7 +316,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
               <input type="hidden" name="blockId" value={block.id} />
               <input type="hidden" name="type" value={block.type} />
               <input type="hidden" name="slug" value={event.slug} />
-              <BlockFields block={block} />
+              <BlockFields block={block} eventId={eventId} assets={assets} />
               <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
                 Сохранить
               </button>
@@ -229,11 +325,22 @@ export default async function InvitePage({ params, searchParams }: Props) {
         ))}
       </div>
 
-      {blocks.length === 0 ? (
-        <p className="mt-8 text-stone-600">
-          Приглашение пустое. Начните с обложки — остальное можно добавить позже.
-        </p>
-      ) : null}
+          {blocks.length === 0 ? (
+            <p className="mt-8 rounded-xl border border-dashed border-stone-300 p-6 text-center text-stone-600">
+              Приглашение пустое. Выберите шаблон выше — он придёт с готовым
+              расписанием, местом и текстом, которые останется поправить.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="lg:sticky lg:top-6 lg:order-2 lg:self-start">
+          <InvitePreview
+            src={publicHref}
+            published={event.status === "PUBLISHED"}
+            version={version}
+          />
+        </div>
+      </div>
     </main>
   );
 }

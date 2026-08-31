@@ -74,16 +74,20 @@ function CoupleGlyph({ role, active }: { role: GuestRole; active: boolean }) {
       className={active ? "opacity-80" : ""}
     >
       <circle r={MARK_RADIUS} fill="#8b6f47" stroke="#fffdf9" strokeWidth={1.5} />
-      {mark.petals?.map((petal, index) => (
-        <circle key={index} cx={petal.x} cy={petal.y} r={petal.r} fill="#fffdf9" />
-      ))}
-      {mark.bow ? (
-        <>
-          <polygon points={mark.bow.left} fill="#fffdf9" />
-          <polygon points={mark.bow.right} fill="#fffdf9" />
-          <circle cx={mark.bow.knot.x} cy={mark.bow.knot.y} r={mark.bow.knot.r} fill="#8b6f47" />
-        </>
-      ) : null}
+      {mark.shapes.map((shape, index) => {
+        // Фигура светлая на золотом кружке; «вырез» — это тот же золотой,
+        // а фата на нём же, только вполсилы.
+        const fill = shape.tone === "hole" ? "#8b6f47" : "#fffdf9";
+        const opacity = shape.tone === "veil" ? 0.45 : 1;
+
+        if (shape.kind === "circle") {
+          return <circle key={index} cx={shape.cx} cy={shape.cy} r={shape.r} fill={fill} opacity={opacity} />;
+        }
+        if (shape.kind === "polygon") {
+          return <polygon key={index} points={shape.points} fill={fill} opacity={opacity} />;
+        }
+        return <path key={index} d={shape.d} fill={fill} opacity={opacity} />;
+      })}
     </svg>
   );
 }

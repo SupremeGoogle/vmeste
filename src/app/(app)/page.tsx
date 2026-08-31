@@ -25,9 +25,11 @@ import { FeatureTabs } from "./_landing/feature-tabs";
 import { SeatingDemo } from "./_landing/seating-demo";
 import { Pricing } from "./_landing/pricing";
 import { Faq } from "./_landing/faq";
-import { Film } from "./_landing/film";
 import { Gallery } from "./_landing/gallery";
-import { Scene } from "./_landing/scenes";
+import { HeroVideo } from "./_landing/hero-video";
+import { featurePhotos, galleryPhotos, photoSrc, videoSrc } from "./_landing/media";
+import { Photo } from "./_landing/photo";
+import type { GalleryItem } from "./_landing/gallery";
 import "./_landing/landing.css";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +78,31 @@ const STEPS = [
 export default async function HomePage() {
   const user = await getSessionUser();
 
+  // Медиа берётся из `public/media` по именам файлов. Нет файла — на его
+  // месте спокойная заливка: страница остаётся целой, а не показывает
+  // выдуманную иллюстрацию вместо обещанной фотографии.
+  const heroVideo = videoSrc("hero");
+  const heroPoster = photoSrc("hero");
+  const features = featurePhotos();
+
+  // Подписи к снимкам галереи. Их читает экранный диктор вместо
+  // фотографии, поэтому «фото 4» здесь не годится. Если снимков меньше
+  // двенадцати — лишние подписи просто не пригодятся.
+  const CAPTIONS = [
+    "Зал, накрытый к ужину", "Обручальные кольца", "Букет невесты",
+    "Арка для церемонии", "Свадебный торт", "Первый танец",
+    "Бокалы на фуршете", "Сервировка стола", "Свечи вечером",
+    "Гости на празднике", "Приглашение", "Лепестки и конфетти",
+  ];
+
+  const gallery: GalleryItem[] = galleryPhotos().map(({ src, index }) => ({
+    src,
+    alt: CAPTIONS[index - 1] ?? "Свадебная фотография",
+    // Крупные плитки — первому, шестому и десятому: мозаика из
+    // одинаковых квадратов читается как таблица.
+    span: index === 1 || index === 10 ? "big" : index === 6 ? "wide" : undefined,
+  }));
+
   return (
     <>
       {/* Анимация появления живёт в CSS и снимается наблюдателем в браузере.
@@ -85,11 +112,28 @@ export default async function HomePage() {
         <style>{".reveal { opacity: 1; transform: none; }"}</style>
       </noscript>
 
-      <Nav userName={user?.name ?? null} />
+      <Nav userName={user?.name ?? null} hasVideo={Boolean(heroVideo)} />
 
       <main>
         {/* ── Первый экран ─────────────────────────────────── */}
         <section className="hero-glow relative overflow-hidden pt-24 pb-16 sm:pt-40 sm:pb-24">
+          {/* Видео или заставка фоном. Под ними — плотная вуаль: текст на
+              первом экране обязан читаться поверх любого кадра, включая
+              светлое небо и белое платье. */}
+          {heroVideo || heroPoster ? (
+            <div className="absolute inset-0" aria-hidden="true">
+              {heroPoster && (
+                <img
+                  src={heroPoster}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              )}
+              {heroVideo && <HeroVideo src={heroVideo} poster={heroPoster} />}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#faf7f2]/92 via-[#faf7f2]/86 to-[#faf7f2]/96" />
+            </div>
+          ) : null}
+
           <div className="paper pointer-events-none absolute inset-0" aria-hidden="true" />
           <Petals />
 
@@ -144,15 +188,25 @@ export default async function HomePage() {
                 начинаться одним текстом. Три картинки на телефоне
                 превращаются в одну — остальные там только шумят. */}
             <Reveal delay={380} className="mx-auto mt-14 max-w-4xl">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="overflow-hidden rounded-2xl border border-stone-200/70 shadow-sm">
-                  <Scene id="bouquet" className="aspect-[3/4] w-full sm:aspect-[4/3]" />
+                  <Photo
+                    src={photoSrc("hero-1")}
+                    alt="Букет невесты"
+                    priority
+                    className="aspect-[3/4] w-full sm:aspect-[4/3]"
+                  />
                 </div>
                 <div className="col-span-2 overflow-hidden rounded-2xl border border-stone-200/70 shadow-sm sm:col-span-1">
-                  <Scene id="hall" className="aspect-[3/2] w-full sm:aspect-[4/3]" />
+                  <Photo
+                    src={photoSrc("hero-2")}
+                    alt="Зал, накрытый к ужину"
+                    priority
+                    className="aspect-[3/2] w-full sm:aspect-[4/3]"
+                  />
                 </div>
                 <div className="hidden overflow-hidden rounded-2xl border border-stone-200/70 shadow-sm sm:block">
-                  <Scene id="rings" className="aspect-[4/3] w-full" />
+                  <Photo src={photoSrc("hero-3")} alt="Обручальные кольца" priority className="aspect-[4/3] w-full" />
                 </div>
               </div>
             </Reveal>
@@ -190,22 +244,31 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* ── Ролик ────────────────────────────────────────── */}
-        <section id="rolik" className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
-          <Reveal className="mx-auto max-w-2xl text-center">
-            <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Ролик</p>
-            <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
-              Свадьба за полминуты
-            </h2>
-            <p className="mt-4 text-stone-600">
-              Шесть кадров о том, что сервис делает от первой ссылки до последнего танца.
-            </p>
-          </Reveal>
+        {/* ── Видео ────────────────────────────────────────── */}
+        {heroVideo ? (
+          <section id="rolik" className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
+            <Reveal className="mx-auto max-w-2xl text-center">
+              <p className="text-xs tracking-[0.22em] text-stone-500 uppercase">Видео</p>
+              <h2 className="mt-4 font-serif text-[26px] leading-tight sm:text-4xl">
+                Как это выглядит
+              </h2>
+            </Reveal>
 
-          <Reveal delay={120} className="mt-10">
-            <Film />
-          </Reveal>
-        </section>
+            <Reveal delay={120} className="mt-10">
+              {/* Здесь видео со звуком и управлением — в отличие от фона
+                  первого экрана, где оно немое и без кнопок. Человек,
+                  дошедший до этого раздела, хочет смотреть, а не терпеть. */}
+              <video
+                src={heroVideo}
+                poster={heroPoster ?? undefined}
+                controls
+                playsInline
+                preload="none"
+                className="w-full rounded-2xl border border-stone-200 bg-stone-950 shadow-[0_30px_80px_-40px_rgba(43,38,34,0.85)] sm:rounded-3xl"
+              />
+            </Reveal>
+          </section>
+        ) : null}
 
         {/* ── Боль ─────────────────────────────────────────── */}
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-5 sm:py-24">
@@ -256,7 +319,7 @@ export default async function HomePage() {
             </Reveal>
 
             <Reveal delay={120} className="mt-12">
-              <FeatureTabs />
+              <FeatureTabs photos={features} />
             </Reveal>
           </div>
         </section>
@@ -403,14 +466,12 @@ export default async function HomePage() {
               Двенадцать сцен одного дня
             </h2>
             <p className="mt-4 text-stone-600">
-              Иллюстрации нарисованы векторами в палитре сервиса: они тянутся
-              в любой размер, весят килобайты и приходят вместе со страницей —
-              на телефоне в дороге это разница между «открылось» и «грузится».
+              Настоящие свадьбы, снятые на настоящих свадьбах.
             </p>
           </Reveal>
 
           <Reveal delay={120} className="mt-10">
-            <Gallery />
+            <Gallery items={gallery} />
           </Reveal>
         </section>
 
