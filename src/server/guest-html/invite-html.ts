@@ -20,6 +20,7 @@ import { esc } from "@/server/guest-html/layout";
 import { BASE_CSS } from "@/server/guest-html/theme";
 import { inviteThemeCss } from "@/server/guest-html/invite-theme-css";
 import { defaultTheme, type InviteTheme } from "@/lib/invite-theme";
+import { envelopeMarkup, introScript } from "@/server/guest-html/invite-intro";
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -49,6 +50,12 @@ p{margin:0}
 font-size:.875rem;color:var(--muted);padding-top:.3rem;letter-spacing:.02em}
 .timeline .what{border-left:1px solid var(--line);padding-left:1.25rem}
 .timeline .note{display:block;font-size:.875rem;color:var(--muted)}
+.countdown{display:flex;justify-content:center;gap:1.5rem;margin-top:1.25rem}
+.countdown div{min-width:3.25rem}
+.countdown b{display:block;font-family:var(--serif);font-size:2rem;font-weight:400;
+line-height:1.1;color:var(--fg);font-variant-numeric:tabular-nums}
+.countdown span{display:block;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;
+color:var(--muted);margin-top:.35rem;font-family:var(--sans)}
 .palette{display:flex;gap:.875rem;justify-content:center;margin-top:1.5rem}
 .swatch{width:2.5rem;height:2.5rem;border-radius:50%;border:1px solid var(--line)}
 .links{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.25rem;
@@ -192,14 +199,118 @@ function rsvpCall(
  * @param rsvpHref ссылка на форму ответа; null на неименной странице.
  * @param answered уже данный ответ словами.
  */
+/**
+ * Обратный отсчёт.
+ *
+ * Разметка приходит с сервера уже посчитанной — приглашение обязано
+ * выглядеть законченным и без JavaScript, а на телефоне в дороге он
+ * доезжает не всегда. Скрипт, если доехал, только уточняет числа раз в
+ * минуту; секунд здесь нет намеренно — они заставляют страницу
+ * перерисовываться шестьдесят раз в минуту ради украшения.
+ *
+ * Дата берётся у мероприятия, а не из блока: две даты в двух местах
+ * разойдутся ровно в тот день, когда это важно.
+ */
+function countdown(content: BlockContentMap["COUNTDOWN"], eventDate: Date): string {
+  const left = eventDate.getTime() - Date.now();
+
+  if (left <= 0) {
+    return `<section class="center"><h2>${esc(content.title)}</h2>
+<p class="pre">${esc(content.doneText)}</p></section>`;
+  }
+
+  const minutes = Math.floor(left / 60000);
+  const parts = [
+    { value: Math.floor(minutes / 1440), unit: "days" },
+    { value: Math.floor(minutes / 60) % 24, unit: "hours" },
+    { value: minutes % 60, unit: "minutes" },
+  ];
+
+  const words: Record<string, [string, string, string]> = {
+    days: ["день", "дня", "дней"],
+    hours: ["час", "часа", "часов"],
+    minutes: ["минута", "минуты", "минут"],
+  };
+
+  const cells = parts
+    .map(
+      (part) =>
+        `<div><b data-unit="${part.unit}">${part.value}</b>` +
+        `<span data-word="${part.unit}">${plural(part.value, words[part.unit])}</span></div>`,
+    )
+    .join("");
+
+  return `<section class="center"><h2>${esc(content.title)}</h2>
+<div class="countdown" data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div></section>`;
+}
+
+/** «1 день», «2 дня», «5 дней» — по-русски это три разные формы. */
+function plural(value: number, forms: [string, string, string]): string {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 14) return forms[2];
+  const mod10 = value % 10;
+  if (mod10 === 1) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4) return forms[1];
+  return forms[2];
+}
+
+/**
+ * Скрипт отсчёта: уточняет числа раз в минуту. Инлайном и в сто байт —
+ * отдельный файл это ещё один запрос по сети, которой в дороге почти нет.
+ */
+export const COUNTDOWN_SCRIPT = `(function(){var n=document.querySelector('.countdown');if(!n)return;
+var W={days:['день','дня','дней'],hours:['час','часа','часов'],minutes:['минута','минуты','минут']};
+function f(v,w){var a=v%100;if(a>10&&a<15)return w[2];var b=v%10;return b===1?w[0]:(b>1&&b<5?w[1]:w[2])}
+function t(){var l=+n.dataset.until-Date.now();if(l<=0){n.outerHTML='<p class="pre">'+n.dataset.done+'</p>';return}
+var m=Math.floor(l/6e4),v={days:Math.floor(m/1440),hours:Math.floor(m/60)%24,minutes:m%60};
+for(var k in v){var b=n.querySelector('[data-unit='+k+']'),s=n.querySelector('[data-word='+k+']');
+if(b)b.textContent=v[k];if(s)s.textContent=f(v[k],W[k])}}
+setInterval(t,6e4)})()`;
+
+/** Есть ли на странице отсчёт: только тогда нужен его скрипт. */
+export function hasCountdown(blocks: InviteBlockView[]): boolean {
+  return blocks.some((block) => block.type === "COUNTDOWN");
+}
+
+/**
+ * Все скрипты страницы одной строкой — или ничего, если ни один не нужен.
+ *
+ * Собрано в одном месте, потому что маршрутов приглашения семь, и
+ * «забыли подключить отсчёт на именной странице» — ровно та ошибка,
+ * которая обнаруживается у гостя, а не у нас.
+ */
+export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
+  const parts = [
+    hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
+    theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(";") : undefined;
+}
+
+/** Имена с обложки — их показывает заставка-конверт. */
+export function coupleNames(blocks: InviteBlockView[], fallback: string): string {
+  const cover = blocks.find((block) => block.type === "COVER");
+  if (!cover) return fallback;
+  const names = (cover.content as BlockContentMap["COVER"]).names.trim();
+  return names || fallback;
+}
+
 export function renderBlocks(
   blocks: InviteBlockView[],
   rsvpHref: string | null,
   answered: string | null,
+  eventDate?: Date,
 ): string {
   return blocks
     .map((block) => {
       switch (block.type) {
+        case "COUNTDOWN":
+          // Без даты мероприятия считать нечего — так бывает только в
+          // тестах рендерера, которым блок отдают в одиночку.
+          return eventDate
+            ? countdown(block.content as BlockContentMap["COUNTDOWN"], eventDate)
+            : "";
         case "COVER":
           return cover(block.content as BlockContentMap["COVER"]);
         case "TIMELINE":

@@ -240,7 +240,71 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
       },
     ],
   },
+
+  {
+    id: "envelope",
+    name: "Конверт",
+    mood: "Плотная кремовая бумага, золото и разрядка в именах. Разделы белыми карточками, расписание столбиком, дата крупными цифрами.",
+    theme: {
+      ...defaultTheme(),
+      template: "envelope",
+      bg: "#f4eee5",
+      card: "#fffdfa",
+      ink: "#3a3128",
+      muted: "#a3927c",
+      accent: "#b3925c",
+      line: "#e7dccb",
+      headingFont: "didona",
+      bodyFont: "antiqua",
+      corner: "round",
+      divider: "leaf",
+      cover: "photo",
+      dateStyle: "display",
+      timeline: "stack",
+      sections: "card",
+      intro: "envelope",
+      frame: false,
+      capsHeadings: true,
+      align: "center",
+    },
+    blocks: [
+      {
+        type: "COVER",
+        content: {
+          v: 1,
+          title: "",
+          names: "Аня и Миша",
+          dateText: "15 / 08 / 26",
+          subtitle: "Да-да, это мы! Время пролетело так быстро, представляете?\nПриглашаем вас разделить с нами наш первый семейный праздник.",
+          imageUrl: "",
+        },
+      },
+      {
+        type: "COUNTDOWN",
+        content: { v: 1, title: "До свадьбы осталось", doneText: "Сегодня наш праздник!" },
+      },
+      ...commonBlocks(),
+      {
+        type: "DRESSCODE",
+        content: {
+          v: 1,
+          title: "Дресс-код",
+          text: "Будем рады, если вы поддержите палитру дня: шампань, пудра, песочный, оливковый. Никакой строгости — главное, чтобы вам было удобно танцевать.",
+          palette: ["#f8f1ea", "#e8dbc8", "#e8c4c0", "#c8a87a", "#9ead80", "#5e7a40"],
+        },
+      },
+      {
+        type: "TEXT",
+        content: {
+          v: 1,
+          title: "Пожелания",
+          text: "Цветы, к сожалению, завянут уже к утру — а вот конверт очень пригодится нам в свадебном путешествии.\nИ ещё: самый дорогой подарок — то, что вы будете рядом.",
+        },
+      },
+    ],
+  },
 ];
+
 
 export function findTemplate(id: string): InviteTemplate | null {
   return INVITE_TEMPLATES.find((template) => template.id === id) ?? null;

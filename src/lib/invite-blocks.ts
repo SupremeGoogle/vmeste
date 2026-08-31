@@ -53,6 +53,19 @@ const imageRef = httpUrl
   .or(z.literal(""));
 
 export const blockContentSchemas = {
+  /**
+   * Обратный отсчёт до свадьбы. Целевое время не хранится в блоке: оно
+   * и так есть у мероприятия (`Event.eventDate`), и две даты в двух
+   * местах — это гарантированное расхождение в тот единственный день,
+   * когда оно важно.
+   */
+  COUNTDOWN: z.object({
+    v: version,
+    title: shortText.default("До свадьбы осталось"),
+    /** Что показать, когда день наступил. */
+    doneText: shortText.default("Сегодня наш праздник!"),
+  }),
+
   COVER: z.object({
     v: version,
     title: shortText.default("Мы женимся"),
@@ -121,6 +134,7 @@ export type AnyBlockContent = BlockContentMap[BlockType];
 /** Порядок в панели «добавить блок» и человеческие названия типов. */
 export const BLOCK_LABELS: Record<BlockType, string> = {
   COVER: "Обложка",
+  COUNTDOWN: "Обратный отсчёт",
   TIMELINE: "Тайминг",
   VENUE: "Место",
   DRESSCODE: "Дресс-код",
@@ -130,7 +144,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
 };
 
 export const BLOCK_ORDER: BlockType[] = [
-  "COVER", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "RSVP_FORM",
+  "COVER", "COUNTDOWN", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "RSVP_FORM",
 ];
 
 /** Пустое содержимое блока: все поля со значениями по умолчанию. */

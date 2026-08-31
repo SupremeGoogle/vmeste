@@ -40,9 +40,9 @@ export function TemplatePicker({
               {/* Миниатюра: не картинка, а тот же приём, что и в самом
                   приглашении, — иначе она разъедется с шаблоном при первой
                   же правке темы. */}
-              <div className="p-3" style={{ background: theme.bg }}>
+              <div className="space-y-1.5 p-3" style={{ background: theme.bg }}>
                 <div
-                  className="px-4 py-5 text-center"
+                  className="px-4 py-4 text-center"
                   style={{
                     background: theme.card,
                     color: theme.ink,
@@ -53,7 +53,7 @@ export function TemplatePicker({
                   <p
                     style={{
                       fontFamily: FONT_STACKS[theme.headingFont],
-                      fontSize: 17,
+                      fontSize: 15,
                       letterSpacing: theme.capsHeadings ? "0.14em" : "0.01em",
                       textTransform: theme.capsHeadings ? "uppercase" : "none",
                       margin: 0,
@@ -61,31 +61,64 @@ export function TemplatePicker({
                   >
                     Аня и Миша
                   </p>
-                  <span
-                    style={{
-                      display: "block",
-                      width: 28,
-                      height: 1,
-                      background: theme.line,
-                      margin: "10px auto",
-                    }}
-                  />
-                  <p
-                    style={{
-                      fontFamily: FONT_STACKS[theme.bodyFont],
-                      fontSize: 11,
-                      color: theme.muted,
-                      margin: 0,
-                    }}
-                  >
-                    15 августа 2026
-                  </p>
+
+                  {/* Дата — одна из самых заметных осей: строкой она
+                      подпись, крупными цифрами — почти вывеска. */}
+                  {theme.dateStyle === "display" ? (
+                    <p
+                      style={{
+                        fontFamily: FONT_STACKS[theme.headingFont],
+                        fontStyle: "italic",
+                        fontSize: 22,
+                        margin: "8px 0 0",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      15 / 08 / 26
+                    </p>
+                  ) : (
+                    <>
+                      <span
+                        style={{ display: "block", width: 26, height: 1, background: theme.line, margin: "9px auto" }}
+                      />
+                      <p style={{ fontFamily: FONT_STACKS[theme.bodyFont], fontSize: 10, color: theme.muted, margin: 0 }}>
+                        15 августа 2026
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Второй блок показывает, разделы идут карточками или
+                    сплошным полотном, и как выглядит расписание. */}
+                <div
+                  className="px-4 py-3 text-center"
+                  style={{
+                    background: theme.sections === "card" ? theme.card : "transparent",
+                    color: theme.ink,
+                    borderRadius: theme.corner === "sharp" ? 0 : theme.corner === "round" ? 14 : 6,
+                  }}
+                >
+                  {theme.timeline === "stack" ? (
+                    <>
+                      <p style={{ fontFamily: FONT_STACKS[theme.headingFont], fontStyle: "italic", fontSize: 12, color: theme.accent, margin: 0 }}>
+                        16:00
+                      </p>
+                      <p style={{ fontFamily: FONT_STACKS[theme.bodyFont], fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", margin: "3px 0 0", color: theme.ink }}>
+                        Церемония
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ fontFamily: FONT_STACKS[theme.bodyFont], fontSize: 10, color: theme.muted, margin: 0 }}>
+                      16:00 · Церемония
+                    </p>
+                  )}
+
                   <span
                     style={{
                       display: "inline-block",
-                      marginTop: 12,
-                      padding: "5px 14px",
-                      fontSize: 10,
+                      marginTop: 10,
+                      padding: "4px 12px",
+                      fontSize: 9,
                       color: theme.card,
                       background: theme.accent,
                       borderRadius: theme.corner === "sharp" ? 0 : 999,

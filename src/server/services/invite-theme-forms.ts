@@ -47,6 +47,10 @@ export function themeFromForm(form: FormLike, current: InviteTheme): { ok: true;
     divider: pick("divider", current.divider),
     cover: pick("cover", current.cover),
     align: pick("align", current.align),
+    timeline: pick("timeline", current.timeline),
+    sections: pick("sections", current.sections),
+    dateStyle: pick("dateStyle", current.dateStyle),
+    intro: pick("intro", current.intro),
 
     frame: flag("frame", current.frame),
     capsHeadings: flag("capsHeadings", current.capsHeadings),

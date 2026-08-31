@@ -11,8 +11,8 @@
  * палитры выключало бы рамку, заданную в соседней форме.
  */
 import {
-  CORNER_LABEL, COVER_LABEL, DIVIDER_LABEL, FONT_LABEL, THEME_FIELD_LABELS,
-  type InviteTheme,
+  CORNER_LABEL, COVER_LABEL, DATE_LABEL, DIVIDER_LABEL, FONT_LABEL,
+  INTRO_LABEL, SECTIONS_LABEL, THEME_FIELD_LABELS, TIMELINE_LABEL, type InviteTheme,
 } from "@/lib/invite-theme";
 
 const COLOR_FIELDS = ["bg", "card", "ink", "muted", "accent", "line"] as const;
@@ -91,6 +91,10 @@ export function ThemeEditor({ theme }: { theme: InviteTheme }) {
         <Choice name="corner" value={theme.corner} options={CORNER_LABEL} label="Углы" />
         <Choice name="divider" value={theme.divider} options={DIVIDER_LABEL} label="Разделитель под заголовком" />
         <Choice name="cover" value={theme.cover} options={COVER_LABEL} label="Обложка" />
+        <Choice name="dateStyle" value={theme.dateStyle} options={DATE_LABEL} label="Дата на обложке" />
+        <Choice name="intro" value={theme.intro} options={INTRO_LABEL} label="Заставка" />
+        <Choice name="timeline" value={theme.timeline} options={TIMELINE_LABEL} label="Расписание" />
+        <Choice name="sections" value={theme.sections} options={SECTIONS_LABEL} label="Разделы" />
         <Choice
           name="align"
           value={theme.align}

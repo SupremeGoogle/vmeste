@@ -10,7 +10,7 @@ import { findGuestByLinkToken, markLinkOpened } from "@/server/repositories/gues
 import { getInviteBlocks, getInviteTheme } from "@/server/repositories/invites";
 import { formatDeadline, formatEventDateTime } from "@/lib/format-datetime";
 import { esc, html } from "@/server/guest-html/layout";
-import { invitePage, renderBlocks } from "@/server/guest-html/invite-html";
+import { coupleNames, invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +61,7 @@ export async function GET(
 
   const body = `${banner}
 <p class="who">${esc(guest.displayName)}</p>
-${renderBlocks(blocks, rsvpHref, answered)}
+${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate)}
 ${
   blocks.some((block) => block.type === "RSVP_FORM")
     ? ""
@@ -73,7 +73,13 @@ ${extras.length > 0 ? `<div class="links">${extras.join("")}</div>` : ""}
 <p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone)}
 ${deadline ? `<br>Ответ ждём до ${formatDeadline(deadline, guest.event.timezone)}` : ""}</p>`;
 
-  return html(invitePage({ title: guest.event.title, theme, body, noindex: true }), {
+  return html(invitePage({
+      title: guest.event.title,
+      theme,
+      body,
+      noindex: true,
+      script: inviteScript(blocks, theme, coupleNames(blocks, guest.event.title)),
+    }), {
     headers: { "cache-control": "private, no-store" },
   });
 }

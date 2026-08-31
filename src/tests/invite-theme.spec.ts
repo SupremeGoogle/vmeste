@@ -67,11 +67,11 @@ describe("тема: чтение", () => {
 });
 
 describe("шаблоны", () => {
-  it("их три и они разные по характеру, а не по оттенку", () => {
-    expect(INVITE_TEMPLATES).toHaveLength(3);
+  it("их несколько и они разные по характеру, а не по оттенку", () => {
+    expect(INVITE_TEMPLATES.length).toBeGreaterThanOrEqual(3);
 
     const ids = new Set(INVITE_TEMPLATES.map((t) => t.id));
-    expect(ids.size).toBe(3);
+    expect(ids.size).toBe(INVITE_TEMPLATES.length);
 
     // Светлый и тёмный обязаны отличаться яркостью фона, иначе это один
     // шаблон в двух видах.
@@ -110,6 +110,16 @@ describe("шаблоны", () => {
     for (const template of INVITE_TEMPLATES) {
       expect(parseTheme(template.theme).ok, template.id).toBe(true);
     }
+  });
+
+  it("шаблоны отличаются не только цветом", () => {
+    // Два шаблона с одинаковым набором осей — это один шаблон в двух
+    // палитрах, и человек, выбрав второй, не увидит разницы.
+    const shapes = INVITE_TEMPLATES.map((t) =>
+      [t.theme.headingFont, t.theme.corner, t.theme.divider, t.theme.timeline,
+       t.theme.sections, t.theme.dateStyle, t.theme.align, t.theme.capsHeadings].join("/"),
+    );
+    expect(new Set(shapes).size).toBe(INVITE_TEMPLATES.length);
   });
 
   it("несуществующий шаблон не находится", () => {
@@ -191,5 +201,130 @@ describe("форма настроек", () => {
     const current = { ...defaultTheme(), template: "emerald" };
     const result = themeFromForm(form({ bg: "#ffffff" }), current);
     expect(result.ok && result.theme.template).toBe("emerald");
+  });
+});
+
+describe("обратный отсчёт", () => {
+  it("считает от даты мероприятия и склоняет по-русски", async () => {
+    const { renderBlocks } = await import("@/server/guest-html/invite-html");
+
+    const block = {
+      id: "b1", type: "COUNTDOWN" as const, order: 0, visible: true, degraded: false,
+      content: { v: 1, title: "До свадьбы", doneText: "Сегодня!" },
+    };
+
+    const cases: [number, string][] = [
+      [1, "день"],
+      [2, "дня"],
+      [5, "дней"],
+      [11, "дней"],
+      [21, "день"],
+      [22, "дня"],
+    ];
+
+    for (const [days, word] of cases) {
+      // Полсуток сверху, чтобы округление вниз не съедало день на границе.
+      const date = new Date(Date.now() + days * 86_400_000 + 43_200_000);
+      const html = renderBlocks([block], null, null, date);
+      expect(html, `${days} → ${word}`).toContain(`>${days}</b><span data-word="days">${word}<`);
+    }
+  });
+
+  it("в день свадьбы показывает текст вместо чисел", async () => {
+    const { renderBlocks } = await import("@/server/guest-html/invite-html");
+    const block = {
+      id: "b1", type: "COUNTDOWN" as const, order: 0, visible: true, degraded: false,
+      content: { v: 1, title: "До свадьбы", doneText: "Сегодня наш праздник!" },
+    };
+
+    const html = renderBlocks([block], null, null, new Date(Date.now() - 60_000));
+    expect(html).toContain("Сегодня наш праздник!");
+    expect(html).not.toContain("data-until");
+  });
+
+  it("без даты мероприятия блок молча пропускается", async () => {
+    // Так бывает только там, где блок отдают в одиночку. Падать
+    // приглашению нельзя ни при каких данных.
+    const { renderBlocks } = await import("@/server/guest-html/invite-html");
+    const block = {
+      id: "b1", type: "COUNTDOWN" as const, order: 0, visible: true, degraded: false,
+      content: { v: 1, title: "До свадьбы", doneText: "Сегодня!" },
+    };
+    expect(renderBlocks([block], null, null)).toBe("");
+  });
+
+  it("скрипт отсчёта не ходит наружу и не трогает ничего лишнего", async () => {
+    const { COUNTDOWN_SCRIPT } = await import("@/server/guest-html/invite-html");
+    expect(COUNTDOWN_SCRIPT).not.toContain("http");
+    expect(COUNTDOWN_SCRIPT).not.toContain("fetch");
+    expect(COUNTDOWN_SCRIPT).not.toContain("</script");
+    // Раз в минуту, а не в секунду: секундная стрелка перерисовывает
+    // страницу шестьдесят раз в минуту ради украшения.
+    expect(COUNTDOWN_SCRIPT).toContain("6e4");
+  });
+});
+
+describe("заставка-конверт", () => {
+  it("не показывается без скрипта", async () => {
+    // Разметка конверта приходит только внутри скрипта. Приди она в
+    // теле страницы — телефон без JavaScript упёрся бы в картинку, за
+    // которой не видно ни даты, ни адреса.
+    const { invitePage } = await import("@/server/guest-html/invite-html");
+    const page = invitePage({
+      title: "Аня и Миша",
+      theme: { ...defaultTheme(), intro: "envelope" },
+      body: "<section>тело</section>",
+    });
+
+    expect(page).not.toContain('id="intro"');
+    expect(page).toContain("тело");
+  });
+
+  it("скрипт заставки экранирует имена и не ходит наружу", async () => {
+    const { coupleNames, inviteScript } = await import("@/server/guest-html/invite-html");
+    const blocks = [
+      {
+        id: "b1", type: "COVER" as const, order: 0, visible: true, degraded: false,
+        content: { v: 1, title: "", names: '<img src=x onerror="alert(1)">', dateText: "", subtitle: "", imageUrl: "" },
+      },
+    ];
+
+    const script = inviteScript(
+      blocks,
+      { ...defaultTheme(), intro: "envelope" },
+      coupleNames(blocks, "Аня и Миша"),
+    )!;
+
+    expect(script).toContain("intro");
+
+    // Важно не отсутствие слова «onerror» — оно остаётся безобидным
+    // текстом, — а то, что из него нельзя собрать тег: угловые скобки и
+    // кавычки экранированы, а строка уходит в `innerHTML`.
+    expect(script).not.toContain("<img");
+    expect(script).toContain("&lt;img");
+    expect(script).toContain("&quot;");
+    expect(script).not.toContain("http");
+    // Строка уходит в `innerHTML`, поэтому закрывающий тег скрипта внутри
+    // неё разорвал бы страницу пополам.
+    expect(script).not.toContain("</script");
+  });
+
+  it("без заставки и без отсчёта скрипта нет вовсе", async () => {
+    const { inviteScript } = await import("@/server/guest-html/invite-html");
+    expect(inviteScript([], defaultTheme(), "Аня и Миша")).toBeUndefined();
+  });
+
+  it("имена для конверта берутся с обложки, иначе из названия", async () => {
+    const { coupleNames } = await import("@/server/guest-html/invite-html");
+    const cover = (names: string) => [
+      {
+        id: "b1", type: "COVER" as const, order: 0, visible: true, degraded: false,
+        content: { v: 1, title: "", names, dateText: "", subtitle: "", imageUrl: "" },
+      },
+    ];
+
+    expect(coupleNames(cover("Аня и Миша"), "Свадьба")).toBe("Аня и Миша");
+    expect(coupleNames(cover(""), "Свадьба")).toBe("Свадьба");
+    expect(coupleNames([], "Свадьба")).toBe("Свадьба");
   });
 });

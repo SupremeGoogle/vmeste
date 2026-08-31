@@ -12,6 +12,7 @@
  * попадает ни одной строки, которую человек написал свободно.
  */
 import { CORNER_RADIUS, FONT_STACKS, type InviteTheme } from "@/lib/invite-theme";
+import { INTRO_CSS } from "@/server/guest-html/invite-intro";
 
 /** Разделитель под заголовком раздела — четыре разных характера. */
 function dividerCss(theme: InviteTheme): string {
@@ -53,6 +54,43 @@ padding:.5rem;background:var(--card)}`;
   }
 
   return `.cover img{display:none}`;
+}
+
+/** Расписание: строкой или столбцом. */
+function timelineCss(theme: InviteTheme): string {
+  if (theme.timeline === "row") return "";
+
+  // Столбцом: время над подписью, всё по центру, между пунктами воздух.
+  // Вертикальная линия слева тут не нужна — она держала строки, а
+  // центрированный столбец держится сам.
+  return `.timeline li{display:block;text-align:center;margin-bottom:2.25rem}
+.timeline time{display:block;flex:none;text-align:center;font-family:var(--serif);
+font-style:italic;font-size:1.25rem;color:var(--accent);padding:0;letter-spacing:.02em}
+.timeline .what{border-left:0;padding-left:0;margin-top:.4rem;font-size:.8125rem;
+letter-spacing:.18em;text-transform:uppercase}
+.timeline .note{margin-top:.35rem;letter-spacing:0;text-transform:none;font-size:.875rem}`;
+}
+
+/** Разделы: на общем фоне или каждый в своей карточке. */
+function sectionsCss(theme: InviteTheme, radius: string): string {
+  if (theme.sections === "flat") return "";
+
+  // Карточка на фоне листа: фон страницы становится подложкой, а сам
+  // раздел — бумагой поверх. Поэтому лист прозрачный, иначе карточка
+  // белого на белом просто не видна.
+  return `.sheet{background:var(--bg)}
+section{background:var(--card);border-radius:${radius};margin:0 1rem 1rem;
+padding:2rem 1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.cover{margin-top:1rem}
+form,.foot{background:transparent}`;
+}
+
+/** Дата на обложке крупными цифрами. */
+function dateCss(theme: InviteTheme): string {
+  if (theme.dateStyle === "line") return "";
+
+  return `.cover .date{font-family:var(--serif);font-style:italic;font-size:2.75rem;
+line-height:1.1;color:var(--fg);letter-spacing:.04em;margin-top:1.5rem}`;
 }
 
 /**
@@ -102,6 +140,10 @@ pointer-events:none;z-index:0}`
 
     dividerCss(theme),
     coverCss(theme),
+    timelineCss(theme),
+    sectionsCss(theme, radius),
+    dateCss(theme),
+    theme.intro === "envelope" ? INTRO_CSS : "",
   ];
 
   return rules.filter(Boolean).join("").replace(/\n/g, "");

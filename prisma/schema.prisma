@@ -202,6 +202,7 @@ model Event {
 // ────────────────────────────────────────────────────────────
 
 enum BlockType {
+  COUNTDOWN
   COVER
   TIMELINE
   VENUE

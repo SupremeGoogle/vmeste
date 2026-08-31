@@ -64,6 +64,13 @@ export function blockContentFromForm(
   form: FormLike,
 ): { ok: true; content: AnyBlockContent } | { ok: false; message: string } {
   switch (type) {
+    case "COUNTDOWN":
+      return parseBlockContent("COUNTDOWN", {
+        v: 1,
+        title: str(form, "title"),
+        doneText: str(form, "doneText"),
+      });
+
     case "COVER":
       return parseBlockContent("COVER", {
         title: str(form, "title"),

@@ -9,7 +9,7 @@
 import { getInviteBySlug } from "@/server/repositories/invites";
 import { formatEventDateTime } from "@/lib/format-datetime";
 import { html } from "@/server/guest-html/layout";
-import { invitePage, renderBlocks } from "@/server/guest-html/invite-html";
+import { coupleNames, invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,8 @@ export async function GET(
     invitePage({
       title: invite.event.title,
       theme: invite.theme,
-      body: `${renderBlocks(invite.blocks, null, null)}<p class="foot">${when}</p>`,
+      body: `${renderBlocks(invite.blocks, null, null, invite.event.eventDate)}<p class="foot">${when}</p>`,
+      script: inviteScript(invite.blocks, invite.theme, coupleNames(invite.blocks, invite.event.title)),
     }),
     {
       headers: {

@@ -42,6 +42,18 @@ export function BlockFields({
   assets: PickerAsset[];
 }) {
   switch (block.type) {
+    case "COUNTDOWN": {
+      const c = block.content as BlockContentMap["COUNTDOWN"];
+      return (
+        <>
+          <Field label="Заголовок" name="title" value={c.title} />
+          <Field
+            label="Текст в день свадьбы" name="doneText" value={c.doneText}
+            hint="Появится вместо чисел, когда день наступит. Дата берётся из настроек мероприятия."
+          />
+        </>
+      );
+    }
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
       return (

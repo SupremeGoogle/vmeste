@@ -66,6 +66,26 @@ export const DIVIDER_LABEL = {
   leaf: "веточка",
 } as const;
 
+export const TIMELINE_LABEL = {
+  row: "строкой — время слева",
+  stack: "столбцом — время над подписью",
+} as const;
+
+export const SECTIONS_LABEL = {
+  flat: "на общем фоне",
+  card: "каждый в белой карточке",
+} as const;
+
+export const DATE_LABEL = {
+  line: "строкой",
+  display: "крупными цифрами",
+} as const;
+
+export const INTRO_LABEL = {
+  none: "открывается сразу",
+  envelope: "конверт, который открывают касанием",
+} as const;
+
 export const COVER_LABEL = {
   plain: "только текст",
   photo: "фотография во всю ширину",
@@ -93,6 +113,32 @@ export const inviteThemeSchema = z.object({
   corner: z.enum(["sharp", "soft", "round"]).default("soft"),
   divider: z.enum(["none", "line", "diamond", "leaf"]).default("diamond"),
   cover: z.enum(["plain", "photo", "frame"]).default("plain"),
+
+  /**
+   * Расписание строкой («16:00 | Церемония», время слева) или столбцом
+   * (время над подписью, всё по центру). Второе занимает вдвое больше
+   * высоты и читается медленнее — и именно поэтому смотрится как
+   * приглашение, а не как расписание электричек.
+   */
+  timeline: z.enum(["row", "stack"]).default("row"),
+
+  /** Разделы на общем фоне или каждый в своей белой карточке. */
+  sections: z.enum(["flat", "card"]).default("flat"),
+
+  /** Дата на обложке строкой или крупными цифрами через косые черты. */
+  dateStyle: z.enum(["line", "display"]).default("line"),
+
+  /**
+   * Заставка перед приглашением: конверт, который гость открывает
+   * касанием. Красиво, но это лишний шаг между гостем и ответом,
+   * поэтому по умолчанию выключена.
+   *
+   * Без JavaScript заставка не показывается вовсе — приглашение просто
+   * открывается сразу. Обратный порядок (сначала конверт, а скрипт его
+   * уберёт) означал бы, что на телефоне без скрипта гость упирается в
+   * картинку и не видит ни даты, ни адреса.
+   */
+  intro: z.enum(["none", "envelope"]).default("none"),
 
   /** Рамка по краю листа — тонкая линия внутри отступа. */
   frame: z.boolean().default(false),
@@ -163,6 +209,10 @@ export const THEME_FIELD_LABELS: Record<string, string> = {
   frame: "Рамка",
   capsHeadings: "Заглавные в заголовках",
   align: "Выравнивание",
+  timeline: "Расписание",
+  sections: "Разделы",
+  dateStyle: "Дата на обложке",
+  intro: "Заставка",
   template: "Шаблон",
 };
 

@@ -64,9 +64,24 @@ describe("разметка приглашения", () => {
     const page = invitePage({ title: "Аня и Миша", body: "<section>тело</section>" });
     expect(page.startsWith("<!doctype html>")).toBe(true);
     expect(page).toContain("<title>Аня и Миша</title>");
-    // Ни одного запроса наружу: ни скриптов, ни шрифтов, ни таблиц стилей.
-    expect(page).not.toContain("<script");
+    // Ни одного запроса наружу: ни шрифтов, ни таблиц стилей.
     expect(page).not.toContain("<link");
+    expect(page).not.toContain("<script");
+  });
+
+  it("даже со скриптом страница не ходит наружу", () => {
+    // Инлайновый скрипт разрешён (отсчёт, загрузчик фотографий), внешний —
+    // нет: это лишний запрос по сети, которой в дороге почти нет, и
+    // сторонний домен на странице, открытой по ссылке из смс.
+    const page = invitePage({
+      title: "Аня и Миша",
+      body: "<section>тело</section>",
+      script: "var x=1",
+    });
+
+    expect(page).toContain("<script>var x=1</script>");
+    expect(page).not.toMatch(/<script[^>]+src=/);
+    expect(page).not.toMatch(/<(link|iframe|img)[^>]+(https?:)?\/\//);
   });
 
   it("именная страница помечается noindex", () => {
