@@ -40,7 +40,14 @@ export function Counter({ to, suffix = "", duration = 1400 }: Props) {
 
         const start = performance.now();
         const tick = (now: number) => {
-          const progress = Math.min(1, (now - start) / duration);
+          // Зажимаем с двух сторон, а не только сверху. Отметка времени,
+          // которую приносит requestAnimationFrame, считается от начала
+          // документа, а `performance.now()` — от начала своего окна, и
+          // в отдельных случаях (страница внутри iframe, восстановление
+          // из фонового состояния) разность выходит отрицательной.
+          // Тогда замедление ниже даёт отрицательный множитель, и на
+          // титульной странице вместо «84 гостя» появляется «−2».
+          const progress = Math.min(1, Math.max(0, (now - start) / duration));
           // Замедление к концу: числу полагается «доехать», а не врезаться.
           const eased = 1 - Math.pow(1 - progress, 3);
           setValue(Math.round(to * eased));

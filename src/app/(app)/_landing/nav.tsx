@@ -60,23 +60,59 @@ export function Nav({ userName }: { userName: string | null }) {
   }, []);
 
   // Ссылка вида «/#ceny» приходит из переписки и из подвала другой
-  // страницы. Браузер пытается прыгнуть к якорю до того, как разделы
-  // заняли свою высоту, промахивается и оставляет человека наверху —
-  // поэтому доводим прокрутку сами, уже после первой отрисовки.
+  // страницы. Браузер прыгает к якорю до того, как разделы заняли свою
+  // высоту, и промахивается тем сильнее, чем ниже раздел: до «Ролика»
+  // он доезжал, до «Галереи» — уже нет.
+  //
+  // Поэтому доводим сами и не «три раза наугад», а пока страница
+  // перестанет расти: следим за высотой документа и повторяем прицел,
+  // но не дольше двух секунд — дальше это уже борьба с человеком,
+  // который начал листать сам.
   useEffect(() => {
     const hash = window.location.hash.slice(1);
     if (!hash) return;
+
     const target = document.getElementById(hash);
     if (!target) return;
 
-    // Прицеливаемся несколько раз: разделы дорастают до своей высоты не
-    // мгновенно, а маршрутизатор после гидратации может вернуть страницу
-    // наверх — одной попытки не хватает.
-    const timers = [0, 120, 320].map((delay) =>
-      window.setTimeout(() => target.scrollIntoView({ block: "start" }), delay),
-    );
+    const started = Date.now();
+    let lastHeight = -1;
+    let stop = false;
 
-    return () => timers.forEach(window.clearTimeout);
+    const aim = () => {
+      if (stop || Date.now() - started > 2000) return;
+
+      const height = document.documentElement.scrollHeight;
+      // Высота устоялась и мы уже на месте — доводить больше нечего.
+      const settled = height === lastHeight;
+      lastHeight = height;
+
+      if (!settled || Math.abs(target.getBoundingClientRect().top - 84) > 4) {
+        target.scrollIntoView({ block: "start", behavior: "auto" });
+      }
+
+      window.setTimeout(aim, 120);
+    };
+
+    // Человек тронул колесо или экран — прекращаем немедленно: спорить
+    // с рукой пользователя худшее, что может делать страница.
+    const surrender = () => {
+      stop = true;
+    };
+    window.addEventListener("wheel", surrender, { passive: true, once: true });
+    window.addEventListener("touchstart", surrender, { passive: true, once: true });
+    // Клавиатура — тоже рука пользователя: Page Down и стрелки должны
+    // уводить со страницы так же беспрекословно, как колесо мыши.
+    window.addEventListener("keydown", surrender, { passive: true, once: true });
+
+    aim();
+
+    return () => {
+      stop = true;
+      window.removeEventListener("wheel", surrender);
+      window.removeEventListener("touchstart", surrender);
+      window.removeEventListener("keydown", surrender);
+    };
   }, []);
 
   // Меню на телефоне закрывает страницу целиком — прокрутку под ним
