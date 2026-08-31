@@ -21,6 +21,7 @@ import { BASE_CSS } from "@/server/guest-html/theme";
 import { inviteThemeCss } from "@/server/guest-html/invite-theme-css";
 import { defaultTheme, type InviteTheme } from "@/lib/invite-theme";
 import { envelopeMarkup, introScript } from "@/server/guest-html/invite-intro";
+import { decorMarkup, timelineIcon } from "@/server/guest-html/invite-decor";
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -109,7 +110,7 @@ export function invitePage(opts: {
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet">${opts.body}</main>${
+<body><main class="sheet">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -130,12 +131,15 @@ ${paragraphs(content.subtitle, "muted")}
 </section>`;
 }
 
-function timeline(content: BlockContentMap["TIMELINE"]): string {
+function timeline(content: BlockContentMap["TIMELINE"], theme: InviteTheme): string {
   const items = content.items
-    .map(
-      (item) => `<li><time>${esc(item.time)}</time><span class="what">${esc(item.title)}
-${item.note ? `<span class="note">${esc(item.note)}</span>` : ""}</span></li>`,
-    )
+    .map((item) => {
+      // Значок подбирается по смыслу подписи. Не угадали — значка нет,
+      // и это лучше, чем блюдо напротив церемонии.
+      const icon = theme.timelineIcons ? timelineIcon(item.title, theme.accent) : "";
+      return `<li>${icon}<time>${esc(item.time)}</time><span class="what">${esc(item.title)}
+${item.note ? `<span class="note">${esc(item.note)}</span>` : ""}</span></li>`;
+    })
     .join("");
   return `<section><h2>${esc(content.title)}</h2><ul class="timeline">${items}</ul></section>`;
 }
@@ -301,6 +305,7 @@ export function renderBlocks(
   rsvpHref: string | null,
   answered: string | null,
   eventDate?: Date,
+  theme: InviteTheme = defaultTheme(),
 ): string {
   return blocks
     .map((block) => {
@@ -314,7 +319,7 @@ export function renderBlocks(
         case "COVER":
           return cover(block.content as BlockContentMap["COVER"]);
         case "TIMELINE":
-          return timeline(block.content as BlockContentMap["TIMELINE"]);
+          return timeline(block.content as BlockContentMap["TIMELINE"], theme);
         case "VENUE":
           return venue(block.content as BlockContentMap["VENUE"]);
         case "DRESSCODE":

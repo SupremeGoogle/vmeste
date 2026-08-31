@@ -61,7 +61,7 @@ export async function GET(
 
   const body = `${banner}
 <p class="who">${esc(guest.displayName)}</p>
-${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate)}
+${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate, theme)}
 ${
   blocks.some((block) => block.type === "RSVP_FORM")
     ? ""

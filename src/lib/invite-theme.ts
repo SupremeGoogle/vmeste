@@ -81,6 +81,12 @@ export const DATE_LABEL = {
   display: "крупными цифрами",
 } as const;
 
+export const DECOR_LABEL = {
+  none: "без цветов",
+  corners: "по диагонали — два угла",
+  frame: "по всем четырём углам",
+} as const;
+
 export const INTRO_LABEL = {
   none: "открывается сразу",
   envelope: "конверт, который открывают касанием",
@@ -106,6 +112,8 @@ export const inviteThemeSchema = z.object({
   muted: color.default("#7c7168"),
   accent: color.default("#8b6f47"),
   line: color.default("#e6ddd1"),
+  /** Зелень в ботанике: эвкалипт, стебли, листья. */
+  leaf: color.default("#9fae84"),
 
   headingFont: z.enum(["antiqua", "grotesk", "didona"]).default("antiqua"),
   bodyFont: z.enum(["antiqua", "grotesk", "didona"]).default("antiqua"),
@@ -140,8 +148,27 @@ export const inviteThemeSchema = z.object({
    */
   intro: z.enum(["none", "envelope"]).default("none"),
 
+  /**
+   * Ботаника: пионы с эвкалиптом по углам листа.
+   *
+   *   none    — ничего;
+   *   corners — по диагонали, сверху слева и снизу справа: так делают
+   *             на бумажных приглашениях, чтобы не запереть текст в рамку;
+   *   frame   — все четыре угла.
+   */
+  decor: z.enum(["none", "corners", "frame"]).default("none"),
+
+  /** Бумажная фактура фона: едва заметное зерно и тёплая виньетка. */
+  paper: z.boolean().default(false),
+
   /** Рамка по краю листа — тонкая линия внутри отступа. */
   frame: z.boolean().default(false),
+
+  /** Вензель в углах рамки. Работает только вместе с рамкой. */
+  frameOrnament: z.boolean().default(false),
+
+  /** Значки у пунктов расписания: кольца, бокалы, блюдо, пара в танце. */
+  timelineIcons: z.boolean().default(false),
   /** Крупные заглавные в заголовках разделов. */
   capsHeadings: z.boolean().default(true),
   /** Выравнивание текста по центру или по левому краю. */
@@ -213,6 +240,11 @@ export const THEME_FIELD_LABELS: Record<string, string> = {
   sections: "Разделы",
   dateStyle: "Дата на обложке",
   intro: "Заставка",
+  decor: "Цветы по углам",
+  paper: "Фактура бумаги",
+  frameOrnament: "Вензель в углах рамки",
+  timelineIcons: "Значки в расписании",
+  leaf: "Зелень",
   template: "Шаблон",
 };
 

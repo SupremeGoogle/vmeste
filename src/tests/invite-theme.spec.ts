@@ -328,3 +328,80 @@ describe("заставка-конверт", () => {
     expect(coupleNames([], "Свадьба")).toBe("Свадьба");
   });
 });
+
+describe("ботаника и украшения", () => {
+  it("цветы берут цвета из темы, а не из своей палитры", async () => {
+    const { floralCorner } = await import("@/server/guest-html/botanical");
+    const art = floralCorner({
+      petal: "#111111", petalShade: "#222222", leaf: "#333333", accent: "#444444",
+    });
+
+    for (const color of ["#111111", "#222222", "#333333", "#444444"]) {
+      expect(art, color).toContain(color);
+    }
+  });
+
+  it("композиция помещается в свой квадрат", async () => {
+    // Иначе цветы вылезают за угол листа и обрезаются вкривь.
+    const { floralCorner } = await import("@/server/guest-html/botanical");
+    const art = floralCorner({ petal: "#fff", petalShade: "#eee", leaf: "#9a8", accent: "#c87" });
+
+    const numbers = art.match(/(?:cx|cy)="(-?\d+(?:\.\d+)?)"/g) ?? [];
+    expect(numbers.length).toBeGreaterThan(20);
+
+    for (const match of numbers) {
+      const value = Number(match.split('"')[1]);
+      expect(value).toBeGreaterThan(-70);
+      expect(value).toBeLessThan(270);
+    }
+  });
+
+  it("по углам композиция рисуется один раз, а не копируется", async () => {
+    const { decorMarkup } = await import("@/server/guest-html/invite-decor");
+
+    const two = decorMarkup({ ...defaultTheme(), decor: "corners" });
+    const four = decorMarkup({ ...defaultTheme(), decor: "frame" });
+
+    // Четыре угла не имеют права весить вдвое больше двух: композиция
+    // лежит в <symbol>, по углам — ссылки на неё.
+    expect(four.length).toBeLessThan(two.length * 1.1);
+    expect(two.match(/<symbol/g)).toHaveLength(1);
+    expect(two.match(/<use /g)).toHaveLength(2);
+    expect(four.match(/<use /g)).toHaveLength(4);
+  });
+
+  it("без цветов разметки нет вовсе", async () => {
+    const { decorMarkup } = await import("@/server/guest-html/invite-decor");
+    expect(decorMarkup(defaultTheme())).toBe("");
+  });
+
+  it("значок расписания подбирается по смыслу, а не по номеру", async () => {
+    const { timelineIcon } = await import("@/server/guest-html/invite-decor");
+
+    // Пункты переставляют и удаляют; значок, привязанный к позиции,
+    // поедет вместе с ними.
+    const rings = timelineIcon("Церемония бракосочетания", "#000");
+    const glasses = timelineIcon("Сбор гостей и фуршет", "#000");
+    const dinner = timelineIcon("Праздничный ужин", "#000");
+
+    expect(rings).not.toBe("");
+    expect(new Set([rings, glasses, dinner]).size).toBe(3);
+
+    // Не угадали — значка нет. Это лучше, чем блюдо напротив церемонии.
+    expect(timelineIcon("Сюрприз от друзей", "#000")).toBe("");
+  });
+
+  it("украшения включаются только своими осями", async () => {
+    const base = inviteThemeCss(defaultTheme());
+
+    expect(inviteThemeCss({ ...defaultTheme(), decor: "corners" })).not.toBe(base);
+    expect(inviteThemeCss({ ...defaultTheme(), paper: true })).not.toBe(base);
+    expect(inviteThemeCss({ ...defaultTheme(), timelineIcons: true })).not.toBe(base);
+
+    // Вензель бессмыслен без рамки: он её угол и есть.
+    expect(inviteThemeCss({ ...defaultTheme(), frameOrnament: true })).toBe(base);
+    expect(inviteThemeCss({ ...defaultTheme(), frame: true, frameOrnament: true })).not.toBe(
+      inviteThemeCss({ ...defaultTheme(), frame: true }),
+    );
+  });
+});

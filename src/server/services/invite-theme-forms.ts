@@ -51,8 +51,13 @@ export function themeFromForm(form: FormLike, current: InviteTheme): { ok: true;
     sections: pick("sections", current.sections),
     dateStyle: pick("dateStyle", current.dateStyle),
     intro: pick("intro", current.intro),
+    decor: pick("decor", current.decor),
+    leaf: pick("leaf", current.leaf),
 
     frame: flag("frame", current.frame),
     capsHeadings: flag("capsHeadings", current.capsHeadings),
+    frameOrnament: flag("frameOrnament", current.frameOrnament),
+    paper: flag("paper", current.paper),
+    timelineIcons: flag("timelineIcons", current.timelineIcons),
   });
 }

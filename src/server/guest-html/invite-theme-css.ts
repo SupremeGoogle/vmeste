@@ -13,6 +13,9 @@
  */
 import { CORNER_RADIUS, FONT_STACKS, type InviteTheme } from "@/lib/invite-theme";
 import { INTRO_CSS } from "@/server/guest-html/invite-intro";
+import {
+  DECOR_CSS, ORNAMENT_CSS, PAPER_CSS, TIMELINE_ICON_CSS, ornamentBackground,
+} from "@/server/guest-html/invite-decor";
 
 /** Разделитель под заголовком раздела — четыре разных характера. */
 function dividerCss(theme: InviteTheme): string {
@@ -106,7 +109,7 @@ export function inviteThemeCss(theme: InviteTheme): string {
     // Переменные темы перекрывают те, что пришли из `theme.ts`.
     `:root{--bg:${theme.bg};--card:${theme.card};--fg:${theme.ink};--muted:${theme.muted};
 --accent:${theme.accent};--accent-deep:${theme.accent};--line:${theme.line};
---serif:${heading};--sans:${body};--radius:${radius}}`,
+--serif:${heading};--sans:${body};--radius:${radius};--leaf:${theme.leaf}}`,
 
     `body{font-family:${body}}`,
     `h1,h2,.names{font-family:${heading}}`,
@@ -144,6 +147,11 @@ pointer-events:none;z-index:0}`
     sectionsCss(theme, radius),
     dateCss(theme),
     theme.intro === "envelope" ? INTRO_CSS : "",
+    theme.decor !== "none" ? DECOR_CSS : "",
+    theme.paper ? PAPER_CSS : "",
+    // Вензель бессмыслен без рамки: он её угол и есть.
+    theme.frame && theme.frameOrnament ? ORNAMENT_CSS + ornamentBackground(theme) : "",
+    theme.timelineIcons ? TIMELINE_ICON_CSS : "",
   ];
 
   return rules.filter(Boolean).join("").replace(/\n/g, "");

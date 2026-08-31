@@ -29,6 +29,7 @@ import { Gallery } from "./_landing/gallery";
 import { HeroVideo } from "./_landing/hero-video";
 import { featurePhotos, galleryPhotos, photoSrc, videoSrc } from "./_landing/media";
 import { Photo } from "./_landing/photo";
+import { BotanicalBackdrop } from "./_landing/botanical-backdrop";
 import type { GalleryItem } from "./_landing/gallery";
 import "./_landing/landing.css";
 
@@ -135,6 +136,7 @@ export default async function HomePage() {
           ) : null}
 
           <div className="paper pointer-events-none absolute inset-0" aria-hidden="true" />
+          <BotanicalBackdrop />
           <Petals />
 
           <div className="relative mx-auto max-w-6xl px-4 sm:px-5">

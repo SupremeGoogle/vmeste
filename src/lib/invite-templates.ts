@@ -105,6 +105,9 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
       frame: false,
       capsHeadings: true,
       align: "center",
+      decor: "corners",
+      paper: true,
+      leaf: "#9fae84",
     },
     blocks: [
       {
@@ -158,8 +161,12 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
       divider: "diamond",
       cover: "frame",
       frame: true,
+      frameOrnament: true,
       capsHeadings: true,
       align: "center",
+      paper: true,
+      timelineIcons: true,
+      leaf: "#7d9470",
     },
     blocks: [
       {
@@ -263,7 +270,12 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
       timeline: "stack",
       sections: "card",
       intro: "envelope",
-      frame: false,
+      decor: "corners",
+      paper: true,
+      frame: true,
+      frameOrnament: true,
+      timelineIcons: true,
+      leaf: "#a8b48c",
       capsHeadings: true,
       align: "center",
     },

@@ -12,10 +12,11 @@
  */
 import {
   CORNER_LABEL, COVER_LABEL, DATE_LABEL, DIVIDER_LABEL, FONT_LABEL,
-  INTRO_LABEL, SECTIONS_LABEL, THEME_FIELD_LABELS, TIMELINE_LABEL, type InviteTheme,
+  DECOR_LABEL, INTRO_LABEL, SECTIONS_LABEL, THEME_FIELD_LABELS, TIMELINE_LABEL,
+  type InviteTheme,
 } from "@/lib/invite-theme";
 
-const COLOR_FIELDS = ["bg", "card", "ink", "muted", "accent", "line"] as const;
+const COLOR_FIELDS = ["bg", "card", "ink", "muted", "accent", "line", "leaf"] as const;
 
 function ColorField({ name, value }: { name: (typeof COLOR_FIELDS)[number]; value: string }) {
   return (
@@ -93,6 +94,7 @@ export function ThemeEditor({ theme }: { theme: InviteTheme }) {
         <Choice name="cover" value={theme.cover} options={COVER_LABEL} label="Обложка" />
         <Choice name="dateStyle" value={theme.dateStyle} options={DATE_LABEL} label="Дата на обложке" />
         <Choice name="intro" value={theme.intro} options={INTRO_LABEL} label="Заставка" />
+        <Choice name="decor" value={theme.decor} options={DECOR_LABEL} label="Цветы по углам" />
         <Choice name="timeline" value={theme.timeline} options={TIMELINE_LABEL} label="Расписание" />
         <Choice name="sections" value={theme.sections} options={SECTIONS_LABEL} label="Разделы" />
         <Choice
@@ -105,6 +107,9 @@ export function ThemeEditor({ theme }: { theme: InviteTheme }) {
         <div className="space-y-2 pt-1">
           <Flag name="frame" checked={theme.frame} label="Рамка по краю листа" />
           <Flag name="capsHeadings" checked={theme.capsHeadings} label="Заголовки заглавными вразрядку" />
+          <Flag name="frameOrnament" checked={theme.frameOrnament} label="Вензель в углах рамки" />
+          <Flag name="paper" checked={theme.paper} label="Фактура бумаги" />
+          <Flag name="timelineIcons" checked={theme.timelineIcons} label="Значки в расписании" />
         </div>
       </fieldset>
     </div>
