@@ -118,6 +118,7 @@ export default async function HomePage() {
       <main>
         {/* ── Первый экран ─────────────────────────────────── */}
         <section className="hero-glow relative overflow-hidden pt-24 pb-16 sm:pt-40 sm:pb-24">
+          <div className="hero-brand-photo absolute inset-0" aria-hidden="true" />
           {/* Видео или заставка фоном. Под ними — плотная вуаль: текст на
               первом экране обязан читаться поверх любого кадра, включая
               светлое небо и белое платье. */}
@@ -136,6 +137,12 @@ export default async function HomePage() {
           ) : null}
 
           <div className="paper pointer-events-none absolute inset-0" aria-hidden="true" />
+          <img
+            src="/media/vmeste-mark.svg"
+            alt=""
+            className="brand-watermark pointer-events-none absolute top-28 left-1/2 hidden w-64 -translate-x-1/2 opacity-[0.08] sm:block"
+            aria-hidden="true"
+          />
           <BotanicalBackdrop />
           <Petals />
 
@@ -511,13 +518,10 @@ export default async function HomePage() {
         </section>
 
         {/* ── Призыв ───────────────────────────────────────── */}
-        <section className="relative overflow-hidden py-24 sm:py-32">
-          <div className="hero-glow absolute inset-0" aria-hidden="true" />
+        <section className="cta-brand-photo relative overflow-hidden py-24 sm:py-32">
+          <div className="cta-brand-veil absolute inset-0" aria-hidden="true" />
           <Reveal className="relative mx-auto max-w-2xl px-4 text-center sm:px-5">
-            <svg width="46" height="30" viewBox="0 0 34 24" className="mx-auto" aria-hidden="true">
-              <circle cx="13" cy="13" r="8.5" fill="none" stroke="#8b6f47" strokeWidth="1.4" />
-              <circle cx="21" cy="13" r="8.5" fill="none" stroke="#c2a878" strokeWidth="1.4" />
-            </svg>
+            <img src="/media/vmeste-mark.svg" alt="" className="mx-auto h-auto w-20" />
             <h2 className="mt-7 font-serif text-[28px] leading-tight sm:text-5xl">
               Начните со списка гостей
             </h2>
@@ -548,7 +552,10 @@ export default async function HomePage() {
         <footer className="border-t border-stone-200 bg-white/60">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-5 sm:grid-cols-[1.4fr_1fr_1fr]">
             <div>
-              <p className="font-serif text-xl tracking-wide">Вместе</p>
+              <p className="flex items-center gap-2 font-serif text-xl tracking-wide">
+                <img src="/media/vmeste-mark.svg" alt="" className="h-7 w-10" />
+                Вместе
+              </p>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-stone-600">
                 Сервис для свадьбы: приглашения, ответы гостей, рассадка,
                 вход по QR-коду, экран в зале и розыгрыш.

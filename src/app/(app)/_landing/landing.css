@@ -57,6 +57,60 @@
     radial-gradient(70% 60% at 50% 100%, rgba(246, 238, 226, 0.9), transparent 70%);
 }
 
+/* Фотография работает как атмосфера, а не как контент: на широком экране
+   она остаётся по краям, пока центр держит спокойную типографику. */
+.hero-brand-photo {
+  background-image: url("/media/brand-hero.webp");
+  background-position: center;
+  background-size: cover;
+  opacity: 0.62;
+}
+
+.hero-brand-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(250, 247, 242, 0.7), rgba(250, 247, 242, 0.8)),
+    radial-gradient(ellipse at center, rgba(250, 247, 242, 0.94) 0 28%, rgba(250, 247, 242, 0.2) 70%);
+}
+
+.cta-brand-photo {
+  background-color: #f3ede3;
+  background-image: url("/media/brand-evening.webp");
+  background-position: center;
+  background-size: cover;
+}
+
+.cta-brand-veil {
+  background: linear-gradient(90deg, rgba(250, 247, 242, 0.9), rgba(250, 247, 242, 0.8), rgba(250, 247, 242, 0.9));
+  backdrop-filter: blur(1px);
+}
+
+/* На телефоне фотографии за текстом не дают полезной композиции и только
+   расходуют трафик. Остаётся фирменный тёплый светлый фон. */
+@media (max-width: 639px) {
+  .hero-brand-photo,
+  .cta-brand-photo {
+    background-image: none;
+  }
+
+  .hero-brand-photo {
+    opacity: 1;
+    background:
+      radial-gradient(75% 55% at 15% 10%, rgba(213, 185, 120, 0.28), transparent 72%),
+      radial-gradient(75% 60% at 90% 28%, rgba(196, 158, 170, 0.2), transparent 70%);
+  }
+
+  .cta-brand-photo {
+    background:
+      radial-gradient(70% 60% at 18% 15%, rgba(213, 185, 120, 0.25), transparent 72%),
+      linear-gradient(150deg, #faf7f2, #f3ede3);
+  }
+
+  .cta-brand-veil { background: rgba(250, 247, 242, 0.38); }
+}
+
 .paper {
   background-image:
     linear-gradient(rgba(139, 111, 71, 0.045) 1px, transparent 1px),

@@ -139,7 +139,7 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5">
         <Link href="/" className="flex items-center gap-2.5">
-          <RingsGlyph />
+          <img src="/media/vmeste-mark.svg" alt="" className="h-7 w-10" />
           <span className="font-serif text-lg tracking-wide sm:text-xl">Вместе</span>
         </Link>
 
@@ -241,16 +241,5 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
         </div>
       )}
     </header>
-  );
-}
-
-/** Два кольца — знак сервиса. Рисуем геометрией: это 200 байт вместо файла. */
-function RingsGlyph() {
-  return (
-    <svg width="26" height="20" viewBox="0 0 34 24" aria-hidden="true">
-      <circle cx="13" cy="13" r="8.5" fill="none" stroke="#8b6f47" strokeWidth="1.6" />
-      <circle cx="21" cy="13" r="8.5" fill="none" stroke="#c2a878" strokeWidth="1.6" />
-      <path d="M17 3.4 19.1 1 21.2 3.4 19.1 5.6Z" fill="#8b6f47" />
-    </svg>
   );
 }
