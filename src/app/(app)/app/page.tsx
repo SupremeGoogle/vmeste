@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getOrgContext } from "@/server/context";
-import { listEvents } from "@/server/repositories/events";
+import { listEvents, renameEvent, deleteEvent } from "@/server/repositories/events";
+import { EventCard } from "./event-card";
 
 export const dynamic = "force-dynamic";
-
-const STATUS: Record<string, string> = {
-  DRAFT: "Черновик",
-  PUBLISHED: "Опубликовано",
-  ARCHIVED: "В архиве",
-};
 
 export default async function EventsPage() {
   const ctx = await getOrgContext();
@@ -17,56 +13,58 @@ export default async function EventsPage() {
 
   const events = await listEvents(ctx);
 
+  async function rename(eventId: string, title: string) {
+    "use server";
+    const ctx = await getOrgContext();
+    if (!ctx) return;
+    await renameEvent(ctx, eventId, title);
+    revalidatePath("/app");
+  }
+
+  async function remove(eventId: string) {
+    "use server";
+    const ctx = await getOrgContext();
+    if (!ctx) return;
+    await deleteEvent(ctx, eventId);
+    revalidatePath("/app");
+  }
+
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">Мероприятия</h1>
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <h1 className="text-3xl font-semibold">Мероприятия</h1>
         <Link
           href="/app/events/new"
-          className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white"
+          className="rounded-lg bg-stone-900 px-5 py-2.5 text-base font-medium text-white hover:opacity-90"
         >
-          Новое мероприятие
+          + Новое мероприятие
         </Link>
       </div>
 
       {events.length === 0 && (
-        <p className="mt-6 text-stone-600">Мероприятий пока нет.</p>
+        <p className="mt-8 rounded-xl border border-dashed border-stone-300 p-8 text-center text-stone-600">
+          Мероприятий пока нет — начните с кнопки выше.
+        </p>
       )}
 
-      <ul className="mt-6 space-y-3">
+      <ul className="mt-8 space-y-4">
         {events.map((event) => (
-          <li
+          <EventCard
             key={event.id}
-            className={`rounded-xl border border-stone-200 p-5 ${
-              event.status === "ARCHIVED" ? "bg-stone-100 opacity-70" : "bg-white"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <Link href={`/app/e/${event.id}`} className="text-lg font-medium hover:underline">
-                  {event.title}
-                </Link>
-                <p className="mt-1 text-sm text-stone-600">
-                  {new Intl.DateTimeFormat("ru-RU", { dateStyle: "long" }).format(event.eventDate)}
-                  {event.venueName ? ` · ${event.venueName}` : ""}
-                  {` · ${event._count.guests} гостей`}
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-stone-500">{STATUS[event.status]}</span>
-                <p className="mt-1 font-mono text-lg tracking-widest text-stone-600">{event.shortCode}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-4 text-sm">
-              <Link href={`/app/e/${event.id}/guests`} className="text-stone-700 hover:underline">Гости</Link>
-              <Link href={`/app/e/${event.id}/seating`} className="text-stone-700 hover:underline">Рассадка</Link>
-              <Link href={`/app/e/${event.id}/print`} className="text-stone-700 hover:underline">Печать и QR</Link>
-              <a href={`/e/${event.shortCode}`} target="_blank" className="text-stone-500 hover:underline">
-                Вход гостя ↗
-              </a>
-            </div>
-          </li>
+            event={{
+              id: event.id,
+              title: event.title,
+              shortCode: event.shortCode,
+              status: event.status,
+              eventDateLabel: new Intl.DateTimeFormat("ru-RU", { dateStyle: "long" }).format(
+                event.eventDate,
+              ),
+              venueName: event.venueName,
+              guestCount: event._count.guests,
+            }}
+            onRename={rename}
+            onDelete={remove}
+          />
         ))}
       </ul>
     </main>

@@ -102,6 +102,30 @@ export async function getEvent(ctx: OrgContext, eventId: string) {
   return db.event.findFirst({ where: { id: eventId, orgId: ctx.orgId } });
 }
 
+/** Быстрое переименование прямо со списка мероприятий, без похода в настройки. */
+export async function renameEvent(ctx: OrgContext, eventId: string, title: string): Promise<boolean> {
+  const clean = title.trim().slice(0, 120);
+  if (!clean) return false;
+
+  const updated = await db.event.updateMany({
+    where: { id: eventId, orgId: ctx.orgId },
+    data: { title: clean },
+  });
+  return updated.count === 1;
+}
+
+/**
+ * Полное удаление мероприятия и всех его данных (гости, рассадка,
+ * приглашение, фото, розыгрыш — всё висит на eventId с onDelete: Cascade).
+ * Необратимо, поэтому в отличие от архивации это не «скрыть», а стереть.
+ */
+export async function deleteEvent(ctx: OrgContext, eventId: string): Promise<boolean> {
+  const deleted = await db.event.deleteMany({
+    where: { id: eventId, orgId: ctx.orgId },
+  });
+  return deleted.count === 1;
+}
+
 /** Инкремент версии рассадки — оптимистическая блокировка (PLAN.md §5.4). */
 export async function bumpSeatingVersion(eventId: string, orgId: string) {
   const updated = await db.event.update({

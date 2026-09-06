@@ -46,3 +46,7 @@ next-env.d.ts
 
 # Prisma (генерируется)
 src/generated/
+
+# Локальный dev-тулчейн (portable Node/PostgreSQL + данные базы) —
+# ставится и пересоздаётся скриптом восстановления, в git не нужен.
+/.localtools/

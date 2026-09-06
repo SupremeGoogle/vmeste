@@ -41,22 +41,6 @@ export const metadata: Metadata = {
     "Приглашения и ответы гостей, план зала с рассадкой, вход по QR-коду, фотографии на экране и розыгрыш. Первая свадьба бесплатно.",
 };
 
-const MARQUEE = [
-  "именные приглашения",
-  "ответы гостей",
-  "план зала",
-  "круглые и прямоугольные столы",
-  "президиум",
-  "вход по QR",
-  "поиск по имени",
-  "меню и аллергии",
-  "фотографии на экране",
-  "модерация",
-  "розыгрыш",
-  "печать и PDF",
-  "импорт из Excel",
-];
-
 const STEPS = [
   {
     title: "Заводите свадьбу",
@@ -240,18 +224,6 @@ export default async function HomePage() {
             </Reveal>
           </div>
         </section>
-
-        {/* ── Бегущая строка ───────────────────────────────── */}
-        <div className="marquee overflow-hidden border-y border-stone-200 bg-white/50 py-2.5 sm:py-3">
-          <div className="marquee-track flex w-max gap-8 text-sm whitespace-nowrap text-stone-500">
-            {[...MARQUEE, ...MARQUEE].map((item, index) => (
-              <span key={index} className="flex items-center gap-8">
-                {item}
-                <span className="h-1 w-1 rounded-full bg-stone-300" />
-              </span>
-            ))}
-          </div>
-        </div>
 
         {/* ── Видео ────────────────────────────────────────── */}
         {heroVideo ? (
