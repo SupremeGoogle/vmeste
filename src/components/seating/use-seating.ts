@@ -14,6 +14,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import type { SeatingOp } from "@/server/services/seating-ops";
+import { shapeSize as shapeSizeFor } from "@/lib/seating-geometry";
 
 import type { GuestRole } from "@/generated/prisma/enums";
 
@@ -179,6 +180,94 @@ export function useSeating(
     [send],
   );
 
+  const renameTable = useCallback(
+    (tableId: string, label: string) => {
+      send({ kind: "renameTable", tableId, label }, (prev) => ({
+        ...prev,
+        tables: prev.tables.map((table) =>
+          table.id === tableId ? { ...table, label } : table,
+        ),
+      }));
+    },
+    [send],
+  );
+
+  /**
+   * Смена формы меняет и габариты (см. `shapeSize` в lib/seating-geometry) —
+   * пересчитываем их и на клиенте, иначе план «прыгнет» только после
+   * перезагрузки страницы.
+   */
+  const setShape = useCallback(
+    (tableId: string, shape: string) => {
+      send({ kind: "setShape", tableId, shape } as SeatingOp, (prev) => ({
+        ...prev,
+        tables: prev.tables.map((table) =>
+          table.id === tableId
+            ? { ...table, shape, ...shapeSizeFor(shape, table.capacity) }
+            : table,
+        ),
+      }));
+    },
+    [send],
+  );
+
+  /**
+   * Создание, удаление и смену вместимости стола на клиенте не
+   * прогнозируем: сервер сам подбирает id новых мест или проверяет, что
+   * снимаемые места пусты, — после ответа проще перечитать план целиком,
+   * чем повторять эту логику в браузере (тот же приём, что и в `undo`).
+   */
+  const [structuralPending, setStructuralPending] = useState(false);
+
+  const runStructural = useCallback(
+    async (op: SeatingOp) => {
+      setStructuralPending(true);
+      setStatus({ kind: "saving" });
+      try {
+        const res = await fetch(`/api/app/events/${eventId}/seating/ops`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ version: version.current, op }),
+        });
+        const data = await res.json();
+
+        if (res.status === 409) {
+          setStatus({ kind: "conflict" });
+          return false;
+        }
+        if (!res.ok || !data.ok) {
+          setStatus({ kind: "error", message: data.message ?? "Не удалось сохранить" });
+          return false;
+        }
+
+        window.location.reload();
+        return true;
+      } catch {
+        setStatus({ kind: "error", message: "Нет связи с сервером" });
+        return false;
+      } finally {
+        setStructuralPending(false);
+      }
+    },
+    [eventId],
+  );
+
+  const createTable = useCallback(
+    (input: { label: string; shape: string; capacity: number; x?: number; y?: number }) =>
+      runStructural({ kind: "createTable", ...input } as SeatingOp),
+    [runStructural],
+  );
+
+  const deleteTable = useCallback(
+    (tableId: string) => runStructural({ kind: "deleteTable", tableId }),
+    [runStructural],
+  );
+
+  const setCapacity = useCallback(
+    (tableId: string, capacity: number) => runStructural({ kind: "setCapacity", tableId, capacity }),
+    [runStructural],
+  );
+
   /**
    * Отмена. Обратная операция приходит с сервера — считать её на клиенте
    * значило бы дублировать логику и разойтись с ней на первом же исключении.
@@ -230,8 +319,9 @@ export function useSeating(
   }, [eventId]);
 
   return {
-    tables, unseated, status, canUndo,
+    tables, unseated, status, canUndo, structuralPending,
     assign, clear, moveTable, undo,
+    renameTable, setShape, createTable, deleteTable, setCapacity,
     setStatus,
   };
 }

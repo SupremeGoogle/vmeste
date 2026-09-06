@@ -21,18 +21,27 @@ import {
   type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
 import {
-  PLAN_HEIGHT, PLAN_WIDTH, clampToPlan, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition,
-  shortName, snap,
+  PLAN_HEIGHT, PLAN_WIDTH, SHAPES, SHAPE_LABEL, clampToPlan, isRound, MARK_LABEL_SHIFT,
+  labelPosition, seatPosition, shortName, snap,
 } from "@/lib/seating-geometry";
 import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
-import type { GuestRole } from "@/generated/prisma/enums";
+import type { GuestRole, TableShape as TableShapeEnum } from "@/generated/prisma/enums";
 import {
   useSeating, type EditorGuest, type EditorSeat, type EditorTable,
 } from "./use-seating";
 
 type DragPayload =
   | { type: "guest"; guest: EditorGuest; fromSeatId?: string }
-  | { type: "table"; tableId: string };
+  | { type: "table"; tableId: string }
+  | { type: "new-table"; label: string; shape: string; capacity: number };
+
+/** Ширина плана на 100% зума — дальше зал буквально становится больше
+ *  на экране (появляется горизонтальная/вертикальная прокрутка), и столы
+ *  можно расставлять с бо́льшим запасом между ними. */
+const BASE_PLAN_WIDTH = 860;
+const ZOOM_MIN = 0.6;
+const ZOOM_MAX = 2;
+const ZOOM_STEP = 0.2;
 
 /**
  * Проценты округляются до трёх знаков намеренно.
@@ -195,12 +204,14 @@ function SeatDot({
 }
 
 function TableShape({
-  table, selected, onSelect, onPlace,
+  table, selected, editing, onSelect, onPlace, onEdit,
 }: {
   table: EditorTable;
   selected: EditorGuest | null;
+  editing: boolean;
   onSelect: (guest: EditorGuest | null, seatId?: string) => void;
   onPlace: (seatId: string) => void;
+  onEdit: (tableId: string) => void;
 }) {
   const draggable = useDraggable({
     id: `table:${table.id}`,
@@ -216,9 +227,13 @@ function TableShape({
         ref={draggable.setNodeRef}
         {...draggable.listeners}
         {...draggable.attributes}
+        onClick={() => onEdit(table.id)}
+        title="Щёлкните, чтобы переименовать, изменить форму/вместимость или удалить"
         className={`absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move flex-col items-center justify-center border bg-stone-100 ${
           round ? "rounded-full" : "rounded-lg"
-        } ${draggable.isDragging ? "opacity-40" : ""}`}
+        } ${draggable.isDragging ? "opacity-40" : ""} ${
+          editing ? "ring-2 ring-stone-900 ring-offset-2" : ""
+        }`}
         style={{
           left: pct(table.x, PLAN_WIDTH),
           top: pct(table.y, PLAN_HEIGHT),
@@ -244,6 +259,145 @@ function TableShape({
         />
       ))}
     </>
+  );
+}
+
+/**
+ * Черновик нового стола — тащим на план, а не выбираем из меню.
+ *
+ * Клик без перетаскивания тоже работает: стол ставится в центр зала
+ * (тот же путь, что и раньше через нижнюю форму), а перетаскивание —
+ * это просто способ сразу указать, где именно.
+ */
+function NewTableChip({
+  label, shape, capacity, disabled, onClick,
+}: {
+  label: string;
+  shape: string;
+  capacity: number;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const draggable = useDraggable({
+    id: "new-table",
+    data: { type: "new-table", label, shape, capacity } satisfies DragPayload,
+    disabled,
+  });
+
+  return (
+    <button
+      ref={draggable.setNodeRef}
+      {...draggable.listeners}
+      {...draggable.attributes}
+      type="button"
+      disabled={disabled}
+      // Клик без перетаскивания — тот же путь, что и раньше через форму:
+      // стол встаёт в центр. dnd-kit не считает это перетаскиванием, пока
+      // курсор не сдвинулся дальше порога, так что onClick срабатывает
+      // как обычно (тот же приём, что и у карточки гостя).
+      onClick={onClick}
+      className="flex shrink-0 cursor-grab select-none items-center gap-2 rounded-lg border-2 border-dashed border-stone-400 bg-stone-50 px-4 py-2.5 text-sm font-medium text-stone-700 active:cursor-grabbing disabled:opacity-50"
+      style={{ opacity: draggable.isDragging ? 0.4 : 1 }}
+      title="Перетащите на план — стол встанет туда, куда его отпустите. Или просто щёлкните — встанет в центр."
+    >
+      <span aria-hidden>⠿</span> Новый стол — перетащите на план
+    </button>
+  );
+}
+
+/**
+ * Панель редактирования стола: название, форма, вместимость, удаление —
+ * прямо тут же, без похода в отдельную форму или настройки мероприятия.
+ */
+function TableEditPanel({
+  table, pending, onRename, onShape, onCapacity, onDelete, onClose,
+}: {
+  table: EditorTable;
+  pending: boolean;
+  onRename: (label: string) => void;
+  onShape: (shape: string) => void;
+  onCapacity: (capacity: number) => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const [label, setLabel] = useState(table.label);
+  const [capacity, setCapacity] = useState(table.capacity);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const taken = table.seats.filter((s) => s.guest).length;
+
+  return (
+    <div className="mt-3 rounded-xl border border-stone-300 bg-stone-50 p-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex-1">
+          <span className="text-xs text-stone-500">Название стола</span>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onBlur={() => label.trim() && label !== table.label && onRename(label.trim())}
+            maxLength={40}
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-1.5 text-sm"
+          />
+        </label>
+
+        <label>
+          <span className="text-xs text-stone-500">Форма</span>
+          <select
+            value={table.shape}
+            onChange={(e) => onShape(e.target.value)}
+            className="mt-1 rounded-lg border border-stone-300 px-3 py-1.5 text-sm"
+          >
+            {SHAPES.map((shape) => (
+              <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="text-xs text-stone-500">Мест</span>
+          <input
+            type="number" min={1} max={20}
+            value={capacity}
+            onChange={(e) => setCapacity(Number(e.target.value) || table.capacity)}
+            onBlur={() => capacity !== table.capacity && onCapacity(capacity)}
+            className="mt-1 w-20 rounded-lg border border-stone-300 px-3 py-1.5 text-sm"
+          />
+        </label>
+
+        {pending && <span className="pb-2 text-xs text-stone-500">Сохраняю…</span>}
+
+        <button type="button" onClick={onClose} className="pb-2 text-sm text-stone-500 underline">
+          Готово
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 text-sm">
+        {confirmingDelete ? (
+          <>
+            <span className="text-red-800">
+              Удалить стол{taken > 0 ? ` вместе с рассадкой ${taken} гостей` : ""}?
+            </span>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-lg bg-red-700 px-3 py-1.5 font-medium text-white"
+            >
+              Да, удалить
+            </button>
+            <button type="button" onClick={() => setConfirmingDelete(false)} className="text-stone-500 underline">
+              Отмена
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="rounded-lg px-3 py-1.5 font-medium text-red-800 hover:bg-red-50"
+          >
+            Удалить стол
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -304,6 +458,19 @@ export function SeatingEditor({
    *  единственный надёжный на тач-экране. */
   const [selected, setSelected] = useState<EditorGuest | null>(null);
 
+  /** Насколько увеличен зал на экране (1 = базовый размер). */
+  const [zoom, setZoom] = useState(1);
+
+  /** Стол, который сейчас редактируют (название/форма/вместимость). */
+  const [editingTableId, setEditingTableId] = useState<string | null>(null);
+  const editingTable = seating.tables.find((t) => t.id === editingTableId) ?? null;
+
+  /** Черновик нового стола — те же поля, что раньше жили в форме внизу,
+   *  теперь наполняют перетаскиваемую «фишку». */
+  const [draftLabel, setDraftLabel] = useState(`Стол ${seating.tables.length + 1}`);
+  const [draftShape, setDraftShape] = useState<TableShapeEnum>("ROUND");
+  const [draftCapacity, setDraftCapacity] = useState(8);
+
   function select(guest: EditorGuest | null) {
     setSelected(guest);
   }
@@ -312,6 +479,12 @@ export function SeatingEditor({
     if (!selected) return;
     seating.assign(seatId, selected);
     setSelected(null);
+  }
+
+  function addDraftTable(x?: number, y?: number) {
+    const label = draftLabel.trim() || `Стол ${seating.tables.length + 1}`;
+    seating.createTable({ label, shape: draftShape, capacity: draftCapacity, x, y });
+    setDraftLabel(`Стол ${seating.tables.length + 2}`);
   }
 
   const sensors = useSensors(
@@ -348,6 +521,31 @@ export function SeatingEditor({
       return;
     }
 
+    if (payload.type === "new-table") {
+      const plan = document.getElementById("seating-plan");
+      const rect = plan?.getBoundingClientRect();
+      // Активирующее событие несёт координаты начала перетаскивания,
+      // delta — сдвиг за время жеста: вместе они и есть точка отпускания.
+      const start = event.activatorEvent as { clientX?: number; clientY?: number };
+      if (!rect || typeof start.clientX !== "number" || typeof start.clientY !== "number") {
+        addDraftTable();
+        return;
+      }
+      const clientX = start.clientX + event.delta.x;
+      const clientY = start.clientY + event.delta.y;
+      const fracX = (clientX - rect.left) / rect.width;
+      const fracY = (clientY - rect.top) / rect.height;
+
+      // Отпустили за пределами зала — не гадаем, куда хотели, ставим
+      // так же, как обычный клик без перетаскивания: в центр.
+      if (fracX < 0 || fracX > 1 || fracY < 0 || fracY > 1) {
+        addDraftTable();
+        return;
+      }
+      addDraftTable(snap(fracX * PLAN_WIDTH), snap(fracY * PLAN_HEIGHT));
+      return;
+    }
+
     const overId = String(event.over?.id ?? "");
     if (overId.startsWith("seat:")) {
       seating.assign(overId.slice(5), payload.guest);
@@ -377,21 +575,108 @@ export function SeatingEditor({
     >
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="lg:flex-1">
-          <div
-            id="seating-plan"
-            className="relative w-full rounded-xl border border-stone-200 bg-white"
-            style={{ aspectRatio: `${PLAN_WIDTH} / ${PLAN_HEIGHT}` }}
-          >
-            {seating.tables.map((table) => (
-              <TableShape
-                key={table.id}
-                table={table}
-                selected={selected}
-                onSelect={select}
-                onPlace={place}
+          <div className="mb-3 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-1.5 text-sm">
+              <span className="text-stone-500">Размер зала:</span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(1)))}
+                disabled={zoom <= ZOOM_MIN}
+                className="h-7 w-7 rounded-lg border border-stone-300 disabled:opacity-40"
+                aria-label="Уменьшить зал"
+              >
+                −
+              </button>
+              <span className="w-12 text-center font-mono text-stone-600">{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(1)))}
+                disabled={zoom >= ZOOM_MAX}
+                className="h-7 w-7 rounded-lg border border-stone-300 disabled:opacity-40"
+                aria-label="Увеличить зал"
+              >
+                +
+              </button>
+              {zoom !== 1 && (
+                <button type="button" onClick={() => setZoom(1)} className="text-stone-500 underline">
+                  Сбросить
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={draftLabel}
+                onChange={(e) => setDraftLabel(e.target.value)}
+                placeholder="Название стола"
+                className="w-36 rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
               />
-            ))}
+              <select
+                value={draftShape}
+                onChange={(e) => setDraftShape(e.target.value as TableShapeEnum)}
+                className="rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
+              >
+                {SHAPES.map((shape) => (
+                  <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+                ))}
+              </select>
+              <input
+                type="number" min={1} max={20}
+                value={draftCapacity}
+                onChange={(e) => setDraftCapacity(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+                className="w-16 rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm"
+                aria-label="Мест за новым столом"
+              />
+              <NewTableChip
+                label={draftLabel || `Стол ${seating.tables.length + 1}`}
+                shape={draftShape}
+                capacity={draftCapacity}
+                disabled={seating.structuralPending}
+                onClick={() => addDraftTable()}
+              />
+            </div>
           </div>
+
+          {/* Зал прокручивается, когда зум делает план больше контейнера —
+              это и есть «увеличить зал»: больше места, чтобы расставлять
+              столы просторно, без пересчёта самой геометрии плана. */}
+          <div className="overflow-auto rounded-xl border border-stone-200 bg-stone-100/60 p-3">
+            <div
+              id="seating-plan"
+              className="relative mx-auto bg-white shadow-sm"
+              style={{
+                width: BASE_PLAN_WIDTH * zoom,
+                aspectRatio: `${PLAN_WIDTH} / ${PLAN_HEIGHT}`,
+              }}
+            >
+              {seating.tables.map((table) => (
+                <TableShape
+                  key={table.id}
+                  table={table}
+                  selected={selected}
+                  editing={editingTableId === table.id}
+                  onSelect={select}
+                  onPlace={place}
+                  onEdit={(id) => setEditingTableId((cur) => (cur === id ? null : id))}
+                />
+              ))}
+            </div>
+          </div>
+
+          {editingTable && (
+            <TableEditPanel
+              table={editingTable}
+              pending={seating.structuralPending}
+              onRename={(label) => seating.renameTable(editingTable.id, label)}
+              onShape={(shape) => seating.setShape(editingTable.id, shape)}
+              onCapacity={(capacity) => seating.setCapacity(editingTable.id, capacity)}
+              onDelete={() => {
+                seating.deleteTable(editingTable.id);
+                setEditingTableId(null);
+              }}
+              onClose={() => setEditingTableId(null)}
+            />
+          )}
 
           <StatusBar seating={seating} />
         </div>
@@ -414,6 +699,11 @@ export function SeatingEditor({
         {dragging?.type === "guest" && (
           <div className="rounded-lg border border-stone-400 bg-white px-3 py-1.5 text-sm shadow-lg">
             {dragging.guest.displayName}
+          </div>
+        )}
+        {dragging?.type === "new-table" && (
+          <div className="rounded-lg border-2 border-dashed border-stone-500 bg-stone-50 px-3 py-1.5 text-sm font-medium shadow-lg">
+            {dragging.label || "Новый стол"}
           </div>
         )}
       </DragOverlay>
