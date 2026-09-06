@@ -317,7 +317,6 @@ model Guest {
   rsvpStatus     RsvpStatus @default(PENDING)
   rsvpAt         DateTime?
   mealOptionId   String?
-  allergies      String?
   plusOneAllowed Boolean    @default(false)
   plusOneName    String?
   comment        String?

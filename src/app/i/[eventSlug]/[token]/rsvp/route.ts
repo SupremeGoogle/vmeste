@@ -115,9 +115,6 @@ ${error ? `<p class="error">${esc(ERRORS[error] ?? ERRORS.invalid)}</p>` : ""}
       : ""
   }
 
-  <label class="field"><span>Аллергии и ограничения в еде</span>
-  <input name="allergies" maxlength="500" value="${esc(guest.allergies ?? "")}"></label>
-
   <label class="field"><span>Что-то ещё для организатора</span>
   <textarea name="comment" maxlength="500" rows="3">${esc(guest.comment ?? "")}</textarea></label>
 
@@ -144,7 +141,6 @@ export async function POST(
   const result = await submitRsvp(token, {
     status: String(form.get("status") ?? ""),
     mealOptionId: String(form.get("mealOptionId") ?? "") || null,
-    allergies: String(form.get("allergies") ?? ""),
     comment: String(form.get("comment") ?? ""),
     plusOneName: String(form.get("plusOneName") ?? ""),
     plusOneMealOptionId: String(form.get("plusOneMealOptionId") ?? "") || null,

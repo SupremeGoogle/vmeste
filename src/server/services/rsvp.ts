@@ -28,7 +28,6 @@ import { generateLinkToken } from "@/server/repositories/guests";
 export const rsvpInputSchema = z.object({
   status: z.enum(["ACCEPTED", "DECLINED"]),
   mealOptionId: z.string().trim().max(40).nullable().default(null),
-  allergies: z.string().trim().max(500).default(""),
   comment: z.string().trim().max(500).default(""),
   plusOneName: z.string().trim().max(120).default(""),
   // Блюдо спутника: без него он попадал в сводку для кухни как
@@ -107,7 +106,6 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
         rsvpStatus: input.status,
         rsvpAt: new Date(),
         mealOptionId,
-        allergies: input.status === "ACCEPTED" ? input.allergies || null : null,
         comment: input.comment || null,
         plusOneName: plusOneName || null,
       },
@@ -281,7 +279,7 @@ export async function listRsvp(eventId: string) {
     orderBy: [{ rsvpStatus: "asc" }, { searchKey: "asc" }],
     select: {
       id: true, displayName: true, rsvpStatus: true, rsvpAt: true,
-      allergies: true, comment: true, linkToken: true, linkOpenedAt: true,
+      comment: true, linkToken: true, linkOpenedAt: true,
       parentGuestId: true, plusOneName: true,
       mealOption: { select: { title: true } },
       parentGuest: { select: { displayName: true } },

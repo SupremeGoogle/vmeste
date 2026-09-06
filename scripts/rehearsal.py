@@ -221,7 +221,6 @@ for index, token in enumerate(tokens[:60]):
         # берём его наличие со страницы, как это видит гость.
         _, form_html, _ = get(f"/i/{slug}/{token}/rsvp")
         extra = [("status", "ACCEPTED"), ("mealOptionId", meal_ids[index % 3]),
-                 ("allergies", "орехи" if index % 17 == 0 else ""),
                  ("comment", "")]
         if 'name="plusOneName"' in form_html:
             extra.append(("plusOneName", f"Спутник {index}"))

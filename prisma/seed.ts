@@ -199,7 +199,6 @@ async function seedEvent(opts: {
           rsvpStatus === "ACCEPTED" && meals.length > 0
             ? meals[index % meals.length].id
             : null,
-        allergies: index === 2 ? "аллергия на орехи" : null,
         aliases: {
           create: expandGuestName(displayName).map((alias) => ({
             orgId: opts.orgId,

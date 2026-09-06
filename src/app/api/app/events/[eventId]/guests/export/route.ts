@@ -29,7 +29,7 @@ export async function GET(
     orderBy: { searchKey: "asc" },
     select: {
       displayName: true, phone: true, email: true, rsvpStatus: true, rsvpAt: true,
-      allergies: true, comment: true, note: true, linkToken: true, linkOpenedAt: true,
+      comment: true, note: true, linkToken: true, linkOpenedAt: true,
       parentGuestId: true,
       mealOption: { select: { title: true } },
       parentGuest: { select: { displayName: true } },
@@ -45,7 +45,7 @@ export async function GET(
 
   const csv = toCsv(
     [
-      "Гость", "Ответ", "Когда ответил", "Блюдо", "Аллергии",
+      "Гость", "Ответ", "Когда ответил", "Блюдо",
       "Комментарий", "Спутник кого", "Стол", "Место", "Телефон", "Почта",
       "Заметка", "Ссылка открыта", "Именная ссылка",
     ],
@@ -54,7 +54,6 @@ export async function GET(
       RSVP[guest.rsvpStatus],
       guest.rsvpAt ? guest.rsvpAt.toISOString().slice(0, 16).replace("T", " ") : "",
       guest.mealOption?.title ?? "",
-      guest.allergies ?? "",
       guest.comment ?? "",
       guest.parentGuest?.displayName ?? "",
       guest.seat?.table.label ?? "",

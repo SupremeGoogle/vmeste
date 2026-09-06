@@ -112,7 +112,7 @@ export default async function RsvpSummaryPage({
             <th className="py-2 font-normal">Гость</th>
             <th className="py-2 font-normal">Ответ</th>
             <th className="py-2 font-normal">Блюдо</th>
-            <th className="py-2 font-normal">Аллергии и комментарий</th>
+            <th className="py-2 font-normal">Комментарий</th>
             <th className="py-2 font-normal">Ссылка</th>
           </tr>
         </thead>
@@ -143,11 +143,11 @@ export default async function RsvpSummaryPage({
               </td>
               <td className="py-2 text-stone-600">{guest.mealOption?.title ?? "—"}</td>
               <td className="py-2 text-stone-600">
-                {guest.allergies ? <span className="block">{guest.allergies}</span> : null}
                 {guest.comment ? (
                   <span className="block text-stone-500">{guest.comment}</span>
-                ) : null}
-                {!guest.allergies && !guest.comment ? "—" : null}
+                ) : (
+                  "—"
+                )}
               </td>
               <td className="py-2">
                 <a

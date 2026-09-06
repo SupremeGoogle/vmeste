@@ -73,16 +73,15 @@ afterAll(async () => {
 });
 
 describe("ответ гостя", () => {
-  it("записывает согласие с блюдом и аллергией", async () => {
+  it("записывает согласие с блюдом", async () => {
     const result = await submitRsvp(a.guestToken, {
-      status: "ACCEPTED", mealOptionId: a.mealId, allergies: "орехи",
+      status: "ACCEPTED", mealOptionId: a.mealId,
     });
     expect(result.ok).toBe(true);
 
     const guest = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
     expect(guest.rsvpStatus).toBe("ACCEPTED");
     expect(guest.mealOptionId).toBe(a.mealId);
-    expect(guest.allergies).toBe("орехи");
     expect(guest.rsvpAt).not.toBeNull();
   });
 

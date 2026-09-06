@@ -17,18 +17,103 @@ const RSVP: Record<string, string> = {
   DECLINED: "Не придёт",
 };
 
+type Guest = Awaited<ReturnType<typeof listGuests>>[number];
+
+/** Строка гостя — общая для списка целиком и для группировки по столам,
+ *  чтобы действия (архив, +1) не разъезжались между двумя видами. */
+function GuestRow({
+  guest, eventId, showTable, togglePlusOne, remove,
+}: {
+  guest: Guest;
+  eventId: string;
+  showTable?: boolean;
+  togglePlusOne: (formData: FormData) => Promise<void>;
+  remove: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <tr className="border-b border-stone-100">
+      <td className="py-2">
+        <a href={`/app/e/${eventId}/guests/${guest.id}`} className="hover:underline">
+          {guest.displayName}
+        </a>
+        {guest.role !== "GUEST" ? (
+          <span className="ml-2 text-xs text-stone-500">{ROLE_LABEL[guest.role]}</span>
+        ) : null}
+      </td>
+      <td className="py-2 text-stone-600">{RSVP[guest.rsvpStatus]}</td>
+      {showTable && (
+        <td className="py-2 text-stone-600">{guest.seat ? guest.seat.table.label : "—"}</td>
+      )}
+      <td className="py-2">
+        {/* Разрешение на спутника — по гостю, а не общее: «плюс один»
+            зовут не всем, и решает это организатор, а не гость. */}
+        <form action={togglePlusOne}>
+          <input type="hidden" name="guestId" value={guest.id} />
+          <input type="hidden" name="allowed" value={guest.plusOneAllowed ? "0" : "1"} />
+          <button className="text-xs text-stone-500 underline">
+            {guest.plusOneAllowed ? "разрешён" : "разрешить"}
+          </button>
+        </form>
+      </td>
+      <td className="py-2 text-right">
+        <form action={remove}>
+          <input type="hidden" name="guestId" value={guest.id} />
+          <button className="text-xs text-stone-400 hover:text-red-700">В архив</button>
+        </form>
+      </td>
+    </tr>
+  );
+}
+
 export default async function GuestsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ draft?: string }>;
+  searchParams: Promise<{ draft?: string; view?: string }>;
 }) {
   const { eventId } = await params;
-  const { draft: draftId } = await searchParams;
+  const { draft: draftId, view } = await searchParams;
+  const groupByTable = view === "bytable";
   const ctx = await requireEventContext(eventId);
   const [guests, counts] = await Promise.all([listGuests(ctx), countGuests(ctx)]);
   const draft = draftId ? peekImportDraft(ctx, draftId) : null;
+
+  /**
+   * Группировка по столам — «видно, кто за каким столом сидит», не листая
+   * колонку «Стол» построчно. Нерассаженные и президиум идут отдельными
+   * группами: первый — потому что это то, за чем организатор следит
+   * ближе всего к дате свадьбы, второй — потому что молодожёны не «стол
+   * по алфавиту», их ищут первыми.
+   */
+  const tableGroups = (() => {
+    if (!groupByTable) return null;
+
+    const byLabel = new Map<string, typeof guests>();
+    const unseated: typeof guests = [];
+
+    for (const guest of guests) {
+      if (!guest.seat) {
+        unseated.push(guest);
+        continue;
+      }
+      const label = guest.seat.table.label;
+      const group = byLabel.get(label);
+      if (group) group.push(guest);
+      else byLabel.set(label, [guest]);
+    }
+
+    const seatedGroups = [...byLabel.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, "ru", { numeric: true }))
+      .map(([label, members]) => ({
+        label,
+        guests: members.sort((a, b) => (a.seat!.index) - (b.seat!.index)),
+      }));
+
+    return unseated.length > 0
+      ? [...seatedGroups, { label: "Не рассажено", guests: unseated }]
+      : seatedGroups;
+  })();
 
   async function addGuest(formData: FormData) {
     "use server";
@@ -205,54 +290,80 @@ export default async function GuestsPage({
         </section>
       ) : null}
 
-      <table className="mt-8 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-stone-200 text-left text-stone-500">
-            <th className="py-2 font-normal">Гость</th>
-            <th className="py-2 font-normal">Ответ</th>
-            <th className="py-2 font-normal">Стол</th>
-            <th className="py-2 font-normal">+1</th>
-            <th className="py-2 font-normal"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {guests.map((guest) => (
-            <tr key={guest.id} className="border-b border-stone-100">
-              <td className="py-2">
-                <a href={`/app/e/${eventId}/guests/${guest.id}`} className="hover:underline">
-                  {guest.displayName}
-                </a>
-                {guest.role !== "GUEST" ? (
-                  <span className="ml-2 text-xs text-stone-500">
-                    {ROLE_LABEL[guest.role]}
-                  </span>
-                ) : null}
-              </td>
-              <td className="py-2 text-stone-600">{RSVP[guest.rsvpStatus]}</td>
-              <td className="py-2 text-stone-600">
-                {guest.seat ? guest.seat.table.label : "—"}
-              </td>
-              <td className="py-2">
-                {/* Разрешение на спутника — по гостю, а не общее: «плюс один»
-                    зовут не всем, и решает это организатор, а не гость. */}
-                <form action={togglePlusOne}>
-                  <input type="hidden" name="guestId" value={guest.id} />
-                  <input type="hidden" name="allowed" value={guest.plusOneAllowed ? "0" : "1"} />
-                  <button className="text-xs text-stone-500 underline">
-                    {guest.plusOneAllowed ? "разрешён" : "разрешить"}
-                  </button>
-                </form>
-              </td>
-              <td className="py-2 text-right">
-                <form action={remove}>
-                  <input type="hidden" name="guestId" value={guest.id} />
-                  <button className="text-xs text-stone-400 hover:text-red-700">В архив</button>
-                </form>
-              </td>
-            </tr>
+      <div className="mt-8 flex items-center justify-between">
+        <div className="flex gap-1 rounded-lg border border-stone-200 bg-white p-1 text-sm">
+          <a
+            href={`/app/e/${eventId}/guests`}
+            className={`rounded-md px-3 py-1 ${
+              !groupByTable ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"
+            }`}
+          >
+            Списком
+          </a>
+          <a
+            href={`/app/e/${eventId}/guests?view=bytable`}
+            className={`rounded-md px-3 py-1 ${
+              groupByTable ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"
+            }`}
+          >
+            По столам
+          </a>
+        </div>
+        {groupByTable && (
+          <p className="text-xs text-stone-500">
+            Группы отсортированы по номеру стола, внутри — по месту за столом.
+          </p>
+        )}
+      </div>
+
+      {groupByTable ? (
+        <div className="mt-4 space-y-6">
+          {tableGroups!.map((group) => (
+            <section key={group.label}>
+              <h3 className="text-sm font-medium text-stone-900">
+                {group.label} <span className="font-normal text-stone-500">— {group.guests.length}</span>
+              </h3>
+              <table className="mt-2 w-full border-collapse text-sm">
+                <tbody>
+                  {group.guests.map((guest) => (
+                    <GuestRow
+                      key={guest.id}
+                      guest={guest}
+                      eventId={eventId}
+                      togglePlusOne={togglePlusOne}
+                      remove={remove}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </section>
           ))}
-        </tbody>
-      </table>
+        </div>
+      ) : (
+        <table className="mt-4 w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-stone-200 text-left text-stone-500">
+              <th className="py-2 font-normal">Гость</th>
+              <th className="py-2 font-normal">Ответ</th>
+              <th className="py-2 font-normal">Стол</th>
+              <th className="py-2 font-normal">+1</th>
+              <th className="py-2 font-normal"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {guests.map((guest) => (
+              <GuestRow
+                key={guest.id}
+                guest={guest}
+                eventId={eventId}
+                showTable
+                togglePlusOne={togglePlusOne}
+                remove={remove}
+              />
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {guests.length === 0 && (
         <p className="mt-8 text-stone-600">Гостей пока нет — добавьте вручную или загрузите CSV.</p>
