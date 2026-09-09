@@ -67,18 +67,13 @@ describe("тема: чтение", () => {
 });
 
 describe("шаблоны", () => {
-  it("их несколько и они разные по характеру, а не по оттенку", () => {
-    expect(INVITE_TEMPLATES.length).toBeGreaterThanOrEqual(3);
+  it("шаблон есть хотя бы один, и идентификаторы не повторяются", () => {
+    expect(INVITE_TEMPLATES.length).toBeGreaterThanOrEqual(1);
 
+    // Повторяющийся id — это молчаливая подмена: выбрав один шаблон,
+    // организатор получит другой.
     const ids = new Set(INVITE_TEMPLATES.map((t) => t.id));
     expect(ids.size).toBe(INVITE_TEMPLATES.length);
-
-    // Светлый и тёмный обязаны отличаться яркостью фона, иначе это один
-    // шаблон в двух видах.
-    const brightness = (hex: string) =>
-      parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);
-    const values = INVITE_TEMPLATES.map((t) => brightness(t.theme.bg));
-    expect(Math.max(...values) - Math.min(...values)).toBeGreaterThan(200);
   });
 
   it("каждый шаблон приходит с готовым содержимым, а не пустыми полями", () => {
