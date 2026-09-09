@@ -72,6 +72,34 @@ margin-top:1.75rem;text-align:center}
 border-radius:.875rem;color:var(--fg);text-decoration:none;font-size:1.0625rem}
 .note{background:var(--warn-bg);border:1px solid #e8d5a8;border-radius:.875rem;padding:.75rem 1rem;
 font-size:.875rem;margin-bottom:1.25rem;color:var(--warn)}
+
+/* Обводка фокуса. Её не было вовсе: у input фокус показывался цветом
+   рамки, а у кнопок и ссылок — ничем. Пройти страницу с клавиатуры
+   вслепую было нельзя. :focus-visible не трогает касания пальцем. */
+a:focus-visible,button:focus-visible,input:focus-visible,.claim:focus-visible{
+outline:2px solid var(--accent);outline-offset:2px}
+
+/* Ответ появляется, а не возникает: гость нажал «Найти» и переводит
+   взгляд — короткий подъём подсказывает, куда именно смотреть.
+   Классы ниже принадлежат только страницам входа по QR. */
+@keyframes e-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.result,.matches li{animation:e-rise .34s cubic-bezier(.22,.61,.36,1) both}
+.matches li:nth-child(2){animation-delay:.05s}
+.matches li:nth-child(3){animation-delay:.1s}
+.matches li:nth-child(4){animation-delay:.15s}
+.matches li:nth-child(n+5){animation-delay:.2s}
+
+/* Отклик на нажатие — кнопке и карточке совпадения. На телефоне это
+   единственное подтверждение, что палец попал: ховера там нет. */
+button,.claim,.matches a{transition:transform .12s cubic-bezier(.22,.61,.36,1),background-color .15s}
+button:active,.claim:active,.matches a:active{transform:scale(.985)}
+
+/* Системная настройка сильнее любой красоты: движение глушим,
+   но видимость обязана остаться — иначе экран останется пустым. */
+@media(prefers-reduced-motion:reduce){
+.result,.matches li{animation:none}
+button,.claim,.matches a{transition:none}
+button:active,.claim:active,.matches a:active{transform:none}}
 `).replace(/\n/g, "");
 
 export function page(opts: { title: string; body: string; script?: string }): string {

@@ -115,5 +115,23 @@ export function blockContentFromForm(
         text: str(form, "text"),
         buttonLabel: str(form, "buttonLabel"),
       });
+    case "PHOTOS":
+      return parseBlockContent("PHOTOS", {
+        title: str(form, "title"),
+        // Четыре фиксированных слота вместо динамического списка (см.
+        // комментарий у схемы в `lib/invite-blocks.ts`). Пустой слот —
+        // без фотографии и без подписи — в блок не попадает.
+        items: [1, 2, 3, 4]
+          .map((slot) => ({
+            imageUrl: str(form, `photo${slot}Url`),
+            caption: str(form, `photo${slot}Caption`),
+          }))
+          .filter((item) => item.imageUrl || item.caption),
+      });
+    case "CALENDAR":
+      return parseBlockContent("CALENDAR", {
+        title: str(form, "title"),
+        message: str(form, "message"),
+      });
   }
 }

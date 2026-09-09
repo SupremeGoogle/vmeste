@@ -23,14 +23,55 @@ const block = (type: InviteBlockView["type"], content: object = {}): InviteBlock
 describe("разметка приглашения", () => {
   it("рисует все типы блоков и не падает на пустых", () => {
     const html = renderBlocks(
-      ["COVER", "TIMELINE", "VENUE", "DRESSCODE", "MAP", "TEXT", "RSVP_FORM"].map((type) =>
-        block(type as InviteBlockView["type"]),
+      ["COVER", "PHOTOS", "CALENDAR", "TIMELINE", "VENUE", "DRESSCODE", "MAP", "TEXT", "RSVP_FORM"].map(
+        (type) => block(type as InviteBlockView["type"]),
       ),
       "/i/x/y/rsvp",
       null,
     );
     expect(html).toContain("<section");
     expect(html).not.toContain("undefined");
+  });
+
+  it("пустая галерея фотографий не рисует раздел вовсе", () => {
+    // Дефолтное содержимое — все четыре слота пустые; раздел без единой
+    // подписи и без единой фотографии гостю показывать нечего.
+    const html = renderBlocks([block("PHOTOS")], null, null);
+    expect(html).not.toContain("<section");
+  });
+
+  it("галерея рисует фотографию и подпись, экранируя обе", () => {
+    const html = renderBlocks(
+      [
+        block("PHOTOS", {
+          title: "Наши фото",
+          items: [{ imageUrl: "https://x/a.jpg", caption: '<b>подпись</b>' }],
+        }),
+      ],
+      null,
+      null,
+    );
+    expect(html).toContain('<img src="https://x/a.jpg"');
+    expect(html).toContain("&lt;b&gt;подпись&lt;/b&gt;");
+  });
+
+  it("календарь без даты мероприятия молча пропускается", () => {
+    const html = renderBlocks([block("CALENDAR")], null, null);
+    expect(html).toBe("");
+  });
+
+  it("календарь отмечает день свадьбы в правильном месяце", () => {
+    const html = renderBlocks(
+      [block("CALENDAR", { title: "Мы ждём вас" })],
+      null,
+      null,
+      new Date("2026-07-11T12:00:00Z"),
+      undefined,
+      "UTC",
+    );
+    expect(html).toContain("Июль 2026");
+    expect(html).toContain('class="d d-marked">11<');
+    expect(html).toContain("11 / 07 / 26");
   });
 
   it("экранирует текст блока — его пишет человек", () => {

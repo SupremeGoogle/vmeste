@@ -210,6 +210,8 @@ enum BlockType {
   MAP
   TEXT
   RSVP_FORM
+  PHOTOS
+  CALENDAR
 }
 
 /// Картинка, загруженная организатором: обложка приглашения, фон, снимок

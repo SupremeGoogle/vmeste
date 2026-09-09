@@ -119,32 +119,49 @@ export default async function EventDashboard({
         {event.venueName ? ` · ${event.venueName}` : ""}
       </p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        {tiles.map((tile) => (
+      {/* Две колонки уже на телефоне: по одной плитке в ряд четыре
+          ответа занимали четыре экрана прокрутки, хотя весь смысл
+          дашборда — увидеть их разом. */}
+      <div className="rise-stagger mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {tiles.map((tile, i) => (
           <Link
             key={tile.label}
             href={tile.href}
-            className="rounded-xl border border-stone-200 bg-white p-4 hover:border-stone-400"
+            style={{ "--i": i } as React.CSSProperties}
+            className="group rounded-xl border border-stone-200 bg-white p-4 transition-[border-color,box-shadow,transform] duration-200 ease-[var(--ease-soft)] hover:border-stone-400 hover:shadow-sm active:scale-[0.98]"
           >
-            <p className="tile-value text-3xl">{tile.value}</p>
+            <p className="tile-value text-3xl transition-colors duration-200 group-hover:text-stone-900">
+              {tile.value}
+            </p>
             <p className="text-sm text-stone-600">{tile.label}</p>
-            <p className="mt-1 text-xs text-stone-400">{tile.hint}</p>
+            {/* Подпись мелкая и длинная — на узком экране ей нужен
+                перенос по словам, иначе «не открыли ссылку» распирает
+                плитку и ломает сетку. */}
+            <p className="mt-1 text-xs leading-snug text-balance text-stone-400">{tile.hint}</p>
           </Link>
         ))}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-stone-200 bg-white p-4 text-sm">
+        <div className="rise rounded-xl border border-stone-200 bg-white p-4 text-sm">
           <p className="font-medium">На кухню</p>
+          {/* Список блюд раньше собирался в одну строку через « · » и
+              на телефоне вылезал за край карточки. Теперь это строки,
+              которые переносятся как обычный текст. */}
           <p className="mt-1 text-stone-600">
-            {rsvp.meals.map((meal) => `${meal.title}: ${meal.count}`).join(" · ")}
+            {rsvp.meals.map((meal, i) => (
+              <span key={meal.title} className="inline-block whitespace-nowrap">
+                {i > 0 && <span className="mx-1.5 text-stone-300">·</span>}
+                {meal.title}: {meal.count}
+              </span>
+            ))}
           </p>
           <p className="mt-1 text-xs text-stone-400">
             Всего гостей в списке: {guests.total}, из них спутников: {rsvp.plusOnes}
           </p>
         </div>
 
-        <div className="rounded-xl border border-stone-200 bg-white p-4 text-sm">
+        <div className="rise rounded-xl border border-stone-200 bg-white p-4 text-sm">
           <p className="font-medium">Экран в зале</p>
           <p className="mt-1 text-stone-600">
             {liveScreen
@@ -159,16 +176,40 @@ export default async function EventDashboard({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-4 text-sm">
-        <a href={`/e/${event.shortCode}`} target="_blank" rel="noreferrer" className="underline">
-          Вход гостя по QR ↗
-        </a>
-        <a href={`/i/${event.slug}`} target="_blank" rel="noreferrer" className="underline">
-          Публичное приглашение ↗
-        </a>
-        <Link href={`/app/e/${eventId}/print`} className="underline">
-          Печать и QR
-        </Link>
+      {/*
+        Раньше это были подчёркнутые строчки высотой в буквы: попасть
+        пальцем можно было только со второй попытки. Теперь у каждой
+        ссылки своя область не ниже 44px — размер подушечки пальца,
+        от которого отталкиваются и Apple, и Google.
+      */}
+      <div className="mt-6 grid gap-2 text-sm sm:grid-cols-3">
+        {[
+          { href: `/e/${event.shortCode}`, label: "Вход гостя по QR", external: true },
+          { href: `/i/${event.slug}`, label: "Публичное приглашение", external: true },
+          { href: `/app/e/${eventId}/print`, label: "Печать и QR", external: false },
+        ].map((link) =>
+          link.external ? (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-4 transition-colors duration-200 hover:border-stone-400 active:bg-stone-50"
+            >
+              {link.label}
+              <span aria-hidden className="text-stone-400">↗</span>
+            </a>
+          ) : (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-4 transition-colors duration-200 hover:border-stone-400 active:bg-stone-50"
+            >
+              {link.label}
+              <span aria-hidden className="text-stone-400">→</span>
+            </Link>
+          ),
+        )}
       </div>
     </main>
   );

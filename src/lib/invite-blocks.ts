@@ -124,6 +124,43 @@ export const blockContentSchemas = {
     text: longText.default(""),
     buttonLabel: shortText.default("Ответить"),
   }),
+
+  /**
+   * Галерея фотографий (полароиды). Универсальный блок: детские снимки
+   * под обложкой, пара фотографий пары где-то ниже — один и тот же тип,
+   * поставленный дважды с разным содержимым, а не два отдельных типа
+   * блока ради одной и той же вёрстки.
+   *
+   * Фиксированные четыре слота, а не динамический список: конструктор
+   * не тянет за собой клиентский компонент со «добавить фото» — организатор
+   * заполняет столько слотов, сколько есть фотографий, остальные остаются
+   * пустыми и не рисуются (см. `readBlockContent`/сборку формы).
+   */
+  PHOTOS: z.object({
+    v: version,
+    title: shortText.default(""),
+    items: z
+      .array(
+        z.object({
+          imageUrl: imageRef.default(""),
+          caption: shortText.default(""),
+        }),
+      )
+      .max(4)
+      .default([]),
+  }),
+
+  /**
+   * Календарь месяца с большой датой. Как и у отсчёта, дата не хранится
+   * в блоке — она берётся у мероприятия (`Event.eventDate`), иначе два
+   * места хранения одной даты разойдутся ровно в тот день, когда это
+   * важно.
+   */
+  CALENDAR: z.object({
+    v: version,
+    title: shortText.default("Мы ждём вас"),
+    message: longText.default(""),
+  }),
 } as const satisfies Record<BlockType, z.ZodType>;
 
 export type BlockContentMap = {
@@ -134,7 +171,9 @@ export type AnyBlockContent = BlockContentMap[BlockType];
 /** Порядок в панели «добавить блок» и человеческие названия типов. */
 export const BLOCK_LABELS: Record<BlockType, string> = {
   COVER: "Обложка",
+  PHOTOS: "Фотографии",
   COUNTDOWN: "Обратный отсчёт",
+  CALENDAR: "Календарь",
   TIMELINE: "Тайминг",
   VENUE: "Место",
   DRESSCODE: "Дресс-код",
@@ -144,7 +183,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
 };
 
 export const BLOCK_ORDER: BlockType[] = [
-  "COVER", "COUNTDOWN", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "RSVP_FORM",
+  "COVER", "PHOTOS", "CALENDAR", "COUNTDOWN", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "RSVP_FORM",
 ];
 
 /** Пустое содержимое блока: все поля со значениями по умолчанию. */
@@ -172,6 +211,7 @@ const FIELD_LABELS: Record<string, string> = {
   yandexUrl: "Ссылка на Яндекс Карты",
   googleUrl: "Ссылка на Google Maps",
   buttonLabel: "Надпись на кнопке",
+  message: "Текст",
 };
 
 export function parseBlockContent<T extends BlockType>(

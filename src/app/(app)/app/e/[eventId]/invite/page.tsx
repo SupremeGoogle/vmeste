@@ -1,16 +1,30 @@
 /**
  * Конструктор приглашения.
  *
+ * Два экрана в одном месте, а не два маршрута: пока у мероприятия нет ни
+ * одного раздела — это выбор шаблона и больше ничего, никакой панели
+ * оформления и списка блоков поверх пустоты. Как только шаблон применён,
+ * тот же экран становится редактором содержимого: организатор правит
+ * текст и фотографии, убирает разделы, которые не нужны, и видит
+ * результат в предпросмотре справа. Условие простое — `blocks.length`,
+ * и оно верно ровно тогда, когда шаблон применён по-настоящему, а не
+ * просто выбран на витрине.
+ *
+ * Оформление (цвета, шрифты, форма углов) сюда не вынесено: шаблон один,
+ * и он уже задаёт вид, скопированный с образца, — крутить в нём цвета
+ * значит перестать быть тем образцом. Раздел «Оформление» и его форма
+ * остаются в репозитории на случай, если шаблонов станет больше и
+ * настройка снова понадобится.
+ *
  * Блоки правятся обычными формами, порядок — стрелками. Перетаскивание
- * здесь сознательно не сделано, хотя на рассадке оно есть: блоков пять-семь,
- * их переставляют один раз, и стрелка работает и с клавиатуры, и пальцем.
- * Вся сложность dnd на этом экране не окупается.
+ * здесь сознательно не сделано, хотя на рассадке оно есть: блоков
+ * десяток, их переставляют один раз, и стрелка работает и с клавиатуры,
+ * и пальцем. Вся сложность dnd на этом экране не окупается.
  *
  * Каждая правка сбрасывает кеш приглашения: `updateTag` вместо
  * `revalidateTag`, потому что организатор сразу жмёт «посмотреть» и обязан
  * увидеть свою правку, а не версию из кеша (read-your-own-writes).
  */
-import Link from "next/link";
 import { updateTag } from "next/cache";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -18,13 +32,12 @@ import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
   addBlock, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
-  moveBlock, saveTheme, setBlockVisible, updateBlockContent,
+  moveBlock, setBlockVisible, updateBlockContent,
 } from "@/server/repositories/invites";
 import { blockContentFromForm } from "@/server/services/invite-forms";
-import { themeFromForm } from "@/server/services/invite-theme-forms";
 import { TemplatePicker } from "@/components/invite/template-picker";
-import { ThemeEditor } from "@/components/invite/theme-editor";
 import { InvitePreview } from "@/components/invite/preview";
+import { ConfirmButton } from "@/components/invite/confirm-button";
 import { BLOCK_LABELS, BLOCK_ORDER } from "@/lib/invite-blocks";
 import type { BlockType } from "@/generated/prisma/enums";
 import { BlockFields } from "@/components/invite/block-form";
@@ -34,12 +47,12 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; edit?: string }>;
 };
 
 export default async function InvitePage({ params, searchParams }: Props) {
   const { eventId } = await params;
-  const { error } = await searchParams;
+  const { error, edit } = await searchParams;
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
@@ -120,24 +133,13 @@ export default async function InvitePage({ params, searchParams }: Props) {
     const ctx = await requireEventContext(eventId);
     await applyTemplate(ctx, String(formData.get("template") ?? ""));
     await invalidate(String(formData.get("slug") ?? ""));
-  }
-
-  async function saveLook(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    const current = await getTheme(ctx);
-
-    const parsed = themeFromForm(formData, current);
-    if (!parsed.ok) {
-      redirect(`/app/e/${eventId}/invite?error=${encodeURIComponent(parsed.message)}`);
-    }
-    await saveTheme(ctx, parsed.theme);
-    await invalidate(String(formData.get("slug") ?? ""));
+    // Выбор шаблона — это и есть «открыть его»: сразу уводим в редактор,
+    // иначе человек остаётся на витрине и не понимает, applied ли выбор.
+    redirect(`/app/e/${eventId}/invite?edit=1`);
   }
 
   const publicHref = `/i/${event.slug}`;
-
-  const themeKey = JSON.stringify(theme);
+  const hasInvite = blocks.length > 0;
 
   // Предпросмотру нужен признак «что-то изменилось». Считаем дёшево и
   // честно: тема плюс состав и содержимое блоков. Хеш не нужен — строка
@@ -148,14 +150,80 @@ export default async function InvitePage({ params, searchParams }: Props) {
     blocks.map((block) => `${block.id}:${block.order}:${block.visible}:${JSON.stringify(block.content)}`).join("|"),
   ].join("~").length.toString(36) + "-" + blocks.length;
 
+  /*
+   * Витрина шаблонов — точка входа в раздел, а не запасной экран.
+   *
+   * Раньше условием был `blocks.length`, и у любого мероприятия с уже
+   * заведёнными разделами витрина не показывалась никогда: человек
+   * попадал сразу в редактор чужого приглашения и даже не знал, что
+   * шаблоны есть. Теперь «Приглашение» всегда открывается выбором,
+   * а редактор живёт за `?edit=1` — туда уводит и клик по шаблону,
+   * и кнопка «Продолжить редактирование» для уже начатого.
+   */
+  const showEditor = edit === "1" && hasInvite;
+
+  if (!showEditor) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <h1 className="text-xl text-stone-900">Приглашение</h1>
+        <p className="mt-2 max-w-2xl text-sm text-stone-600">
+          Выберите шаблон — дальше откроется редактор: там правится текст,
+          загружаются свои фотографии и убираются разделы, которые не нужны.
+        </p>
+
+        {error ? (
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
+        ) : null}
+
+        {/* У кого приглашение уже собрано — короткий путь назад в работу.
+            Без него выбор шаблона был бы единственным выходом с витрины,
+            то есть «продолжить» означало бы «затереть написанное». */}
+        {hasInvite ? (
+          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-medium text-stone-900">Приглашение уже собрано</p>
+              <p className="mt-0.5 text-stone-500">
+                Разделов: {blocks.length}. Выбор нового шаблона заменит текст и фотографии примерами.
+              </p>
+            </div>
+            <a
+              href={`/app/e/${eventId}/invite?edit=1`}
+              className="flex min-h-11 items-center rounded-lg bg-stone-900 px-5 text-sm font-medium text-white transition-[opacity,transform] duration-200 ease-[var(--ease-soft)] hover:opacity-90 active:scale-[0.97]"
+            >
+              Продолжить редактирование
+            </a>
+          </div>
+        ) : null}
+
+        <div className="mt-8">
+          <TemplatePicker
+            action={chooseTemplate}
+            currentId={theme.template}
+            slug={event.slug}
+            hasBlocks={hasInvite}
+          />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* Выход с редактора обратно к шаблонам. Без него в витрину можно
+          было бы попасть только стерев все разделы. */}
+      <a
+        href={`/app/e/${eventId}/invite`}
+        className="mb-4 inline-flex min-h-11 items-center text-sm text-stone-500 transition-colors duration-200 hover:text-stone-900"
+      >
+        ← Все шаблоны
+      </a>
+
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4">
         <div className="text-sm">
           <p className="text-stone-500">Публичная ссылка</p>
-          <Link href={publicHref} className="font-mono text-stone-900 underline">
+          <a href={publicHref} className="font-mono text-stone-900 underline">
             {publicHref}
-          </Link>
+          </a>
           <p className="mt-1 text-xs text-stone-400">
             Именные ссылки для гостей — на вкладке «Ответы».
           </p>
@@ -183,154 +251,113 @@ export default async function InvitePage({ params, searchParams }: Props) {
         <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}
 
-      <section className="mt-8">
-        <h2 className="text-lg">Шаблон</h2>
-        <p className="mt-1 text-sm text-stone-600">
-          С чего начать. Дальше можно поменять в нём что угодно — шаблон
-          задаёт отправную точку, а не рамки.
-        </p>
-        <div className="mt-4">
-          <TemplatePicker
-            action={chooseTemplate}
-            currentId={theme.template}
-            slug={event.slug}
-            hasBlocks={blocks.length > 0}
-          />
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg">Оформление</h2>
-        <p className="mt-1 text-sm text-stone-600">
-          Цвета и типографика приглашения. Те же значения подхватят страницы
-          ответа, пожеланий и фотографий — у гостя всё выглядит одним целым.
-        </p>
-        {/*
-          Ключ по самой теме — не украшение, а необходимость. Поля формы
-          не управляемые: `defaultValue` React ставит только при монтаже, а
-          после применения шаблона он честно переиспользует те же <select>
-          и <input type=color> — и они показывают прежние значения при уже
-          изменившейся теме. Человек, нажав «Сохранить оформление», откатил
-          бы шаблон, который только что выбрал. Ключ заставляет форму
-          пересобраться заново.
-        */}
-        <form
-          key={themeKey}
-          action={saveLook}
-          className="mt-4 rounded-xl border border-stone-200 bg-white p-4 sm:p-5"
-        >
-          <input type="hidden" name="slug" value={event.slug} />
-          <ThemeEditor theme={theme} />
-          <div className="mt-5 flex items-center gap-3">
-            <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
-              Сохранить оформление
-            </button>
-            <span className="text-xs text-stone-500">
-              Предпросмотр справа обновится сразу.
-            </span>
-          </div>
-        </form>
-      </section>
-
       {/* Ниже — две колонки: слева правка, справа то, что получится.
           На узком экране предпросмотр уходит наверх: смотреть на телефоне
           «как это выглядит» важнее, чем править там же. */}
-      <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 lg:order-1">
-          <h2 className="text-lg">Блоки</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg">Разделы приглашения</h2>
+            <form action={chooseTemplate}>
+              <input type="hidden" name="template" value={theme.template} />
+              <input type="hidden" name="slug" value={event.slug} />
+              <ConfirmButton
+                className="text-xs text-stone-500 underline decoration-dotted"
+                confirmText="Собрать приглашение заново по шаблону? Весь нынешний текст и фотографии заменятся примерами шаблона."
+              >
+                Собрать заново по шаблону
+              </ConfirmButton>
+            </form>
+          </div>
 
-          <form action={add} className="mt-3 flex flex-wrap items-center gap-2">
-        <input type="hidden" name="slug" value={event.slug} />
-        <span className="text-sm text-stone-500">Добавить блок:</span>
-        {BLOCK_ORDER.map((type) => (
-          <button
-            key={type} name="type" value={type}
-            className="rounded-full border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
-          >
-            {BLOCK_LABELS[type]}
-          </button>
-        ))}
-      </form>
+          <form action={add} className="mt-4 flex flex-wrap items-center gap-2">
+            <input type="hidden" name="slug" value={event.slug} />
+            <span className="text-sm text-stone-500">Добавить раздел:</span>
+            {BLOCK_ORDER.map((type) => (
+              <button
+                key={type} name="type" value={type}
+                className="rounded-full border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
+              >
+                {BLOCK_LABELS[type]}
+              </button>
+            ))}
+          </form>
 
           <div className="mt-6 space-y-4">
-        {blocks.map((block, index) => (
-          <div key={block.id} className="rounded-xl border border-stone-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-medium">
-                {BLOCK_LABELS[block.type]}
-                {!block.visible ? (
-                  <span className="ml-2 text-xs text-stone-400">скрыт</span>
+            {blocks.map((block, index) => (
+              <div key={block.id} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">
+                    {BLOCK_LABELS[block.type]}
+                    {!block.visible ? (
+                      <span className="ml-2 text-xs text-stone-400">скрыт</span>
+                    ) : null}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <form action={move}>
+                      <input type="hidden" name="blockId" value={block.id} />
+                      <input type="hidden" name="slug" value={event.slug} />
+                      <input type="hidden" name="dir" value="-1" />
+                      <button
+                        disabled={index === 0}
+                        className="rounded px-2 py-1 text-sm text-stone-500 disabled:opacity-30"
+                        aria-label="Выше"
+                      >
+                        ↑
+                      </button>
+                    </form>
+                    <form action={move}>
+                      <input type="hidden" name="blockId" value={block.id} />
+                      <input type="hidden" name="slug" value={event.slug} />
+                      <input type="hidden" name="dir" value="1" />
+                      <button
+                        disabled={index === blocks.length - 1}
+                        className="rounded px-2 py-1 text-sm text-stone-500 disabled:opacity-30"
+                        aria-label="Ниже"
+                      >
+                        ↓
+                      </button>
+                    </form>
+                    <form action={toggle}>
+                      <input type="hidden" name="blockId" value={block.id} />
+                      <input type="hidden" name="slug" value={event.slug} />
+                      <input type="hidden" name="visible" value={block.visible ? "0" : "1"} />
+                      <button className="rounded px-2 py-1 text-sm text-stone-500">
+                        {block.visible ? "Скрыть" : "Показать"}
+                      </button>
+                    </form>
+                    <form action={remove}>
+                      <input type="hidden" name="blockId" value={block.id} />
+                      <input type="hidden" name="slug" value={event.slug} />
+                      <ConfirmButton
+                        className="rounded px-2 py-1 text-sm text-stone-400 hover:text-red-700"
+                        confirmText={`Удалить раздел «${BLOCK_LABELS[block.type]}»? Отменить не получится.`}
+                      >
+                        Удалить
+                      </ConfirmButton>
+                    </form>
+                  </div>
+                </div>
+
+                {block.degraded ? (
+                  <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    Содержимое блока не совпало со схемой — часть полей показана
+                    значениями по умолчанию. Сохраните блок, чтобы починить запись.
+                  </p>
                 ) : null}
-              </p>
-              <div className="flex items-center gap-1">
-                <form action={move}>
+
+                <form action={save} className="mt-3 space-y-3">
                   <input type="hidden" name="blockId" value={block.id} />
+                  <input type="hidden" name="type" value={block.type} />
                   <input type="hidden" name="slug" value={event.slug} />
-                  <input type="hidden" name="dir" value="-1" />
-                  <button
-                    disabled={index === 0}
-                    className="rounded px-2 py-1 text-sm text-stone-500 disabled:opacity-30"
-                    aria-label="Выше"
-                  >
-                    ↑
-                  </button>
-                </form>
-                <form action={move}>
-                  <input type="hidden" name="blockId" value={block.id} />
-                  <input type="hidden" name="slug" value={event.slug} />
-                  <input type="hidden" name="dir" value="1" />
-                  <button
-                    disabled={index === blocks.length - 1}
-                    className="rounded px-2 py-1 text-sm text-stone-500 disabled:opacity-30"
-                    aria-label="Ниже"
-                  >
-                    ↓
-                  </button>
-                </form>
-                <form action={toggle}>
-                  <input type="hidden" name="blockId" value={block.id} />
-                  <input type="hidden" name="slug" value={event.slug} />
-                  <input type="hidden" name="visible" value={block.visible ? "0" : "1"} />
-                  <button className="rounded px-2 py-1 text-sm text-stone-500">
-                    {block.visible ? "Скрыть" : "Показать"}
-                  </button>
-                </form>
-                <form action={remove}>
-                  <input type="hidden" name="blockId" value={block.id} />
-                  <input type="hidden" name="slug" value={event.slug} />
-                  <button className="rounded px-2 py-1 text-sm text-stone-400 hover:text-red-700">
-                    Удалить
+                  <BlockFields block={block} eventId={eventId} assets={assets} />
+                  <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
+                    Сохранить
                   </button>
                 </form>
               </div>
-            </div>
-
-            {block.degraded ? (
-              <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Содержимое блока не совпало со схемой — часть полей показана
-                значениями по умолчанию. Сохраните блок, чтобы починить запись.
-              </p>
-            ) : null}
-
-            <form action={save} className="mt-3 space-y-3">
-              <input type="hidden" name="blockId" value={block.id} />
-              <input type="hidden" name="type" value={block.type} />
-              <input type="hidden" name="slug" value={event.slug} />
-              <BlockFields block={block} eventId={eventId} assets={assets} />
-              <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
-                Сохранить
-              </button>
-            </form>
+            ))}
           </div>
-        ))}
-      </div>
-
-          {blocks.length === 0 ? (
-            <p className="mt-8 rounded-xl border border-dashed border-stone-300 p-6 text-center text-stone-600">
-              Приглашение пустое. Выберите шаблон выше — он придёт с готовым
-              расписанием, местом и текстом, которые останется поправить.
-            </p>
-          ) : null}
         </div>
 
         <div className="lg:sticky lg:top-6 lg:order-2 lg:self-start">

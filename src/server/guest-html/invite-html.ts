@@ -22,6 +22,9 @@ import { inviteThemeCss } from "@/server/guest-html/invite-theme-css";
 import { defaultTheme, type InviteTheme } from "@/lib/invite-theme";
 import { envelopeMarkup, introScript } from "@/server/guest-html/invite-intro";
 import { decorMarkup, timelineIcon } from "@/server/guest-html/invite-decor";
+import { renderPromiseBlocks } from "@/server/guest-html/promise/markup";
+import { renderStoryBlocks } from "@/server/guest-html/story/markup";
+import { PROMISE_SCRIPT } from "@/server/guest-html/promise/script";
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -87,6 +90,27 @@ background:var(--accent);border:0;border-radius:999px;cursor:pointer}
 .error{margin:0 1.5rem 1.5rem;padding:.875rem 1.125rem;background:var(--alarm-bg);
 border:1px solid #f0c9c9;border-radius:.875rem;font-size:.9375rem;color:var(--alarm);
 font-family:var(--sans)}
+.polaroids{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem;margin-top:.5rem}
+.polaroid{background:#fff;padding:.6rem .6rem 1rem;box-shadow:0 .5rem 1.5rem rgba(43,38,34,.14);
+width:9.5rem;text-align:center;transition:transform .4s ease}
+.polaroid.p1{transform:rotate(-4deg)}
+.polaroid.p2{transform:rotate(3deg)}
+.polaroid img{display:block;width:100%;height:9.5rem;object-fit:cover}
+.polaroid-empty{display:block;width:100%;height:9.5rem;background:var(--line)}
+.polaroid figcaption{margin-top:.6rem;font-family:var(--serif);font-style:italic;font-size:.8125rem;
+color:var(--muted);line-height:1.35}
+.cal-card{max-width:20rem;margin:1.25rem auto 0;padding:1.5rem 1rem;border:1px solid var(--line);
+border-radius:var(--radius)}
+.cal-month{margin:0 0 1rem;font-family:var(--serif);font-size:1.0625rem;letter-spacing:.06em}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.35rem;font-size:.8125rem}
+.dn{color:var(--muted);font-size:.6875rem;letter-spacing:.08em;padding:.25rem 0}
+.d{padding:.3rem 0}
+.d-empty{visibility:hidden}
+.d-marked{color:#fff;background:var(--accent);border-radius:999px}
+.big-date{margin-top:1.5rem;font-family:var(--serif);font-style:italic;font-size:2rem;letter-spacing:.06em}
+.js-reveal .sheet>section{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+.js-reveal .sheet>section.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.js-reveal .sheet>section{transition:none;opacity:1;transform:none}}
 `).replace(/\n/g, "");
 
 export function invitePage(opts: {
@@ -110,7 +134,7 @@ export function invitePage(opts: {
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -179,6 +203,78 @@ ${links ? `<div class="links">${links}</div>` : ""}</section>`;
 function textBlock(content: BlockContentMap["TEXT"]): string {
   return `<section>${content.title ? `<h2>${esc(content.title)}</h2>` : ""}
 ${paragraphs(content.text)}</section>`;
+}
+
+/** Галерея-полароид: детские фотографии под обложкой, снимки пары ниже —
+ *  один и тот же блок, поставленный дважды с разным содержимым. */
+function photos(content: BlockContentMap["PHOTOS"]): string {
+  const items = content.items.filter((item) => item.imageUrl || item.caption);
+  if (items.length === 0) return "";
+
+  const cards = items
+    .map(
+      (item, index) => `<figure class="polaroid p${(index % 2) + 1}">
+${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="">` : `<span class="polaroid-empty"></span>`}
+${item.caption ? `<figcaption>${esc(item.caption)}</figcaption>` : ""}
+</figure>`,
+    )
+    .join("");
+
+  return `<section class="center">${content.title ? `<h2>${esc(content.title)}</h2>` : ""}
+<div class="polaroids">${cards}</div></section>`;
+}
+
+const MONTHS_NOMINATIVE = [
+  "январь", "февраль", "март", "апрель", "май", "июнь",
+  "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
+];
+
+/** Год/месяц/число мероприятия в его часовом поясе — не в браузере гостя. */
+function eventDateParts(date: Date, timezone: string) {
+  const formatter = new Intl.DateTimeFormat("ru-RU", {
+    timeZone: timezone, year: "numeric", month: "numeric", day: "numeric",
+  });
+  const map = new Map(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+  return {
+    day: Number(map.get("day")),
+    month: Number(map.get("month")),
+    year: Number(map.get("year")),
+  };
+}
+
+/**
+ * Календарь месяца с отмеченным днём и большой датой.
+ *
+ * Дата — из мероприятия, не из блока (см. схему в `lib/invite-blocks.ts`):
+ * те же соображения, что и у отсчёта.
+ */
+function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, timezone: string): string {
+  const { day, month, year } = eventDateParts(eventDate, timezone);
+  const monthName = MONTHS_NOMINATIVE[month - 1];
+  const label = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  // Понедельник первым: `getUTCDay()` даёт 0=воскресенье, здесь считаем
+  // сеткой по календарным числам площадки, а не по времени браузера.
+  const firstWeekday = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  const weekdayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    .map((name) => `<span class="dn">${name}</span>`)
+    .join("");
+
+  const cells: string[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(`<span class="d d-empty"></span>`);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`<span class="d${d === day ? " d-marked" : ""}">${d}</span>`);
+  }
+
+  const big = `${String(day).padStart(2, "0")} / ${String(month).padStart(2, "0")} / ${String(year).slice(-2)}`;
+
+  return `<section class="center"><h2>${esc(content.title)}</h2>
+<div class="cal-card"><p class="cal-month">${esc(label)} ${year}</p>
+<div class="cal-grid">${weekdayNames}${cells.join("")}</div></div>
+<p class="big-date">${esc(big)}</p>
+${paragraphs(content.message, "small muted")}</section>`;
 }
 
 function rsvpCall(
@@ -277,16 +373,36 @@ export function hasCountdown(blocks: InviteBlockView[]): boolean {
 }
 
 /**
- * Все скрипты страницы одной строкой — или ничего, если ни один не нужен.
+ * Плавное появление разделов при прокрутке.
+ *
+ * Прогрессивное улучшение по тому же принципу, что и заставка-конверт:
+ * класс `js-reveal`, который прячет разделы до появления в кадре, ставит
+ * сам скрипт. Не доехал скрипт до телефона — раздела просто не прячут,
+ * и приглашение открывается целиком сразу, как раньше. `IntersectionObserver`
+ * не нашёлся — та же участь: разделы показываются без анимации, а не
+ * остаются невидимыми навсегда.
+ */
+export const REVEAL_SCRIPT = `(function(){var d=document,r=d.documentElement;r.className+=' js-reveal';
+var els=d.querySelectorAll('.sheet>section');
+if(!('IntersectionObserver' in window)){for(var i=0;i<els.length;i++)els[i].className+=' in';return}
+var io=new IntersectionObserver(function(es){es.forEach(function(e){
+if(e.isIntersecting){e.target.className+=' in';io.unobserve(e.target)}})},{threshold:.15});
+for(var i=0;i<els.length;i++)io.observe(els[i])})()`;
+
+/**
+ * Все скрипты страницы одной строкой.
  *
  * Собрано в одном месте, потому что маршрутов приглашения семь, и
  * «забыли подключить отсчёт на именной странице» — ровно та ошибка,
- * которая обнаруживается у гостя, а не у нас.
+ * которая обнаруживается у гостя, а не у нас. Плавное появление разделов
+ * включено всегда — оно ничего не считает и не хранит, в отличие от
+ * отсчёта и заставки, которым есть что включать или не включать.
  */
 export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
   const parts = [
     hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
+    theme.template === "promise" ? PROMISE_SCRIPT : REVEAL_SCRIPT,
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join(";") : undefined;
@@ -306,7 +422,18 @@ export function renderBlocks(
   answered: string | null,
   eventDate?: Date,
   theme: InviteTheme = defaultTheme(),
+  timezone = "UTC",
 ): string {
+  if (theme.template === "promise") {
+    return renderPromiseBlocks(blocks, theme, eventDate, timezone, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
+    );
+  }
+  if (theme.template === "story") {
+    return renderStoryBlocks(blocks, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
+    );
+  }
   return blocks
     .map((block) => {
       switch (block.type) {
@@ -316,8 +443,14 @@ export function renderBlocks(
           return eventDate
             ? countdown(block.content as BlockContentMap["COUNTDOWN"], eventDate)
             : "";
+        case "CALENDAR":
+          return eventDate
+            ? calendarBlock(block.content as BlockContentMap["CALENDAR"], eventDate, timezone)
+            : "";
         case "COVER":
           return cover(block.content as BlockContentMap["COVER"]);
+        case "PHOTOS":
+          return photos(block.content as BlockContentMap["PHOTOS"]);
         case "TIMELINE":
           return timeline(block.content as BlockContentMap["TIMELINE"], theme);
         case "VENUE":

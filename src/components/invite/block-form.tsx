@@ -143,5 +143,57 @@ export function BlockFields({
         </>
       );
     }
+    case "PHOTOS": {
+      const c = block.content as BlockContentMap["PHOTOS"];
+      // Четыре фиксированных слота — по одному на каждую фотографию.
+      // Пустой слот (без фото и без подписи) при сохранении не попадает
+      // в блок, поэтому доливать их можно постепенно.
+      const slots = [0, 1, 2, 3].map((index) => c.items[index] ?? { imageUrl: "", caption: "" });
+      return (
+        <>
+          <Field
+            label="Заголовок (необязательно)" name="title" value={c.title}
+            placeholder="Узнали этих ребятишек?"
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {slots.map((item, index) => (
+              <div key={index} className="rounded-lg border border-stone-200 p-3">
+                <span className="text-xs text-stone-500">Фотография {index + 1}</span>
+                <div className="mt-2">
+                  <ImagePicker
+                    eventId={eventId}
+                    name={`photo${index + 1}Url`}
+                    value={item.imageUrl}
+                    assets={assets}
+                  />
+                </div>
+                <input
+                  name={`photo${index + 1}Caption`}
+                  defaultValue={item.caption}
+                  placeholder="Подпись под фотографией"
+                  className={`${inputClass} mt-2`}
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      );
+    }
+    case "CALENDAR": {
+      const c = block.content as BlockContentMap["CALENDAR"];
+      return (
+        <>
+          <Field label="Заголовок" name="title" value={c.title} />
+          <Field
+            label="Текст под календарём" name="message" value={c.message} multiline
+            placeholder="Не пропустите важное событие этого лета!"
+          />
+          <span className="block text-xs text-stone-400">
+            Месяц, число и большая дата берутся из даты мероприятия в настройках —
+            здесь править нечего.
+          </span>
+        </>
+      );
+    }
   }
 }

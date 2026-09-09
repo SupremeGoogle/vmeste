@@ -119,7 +119,7 @@ describe("шаблоны", () => {
 
   it("несуществующий шаблон не находится", () => {
     expect(findTemplate("нет такого")).toBeNull();
-    expect(findTemplate("powder")?.name).toBe("Пудра");
+    expect(findTemplate("story")?.name).toBe("История");
   });
 });
 
@@ -304,9 +304,11 @@ describe("заставка-конверт", () => {
     expect(script).not.toContain("</script");
   });
 
-  it("без заставки и без отсчёта скрипта нет вовсе", async () => {
-    const { inviteScript } = await import("@/server/guest-html/invite-html");
-    expect(inviteScript([], defaultTheme(), "Аня и Миша")).toBeUndefined();
+  it("без заставки и без отсчёта остаётся только плавное появление разделов", async () => {
+    // Отсчёта и заставки нет — включать нечего, но скролл-переход не
+    // хранит и не считает ничего, поэтому он есть всегда.
+    const { inviteScript, REVEAL_SCRIPT } = await import("@/server/guest-html/invite-html");
+    expect(inviteScript([], defaultTheme(), "Аня и Миша")).toBe(REVEAL_SCRIPT);
   });
 
   it("имена для конверта берутся с обложки, иначе из названия", async () => {

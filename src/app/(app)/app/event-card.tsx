@@ -38,10 +38,13 @@ const STATUS_LABEL: Record<EventCardData["status"], string> = {
 
 export function EventCard({
   event,
+  index = 0,
   onRename,
   onDelete,
 }: {
   event: EventCardData;
+  /** Место в списке — только чтобы карточки появлялись лесенкой. */
+  index?: number;
   onRename: (eventId: string, title: string) => Promise<void>;
   onDelete: (eventId: string) => Promise<void>;
 }) {
@@ -65,7 +68,8 @@ export function EventCard({
 
   return (
     <li
-      className={`rounded-2xl border p-6 shadow-sm transition-shadow hover:shadow-md sm:p-7 ${
+      style={{ "--i": index } as React.CSSProperties}
+      className={`rounded-2xl border p-5 shadow-sm transition-[box-shadow,border-color] duration-200 ease-[var(--ease-soft)] hover:border-stone-300 hover:shadow-md sm:p-7 ${
         event.status === "ARCHIVED"
           ? "border-stone-200 bg-stone-100/60 opacity-70"
           : "border-stone-200 bg-white"
@@ -109,10 +113,16 @@ export function EventCard({
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-1">
+              {/*
+                Раньше здесь стоял `truncate`, и «Аня и Миша — Свадьба»
+                на телефоне превращалось в «Аня и Миша …», хотя справа
+                пустовала половина карточки. Двух строк хватает любому
+                разумному названию, а всё сверх того обрезается честно.
+              */}
               <Link
                 href={`/app/e/${event.id}`}
-                className="truncate text-lg font-medium hover:underline sm:text-xl"
+                className="line-clamp-2 text-lg leading-snug font-medium underline-offset-4 hover:underline sm:text-xl"
               >
                 {event.title}
               </Link>
@@ -121,7 +131,7 @@ export function EventCard({
                 onClick={() => setEditing(true)}
                 title="Переименовать"
                 aria-label="Переименовать"
-                className="shrink-0 rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                className="-mt-1 shrink-0 rounded-md p-2 text-stone-400 transition-colors duration-200 hover:bg-stone-100 hover:text-stone-700"
               >
                 ✎
               </button>
@@ -135,7 +145,12 @@ export function EventCard({
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        {/*
+          На телефоне статус и код встают в строку под названием, а не
+          колонкой справа: колонка отжимала заголовок в узкую щель ради
+          двух коротких значений.
+        */}
+        <div className="flex w-full shrink-0 items-center gap-3 sm:w-auto sm:flex-col sm:items-end sm:gap-1.5">
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[event.status]}`}>
             {STATUS_LABEL[event.status]}
           </span>
@@ -143,74 +158,77 @@ export function EventCard({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <Link
-          href={`/app/e/${event.id}/guests`}
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:border-stone-400 hover:bg-stone-50"
-        >
-          Гости
-        </Link>
-        <Link
-          href={`/app/e/${event.id}/seating`}
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:border-stone-400 hover:bg-stone-50"
-        >
-          Рассадка
-        </Link>
-        <Link
-          href={`/app/e/${event.id}/print`}
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:border-stone-400 hover:bg-stone-50"
-        >
-          Печать и QR
-        </Link>
-        <Link
-          href={`/app/e/${event.id}/settings`}
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:border-stone-400 hover:bg-stone-50"
-        >
-          Настройки
-        </Link>
+      {/*
+        Сетка вместо переноса по строке. `flex-wrap` раскладывал пять
+        кнопок разной ширины в рваную лесенку — на каждом экране свою.
+        Две ровные колонки на телефоне читаются как список разделов,
+        а не как рассыпанные ярлыки.
+      */}
+      <div className="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+        {[
+          { href: `/app/e/${event.id}/guests`, label: "Гости" },
+          { href: `/app/e/${event.id}/seating`, label: "Рассадка" },
+          { href: `/app/e/${event.id}/print`, label: "Печать и QR" },
+          { href: `/app/e/${event.id}/settings`, label: "Настройки" },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex min-h-11 items-center justify-center rounded-lg border border-stone-300 px-4 text-sm font-medium transition-[background-color,border-color,transform] duration-200 ease-[var(--ease-soft)] hover:border-stone-400 hover:bg-stone-50 active:scale-[0.97]"
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+
+      {/*
+        Отдельная полоса под чертой — и «Удалить» уехало от остальных
+        кнопок. Прежде оно стояло вплотную к «Входу гостя»: безобидная
+        ссылка и безвозвратное удаление в паре сантиметров друг от
+        друга — это промах пальцем ценой всего мероприятия.
+      */}
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-stone-200/80 pt-3">
         <a
           href={`/e/${event.shortCode}`}
           target="_blank"
           rel="noreferrer"
-          className="rounded-lg px-4 py-2 text-sm font-medium text-stone-500 hover:text-stone-900"
+          className="flex min-h-11 items-center text-sm font-medium text-stone-500 transition-colors duration-200 hover:text-stone-900"
         >
           Вход гостя ↗
         </a>
 
-        <div className="ml-auto">
-          {confirmingDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-red-800">Удалить безвозвратно?</span>
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() =>
-                  startTransition(async () => {
-                    await onDelete(event.id);
-                  })
-                }
-                className="rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-              >
-                {isPending ? "Удаляю…" : "Да, удалить"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(false)}
-                className="rounded-lg px-3 py-2 text-sm text-stone-500 hover:text-stone-900"
-              >
-                Отмена
-              </button>
-            </div>
-          ) : (
+        {confirmingDelete ? (
+          <div className="flex items-center gap-1.5">
+            <span className="hidden text-sm text-red-800 sm:inline">Удалить безвозвратно?</span>
             <button
               type="button"
-              onClick={() => setConfirmingDelete(true)}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-50"
+              disabled={isPending}
+              onClick={() =>
+                startTransition(async () => {
+                  await onDelete(event.id);
+                })
+              }
+              className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-medium text-white transition-opacity duration-200 disabled:opacity-50"
             >
-              Удалить
+              {isPending ? "Удаляю…" : "Да, удалить"}
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="min-h-11 rounded-lg px-3 text-sm text-stone-500 transition-colors duration-200 hover:text-stone-900"
+            >
+              Отмена
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="min-h-11 rounded-lg px-3 text-sm font-medium text-red-800 transition-colors duration-200 hover:bg-red-50"
+          >
+            Удалить
+          </button>
+        )}
       </div>
     </li>
   );

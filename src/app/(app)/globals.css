@@ -70,8 +70,111 @@ h2 {
   font-family: var(--font-serif);
 }
 
+/*
+ * ── Движение ────────────────────────────────────────────────────────
+ *
+ * Две кривые вместо десяти. `--ease-soft` — на всё, что появляется
+ * и исчезает: замедляется к концу, поэтому глаз успевает за элементом.
+ * `--ease-out-back` — только на нажатия: лёгкий перелёт даёт кнопке
+ * отклик, который палец чувствует как «нажалось».
+ *
+ * Длительности короткие сознательно. Панель открывают в день свадьбы,
+ * когда координатор listает экраны в третий раз за минуту: анимация
+ * длиннее 250 мс из «плавной» становится задержкой.
+ */
+@theme {
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* Появление разделов и карточек. Сдвиг маленький — 8px: большой
+   выглядит как перезагрузка страницы, а не как отрисовка. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.32s var(--ease-soft) both;
+}
+
+/* Лесенка для списков: каждая следующая карточка стартует чуть позже.
+   Переменную --i проставляет разметка. Больше шести шагов задержку
+   не копим — иначе низ списка появляется заметно позже верха. */
+.rise-stagger > * {
+  animation: rise 0.32s var(--ease-soft) both;
+  animation-delay: calc(min(var(--i, 0), 6) * 45ms);
+}
+
+/*
+ * Уважение к системной настройке — не формальность: вестибулярные
+ * расстройства делают «красивое» появление физически неприятным.
+ * Глушим движение, но не прячем содержимое: opacity обязана дойти
+ * до 1, иначе экран останется пустым.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Лента вкладок прокручивается вбок, но полоса прокрутки под ней
+ * выглядела как подчёркивание активного раздела — и врала, потому
+ * что активный раздел был другой. Убираем полосу, оставляя саму
+ * прокрутку.
+ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Обводка фокуса — только для клавиатуры (:focus-visible), иначе она
+ * вспыхивает под каждым пальцем на телефоне. Но убирать её совсем
+ * нельзя: по панели ходят и с клавиатуры.
+ */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-stone-900);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Серый мигающий прямоугольник поверх кнопки при касании — след
+   мобильного Safari/Chrome; отклик мы рисуем сами. */
+@media (hover: none) {
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 @media print {
   .no-print { display: none; }
   .print-page { border: 0; page-break-after: always; padding: 0; }
   body { background: #fff; }
+
+  /* На бумаге ничего не «появляется»: элемент, застрявший в начале
+     анимации, ушёл бы в печать полупрозрачным. */
+  .rise,
+  .rise-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

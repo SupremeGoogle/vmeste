@@ -33,9 +33,12 @@ export default async function EventsPage() {
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="text-3xl font-semibold">Мероприятия</h1>
+        {/* На телефоне кнопка занимала всю ширину и висела приклеенной
+            к заголовку. Прижимаем её вправо: так она читается как
+            действие, а не как второй заголовок. */}
         <Link
           href="/app/events/new"
-          className="rounded-lg bg-stone-900 px-5 py-2.5 text-base font-medium text-white hover:opacity-90"
+          className="ml-auto flex min-h-11 items-center rounded-lg bg-stone-900 px-5 text-base font-medium text-white transition-[opacity,transform] duration-200 ease-[var(--ease-soft)] hover:opacity-90 active:scale-[0.97]"
         >
           + Новое мероприятие
         </Link>
@@ -47,10 +50,11 @@ export default async function EventsPage() {
         </p>
       )}
 
-      <ul className="mt-8 space-y-4">
-        {events.map((event) => (
+      <ul className="rise-stagger mt-8 space-y-4">
+        {events.map((event, i) => (
           <EventCard
             key={event.id}
+            index={i}
             event={{
               id: event.id,
               title: event.title,

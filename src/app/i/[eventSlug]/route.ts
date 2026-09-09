@@ -32,7 +32,7 @@ export async function GET(
     invitePage({
       title: invite.event.title,
       theme: invite.theme,
-      body: `${renderBlocks(invite.blocks, null, null, invite.event.eventDate, invite.theme)}<p class="foot">${when}</p>`,
+      body: `${renderBlocks(invite.blocks, null, null, invite.event.eventDate, invite.theme, invite.event.timezone)}<p class="foot">${when}</p>`,
       script: inviteScript(invite.blocks, invite.theme, coupleNames(invite.blocks, invite.event.title)),
     }),
     {
