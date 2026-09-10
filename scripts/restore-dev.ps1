@@ -88,13 +88,46 @@ if ($LASTEXITCODE -ne 0) { throw "migrate deploy не прошёл" }
 Ok "миграции накачены"
 
 # ── 5. Хранилище фотографий ─────────────────────────────────────────
+# S3-совместимое хранилище на :9000. Без него не работает загрузка
+# фотографий и падают тесты assets/photos.
 Step "Хранилище на :9000"
 $storage = Test-NetConnection -ComputerName 127.0.0.1 -Port 9000 -WarningAction SilentlyContinue
 if ($storage.TcpTestSucceeded) {
-    Ok "отвечает"
+    Ok "уже отвечает"
 } else {
-    Warn "не отвечает — загрузка фотографий и тесты assets/photos работать не будут"
-    Warn "поднимите MinIO (docker compose up -d storage) или положите minio.exe в .localtools"
+    $minio = Join-Path $Tools "minio.exe"
+    if (Test-Path $minio) {
+        # Ключи берём из .env, а не придумываем: разойдись они —
+        # хранилище поднимется, но приложение получит 403 и это будет
+        # выглядеть как поломка загрузки, а не как разные пароли.
+        $envText = Get-Content (Join-Path $Root ".env") -Raw
+        $userKey = [regex]::Match($envText, 'S3_ACCESS_KEY="?([^"\r\n]+)"?').Groups[1].Value
+        $passKey = [regex]::Match($envText, 'S3_SECRET_KEY="?([^"\r\n]+)"?').Groups[1].Value
+        $bucket  = [regex]::Match($envText, 'S3_BUCKET="?([^"\r\n]+)"?').Groups[1].Value
+
+        # У файлового хранилища бакет — это каталог верхнего уровня.
+        $dataDir = Join-Path $Tools "miniodata"
+        New-Item -ItemType Directory -Force (Join-Path $dataDir $bucket) | Out-Null
+
+        $env:MINIO_ROOT_USER = $userKey
+        $env:MINIO_ROOT_PASSWORD = $passKey
+        Start-Process -FilePath $minio -WindowStyle Hidden `
+            -ArgumentList "server", $dataDir, "--address", ":9000", "--console-address", ":9001" `
+            -RedirectStandardError (Join-Path $Tools "minio.log")
+
+        $up = $false
+        foreach ($i in 1..15) {
+            Start-Sleep -Seconds 1
+            if ((Test-NetConnection -ComputerName 127.0.0.1 -Port 9000 -WarningAction SilentlyContinue).TcpTestSucceeded) {
+                $up = $true; break
+            }
+        }
+        if ($up) { Ok "запущено, бакет $bucket" }
+        else { Warn "minio.exe не поднялся, смотрите $Tools\minio.log" }
+    } else {
+        Warn "не отвечает — загрузка фотографий и тесты assets/photos работать не будут"
+        Warn "положите minio.exe в .localtools (dl.min.io) или поднимите docker compose up -d storage"
+    }
 }
 
 Write-Host "`nГотово. Дальше: npm run dev  →  http://localhost:3000" -ForegroundColor Green
