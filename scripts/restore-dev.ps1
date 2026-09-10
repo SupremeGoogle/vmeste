@@ -68,10 +68,26 @@ if (Test-Path $pidFile) {
 if ($LASTEXITCODE -eq 0) {
     Ok "уже запущен"
 } else {
-    & (Join-Path $PgBin "pg_ctl.exe") -D $PgData -l $PgLog -o "-p $PgPort" start | Out-Null
-    Start-Sleep -Seconds 3
-    & (Join-Path $PgBin "pg_ctl.exe") -D $PgData status *> $null
-    if ($LASTEXITCODE -ne 0) { throw "кластер не поднялся, смотрите $PgLog" }
+    # Через Start-Process, а не конвейером.
+    #
+    # `pg_ctl start | Out-Null` на Windows не возвращает управление:
+    # запущенный им postgres наследует дескриптор вывода из конвейера
+    # PowerShell, а живёт вечно — и pg_ctl ждёт закрытия этого
+    # дескриптора до скончания века. Сервер при этом поднимается,
+    # поэтому со стороны похоже на «скрипт завис на ровном месте».
+    # Отдельный процесс со своим файлом вывода эту связь разрывает.
+    $ctlLog = Join-Path $Tools "pg_ctl.out"
+    Start-Process -FilePath (Join-Path $PgBin "pg_ctl.exe") -NoNewWindow -Wait `
+        -ArgumentList "-D", "`"$PgData`"", "-l", "`"$PgLog`"", "-o", "`"-p $PgPort`"", "start" `
+        -RedirectStandardOutput $ctlLog -RedirectStandardError "$ctlLog.err"
+
+    $up = $false
+    foreach ($i in 1..15) {
+        Start-Sleep -Seconds 1
+        & (Join-Path $PgBin "pg_ctl.exe") -D $PgData status *> $null
+        if ($LASTEXITCODE -eq 0) { $up = $true; break }
+    }
+    if (-not $up) { throw "кластер не поднялся, смотрите $PgLog" }
     Ok "запущен"
 }
 
