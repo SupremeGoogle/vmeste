@@ -10,8 +10,35 @@
  * Здесь — то, чего темой не выразить: гирлянда флажков, присказка,
  * наклон полароидов, разрядка имён и метки разделов.
  */
+/**
+ * Шрифты образца: Cormorant Garamond на имена и текст, Playfair Display
+ * на присказку. Единственное внешнее обращение во всём приглашении.
+ *
+ * Для страниц входа в зал такое было бы недопустимо — там связи почти
+ * нет, и весь их смысл в 4 КБ без единого запроса. Приглашение же
+ * открывают дома и заранее (README, «Три вещи, которые надо знать»),
+ * поэтому здесь цена оправдана: без этих начертаний копия образца
+ * перестаёт быть похожей на образец.
+ *
+ * `display=swap` — чтобы текст читался сразу системной антиквой и
+ * подменился, когда шрифт доедет. Не доедет вовсе — приглашение
+ * останется читаемым, просто в системном начертании.
+ */
+export const STORY_FONTS_LINK =
+  `<link rel="preconnect" href="https://fonts.googleapis.com">` +
+  `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>` +
+  `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?` +
+  `family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&` +
+  `family=Playfair+Display:ital,wght@1,400;1,500&display=swap">`;
+
 export const STORY_CSS = `
 :root{--story-taupe:#bfaf9f;--story-rose:#e8c4c0;--story-beige:#e8dbc8}
+
+/* Начертания образца поверх системных стеков темы. Запасные варианты
+   те же, что были: если шрифт не загрузился, вид не разъезжается. */
+.story{--serif:'Cormorant Garamond',"Iowan Old Style",Palatino,Georgia,serif;
+--sans:'Cormorant Garamond',"Iowan Old Style",Palatino,Georgia,serif}
+.story .story-rhyme{font-family:'Playfair Display',Georgia,serif}
 
 /* ── Гирлянда флажков ──────────────────────────────────────────────
    Верёвка отдельным слоем, флажки — треугольники на границах, без

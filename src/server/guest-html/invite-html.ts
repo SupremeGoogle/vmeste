@@ -24,6 +24,7 @@ import { envelopeMarkup, introScript } from "@/server/guest-html/invite-intro";
 import { decorMarkup, timelineIcon } from "@/server/guest-html/invite-decor";
 import { renderPromiseBlocks } from "@/server/guest-html/promise/markup";
 import { renderStoryBlocks } from "@/server/guest-html/story/markup";
+import { STORY_FONTS_LINK } from "@/server/guest-html/story/style";
 import { PROMISE_SCRIPT } from "@/server/guest-html/promise/script";
 
 const CSS = (BASE_CSS + `
@@ -133,6 +134,7 @@ export function invitePage(opts: {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
+${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
 <body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
