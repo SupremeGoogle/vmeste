@@ -4,7 +4,7 @@
  * но геометрию оба берут из одного модуля.
  */
 import {
-  PLAN_HEIGHT, PLAN_WIDTH, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName,
+  DEFAULT_HALL, isRound, type Hall, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName,
 } from "@/lib/seating-geometry";
 import { MARK_RADIUS, markFor } from "@/lib/couple-marks";
 import type { GuestRole } from "@/generated/prisma/enums";
@@ -45,6 +45,7 @@ export type PlanTable = {
   width: number;
   height: number;
   capacity: number;
+  isCouple?: boolean;
   seats: {
     id: string;
     index: number;
@@ -55,13 +56,15 @@ export type PlanTable = {
 export function FloorPlan({
   tables,
   highlightGuestId,
+  hall = DEFAULT_HALL,
 }: {
   tables: PlanTable[];
   highlightGuestId?: string;
+  hall?: Hall;
 }) {
   return (
     <svg
-      viewBox={`0 0 ${PLAN_WIDTH} ${PLAN_HEIGHT}`}
+      viewBox={`0 0 ${hall.width} ${hall.height}`}
       className="w-full rounded-xl border border-stone-200 bg-white"
       role="img"
       aria-label="План зала"

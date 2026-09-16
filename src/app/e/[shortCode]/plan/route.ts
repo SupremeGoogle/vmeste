@@ -32,7 +32,7 @@ export async function GET(
 
   const highlight = new URL(request.url).searchParams.get("t");
 
-  const tables = await getPublicPlan(event.id);
+  const { hall, tables } = await getPublicPlan(event.id);
 
   if (tables.length === 0) {
     return html(
@@ -46,7 +46,7 @@ export async function GET(
     );
   }
 
-  const svg = floorPlanSvg(tables, highlight);
+  const svg = floorPlanSvg(tables, highlight, hall);
 
   const highlighted = highlight ? tables.find((table) => table.id === highlight) : null;
 

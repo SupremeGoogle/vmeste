@@ -37,6 +37,7 @@ export async function GET(
       eventDate: event.eventDate,
       venueName: event.venueName,
       tables,
+      hall: { width: event.hallWidth, height: event.hallHeight },
       generatedAt,
     }),
   );
