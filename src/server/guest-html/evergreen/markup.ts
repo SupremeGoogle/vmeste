@@ -14,8 +14,14 @@ function tools(block: InviteBlockView, editable: boolean): string {
   return `<div class="eg-edit-badge" aria-label="Действия с разделом"><button type="button" data-block-action="up" title="Поднять раздел">↑</button><button type="button" data-block-action="down" title="Опустить раздел">↓</button><button type="button" data-block-action="hide" title="Скрыть раздел">Скрыть</button></div>`;
 }
 
+function vine(order: number): string {
+  const side = order % 2 === 0 ? "" : " eg-vine-right";
+  return `<svg class="eg-scroll-vine${side}" viewBox="0 0 160 520" fill="none" aria-hidden="true"><path class="eg-vine-line" pathLength="1" d="M35 520C18 442 92 410 59 334C31 269 103 236 82 164C70 121 91 68 133 18"/><g class="eg-vine-leaves"><path d="M57 397C22 387 15 359 19 338C47 349 62 369 57 397Z"/><path d="M66 355C101 343 114 316 108 292C80 305 65 329 66 355Z"/><path d="M78 226C41 214 34 184 40 160C69 174 84 199 78 226Z"/><path d="M88 185C120 169 132 142 124 120C99 135 86 159 88 185Z"/><path d="M111 76C80 63 75 38 81 20C106 31 118 51 111 76Z"/></g></svg>`;
+}
+
 function section(block: InviteBlockView, className: string, body: string, editable: boolean): string {
-  return `<section class="${className}" data-evergreen-block="${block.type}" data-block-id="${esc(block.id)}">${tools(block, editable)}${body}</section>`;
+  const ornament = className === "eg-cover" ? "" : vine(block.order);
+  return `<section class="${className}" data-evergreen-block="${block.type}" data-block-id="${esc(block.id)}">${tools(block, editable)}${ornament}${body}</section>`;
 }
 
 function names(value: string, blockId: string, editable: boolean): string {
@@ -28,7 +34,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
-      return section(block, "eg-cover", `<div class="eg-cover-media">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt=""${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="imageUrl"` : ""}>` : ""}</div><div class="eg-cover-copy"><p class="eg-eyebrow"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</p>${names(c.names, block.id, editable)}<span class="eg-gold-line"></span><p class="eg-date"${editable ? attrs(block.id, "dateText") : ""}>${esc(c.dateText)}</p><p class="eg-cover-subtitle"${editable ? attrs(block.id, "subtitle", true) : ""}>${esc(c.subtitle)}</p></div>`, editable);
+      return section(block, "eg-cover", `<div class="eg-cover-media">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" data-eg-parallax${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="imageUrl"` : ""}>` : ""}</div><div class="eg-fireflies" aria-hidden="true">${"<i></i>".repeat(9)}</div><svg class="eg-cover-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true"><circle class="eg-mark-orbit" cx="43" cy="50" r="25"/><circle class="eg-mark-orbit eg-mark-delay" cx="58" cy="50" r="25"/><path class="eg-mark-spark" d="M50 9V22M50 78V91M9 50H22M78 50H91"/></svg><div class="eg-cover-copy"><p class="eg-eyebrow"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</p>${names(c.names, block.id, editable)}<span class="eg-gold-line"></span><p class="eg-date"${editable ? attrs(block.id, "dateText") : ""}>${esc(c.dateText)}</p><p class="eg-cover-subtitle"${editable ? attrs(block.id, "subtitle", true) : ""}>${esc(c.subtitle)}</p></div><div class="eg-scroll-cue" aria-hidden="true"><span></span><small>листайте</small></div>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
@@ -37,7 +43,9 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
     }
     case "PHOTOS": {
       const c = block.content as BlockContentMap["PHOTOS"];
-      return section(block, "eg-gallery", `<div class="eg-location-head"><p class="eg-label">Destination</p><h2${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2></div>${c.items.map((item, index) => `<figure class="eg-photo">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt=""${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="items.${index}.imageUrl"` : ""}>` : ""}<figcaption${editable ? attrs(block.id, `items.${index}.caption`) : ""}>${esc(item.caption)}</figcaption></figure>`).join("")}`, editable);
+      const mosaic = c.items.length > 1;
+      const photos = c.items.map((item, index) => `<figure class="eg-photo">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="" data-eg-parallax${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="items.${index}.imageUrl"` : ""}>` : ""}<figcaption${editable ? attrs(block.id, `items.${index}.caption`) : ""}>${esc(item.caption)}</figcaption><span class="eg-photo-number">0${index + 1}</span></figure>`).join("");
+      return section(block, `eg-gallery${mosaic ? " eg-gallery-mosaic" : ""}`, `<div class="eg-location-head"><p class="eg-label">${mosaic ? "Our story in frames" : "Destination"}</p><h2${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2></div>${mosaic ? `<div class="eg-mosaic">${photos}</div>` : photos}`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];
@@ -73,5 +81,6 @@ export function renderEvergreenBlocks(
   options: Options = {},
 ): string {
   const editable = options.editable === true;
-  return blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
+  const chrome = `<div class="eg-progress" aria-hidden="true"><i></i></div>`;
+  return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
 }

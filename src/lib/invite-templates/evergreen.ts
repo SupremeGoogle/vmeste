@@ -94,6 +94,18 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       },
     },
     {
+      type: "PHOTOS",
+      content: {
+        v: 1,
+        title: "Мгновения, из которых сложится наша история",
+        items: [
+          { imageUrl: EVERGREEN_SAMPLE_IMAGES[2], caption: "Прикосновение, которое говорит больше слов" },
+          { imageUrl: EVERGREEN_SAMPLE_IMAGES[3], caption: "Ужин при свечах над морем" },
+          { imageUrl: EVERGREEN_SAMPLE_IMAGES[4], caption: "И пусть музыка не заканчивается" },
+        ],
+      },
+    },
+    {
       type: "RSVP_FORM",
       content: {
         v: 1,

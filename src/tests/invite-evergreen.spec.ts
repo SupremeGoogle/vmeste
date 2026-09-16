@@ -24,6 +24,9 @@ describe("Эвергрин", () => {
     expect(EVERGREEN_SAMPLE_IMAGES).toEqual([
       "/media/invite-evergreen/couple.webp",
       "/media/invite-evergreen/venue.webp",
+      "/media/invite-evergreen/rings.webp",
+      "/media/invite-evergreen/dinner.webp",
+      "/media/invite-evergreen/dance.webp",
     ]);
     const cover = EVERGREEN_TEMPLATE.blocks.find((block) => block.type === "COVER")!;
     const gallery = EVERGREEN_TEMPLATE.blocks.find((block) => block.type === "PHOTOS")!;
@@ -38,7 +41,12 @@ describe("Эвергрин", () => {
     expect(page).toContain('class="sheet evergreen"');
     expect(page).toContain(EVERGREEN_SAMPLE_IMAGES[0]);
     expect(page).toContain(EVERGREEN_SAMPLE_IMAGES[1]);
+    expect(page).toContain(EVERGREEN_SAMPLE_IMAGES[4]);
     expect(page).toContain("eg-schedule");
+    expect(page).toContain("eg-gallery-mosaic");
+    expect(page).toContain("eg-scroll-vine");
+    expect(page).toContain("eg-progress");
+    expect(page).toContain("data-eg-parallax");
     expect(page).not.toContain("data-inline-edit");
   });
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { PickerAsset } from "@/components/invite/image-picker";
+import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 
 type SaveResult = { ok: true } | { ok: false; message: string };
 type ImageTarget = { blockId: string; path: string; current: string };
@@ -26,7 +27,10 @@ export function VisualInviteEditor({
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [target, setTarget] = useState<ImageTarget | null>(null);
-  const [items, setItems] = useState(assets);
+  const [items, setItems] = useState<PickerAsset[]>(() => [
+    ...EVERGREEN_SAMPLE_IMAGES.map((url, index) => ({ id: `evergreen-sample-${index}`, url, alt: `Фотография шаблона ${index + 1}` })),
+    ...assets,
+  ]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("Все изменения сохраняются автоматически");
   const [revision, setRevision] = useState(0);
