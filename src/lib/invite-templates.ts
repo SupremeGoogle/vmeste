@@ -24,6 +24,7 @@ import type { InviteTheme } from "@/lib/invite-theme";
 import { defaultTheme } from "@/lib/invite-theme";
 import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
 import { PROMISE_TEMPLATE } from "@/lib/invite-templates/promise";
+import { SILK_TEMPLATE } from "@/lib/invite-templates/silk";
 import { TILI_TEMPLATE } from "@/lib/invite-templates/tili";
 
 export type TemplateBlock = {
@@ -191,6 +192,7 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
   },
   PROMISE_TEMPLATE,
   EVERGREEN_TEMPLATE,
+  SILK_TEMPLATE,
   TILI_TEMPLATE,
 ];
 

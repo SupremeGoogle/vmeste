@@ -8,7 +8,7 @@ if(!('IntersectionObserver'in window)){
  var o=new IntersectionObserver(function(xs){xs.forEach(function(x){if(x.isIntersecting){x.target.classList.add('eg-in');o.unobserve(x.target)}})},{threshold:.12,rootMargin:'0px 0px -6%'});
  for(var i=0;i<es.length;i++)o.observe(es[i]);
 }
-var bar=d.querySelector('.eg-progress i'),pics=d.querySelectorAll('[data-eg-parallax]'),intro=d.querySelector('.eg-intro'),sheet=d.querySelector('.sheet.evergreen'),ringOne=d.querySelector('.eg-ring-one'),ringTwo=d.querySelector('.eg-ring-two'),reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,busy=0;
+var bar=d.querySelector('.eg-progress i'),pics=d.querySelectorAll('[data-eg-parallax]'),intro=d.querySelector('.eg-intro'),sheet=d.querySelector('.sheet.evergreen'),closingTitle=d.querySelector('.eg-closing h2'),ringOne=d.querySelector('.eg-ring-one'),ringTwo=d.querySelector('.eg-ring-two'),reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,busy=0;
 function mix(a,b,t){return a+(b-a)*t}
 function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function place(ring,x,y,spin,tilt,scale,opacity){ring.style.setProperty('--eg-ring-x',x+'px');ring.style.setProperty('--eg-ring-y',y+'px');ring.style.setProperty('--eg-ring-spin',spin+'deg');ring.style.setProperty('--eg-ring-tilt',tilt+'deg');ring.style.setProperty('--eg-ring-scale',scale);ring.style.setProperty('--eg-ring-opacity',opacity)}
@@ -19,7 +19,7 @@ function draw(){
  if(!reduce){
   for(var j=0;j<pics.length;j++){var box=pics[j].getBoundingClientRect(),mid=box.top+box.height/2-innerHeight/2,shift=Math.max(-28,Math.min(28,-mid*.045));pics[j].style.setProperty('--eg-parallax',shift+'px')}
   if(ringOne&&ringTwo&&intro&&sheet){
-   var ib=intro.getBoundingClientRect(),start=scrollY+ib.top-innerHeight*.58,end=Math.max(start+1,max),p=Math.max(0,Math.min(1,(scrollY-start)/(end-start))),lift=smooth((p-.7)/.14),merge=smooth((p-.84)/.16),lane=Math.min(225,sheet.clientWidth*.36),baseY=innerHeight*(.08+p*.68),finalY=innerHeight*.09,finalX=Math.min(165,sheet.clientWidth*.27),opacity=Math.min(1,p*12);
+   var ib=intro.getBoundingClientRect(),start=scrollY+ib.top-innerHeight*.58,end=Math.max(start+1,max),p=Math.max(0,Math.min(1,(scrollY-start)/(end-start))),lift=smooth((p-.7)/.14),merge=smooth((p-.84)/.16),lane=Math.min(225,sheet.clientWidth*.36),baseY=innerHeight*(.08+p*.68),titleTop=closingTitle?closingTitle.getBoundingClientRect().top:innerHeight*.82,finalY=Math.max(24,Math.min(innerHeight*.72,titleTop-180)),finalX=0,opacity=Math.min(1,p*12);
    var x1=-lane+Math.sin(p*Math.PI*7.4)*lane*.28+Math.cos(p*Math.PI*17)*22,y1=baseY+Math.sin(p*Math.PI*9.2)*52;
    var x2=lane+Math.cos(p*Math.PI*6.6)*lane*.28+Math.sin(p*Math.PI*15)*24,y2=baseY+Math.cos(p*Math.PI*8.4)*56;
    x1=mix(x1,finalX-24,merge);x2=mix(x2,finalX+24,merge);y1=mix(y1,finalY-5,lift);y2=mix(y2,finalY+5,lift);

@@ -58,6 +58,7 @@ describe("Эвергрин", () => {
     expect(script).toContain("eg-ring-one");
     expect(script).toContain("eg-ring-two");
     expect(script).toContain("merge");
+    expect(script).toContain(".eg-closing h2");
     expect(page).not.toContain("Добавить деталь дня");
     expect(page).not.toContain("data-inline-edit");
   });

@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import type { PickerAsset } from "@/components/invite/image-picker";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
+import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 
 type SaveResult = { ok: true } | { ok: false; message: string };
@@ -24,6 +25,7 @@ export type BlockAction = "up" | "down" | "hide" | "show" | "add-detail";
 const SAMPLES: Record<string, readonly string[]> = {
   evergreen: EVERGREEN_SAMPLE_IMAGES,
   promise: PROMISE_SAMPLE_IMAGES,
+  silk: SILK_SAMPLE_IMAGES,
   tili: TILI_SAMPLE_IMAGES,
 };
 

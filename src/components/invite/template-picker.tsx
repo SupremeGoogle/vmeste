@@ -14,6 +14,7 @@ import { INVITE_TEMPLATES } from "@/lib/invite-templates";
 import { FONT_STACKS } from "@/lib/invite-theme";
 import { PromiseThumbnail } from "@/components/invite/promise-thumbnail";
 import { EvergreenThumbnail } from "@/components/invite/evergreen-thumbnail";
+import { SilkThumbnail } from "@/components/invite/silk-thumbnail";
 import { TiliThumbnail } from "@/components/invite/tili-thumbnail";
 
 export function TemplatePicker({
@@ -43,7 +44,7 @@ export function TemplatePicker({
               {/* Миниатюра: не картинка, а тот же приём, что и в самом
                   приглашении, — иначе она разъедется с шаблоном при первой
                   же правке темы. */}
-              {template.id === "promise" ? <PromiseThumbnail theme={theme} /> : template.id === "evergreen" ? <EvergreenThumbnail theme={theme} /> : template.id === "tili" ? <TiliThumbnail /> : <div className="space-y-1.5 p-3" style={{ background: theme.bg }}>
+              {template.id === "promise" ? <PromiseThumbnail theme={theme} /> : template.id === "evergreen" ? <EvergreenThumbnail theme={theme} /> : template.id === "silk" ? <SilkThumbnail theme={theme} /> : template.id === "tili" ? <TiliThumbnail /> : <div className="space-y-1.5 p-3" style={{ background: theme.bg }}>
                 <div
                   className="px-4 py-4 text-center"
                   style={{
@@ -139,7 +140,7 @@ export function TemplatePicker({
               {current && <span className="ml-2 text-xs text-stone-500">— выбран</span>}
             </p>
             <p className="mt-1 flex-1 text-xs leading-relaxed text-stone-600">{template.mood}</p>
-            {(template.id === "promise" || template.id === "evergreen" || template.id === "tili") && (
+            {(template.id === "promise" || template.id === "evergreen" || template.id === "silk" || template.id === "tili") && (
               <a href={`/templates/${template.id}`} target="_blank" rel="noopener noreferrer" className="mt-3 text-xs text-stone-700 underline underline-offset-4">
                 Посмотреть макет и анимации ↗
               </a>

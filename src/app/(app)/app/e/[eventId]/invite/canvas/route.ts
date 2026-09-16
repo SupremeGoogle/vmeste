@@ -13,6 +13,7 @@ import { formatEventDateTime } from "@/lib/format-datetime";
 import { html } from "@/server/guest-html/layout";
 import { coupleNames, invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
 import { EVERGREEN_EDITOR_CSS } from "@/server/guest-html/evergreen/style";
+import { SILK_EDITOR_CSS } from "@/server/guest-html/silk/style";
 import { INLINE_EDITOR_CSS, INLINE_EDITOR_SCRIPT } from "@/server/guest-html/inline-editor";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export async function GET(
     title: `${event.title} — визуальный редактор`,
     theme,
     noindex: true,
-    extraCss: `${INLINE_EDITOR_CSS}${theme.template === "evergreen" ? EVERGREEN_EDITOR_CSS : ""}`,
+    extraCss: `${INLINE_EDITOR_CSS}${theme.template === "evergreen" ? EVERGREEN_EDITOR_CSS : ""}${theme.template === "silk" ? SILK_EDITOR_CSS : ""}`,
     body: `${body}<p class="foot">${formatEventDateTime(event.eventDate, event.timezone)}</p>`,
     script: scripts.join(";"),
   }), {
