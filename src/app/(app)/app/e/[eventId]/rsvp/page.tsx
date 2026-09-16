@@ -157,9 +157,11 @@ export default async function RsvpSummaryPage({
               <td className="py-2 text-stone-600">
                 {guest.comment ? (
                   <span className="block text-stone-500">{guest.comment}</span>
-                ) : (
-                  "—"
-                )}
+                ) : null}
+                {guest.musicWish ? (
+                  <span className="block text-stone-500">Музыка: {guest.musicWish}</span>
+                ) : null}
+                {!guest.comment && !guest.musicWish ? "—" : null}
               </td>
               <td className="py-2">
                 <a

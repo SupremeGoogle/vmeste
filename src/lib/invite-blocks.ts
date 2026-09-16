@@ -16,6 +16,7 @@
 import { z } from "zod";
 import type { BlockType } from "@/generated/prisma/enums";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
+import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 
 /** Текущая версия содержимого. Растёт, когда меняется форма данных. */
 export const BLOCK_SCHEMA_VERSION = 1;
@@ -52,7 +53,15 @@ const httpUrl = z
 const imageRef = httpUrl
   .or(z.string().regex(/^\/api\/asset\/[a-z0-9]+\/[a-z0-9]+$/, "неизвестный адрес картинки"))
   .or(z.enum(EVERGREEN_SAMPLE_IMAGES))
+  .or(z.enum(TILI_SAMPLE_IMAGES))
   .or(z.literal(""));
+
+/**
+ * Надпись-метка раздела («— КОГДА —», «— ЛОКАЦИЯ —»). Нужна шаблонам,
+ * где у раздела кроме заголовка есть маленькая подпись над ним; остальные
+ * шаблоны поле не рисуют, и по умолчанию оно пустое.
+ */
+const tag = shortText.default("");
 
 export const blockContentSchemas = {
   /**
@@ -75,6 +84,13 @@ export const blockContentSchemas = {
     dateText: shortText.default(""),
     subtitle: longText.default(""),
     imageUrl: imageRef.default(""),
+    /** Два снимка на обложке (детские фотографии в «Тили-тесто»). */
+    photos: z
+      .array(z.object({ imageUrl: imageRef.default(""), caption: longText.default("") }))
+      .max(2)
+      .default([]),
+    /** Подпись в самом низу приглашения: «С любовью,». */
+    footer: shortText.default(""),
   }),
   TIMELINE: z.object({
     v: version,
@@ -87,6 +103,8 @@ export const blockContentSchemas = {
           time: z.string().trim().max(10).default(""),
           title: shortText.default(""),
           note: shortText.default(""),
+          /** Значок пункта; шаблоны без значков поле не рисуют. */
+          icon: imageRef.default(""),
         }),
       )
       .max(30)
@@ -94,16 +112,24 @@ export const blockContentSchemas = {
   }),
   VENUE: z.object({
     v: version,
+    tag,
     title: shortText.default("Где"),
     name: shortText.default(""),
     address: longText.default(""),
     note: longText.default(""),
+    imageUrl: imageRef.default(""),
+    /** Кнопка «посмотреть на карте» прямо на карточке места. */
+    mapUrl: httpUrl.or(z.literal("")).default(""),
+    mapLabel: shortText.default(""),
   }),
   DRESSCODE: z.object({
     v: version,
+    tag,
     title: shortText.default("Дресс-код"),
     text: longText.default(""),
     palette: z.array(color).max(8).default([]),
+    /** Картинка-пример нарядов под палитрой. */
+    imageUrl: imageRef.default(""),
   }),
   MAP: z.object({
     v: version,
@@ -117,14 +143,28 @@ export const blockContentSchemas = {
   }),
   TEXT: z.object({
     v: version,
+    tag,
     title: shortText.default(""),
     text: longText.default(""),
   }),
   RSVP_FORM: z.object({
     v: version,
+    tag,
     title: shortText.default("Подтвердите присутствие"),
     text: longText.default(""),
     buttonLabel: shortText.default("Ответить"),
+    /**
+     * Надписи анкеты, которую шаблон рисует прямо на странице. Шаблоны с
+     * кнопкой «Ответить» их не показывают; пустое поле — стандартная надпись.
+     */
+    nameLabel: shortText.default(""),
+    attendanceLabel: shortText.default(""),
+    yesLabel: shortText.default(""),
+    noLabel: shortText.default(""),
+    drinksLabel: shortText.default(""),
+    musicLabel: shortText.default(""),
+    musicPlaceholder: shortText.default(""),
+    successText: longText.default(""),
   }),
 
   /**
@@ -160,6 +200,7 @@ export const blockContentSchemas = {
    */
   CALENDAR: z.object({
     v: version,
+    tag,
     title: shortText.default("Мы ждём вас"),
     message: longText.default(""),
   }),

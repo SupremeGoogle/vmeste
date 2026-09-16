@@ -173,6 +173,18 @@ export const inviteThemeSchema = z.object({
   capsHeadings: z.boolean().default(true),
   /** Выравнивание текста по центру или по левому краю. */
   align: z.enum(["center", "left"]).default("center"),
+
+  /**
+   * Фоновая музыка: включается, когда гость открывает конверт, и
+   * выключается кнопкой в углу. Только свои адреса — файл шаблона или
+   * загруженный организатором, — чтобы в `src` не попал чужой домен.
+   */
+  musicUrl: z
+    .string()
+    .trim()
+    .max(200)
+    .regex(/^(|\/media\/[a-z0-9-]+\/[a-z0-9.-]+\.mp3|\/api\/asset\/[a-z0-9]+\/[a-z0-9]+)$/, "неизвестный адрес музыки")
+    .default(""),
 });
 
 export type InviteTheme = z.infer<typeof inviteThemeSchema>;

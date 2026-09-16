@@ -280,7 +280,7 @@ describe("заставка-конверт", () => {
     const blocks = [
       {
         id: "b1", type: "COVER" as const, order: 0, visible: true, degraded: false,
-        content: { v: 1, title: "", names: '<img src=x onerror="alert(1)">', dateText: "", subtitle: "", imageUrl: "" },
+        content: { v: 1, title: "", names: '<img src=x onerror="alert(1)">', dateText: "", subtitle: "", imageUrl: "", photos: [], footer: "" },
       },
     ];
 
@@ -316,7 +316,7 @@ describe("заставка-конверт", () => {
     const cover = (names: string) => [
       {
         id: "b1", type: "COVER" as const, order: 0, visible: true, degraded: false,
-        content: { v: 1, title: "", names, dateText: "", subtitle: "", imageUrl: "" },
+        content: { v: 1, title: "", names, dateText: "", subtitle: "", imageUrl: "", photos: [], footer: "" },
       },
     ];
 

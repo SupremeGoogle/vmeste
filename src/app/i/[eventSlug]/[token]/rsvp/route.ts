@@ -177,7 +177,14 @@ export async function POST(
     plusOneMealOptionId: String(form.get("plusOneMealOptionId") ?? "") || null,
     drinkOptionIds: form.getAll("drinkOptionIds").map(String),
     plusOneDrinkOptionIds: form.getAll("plusOneDrinkOptionIds").map(String),
+    // Вопрос о музыке есть только в анкете на странице приглашения: если
+    // поля в форме нет, прежний ответ остаётся как был.
+    musicWish: form.has("musicWish") ? String(form.get("musicWish")) : undefined,
   });
+
+  // Анкета, встроенная в само приглашение, возвращает гостя к ней же,
+  // а не на отдельную страницу ответа.
+  const inline = form.get("from") === "invite";
 
   const back = (query: string) =>
     // 303: после POST браузер должен пойти GET-ом, иначе обновление страницы
@@ -187,7 +194,9 @@ export async function POST(
       headers: { location: `/i/${eventSlug}/${token}${query}` },
     });
 
-  if (!result.ok) return back(`/rsvp?error=${result.reason}`);
+  if (!result.ok) {
+    return back(inline ? `?error=${result.reason}#rsvp` : `/rsvp?error=${result.reason}`);
+  }
 
   // Гость ответил — значит, ссылка у него. Ставим гостевую сессию: на
   // страницах фото и пожеланий она узнает его без повторного ввода имени.
@@ -197,5 +206,5 @@ export async function POST(
     sessionExpiry(guest.event.eventDate),
   );
 
-  return back("?ok=1");
+  return back(inline ? "?ok=1#rsvp" : "?ok=1");
 }

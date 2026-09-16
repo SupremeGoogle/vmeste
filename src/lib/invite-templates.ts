@@ -23,6 +23,7 @@ import type { BlockType } from "@/generated/prisma/enums";
 import type { InviteTheme } from "@/lib/invite-theme";
 import { defaultTheme } from "@/lib/invite-theme";
 import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
+import { TILI_TEMPLATE } from "@/lib/invite-templates/tili";
 
 export type TemplateBlock = {
   type: BlockType;
@@ -188,6 +189,7 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
     ],
   },
   EVERGREEN_TEMPLATE,
+  TILI_TEMPLATE,
   // Шаблон пока ровно один — копия присланного образца. Второй
   // («Обещание», `invite-templates/promise.ts`) написан и работает, но
   // на витрину не выведен: его оформление придумано с нуля, а не снято

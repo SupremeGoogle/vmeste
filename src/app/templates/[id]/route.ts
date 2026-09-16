@@ -25,9 +25,12 @@ export async function GET(
   const template = findTemplate(id);
   if (!template) notFound();
 
+  // У «Тили-тесто» образец уже заполнен как на исходном сайте — подменять нечего.
+  const keepSample = template.id === "tili";
   const blocks: InviteBlockView[] = template.blocks.map((block, index) => {
-    const content =
-      block.type === "COVER"
+    const content = keepSample
+      ? block.content
+      : block.type === "COVER"
         ? { ...block.content, names: SAMPLE_NAMES }
         : block.type === "VENUE"
           ? { ...block.content, name: "Усадьба Гребнево", address: "Московская область" }

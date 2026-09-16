@@ -29,7 +29,7 @@ export async function GET(
     orderBy: { searchKey: "asc" },
     select: {
       displayName: true, phone: true, email: true, rsvpStatus: true, rsvpAt: true,
-      comment: true, note: true, linkToken: true, linkOpenedAt: true,
+      comment: true, note: true, linkToken: true, linkOpenedAt: true, musicWish: true,
       parentGuestId: true,
       mealOption: { select: { title: true } },
       drinks: {
@@ -50,7 +50,7 @@ export async function GET(
   const csv = toCsv(
     [
       "Гость", "Ответ", "Когда ответил", "Блюдо", "Напитки",
-      "Комментарий", "Спутник кого", "Стол", "Место", "Телефон", "Почта",
+      "Комментарий", "Музыка", "Спутник кого", "Стол", "Место", "Телефон", "Почта",
       "Заметка", "Ссылка открыта", "Именная ссылка",
     ],
     guests.map((guest) => [
@@ -60,6 +60,7 @@ export async function GET(
       guest.mealOption?.title ?? "",
       guest.drinks.map((row) => row.drink.title).join(", "),
       guest.comment ?? "",
+      guest.musicWish ?? "",
       guest.parentGuest?.displayName ?? "",
       guest.seat?.table.label ?? "",
       guest.seat ? guest.seat.index + 1 : "",

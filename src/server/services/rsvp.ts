@@ -36,6 +36,11 @@ export const rsvpInputSchema = z.object({
   // Напитки — флажками, поэтому списком: бокал вина и шампанское на тост.
   drinkOptionIds: z.array(z.string().trim().max(40)).max(30).default([]),
   plusOneDrinkOptionIds: z.array(z.string().trim().max(40)).max(30).default([]),
+  /**
+   * «Какую музыку предпочитаете?». `undefined` — формы, где этого вопроса
+   * нет: там прежний ответ не трогаем, а не стираем молча.
+   */
+  musicWish: z.string().trim().max(200).optional(),
 });
 
 export type RsvpInput = z.infer<typeof rsvpInputSchema>;
@@ -139,6 +144,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
         mealOptionId,
         comment: input.comment || null,
         plusOneName: plusOneName || null,
+        ...(input.musicWish !== undefined ? { musicWish: input.musicWish || null } : {}),
       },
     });
     await setDrinks(guest.id, drinkOptionIds);
@@ -334,7 +340,7 @@ export async function listRsvp(eventId: string) {
     select: {
       id: true, displayName: true, rsvpStatus: true, rsvpAt: true,
       comment: true, linkToken: true, linkOpenedAt: true,
-      parentGuestId: true, plusOneName: true,
+      parentGuestId: true, plusOneName: true, musicWish: true,
       mealOption: { select: { title: true } },
       drinks: {
         select: { drink: { select: { title: true } } },

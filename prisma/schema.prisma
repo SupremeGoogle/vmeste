@@ -356,6 +356,8 @@ model Guest {
   plusOneAllowed Boolean    @default(false)
   plusOneName    String?
   comment        String?
+  // «Какую музыку предпочитаете?» из анкеты шаблона «Тили-тесто».
+  musicWish      String?
 
   // Спутник (+1) ссылается на «родителя». Он же связывает семью:
   // поиск на входе возвращает всю группу, см. PLAN.md §7 вопрос 1.

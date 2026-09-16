@@ -26,6 +26,17 @@ export type AssetView = {
   bytes: number;
 };
 
+/**
+ * Музыка приглашения — тот же контур, что у картинок: организатор загружает
+ * песню, под которую гость открывает конверт. Лимит больше, чем у фото:
+ * трёхминутный MP3 весит 5–8 МБ.
+ */
+export const AUDIO_TYPES = ["audio/mpeg", "audio/mp4", "audio/x-m4a"];
+export const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
+
+const limitFor = (contentType: string) =>
+  AUDIO_TYPES.includes(contentType) ? MAX_AUDIO_BYTES : MAX_UPLOAD_BYTES;
+
 /** Адрес, по которому картинку отдаёт приложение. Бакет закрыт целиком. */
 export function assetUrl(eventId: string, assetId: string): string {
   return `/api/asset/${eventId}/${assetId}`;
@@ -41,13 +52,14 @@ export async function startAssetUpload(
   contentType: string,
   declaredBytes: number,
 ): Promise<StartUpload> {
-  if (!ALLOWED_TYPES.includes(contentType)) {
-    return { ok: false, message: "Принимаем только изображения: JPEG, PNG, WebP или HEIC." };
+  if (!ALLOWED_TYPES.includes(contentType) && !AUDIO_TYPES.includes(contentType)) {
+    return { ok: false, message: "Принимаем изображения (JPEG, PNG, WebP, HEIC) и музыку (MP3, M4A)." };
   }
-  if (declaredBytes > MAX_UPLOAD_BYTES) {
+  const limit = limitFor(contentType);
+  if (declaredBytes > limit) {
     return {
       ok: false,
-      message: `Файл больше ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ. Уменьшите его и попробуйте ещё раз.`,
+      message: `Файл больше ${Math.round(limit / 1024 / 1024)} МБ. Уменьшите его и попробуйте ещё раз.`,
     };
   }
 
@@ -78,7 +90,7 @@ export async function completeAssetUpload(
     return { ok: false, message: "Файл не загрузился. Попробуйте ещё раз." };
   }
 
-  if (head.bytes > MAX_UPLOAD_BYTES) {
+  if (head.bytes > limitFor(head.contentType)) {
     // Браузер соврал о размере в первом запросе — убираем за собой.
     await deleteObjects([key]).catch(() => {});
     return { ok: false, message: "Файл больше допустимого." };
@@ -104,7 +116,24 @@ export async function completeAssetUpload(
 /** Картинки мероприятия — для выбора обложки в конструкторе. */
 export async function listAssets(ctx: EventContext): Promise<AssetView[]> {
   const rows = await db.eventAsset.findMany({
-    where: { eventId: ctx.eventId },
+    // Песни лежат рядом с картинками, но в выборе обложки им не место:
+    // браузер нарисовал бы вместо них битые картинки.
+    where: { eventId: ctx.eventId, contentType: { notIn: AUDIO_TYPES } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, alt: true, bytes: true },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    url: assetUrl(ctx.eventId, row.id),
+    alt: row.alt,
+    bytes: row.bytes,
+  }));
+}
+
+/** Загруженные песни — для выбора музыки приглашения. */
+export async function listAudioAssets(ctx: EventContext): Promise<AssetView[]> {
+  const rows = await db.eventAsset.findMany({
+    where: { eventId: ctx.eventId, contentType: { in: AUDIO_TYPES } },
     orderBy: { createdAt: "desc" },
     select: { id: true, alt: true, bytes: true },
   });

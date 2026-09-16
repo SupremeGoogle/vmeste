@@ -28,6 +28,19 @@ import { STORY_FONTS_LINK } from "@/server/guest-html/story/style";
 import { PROMISE_SCRIPT } from "@/server/guest-html/promise/script";
 import { renderEvergreenBlocks } from "@/server/guest-html/evergreen/markup";
 import { EVERGREEN_SCRIPT } from "@/server/guest-html/evergreen/script";
+import { renderTiliBlocks, type TiliRsvp } from "@/server/guest-html/tili/markup";
+import { TILI_CSS, TILI_FONTS_LINK } from "@/server/guest-html/tili/style";
+import { TILI_HEAD_SCRIPT, TILI_SCRIPT } from "@/server/guest-html/tili/script";
+
+/**
+ * Что ещё знает рендерер, кроме блоков.
+ *
+ *   editable — страница открыта в визуальном редакторе: поля помечаются,
+ *              заставки и анимации, мешающие править, выключены;
+ *   rsvp     — анкета прямо на странице (шаблоны, у которых она есть):
+ *              кто отвечает и что уже ответил.
+ */
+export type RenderOptions = { editable?: boolean; rsvp?: TiliRsvp | null };
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -132,6 +145,7 @@ export function invitePage(opts: {
    *  которой в зале почти нет. */
   script?: string;
 }): string {
+  if (opts.theme?.template === "tili") return tiliDocument(opts);
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
@@ -141,6 +155,24 @@ ${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
 <body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
+}
+
+/**
+ * Документ шаблона «Тили-тесто». Общие стили приглашения сюда не входят:
+ * у образца свои классы с теми же именами, и общие правила сломали бы
+ * вёрстку. Служебные вставки маршрутов (`.foot`, `.links`) оформлены
+ * здесь же, в цветах шаблона.
+ */
+const TILI_ROUTE_CSS = `.foot{background:#2A1D0D;color:rgba(255,255,255,.4);text-align:center;padding:0 24px 34px;font-size:.85rem;letter-spacing:.12em;margin:0}.foot a{color:inherit}.links{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;background:#2A1D0D;padding:0 24px 24px}.links a{color:#BFAF9F;font-size:1rem;border:1px solid rgba(191,175,159,.4);border-radius:40px;padding:9px 22px;text-decoration:none}.ok{margin:0;padding:14px 20px;background:#8B6914;color:#fff;text-align:center}.who{padding:28px 20px 0;text-align:center;font-size:.85rem;letter-spacing:.3em;text-transform:uppercase;color:#BFAF9F}section.plain{padding:100px 24px;text-align:center}`;
+
+function tiliDocument(opts: { title: string; body: string; noindex?: boolean; extraCss?: string; script?: string }): string {
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
+<meta name="theme-color" content="#f8f1ea">
+${TILI_FONTS_LINK}
+<title>${esc(opts.title)}</title><script>${TILI_HEAD_SCRIPT}</script><style>${TILI_CSS}${TILI_ROUTE_CSS}${opts.extraCss ?? ""}</style></head>
+<body>${opts.body}${opts.script ? `<script>${opts.script}</script>` : ""}</body></html>`;
 }
 
 /** Пользовательский текст: переносы строк сохраняем, разметку — нет. */
@@ -403,6 +435,9 @@ for(var i=0;i<els.length;i++)io.observe(els[i])})()`;
  * отсчёта и заставки, которым есть что включать или не включать.
  */
 export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
+  // У «Тили-тесто» свой скрипт целиком: отсчёт, конверт и появление
+  // разделов устроены как в образце, а не как у остальных шаблонов.
+  if (theme.template === "tili") return TILI_SCRIPT;
   const parts = [
     hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
@@ -427,10 +462,16 @@ export function renderBlocks(
   eventDate?: Date,
   theme: InviteTheme = defaultTheme(),
   timezone = "UTC",
+  options: RenderOptions = {},
 ): string {
+  const editable = options.editable === true;
+  if (theme.template === "tili") {
+    return renderTiliBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
+  }
   if (theme.template === "evergreen") {
     return renderEvergreenBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
     );
   }
   if (theme.template === "promise") {
