@@ -15,6 +15,7 @@
 import type { BlockType } from "@/generated/prisma/enums";
 import { parseBlockContent } from "@/lib/invite-blocks";
 import type { AnyBlockContent } from "@/lib/invite-blocks";
+import { defaultContent } from "@/lib/invite-blocks";
 
 /** Разделитель полей в строке тайминга: `|`, но терпим и табуляцию. */
 const FIELD_SPLIT = /\s*[|\t]\s*/;
@@ -62,17 +63,24 @@ const str = (form: FormLike, name: string) => String(form.get(name) ?? "");
 export function blockContentFromForm(
   type: BlockType,
   form: FormLike,
+  current?: AnyBlockContent,
 ): { ok: true; content: AnyBlockContent } | { ok: false; message: string } {
+  // Некоторые шаблоны содержат поля, которых нет в компактной обычной
+  // форме: фото площадки, подписи секций, иконки тайминга и расширенную
+  // анкету. Берём актуальный блок из базы и меняем только показанные поля,
+  // чтобы переключение из визуального режима ничего не стирало.
+  const base = (current ?? defaultContent(type)) as Record<string, unknown>;
   switch (type) {
     case "COUNTDOWN":
       return parseBlockContent("COUNTDOWN", {
-        v: 1,
+        ...base,
         title: str(form, "title"),
         doneText: str(form, "doneText"),
       });
 
     case "COVER":
       return parseBlockContent("COVER", {
+        ...base,
         title: str(form, "title"),
         names: str(form, "names"),
         dateText: str(form, "dateText"),
@@ -81,11 +89,16 @@ export function blockContentFromForm(
       });
     case "TIMELINE":
       return parseBlockContent("TIMELINE", {
+        ...base,
         title: str(form, "title"),
-        items: parseTimelineText(str(form, "items")),
+        items: parseTimelineText(str(form, "items")).map((item, index) => ({
+          ...item,
+          icon: ((base.items as { icon?: string }[] | undefined)?.[index]?.icon ?? ""),
+        })),
       });
     case "VENUE":
       return parseBlockContent("VENUE", {
+        ...base,
         title: str(form, "title"),
         name: str(form, "name"),
         address: str(form, "address"),
@@ -93,12 +106,14 @@ export function blockContentFromForm(
       });
     case "DRESSCODE":
       return parseBlockContent("DRESSCODE", {
+        ...base,
         title: str(form, "title"),
         text: str(form, "text"),
         palette: parsePalette(str(form, "palette")),
       });
     case "MAP":
       return parseBlockContent("MAP", {
+        ...base,
         title: str(form, "title"),
         yandexUrl: str(form, "yandexUrl"),
         googleUrl: str(form, "googleUrl"),
@@ -106,17 +121,20 @@ export function blockContentFromForm(
       });
     case "TEXT":
       return parseBlockContent("TEXT", {
+        ...base,
         title: str(form, "title"),
         text: str(form, "text"),
       });
     case "RSVP_FORM":
       return parseBlockContent("RSVP_FORM", {
+        ...base,
         title: str(form, "title"),
         text: str(form, "text"),
         buttonLabel: str(form, "buttonLabel"),
       });
     case "PHOTOS":
       return parseBlockContent("PHOTOS", {
+        ...base,
         title: str(form, "title"),
         // Четыре фиксированных слота вместо динамического списка (см.
         // комментарий у схемы в `lib/invite-blocks.ts`). Пустой слот —
@@ -130,6 +148,7 @@ export function blockContentFromForm(
       });
     case "CALENDAR":
       return parseBlockContent("CALENDAR", {
+        ...base,
         title: str(form, "title"),
         message: str(form, "message"),
       });

@@ -72,6 +72,8 @@ describe("Эвергрин", () => {
     expect(body).toContain('data-path="items.0.imageUrl"');
     expect(body).toContain('data-block-action="up"');
     expect(body).toContain('data-block-action="add-detail"');
+    expect(body).toContain('data-block-action="remove-detail"');
+    expect(body).toContain('data-color-edit');
     expect(body).toContain("Добавить деталь дня");
     expect(EVERGREEN_EDITOR_SCRIPT).toContain("postMessage");
   });

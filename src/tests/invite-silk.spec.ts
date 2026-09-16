@@ -44,7 +44,7 @@ describe("Шёлк", () => {
     expect(page).toContain("silk-cover-wave");
     expect(page).toContain("silk-weekend-grid");
     expect(page).toContain("silk-venue-card");
-    expect(page).toContain("Our only venue");
+    expect(page).toContain("Единственная локация");
     expect(page).toContain("silk-progress");
     expect(page).toContain("data-silk-parallax");
     expect(page).toContain(SILK_SAMPLE_IMAGES[0]);
@@ -60,7 +60,21 @@ describe("Шёлк", () => {
     expect(body).toContain("data-inline-edit");
     expect(body).toContain("data-image-edit");
     expect(body).toContain("data-block-action=\"add-detail\"");
+    expect(body).toContain("data-block-action=\"remove-detail\"");
     expect(body).toContain("data-color-edit");
+    expect(body).toContain('data-path="buttonLabel"');
+    const venue = blocks.find((block) => block.type === "VENUE")!;
+    expect(body).toContain(`data-block-id="${venue.id}" data-path="imageUrl"`);
+  });
+
+  it("после удаления фото оставляет место, по которому снимок можно вернуть", () => {
+    const blocks = templateBlocks();
+    const cover = blocks.find((block) => block.type === "COVER")!;
+    cover.content = { ...cover.content, imageUrl: "" };
+    const venue = blocks.find((block) => block.type === "VENUE")!;
+    venue.content = { ...venue.content, imageUrl: "" };
+    const body = renderBlocks(blocks, null, null, new Date("2027-10-14T14:00:00Z"), SILK_TEMPLATE.theme, "Europe/Moscow", { editable: true });
+    expect(body).toContain("Добавить фотографию пары");
+    expect(body).toContain("Добавить фотографию локации");
   });
 });
-

@@ -20,7 +20,7 @@ import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 
 type SaveResult = { ok: true } | { ok: false; message: string };
 type Target = { kind: "image" | "link" | "color"; blockId: string; path: string; current: string };
-export type BlockAction = "up" | "down" | "hide" | "show" | "add-detail";
+export type BlockAction = "up" | "down" | "hide" | "show" | "add-detail" | "remove-detail";
 
 const SAMPLES: Record<string, readonly string[]> = {
   evergreen: EVERGREEN_SAMPLE_IMAGES,
@@ -53,7 +53,7 @@ export function VisualInviteEditor({
   musicUrl: string;
   hidden: { id: string; label: string }[];
   saveField: (input: { blockId: string; path: string; value: string }) => Promise<SaveResult>;
-  blockAction: (input: { blockId: string; action: BlockAction }) => Promise<SaveResult>;
+  blockAction: (input: { blockId: string; action: BlockAction; index?: number }) => Promise<SaveResult>;
   saveMusic: (url: string) => Promise<SaveResult>;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -105,12 +105,13 @@ export function VisualInviteEditor({
         setDraft(current);
       }
 
-      if (message.kind === "block-action" && blockId && (message.action === "up" || message.action === "down" || message.action === "hide" || message.action === "add-detail")) {
+      if (message.kind === "block-action" && blockId && (message.action === "up" || message.action === "down" || message.action === "hide" || message.action === "add-detail" || message.action === "remove-detail")) {
         const action = message.action as BlockAction;
-        setNotice(action === "add-detail" ? "Добавляю новую деталь…" : "Обновляю разделы…");
+        const index = typeof message.index === "number" ? message.index : undefined;
+        setNotice(action === "add-detail" ? "Добавляю новую деталь…" : action === "remove-detail" ? "Удаляю деталь…" : "Обновляю разделы…");
         startSaving(async () => {
-          const result = await blockAction({ blockId, action });
-          setNotice(result.ok ? (action === "add-detail" ? "Деталь добавлена — нажмите на неё, чтобы заполнить" : action === "hide" ? "Раздел скрыт — вернуть можно кнопкой «Скрытые разделы»" : "Сохранено") : result.message);
+          const result = await blockAction({ blockId, action, index });
+          setNotice(result.ok ? (action === "add-detail" ? "Деталь добавлена — нажмите на неё, чтобы заполнить" : action === "remove-detail" ? "Деталь удалена" : action === "hide" ? "Раздел скрыт — вернуть можно кнопкой «Скрытые разделы»" : "Сохранено") : result.message);
           if (result.ok) reload();
         });
       }
@@ -140,6 +141,10 @@ export function VisualInviteEditor({
     );
     setNotice("Сохранено");
     setTarget(null);
+    // Перезагрузка нужна не только для новой раскладки: пустой слот — это
+    // не <img>, а понятная плашка «Добавить фото». После выбора/удаления
+    // сервер заново нарисует правильный элемент и вернёт прежний скролл.
+    if (target.kind === "image") reload();
   }
 
   async function uploadFile(file: File): Promise<PickerAsset> {
@@ -273,6 +278,15 @@ export function VisualInviteEditor({
 
             {target.kind === "image" && (
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void commit("")}
+                  className={`flex min-h-32 flex-col items-center justify-center rounded-xl border-2 px-4 text-center ${target.current ? "border-stone-200 text-stone-600 hover:border-red-300 hover:bg-red-50" : "border-stone-900 bg-stone-50 text-stone-900"}`}
+                >
+                  <span className="text-xl">×</span>
+                  <span className="mt-1 text-sm">Без фотографии</span>
+                </button>
                 {choices.map((asset) => (
                   <button key={asset.id} type="button" disabled={busy} onClick={() => void commit(asset.url)} className={`group overflow-hidden rounded-xl border-2 text-left ${target.current === asset.url ? "border-stone-900" : "border-stone-200"}`}>
                     {/* Картинки отдаёт защищённый маршрут, размеры заранее неизвестны. */}
@@ -285,6 +299,9 @@ export function VisualInviteEditor({
                   <span className="text-2xl">＋</span><span className="mt-1">Загрузить свою</span>
                   <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="sr-only" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); }} />
                 </label>
+                <p className="col-span-full text-xs leading-5 text-stone-500">
+                  Фотографию можно убрать сейчас и вернуть позже: пустое место останется доступным в редакторе.
+                </p>
               </div>
             )}
 

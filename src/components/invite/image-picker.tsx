@@ -13,9 +13,19 @@
  * нажав только одно.
  */
 import { useRef, useState } from "react";
+import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
+import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
+import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 
 export type PickerAsset = { id: string; url: string; alt: string };
+
+const TEMPLATE_IMAGES = [
+  ...PROMISE_SAMPLE_IMAGES,
+  ...EVERGREEN_SAMPLE_IMAGES,
+  ...SILK_SAMPLE_IMAGES,
+  ...TILI_SAMPLE_IMAGES,
+] as const;
 
 export function ImagePicker({
   eventId, name, value, assets,
@@ -27,8 +37,8 @@ export function ImagePicker({
   assets: PickerAsset[];
 }) {
   const [items, setItems] = useState<PickerAsset[]>(() =>
-    PROMISE_SAMPLE_IMAGES.some((url) => url === value) && !assets.some((asset) => asset.url === value)
-      ? [{ id: "promise-sample", url: value, alt: "Пример фотографии — можно заменить своей" }, ...assets]
+    value && !assets.some((asset) => asset.url === value)
+      ? [{ id: TEMPLATE_IMAGES.includes(value as (typeof TEMPLATE_IMAGES)[number]) ? "template-sample" : "current-image", url: value, alt: "Текущая фотография — можно заменить своей" }, ...assets]
       : assets,
   );
   const [chosen, setChosen] = useState(value);
@@ -99,9 +109,7 @@ export function ImagePicker({
               chosen === asset.url ? "border-stone-900" : "border-stone-200"
             }`}
           >
-            {/* Обычный <img>: next/image здесь не нужен — картинка уже
-                нашего размера, а его настройка потянула бы за собой
-                конфигурацию доменов ради одной миниатюры. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- миниатюра может быть из защищённого хранилища без заранее известного размера. */}
             <img src={asset.url} alt={asset.alt} className="h-full w-full object-cover" />
           </button>
         ))}

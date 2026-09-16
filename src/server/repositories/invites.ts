@@ -55,6 +55,15 @@ export async function listBlocks(ctx: EventContext): Promise<InviteBlockView[]> 
   return rows.map(toView);
 }
 
+/** Один блок с проверкой принадлежности мероприятию — для безопасного
+ *  объединения обычной формы с полями, которые она не показывает. */
+export async function getBlock(ctx: EventContext, blockId: string): Promise<InviteBlockView | null> {
+  const row = await db.inviteBlock.findFirst({
+    where: { id: blockId, eventId: ctx.eventId },
+  });
+  return row ? toView(row) : null;
+}
+
 export async function addBlock(ctx: EventContext, type: BlockType) {
   const last = await db.inviteBlock.findFirst({
     where: { eventId: ctx.eventId },
@@ -89,9 +98,9 @@ export async function updateBlockContent(
 const INLINE_FIELDS: Record<BlockType, RegExp> = {
   COVER: /^(title|names|dateText|subtitle|imageUrl|footer|photos\.[01]\.(?:imageUrl|caption))$/,
   TEXT: /^(tag|title|text)$/,
-  PHOTOS: /^(title|items\.(?:0|1|2|3)\.(?:imageUrl|caption))$/,
+  PHOTOS: /^(tag|title|items\.(?:0|1|2|3)\.(?:imageUrl|caption))$/,
   VENUE: /^(tag|title|name|address|note|imageUrl|mapUrl|mapLabel)$/,
-  TIMELINE: /^(title|items\.(?:[0-9]|[12][0-9])\.(?:time|title|note|icon))$/,
+  TIMELINE: /^(tag|title|items\.(?:[0-9]|[12][0-9])\.(?:time|title|note|icon))$/,
   DRESSCODE: /^(tag|title|text|imageUrl|palette\.[0-7])$/,
   RSVP_FORM: /^(tag|title|text|buttonLabel|nameLabel|attendanceLabel|yesLabel|noLabel|drinksLabel|musicLabel|musicPlaceholder|successText)$/,
   MAP: /^(title|note|yandexUrl|googleUrl)$/,
@@ -167,6 +176,35 @@ export async function appendTimelineItem(
     data: { content: checked.content },
   });
   return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось добавить деталь" };
+}
+
+/** Удалить одну строку тайминга из визуального редактора. */
+export async function removeTimelineItem(
+  ctx: EventContext,
+  blockId: string,
+  index: number,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!Number.isInteger(index) || index < 0 || index > 29) {
+    return { ok: false, message: "Деталь дня не найдена" };
+  }
+  const row = await db.inviteBlock.findFirst({
+    where: { id: blockId, eventId: ctx.eventId, type: "TIMELINE" },
+    select: { content: true },
+  });
+  if (!row) return { ok: false, message: "Блок тайминга не найден" };
+
+  const current = readBlockContent("TIMELINE", row.content).content;
+  if (!current.items[index]) return { ok: false, message: "Деталь дня уже удалена" };
+  const checked = parseBlockContent("TIMELINE", {
+    ...current,
+    items: current.items.filter((_, itemIndex) => itemIndex !== index),
+  });
+  if (!checked.ok) return checked;
+  const updated = await db.inviteBlock.updateMany({
+    where: { id: blockId, eventId: ctx.eventId },
+    data: { content: checked.content },
+  });
+  return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось удалить деталь" };
 }
 
 export async function setBlockVisible(ctx: EventContext, blockId: string, visible: boolean) {

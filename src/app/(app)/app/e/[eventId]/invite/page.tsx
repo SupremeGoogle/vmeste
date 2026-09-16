@@ -31,8 +31,8 @@ import { notFound, redirect } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
-  addBlock, appendTimelineItem, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
-  moveBlock, saveTheme, setBlockVisible, updateBlockContent, updateInlineBlockField,
+  addBlock, appendTimelineItem, applyTemplate, deleteBlock, eventTag, getBlock, getTheme, inviteSlugTag, listBlocks,
+  moveBlock, removeTimelineItem, saveTheme, setBlockVisible, updateBlockContent, updateInlineBlockField,
 } from "@/server/repositories/invites";
 import { findTemplate } from "@/lib/invite-templates";
 import { inviteThemeSchema } from "@/lib/invite-theme";
@@ -92,7 +92,11 @@ export default async function InvitePage({ params, searchParams }: Props) {
     const type = String(formData.get("type") ?? "") as BlockType;
     const slug = String(formData.get("slug") ?? "");
 
-    const parsed = blockContentFromForm(type, formData);
+    const current = await getBlock(ctx, blockId);
+    if (!current || current.type !== type) {
+      redirect(`/app/e/${eventId}/invite?error=${encodeURIComponent("Раздел не найден")}`);
+    }
+    const parsed = blockContentFromForm(type, formData, current.content);
     if (!parsed.ok) {
       redirect(`/app/e/${eventId}/invite?error=${encodeURIComponent(parsed.message)}`);
     }
@@ -154,15 +158,18 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return result;
   }
 
-  async function visualBlockAction(input: { blockId: string; action: BlockAction }) {
+  async function visualBlockAction(input: { blockId: string; action: BlockAction; index?: number }) {
     "use server";
     const ctx = await requireEventContext(eventId);
     if (input.action === "up") await moveBlock(ctx, input.blockId, -1);
     else if (input.action === "down") await moveBlock(ctx, input.blockId, 1);
     else if (input.action === "hide") await setBlockVisible(ctx, input.blockId, false);
     else if (input.action === "show") await setBlockVisible(ctx, input.blockId, true);
-    else {
+    else if (input.action === "add-detail") {
       const result = await appendTimelineItem(ctx, input.blockId);
+      if (!result.ok) return result;
+    } else {
+      const result = await removeTimelineItem(ctx, input.blockId, input.index ?? -1);
       if (!result.ok) return result;
     }
     updateTag(eventTag(eventId));

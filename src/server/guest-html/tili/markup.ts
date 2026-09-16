@@ -73,7 +73,7 @@ function tag(text: string, e: EditAttrs, className = "section-tag"): string {
 }
 
 function img(src: string, alt: string, attrs: string, extra = ""): string {
-  if (!src) return attrs ? `<img src="" alt="${esc(alt)}"${attrs}${extra} style="min-height:120px">` : "";
+  if (!src) return attrs ? `<span class="ie-image-placeholder"${attrs}>Добавить фотографию</span>` : "";
   return `<img src="${esc(src)}" alt="${esc(alt)}"${attrs}${extra}>`;
 }
 
@@ -117,7 +117,7 @@ ${intro.length > 0 || e.enabled
 function photos(block: InviteBlockView, e: EditAttrs): string {
   const c = block.content as BlockContentMap["PHOTOS"];
   const items = e.enabled
-    ? [0, 1].map((index) => c.items[index] ?? { imageUrl: "", caption: "" })
+    ? Array.from({ length: Math.min(4, Math.max(2, c.items.length + 1)) }, (_, index) => c.items[index] ?? { imageUrl: "", caption: "" })
     : c.items.filter((item) => item.imageUrl);
   if (items.length === 0) return "";
   const cls = ["polaroid msg-pol-1", "polaroid msg-pol-2 msg-main-photo", "polaroid msg-pol-1", "polaroid msg-pol-2"];
@@ -190,16 +190,16 @@ function mapBlock(block: InviteBlockView, e: EditAttrs): string {
 
 function timeline(block: InviteBlockView, e: EditAttrs): string {
   const c = block.content as BlockContentMap["TIMELINE"];
-  return `<section class="timing-section" id="timing"${e.section()}>${e.tools()}<h2 class="timing-title reveal"${e.text("title")}>${esc(c.title)}</h2><div class="timeline">${c.items
+  return `<section class="timing-section" id="timing"${e.section()}>${e.tools()}${tag(c.tag, e)}<h2 class="timing-title reveal"${e.text("title")}>${esc(c.title)}</h2><div class="timeline">${c.items
     .map(
       (item, index) =>
         `<div class="tl-item reveal${index === c.items.length - 1 ? " tl-finale" : ""}">${
           item.icon || e.enabled ? `<div class="tl-icon">${img(item.icon, item.title, e.image(`items.${index}.icon`), ' class="tl-img" loading="lazy"')}</div>` : ""
         }<div class="tl-time"${e.text(`items.${index}.time`)}>${esc(item.time)}</div><p class="tl-label"${e.text(`items.${index}.title`)}>${esc(item.title)}</p>${
           item.note.trim() || e.enabled ? `<p class="tl-note"${e.text(`items.${index}.note`)}>${esc(item.note)}</p>` : ""
-        }</div>`,
+        }${e.enabled ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить деталь">×</button>` : ""}</div>`,
     )
-    .join("")}</div></section>`;
+    .join("")}</div>${e.enabled ? '<button type="button" class="map-btn" data-block-action="add-detail">+ Добавить деталь дня</button>' : ""}</section>`;
 }
 
 function dresscode(block: InviteBlockView, e: EditAttrs): string {

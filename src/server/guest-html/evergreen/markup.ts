@@ -9,6 +9,18 @@ function attrs(blockId: string, path: string, multiline = false): string {
   return ` data-inline-edit data-block-id="${esc(blockId)}" data-path="${esc(path)}"${multiline ? ' data-multiline="true"' : ""}`;
 }
 
+function colorAttrs(blockId: string, path: string, color: string, editable: boolean): string {
+  return editable
+    ? ` data-color-edit data-block-id="${esc(blockId)}" data-path="${esc(path)}" data-color="${esc(color)}"`
+    : "";
+}
+
+function imagePlaceholder(blockId: string, path: string, label: string, editable: boolean): string {
+  return editable
+    ? `<span class="ie-image-placeholder" data-image-edit data-block-id="${esc(blockId)}" data-path="${esc(path)}">${esc(label)}</span>`
+    : "";
+}
+
 function tools(block: InviteBlockView, editable: boolean): string {
   if (!editable) return "";
   return `<div class="eg-edit-badge" aria-label="Действия с разделом"><button type="button" data-block-action="up" title="Поднять раздел">↑</button><button type="button" data-block-action="down" title="Опустить раздел">↓</button><button type="button" data-block-action="hide" title="Скрыть раздел">Скрыть</button></div>`;
@@ -34,18 +46,22 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
-      return section(block, "eg-cover", `<div class="eg-cover-media">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" data-eg-parallax${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="imageUrl"` : ""}>` : ""}</div><div class="eg-fireflies" aria-hidden="true">${"<i></i>".repeat(9)}</div><svg class="eg-cover-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true"><circle class="eg-mark-orbit" cx="43" cy="50" r="25"/><circle class="eg-mark-orbit eg-mark-delay" cx="58" cy="50" r="25"/><path class="eg-mark-spark" d="M50 9V22M50 78V91M9 50H22M78 50H91"/></svg><div class="eg-cover-copy"><p class="eg-eyebrow"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</p>${names(c.names, block.id, editable)}<span class="eg-gold-line"></span><p class="eg-date"${editable ? attrs(block.id, "dateText") : ""}>${esc(c.dateText)}</p><p class="eg-cover-subtitle"${editable ? attrs(block.id, "subtitle", true) : ""}>${esc(c.subtitle)}</p></div><div class="eg-scroll-cue" aria-hidden="true"><span></span><small>листайте</small></div>`, editable);
+      return section(block, "eg-cover", `<div class="eg-cover-media">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" data-eg-parallax${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="imageUrl"` : ""}>` : imagePlaceholder(block.id, "imageUrl", "Добавить фотографию пары", editable)}</div><div class="eg-fireflies" aria-hidden="true">${"<i></i>".repeat(9)}</div><svg class="eg-cover-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true"><circle class="eg-mark-orbit" cx="43" cy="50" r="25"/><circle class="eg-mark-orbit eg-mark-delay" cx="58" cy="50" r="25"/><path class="eg-mark-spark" d="M50 9V22M50 78V91M9 50H22M78 50H91"/></svg><div class="eg-cover-copy"><p class="eg-eyebrow"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</p>${names(c.names, block.id, editable)}<span class="eg-gold-line"></span><p class="eg-date"${editable ? attrs(block.id, "dateText") : ""}>${esc(c.dateText)}</p><p class="eg-cover-subtitle"${editable ? attrs(block.id, "subtitle", true) : ""}>${esc(c.subtitle)}</p></div><div class="eg-scroll-cue" aria-hidden="true"><span></span><small>листайте</small></div>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
       const closing = /до встречи|с любовью/i.test(c.title);
-      return section(block, closing ? "eg-closing" : "eg-intro", `<h2${editable ? attrs(block.id, "title", true) : ""}>${esc(c.title)}</h2>${closing ? '<span class="eg-gold-line"></span>' : ""}<p class="eg-copy"${editable ? attrs(block.id, "text", true) : ""}>${esc(c.text)}</p>`, editable);
+      return section(block, closing ? "eg-closing" : "eg-intro", `${c.tag || editable ? `<p class="eg-label"${editable ? attrs(block.id, "tag") : ""}>${esc(c.tag)}</p>` : ""}<h2${editable ? attrs(block.id, "title", true) : ""}>${esc(c.title)}</h2>${closing ? '<span class="eg-gold-line"></span>' : ""}<p class="eg-copy"${editable ? attrs(block.id, "text", true) : ""}>${esc(c.text)}</p>`, editable);
     }
     case "PHOTOS": {
       const c = block.content as BlockContentMap["PHOTOS"];
-      const mosaic = c.items.length > 1;
-      const photos = c.items.map((item, index) => `<figure class="eg-photo">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="" data-eg-parallax${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="items.${index}.imageUrl"` : ""}>` : ""}<figcaption${editable ? attrs(block.id, `items.${index}.caption`) : ""}>${esc(item.caption)}</figcaption><span class="eg-photo-number">0${index + 1}</span></figure>`).join("");
-      return section(block, `eg-gallery${mosaic ? " eg-gallery-mosaic" : ""}`, `<div class="eg-location-head"><p class="eg-label">${mosaic ? "Our story in frames" : "Destination"}</p><h2${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2></div>${mosaic ? `<div class="eg-mosaic">${photos}</div>` : photos}`, editable);
+      const indexed = c.items.map((item, index) => ({ item, index }));
+      if (editable && c.items.length < 4) indexed.push({ item: { imageUrl: "", caption: "" }, index: c.items.length });
+      const items = indexed.filter(({ item }) => editable || item.imageUrl);
+      if (!items.length) return "";
+      const mosaic = items.length > 1;
+      const photos = items.map(({ item, index }) => `<figure class="eg-photo">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="" data-eg-parallax${editable ? ` data-image-edit data-block-id="${esc(block.id)}" data-path="items.${index}.imageUrl"` : ""}>` : imagePlaceholder(block.id, `items.${index}.imageUrl`, "Добавить фотографию", editable)}<figcaption${editable ? attrs(block.id, `items.${index}.caption`) : ""}>${esc(item.caption)}</figcaption><span class="eg-photo-number">${String(index + 1).padStart(2, "0")}</span></figure>`).join("");
+      return section(block, `eg-gallery${mosaic ? " eg-gallery-mosaic" : ""}`, `<div class="eg-location-head">${c.tag || editable ? `<p class="eg-label"${editable ? attrs(block.id, "tag") : ""}>${esc(c.tag)}</p>` : ""}<h2${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2></div>${mosaic ? `<div class="eg-mosaic">${photos}</div>` : photos}`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];
@@ -54,15 +70,15 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
     case "TIMELINE": {
       const c = block.content as BlockContentMap["TIMELINE"];
       const addDetail = editable ? `<button type="button" class="eg-add-detail" data-block-action="add-detail">＋ Добавить деталь дня</button>` : "";
-      return section(block, "eg-timeline", `<p class="eg-label">Wedding details</p><h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><ol class="eg-schedule">${c.items.map((item, index) => `<li><time${editable ? attrs(block.id, `items.${index}.time`) : ""}>${esc(item.time)}</time><div><strong${editable ? attrs(block.id, `items.${index}.title`) : ""}>${esc(item.title)}</strong><small${editable ? attrs(block.id, `items.${index}.note`) : ""}>${esc(item.note)}</small></div></li>`).join("")}</ol>${addDetail}`, editable);
+      return section(block, "eg-timeline", `${c.tag || editable ? `<p class="eg-label"${editable ? attrs(block.id, "tag") : ""}>${esc(c.tag)}</p>` : ""}<h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><ol class="eg-schedule">${c.items.map((item, index) => `<li><time${editable ? attrs(block.id, `items.${index}.time`) : ""}>${esc(item.time)}</time><div><strong${editable ? attrs(block.id, `items.${index}.title`) : ""}>${esc(item.title)}</strong><small${editable ? attrs(block.id, `items.${index}.note`) : ""}>${esc(item.note)}</small></div>${editable ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить деталь">×</button>` : ""}</li>`).join("")}</ol>${addDetail}`, editable);
     }
     case "DRESSCODE": {
       const c = block.content as BlockContentMap["DRESSCODE"];
-      return section(block, "eg-dress", `<p class="eg-label">Attire</p><h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><p class="eg-dress-copy"${editable ? attrs(block.id, "text", true) : ""}>${esc(c.text)}</p><div class="eg-palette">${c.palette.map((color) => `<i style="background:${color}"></i>`).join("")}</div>`, editable);
+      return section(block, "eg-dress", `${c.tag || editable ? `<p class="eg-label"${editable ? attrs(block.id, "tag") : ""}>${esc(c.tag)}</p>` : ""}<h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><p class="eg-dress-copy"${editable ? attrs(block.id, "text", true) : ""}>${esc(c.text)}</p><div class="eg-palette">${c.palette.map((color, index) => `<i style="background:${color}"${colorAttrs(block.id, `palette.${index}`, color, editable)}></i>`).join("")}</div>`, editable);
     }
     case "RSVP_FORM": {
       const c = block.content as BlockContentMap["RSVP_FORM"];
-      return section(block, "eg-rsvp", `<p class="eg-label">RSVP</p><h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><p class="eg-copy"${editable ? attrs(block.id, "text", true) : ""}>${esc(c.text)}</p>${rsvpHref ? `<a class="cta" href="${esc(rsvpHref)}"${editable ? attrs(block.id, "buttonLabel") : ""}>${esc(answered ? "Изменить ответ" : c.buttonLabel)}</a>` : `<span class="cta"${editable ? attrs(block.id, "buttonLabel") : ""}>${esc(c.buttonLabel)}</span>`}`, editable);
+      return section(block, "eg-rsvp", `${c.tag || editable ? `<p class="eg-label"${editable ? attrs(block.id, "tag") : ""}>${esc(c.tag)}</p>` : ""}<h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><p class="eg-copy"${editable ? attrs(block.id, "text", true) : ""}>${esc(c.text)}</p>${rsvpHref ? `<a class="cta" href="${esc(rsvpHref)}"${editable ? attrs(block.id, "buttonLabel") : ""}>${esc(answered ? "Изменить ответ" : c.buttonLabel)}</a>` : `<span class="cta"${editable ? attrs(block.id, "buttonLabel") : ""}>${esc(c.buttonLabel)}</span>`}`, editable);
     }
     case "MAP": {
       const c = block.content as BlockContentMap["MAP"];

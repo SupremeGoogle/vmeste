@@ -18,13 +18,10 @@ export const TILI_SAMPLE_IMAGES = [
 /** Конверт на заставке: по нажатию открывается приглашение и включается музыка. */
 export const TILI_ENVELOPE = `${TILI_MEDIA}/envelope.webp`;
 
-/**
- * Значки тайминга. В образце они подключены прямо с CDN Тильды, и шаблон
- * повторяет это как есть: файлов у нас нет, картинки грузятся оттуда же.
- */
+/** Локальные SVG-значки: приглашение не зависит от доступности чужого CDN. */
 export const TILI_TIMELINE_ICONS = [
-  "https://static.tildacdn.com/tild3738-6363-4530-a338-336536326436/photo.png",
-  "https://static.tildacdn.com/tild3965-6266-4365-a336-376562613538/photo.png",
-  "https://static.tildacdn.com/tild6238-3535-4334-a534-303166623634/photo.png",
-  "https://static.tildacdn.com/tild3436-3739-4765-b437-313136376430/Frame_1321316941.png",
+  `${TILI_MEDIA}/icon-rings.svg`,
+  `${TILI_MEDIA}/icon-glasses.svg`,
+  `${TILI_MEDIA}/icon-dinner.svg`,
+  `${TILI_MEDIA}/icon-dance.svg`,
 ] as const;

@@ -189,7 +189,7 @@ function paragraphs(text: string, className = "", attrs = ""): string {
 
 function cover(content: BlockContentMap["COVER"], e: EditAttrs = NO_EDIT): string {
   return `<section class="cover">
-${content.imageUrl ? `<img src="${esc(content.imageUrl)}" alt=""${e.image("imageUrl")}>` : ""}
+${content.imageUrl ? `<img src="${esc(content.imageUrl)}" alt=""${e.image("imageUrl")}>` : e.enabled ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию на обложку</span>` : ""}
 ${content.names || e.enabled ? `<p class="names"${e.text("names")}>${esc(content.names)}</p>` : ""}
 <h1${e.text("title")}>${esc(content.title)}</h1>
 ${content.dateText || e.enabled ? `<p class="date"${e.text("dateText")}>${esc(content.dateText)}</p>` : ""}
@@ -204,10 +204,10 @@ function timeline(content: BlockContentMap["TIMELINE"], theme: InviteTheme, e: E
       // и это лучше, чем блюдо напротив церемонии.
       const icon = theme.timelineIcons ? timelineIcon(item.title, theme.accent) : "";
       return `<li>${icon}<time${e.text(`items.${index}.time`)}>${esc(item.time)}</time><span class="what"><span${e.text(`items.${index}.title`)}>${esc(item.title)}</span>
-${item.note || e.enabled ? `<span class="note"${e.text(`items.${index}.note`)}>${esc(item.note)}</span>` : ""}</span></li>`;
+${item.note || e.enabled ? `<span class="note"${e.text(`items.${index}.note`)}>${esc(item.note)}</span>` : ""}</span>${e.enabled ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить деталь">×</button>` : ""}</li>`;
     })
     .join("");
-  return `<section><h2${e.text("title")}>${esc(content.title)}</h2><ul class="timeline">${items}</ul></section>`;
+  return `<section>${content.tag || e.enabled ? `<p class="small muted center"${e.text("tag")}>${esc(content.tag)}</p>` : ""}<h2${e.text("title")}>${esc(content.title)}</h2><ul class="timeline">${items}</ul>${e.enabled ? '<button type="button" class="ie-link" data-block-action="add-detail">+ Добавить деталь дня</button>' : ""}</section>`;
 }
 
 function venue(content: BlockContentMap["VENUE"], e: EditAttrs = NO_EDIT): string {
@@ -251,21 +251,24 @@ ${paragraphs(content.text, "", e.text("text", { multiline: true }))}</section>`;
  *  один и тот же блок, поставленный дважды с разным содержимым. */
 function photos(content: BlockContentMap["PHOTOS"], e: EditAttrs = NO_EDIT): string {
   // Номер пункта — по исходному списку: по нему редактор знает, что сохранять.
-  const items = content.items
+  const editableItems = e.enabled && content.items.length < 4
+    ? [...content.items, { imageUrl: "", caption: "" }]
+    : content.items;
+  const items = editableItems
     .map((item, index) => ({ item, index }))
-    .filter(({ item }) => e.enabled || item.imageUrl || item.caption);
+    .filter(({ item }) => e.enabled || item.imageUrl);
   if (items.length === 0) return "";
 
   const cards = items
     .map(
       ({ item, index }) => `<figure class="polaroid p${(index % 2) + 1}">
-${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt=""${e.image(`items.${index}.imageUrl`)}>` : `<span class="polaroid-empty"${e.image(`items.${index}.imageUrl`)}></span>`}
+${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt=""${e.image(`items.${index}.imageUrl`)}>` : e.enabled ? `<span class="polaroid-empty ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>Добавить фотографию</span>` : ""}
 ${item.caption || e.enabled ? `<figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption>` : ""}
 </figure>`,
     )
     .join("");
 
-  return `<section class="center">${content.title || e.enabled ? `<h2${e.text("title")}>${esc(content.title)}</h2>` : ""}
+  return `<section class="center">${content.tag || e.enabled ? `<p class="small muted"${e.text("tag")}>${esc(content.tag)}</p>` : ""}${content.title || e.enabled ? `<h2${e.text("title")}>${esc(content.title)}</h2>` : ""}
 <div class="polaroids">${cards}</div></section>`;
 }
 

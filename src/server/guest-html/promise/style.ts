@@ -23,6 +23,7 @@ body{font-size:17px;background-color:var(--bg);background-image:radial-gradient(
 .promise-with-photo .promise-scene{background-size:100% auto}
 .promise-portrait{position:relative;z-index:1;margin:7rem 3.4rem 0;aspect-ratio:4/4.6;border-radius:48% 48% .2rem .2rem;overflow:hidden;box-shadow:0 12px 45px #49372c15}
 .sheet .promise-portrait img{display:block;width:100%;height:100%;object-fit:cover;margin:0;padding:0;border:0;max-width:100%;animation:promise-bloom 2.8s ease-out both}
+.sheet .promise-portrait .ie-image-placeholder{height:100%;min-height:22rem;border-radius:999px 999px .35rem .35rem}
 .promise-with-photo .promise-cover-copy{padding-top:2.3rem}
 .promise-framed .promise-portrait{border:6px solid var(--card);outline:1px solid var(--line)}
 .promise-petals{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
@@ -108,6 +109,7 @@ body{font-size:17px;background-color:var(--bg);background-image:radial-gradient(
 @keyframes promise-petal{0%{opacity:0;transform:translate3d(0,0,0) rotate(0)}10%{opacity:.6}80%{opacity:.4}100%{opacity:0;transform:translate3d(45px,1000px,0) rotate(260deg)}}
 @media(hover:hover){.sheet .cta:hover,.sheet .submit:hover,.sheet .links a:hover{transform:translateY(-3px);box-shadow:0 9px 25px #966c5c25}.promise-photo-window:hover img{transform:scale(1.045)}.sheet .swatch:hover{transform:translateY(-5px)}}
 @media(min-width:48rem){body{padding:2.5rem 1rem}.sheet{border:1px solid #fff8;border-radius:2px}}
+@media(max-width:480px){.sheet form fieldset:first-child{grid-template-columns:1fr}.promise-photos{gap:.65rem}.sheet .timeline li{grid-template-columns:2.4rem 3rem minmax(0,1fr);gap:.6rem}}
 @media(max-width:380px){.sheet>section{padding:2.7rem 1.4rem}.sheet .promise-cover{min-height:720px}.promise-cover-copy{padding:18rem 1.4rem 1.5rem}.promise-portrait{margin:6rem 2rem 0}.sheet [data-promise-block=VENUE],.sheet [data-promise-block=DRESSCODE]{margin-left:1.4rem;margin-right:1.4rem}.sheet .timeline li{gap:.6rem;grid-template-columns:2.4rem 3rem minmax(0,1fr)}.sheet form{padding-left:1.4rem;padding-right:1.4rem}.sheet form fieldset:first-child{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.sheet *,.sheet *::before,.sheet *::after{animation:none!important;transition:none!important}.promise-petals{display:none}.promise-motion [data-promise-block],.promise-motion .promise-cover .promise-cover-copy>*,.promise-motion .timeline li,.promise-motion .swatch{opacity:1;transform:none}}
 @media print{body{padding:0}.sheet{box-shadow:none;max-width:100%}.promise-petals,.promise-progress{display:none}.sheet *{animation:none!important;transition:none!important}.promise-motion [data-promise-block],.promise-motion .promise-cover .promise-cover-copy>*,.promise-motion .timeline li,.promise-motion .swatch{opacity:1;transform:none}.sheet>section{break-inside:avoid}}

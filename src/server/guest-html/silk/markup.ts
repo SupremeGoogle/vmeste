@@ -24,44 +24,43 @@ function renderBlock(
   rsvpHref: string | null,
   answered: string | null,
   editable: boolean,
-  venuePhoto: { blockId: string; url: string; path: string } | null,
 ): string {
   const e = editAttrs(block.id, editable);
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
-      return wrap(block, "silk-cover", `<div class="silk-cover-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high"${e.image("imageUrl")}>` : ""}</div><div class="silk-petals" aria-hidden="true">${"<i></i>".repeat(9)}</div><div class="silk-cover-wave"><div class="silk-cover-copy"><p class="silk-kicker"${e.text("title")}>${esc(c.title)}</p><h1 class="silk-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><span class="silk-rule"></span><p class="silk-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="silk-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div></div><div class="silk-scroll" aria-hidden="true"><span></span><small>листайте</small></div>`, editable);
+      return wrap(block, "silk-cover", `<div class="silk-cover-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high"${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}</div><div class="silk-petals" aria-hidden="true">${"<i></i>".repeat(9)}</div><div class="silk-cover-wave"><div class="silk-cover-copy"><p class="silk-kicker"${e.text("title")}>${esc(c.title)}</p><h1 class="silk-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><span class="silk-rule"></span><p class="silk-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="silk-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div></div><div class="silk-scroll" aria-hidden="true"><span></span><small>листайте</small></div>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
       const closing = /благодар|до встречи|с любовью/i.test(c.title);
       if (closing) {
-        return wrap(block, "silk-closing", `${flower("silk-flower-left")}<p class="silk-script">with love</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>`, editable);
+        return wrap(block, "silk-closing", `${flower("silk-flower-left")}<p class="silk-script"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>`, editable);
       }
-      return wrap(block, "silk-story", `${flower("silk-flower-right")}<p class="silk-section-tag">Different places · same soul</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="silk-note-card" aria-hidden="true"><span>A kinder,<br>brighter us</span><i>♡</i></div>`, editable);
+      return wrap(block, "silk-story", `${flower("silk-flower-right")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="silk-note-card" aria-hidden="true"><span>♡</span><i>∞</i></div>`, editable);
     }
     case "PHOTOS": {
       const c = block.content as BlockContentMap["PHOTOS"];
       const items = c.items.filter((item) => item.imageUrl || editable);
-      return wrap(block, "silk-weekend", `${flower("silk-flower-left")}<p class="silk-section-tag">One beautiful day</p><h2${e.text("title")}>${esc(c.title)}</h2><div class="silk-weekend-grid">${items.map((item, index) => `<figure class="silk-event-card${index === 0 ? " silk-event-main" : ""}"><div class="silk-event-photo">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="" loading="lazy" decoding="async" data-silk-parallax${e.image(`items.${index}.imageUrl`)}>` : `<span class="silk-empty"${e.image(`items.${index}.imageUrl`)}></span>`}</div><figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption><b>${String(index + 1).padStart(2, "0")}</b></figure>`).join("")}</div>`, editable);
+      if (editable && items.length < 4) items.push({ imageUrl: "", caption: "" });
+      return wrap(block, "silk-weekend", `${flower("silk-flower-left")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><div class="silk-weekend-grid">${items.map((item, index) => `<figure class="silk-event-card${index === 0 ? " silk-event-main" : ""}"><div class="silk-event-photo">${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="" loading="lazy" decoding="async" data-silk-parallax${e.image(`items.${index}.imageUrl`)}>` : `<span class="silk-empty ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>Добавить фотографию</span>`}</div><figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption><b>${String(index + 1).padStart(2, "0")}</b></figure>`).join("")}</div>`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];
-      const photoEdit = venuePhoto ? editAttrs(venuePhoto.blockId, editable).image(venuePhoto.path) : "";
-      return wrap(block, "silk-venue", `<div class="silk-venue-photo">${venuePhoto?.url ? `<img src="${esc(venuePhoto.url)}" alt="" loading="lazy" data-silk-parallax${photoEdit}>` : ""}<span>Our only venue</span></div><div class="silk-venue-card"><p class="silk-section-tag"${e.text("title")}>${esc(c.title)}</p><h2${e.text("name")}>${esc(c.name)}</h2><p class="silk-address"${e.text("address")}>${esc(c.address)}</p><p class="silk-copy"${e.text("note", { multiline: true })}>${esc(c.note)}</p></div>`, editable);
+      return wrap(block, "silk-venue", `<div class="silk-venue-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" loading="lazy" data-silk-parallax${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию локации</span>` : ""}<span${e.text("tag")}>${esc(c.tag)}</span></div><div class="silk-venue-card"><p class="silk-section-tag"${e.text("title")}>${esc(c.title)}</p><h2${e.text("name")}>${esc(c.name)}</h2><p class="silk-address"${e.text("address")}>${esc(c.address)}</p><p class="silk-copy"${e.text("note", { multiline: true })}>${esc(c.note)}</p></div>`, editable);
     }
     case "TIMELINE": {
       const c = block.content as BlockContentMap["TIMELINE"];
-      return wrap(block, "silk-timeline", `${flower("silk-flower-right")}<p class="silk-section-tag">The wedding day</p><h2${e.text("title")}>${esc(c.title)}</h2><ol>${c.items.map((item, index) => `<li><time${e.text(`items.${index}.time`)}>${esc(item.time)}</time><div><strong${e.text(`items.${index}.title`)}>${esc(item.title)}</strong><small${e.text(`items.${index}.note`)}>${esc(item.note)}</small></div></li>`).join("")}</ol>${editable ? '<button type="button" class="silk-add-detail" data-block-action="add-detail">+ Добавить деталь дня</button>' : ""}`, editable);
+      return wrap(block, "silk-timeline", `${flower("silk-flower-right")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><ol>${c.items.map((item, index) => `<li><time${e.text(`items.${index}.time`)}>${esc(item.time)}</time><div><strong${e.text(`items.${index}.title`)}>${esc(item.title)}</strong><small${e.text(`items.${index}.note`)}>${esc(item.note)}</small></div>${editable ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить деталь">×</button>` : ""}</li>`).join("")}</ol>${editable ? '<button type="button" class="silk-add-detail" data-block-action="add-detail">+ Добавить деталь дня</button>' : ""}`, editable);
     }
     case "DRESSCODE": {
       const c = block.content as BlockContentMap["DRESSCODE"];
-      return wrap(block, "silk-dress", `<p class="silk-section-tag">Attire</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="silk-palette">${c.palette.map((color, index) => `<i style="background:${color}" data-color="${color}"${e.color(`palette.${index}`)}></i>`).join("")}</div>`, editable);
+      return wrap(block, "silk-dress", `<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="silk-palette">${c.palette.map((color, index) => `<i style="background:${color}" data-color="${color}"${e.color(`palette.${index}`)}></i>`).join("")}</div>`, editable);
     }
     case "RSVP_FORM": {
       const c = block.content as BlockContentMap["RSVP_FORM"];
       const result = answered === "yes" ? "Спасибо, мы будем вас ждать!" : answered === "no" ? "Спасибо, что сообщили нам." : "";
-      return wrap(block, "silk-rsvp", `${flower("silk-flower-left")}<p class="silk-section-tag">Répondez s'il vous plaît</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${result ? `<p class="silk-answer">${result}</p>` : rsvpHref ? `<a class="silk-cta" href="${esc(rsvpHref)}"${editable ? ' data-editor-ui' : ""}>${esc(c.buttonLabel)} <span>→</span></a>` : `<span class="silk-cta">${esc(c.buttonLabel)} <span>→</span></span>`}`, editable);
+      return wrap(block, "silk-rsvp", `${flower("silk-flower-left")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${result ? `<p class="silk-answer">${result}</p>` : rsvpHref ? `<a class="silk-cta" href="${esc(rsvpHref)}"${editable ? ' data-editor-ui' : ""}><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b> <span>→</span></a>` : `<span class="silk-cta"><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b> <span>→</span></span>`}`, editable);
     }
     default:
       return "";
@@ -77,11 +76,6 @@ export function renderSilkBlocks(
   options: { editable?: boolean } = {},
 ): string {
   const editable = options.editable === true;
-  const photoBlock = blocks.find((block) => block.type === "PHOTOS");
-  const firstPhoto = photoBlock ? (photoBlock.content as BlockContentMap["PHOTOS"]).items[0] : null;
-  const venuePhoto = photoBlock && firstPhoto
-    ? { blockId: photoBlock.id, url: firstPhoto.imageUrl, path: "items.0.imageUrl" }
-    : null;
   const chrome = `<div class="silk-progress" aria-hidden="true"><i></i></div><div class="silk-ribbon silk-ribbon-one" aria-hidden="true"></div><div class="silk-ribbon silk-ribbon-two" aria-hidden="true"></div>`;
-  return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable, venuePhoto) || standard(block)).join("");
+  return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
 }

@@ -49,6 +49,7 @@ export const SILK_TEMPLATE: InviteTemplate = {
       type: "TEXT",
       content: {
         v: 1,
+        tag: "Разные места · одна любовь",
         title: "Наша история",
         text: "Разные города, одна дорога и бесконечно много причин улыбаться друг другу. Мы хотим прожить этот новый день рядом с теми, кто нам особенно дорог.",
       },
@@ -57,6 +58,7 @@ export const SILK_TEMPLATE: InviteTemplate = {
       type: "PHOTOS",
       content: {
         v: 1,
+        tag: "Один прекрасный день",
         title: "Атмосфера нашего дня",
         items: [
           { imageUrl: SILK_SAMPLE_IMAGES[1], caption: "Церемония на террасе над морем" },
@@ -73,16 +75,19 @@ export const SILK_TEMPLATE: InviteTemplate = {
       type: "VENUE",
       content: {
         v: 1,
+        tag: "Единственная локация",
         title: "Единственная локация",
         name: "Villa Celestina",
         address: "Побережье Амальфи, Италия",
         note: "Церемония, ужин и вечерняя программа пройдут здесь. Трансфер из центра города отправится в 15:00.",
+        imageUrl: SILK_SAMPLE_IMAGES[1],
       },
     },
     {
       type: "TIMELINE",
       content: {
         v: 1,
+        tag: "Главный день",
         title: "Главный день",
         items: [
           { time: "16:00", title: "Сбор гостей", note: "Лимонад и аперитив на террасе" },
@@ -96,6 +101,7 @@ export const SILK_TEMPLATE: InviteTemplate = {
       type: "DRESSCODE",
       content: {
         v: 1,
+        tag: "Дресс-код",
         title: "Палитра вечера",
         text: "Будем рады лёгким вечерним образам в оттенках розового вина, пудры и тёплого песка.",
         palette: ["#6f292d", "#a84f49", "#d49a91", "#ead0c8", "#f6ebe5"],
@@ -105,6 +111,7 @@ export const SILK_TEMPLATE: InviteTemplate = {
       type: "RSVP_FORM",
       content: {
         v: 1,
+        tag: "Ответ на приглашение",
         title: "Будете с нами?",
         text: "Пожалуйста, подтвердите присутствие заранее. Мы хотим подготовить этот день с заботой о каждом госте.",
         buttonLabel: "Отправить ответ",
@@ -114,6 +121,7 @@ export const SILK_TEMPLATE: InviteTemplate = {
       type: "TEXT",
       content: {
         v: 1,
+        tag: "С любовью",
         title: "С благодарностью и любовью",
         text: "Собираем красивые воспоминания вместе с вами.",
       },

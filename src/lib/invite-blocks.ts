@@ -18,7 +18,7 @@ import type { BlockType } from "@/generated/prisma/enums";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
-import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
+import { TILI_SAMPLE_IMAGES, TILI_TIMELINE_ICONS } from "@/lib/invite-templates/tili-assets";
 
 /** Текущая версия содержимого. Растёт, когда меняется форма данных. */
 export const BLOCK_SCHEMA_VERSION = 1;
@@ -58,6 +58,7 @@ const imageRef = httpUrl
   .or(z.enum(PROMISE_SAMPLE_IMAGES))
   .or(z.enum(SILK_SAMPLE_IMAGES))
   .or(z.enum(TILI_SAMPLE_IMAGES))
+  .or(z.enum(TILI_TIMELINE_ICONS))
   .or(z.literal(""));
 
 /**
@@ -98,6 +99,7 @@ export const blockContentSchemas = {
   }),
   TIMELINE: z.object({
     v: version,
+    tag,
     title: shortText.default("Тайминг дня"),
     items: z
       .array(
@@ -184,6 +186,7 @@ export const blockContentSchemas = {
    */
   PHOTOS: z.object({
     v: version,
+    tag,
     title: shortText.default(""),
     items: z
       .array(

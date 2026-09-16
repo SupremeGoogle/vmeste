@@ -140,7 +140,7 @@ export function TemplatePicker({
               {current && <span className="ml-2 text-xs text-stone-500">— выбран</span>}
             </p>
             <p className="mt-1 flex-1 text-xs leading-relaxed text-stone-600">{template.mood}</p>
-            {(template.id === "promise" || template.id === "evergreen" || template.id === "silk" || template.id === "tili") && (
+            {(template.id === "story" || template.id === "promise" || template.id === "evergreen" || template.id === "silk" || template.id === "tili") && (
               <a href={`/templates/${template.id}`} target="_blank" rel="noopener noreferrer" className="mt-3 text-xs text-stone-700 underline underline-offset-4">
                 Посмотреть макет и анимации ↗
               </a>

@@ -99,6 +99,7 @@ export const TILI_TEMPLATE: InviteTemplate = {
       type: "TIMELINE",
       content: {
         v: 1,
+        tag: "ПРОГРАММА ДНЯ",
         title: "ТАЙМИНГ",
         items: [
           { time: "12:30", title: "РЕГИСТРАЦИЯ БРАКА", note: "", icon: TILI_TIMELINE_ICONS[0] },

@@ -46,6 +46,16 @@ describe("Обещание: интеграция с редактором и го
     expect(html).toContain("Любимые люди");
   });
 
+  it("в редакторе пустую фотографию можно вернуть одним нажатием", () => {
+    const html = renderBlocks([
+      block("COVER", { imageUrl: "" }),
+      block("PHOTOS", { title: "Фото", items: [] }),
+    ], null, null, new Date(), theme, "UTC", { editable: true });
+    expect(html).toContain("Добавить фотографию пары");
+    expect(html).toContain("Добавить фотографию");
+    expect(html).toContain('data-image-edit');
+  });
+
   it("переиспользует действующие именные ссылки RSVP и карты", () => {
     const blocks = [block("RSVP_FORM", { buttonLabel: "Я буду" }), block("MAP", { yandexUrl: "https://yandex.ru/maps/?x=1&y=2" })];
     const html = renderBlocks(blocks, "/i/our-day/private/rsvp", null, undefined, theme);

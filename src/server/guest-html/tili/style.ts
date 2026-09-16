@@ -57,7 +57,7 @@ img{max-width:100%}
 .tili-js .reveal{opacity:0;transform:translateY(48px);transition:opacity .85s cubic-bezier(.22,1,.36,1),transform .85s cubic-bezier(.22,1,.36,1)}
 .tili-js .reveal.visible{opacity:1;transform:translateY(0)}
 
-.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 20px 60px;overflow:hidden;z-index:1}
+.hero{position:relative;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 20px 60px;overflow:hidden;z-index:1}
 .hero>*{position:relative;z-index:2}
 .hero>.bunting{position:absolute}
 .tili-js .fade-in-hero{opacity:0;transform:translateY(30px);transition:opacity .8s ease,transform .8s ease}
@@ -129,10 +129,10 @@ img{max-width:100%}
 .map-btn{display:inline-block;padding:11px 28px;border:1.5px solid var(--taupe);border-radius:40px;font-size:.78rem;letter-spacing:.12em;color:var(--brown);text-decoration:none;transition:all .3s ease}
 .map-btn:hover{background:var(--brown);color:#fff;border-color:var(--brown)}
 
-.timing-section{background:var(--cream);background-image:url("https://www.transparenttextures.com/patterns/felt.png");padding:120px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;position:relative;z-index:1}
+.timing-section{background-color:var(--cream);background-image:radial-gradient(circle at 20% 30%,rgba(61,43,39,.035) 0 1px,transparent 1.5px),radial-gradient(circle at 75% 65%,rgba(255,255,255,.55) 0 1px,transparent 1.5px);background-size:18px 18px,23px 23px;padding:120px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;position:relative;z-index:1}
 .timeline{position:relative;max-width:400px;width:100%;margin-top:0}
 .timing-title{font-family:var(--serif);font-size:clamp(2.5rem,8vw,4.5rem);font-weight:500;text-transform:uppercase;letter-spacing:.15em;color:var(--deep);margin-bottom:60px}
-.tl-item{display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:80px}
+.tl-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:80px}.tl-item .ie-remove-detail{right:calc(50% - 92px);top:4px}
 .tl-time{font-family:var(--serif);font-size:2.4rem;font-style:italic;font-weight:500;color:var(--brown);text-align:center;padding-right:0}
 .tl-icon{margin-bottom:12px}
 .tl-img{width:80px;height:80px;object-fit:contain;filter:grayscale(1) contrast(1.1);opacity:.8;transition:transform .4s ease,opacity .3s}

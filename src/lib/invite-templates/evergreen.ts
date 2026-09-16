@@ -57,6 +57,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       type: "PHOTOS",
       content: {
         v: 1,
+        tag: "Локация",
         title: "Место нашей встречи",
         items: [{ imageUrl: EVERGREEN_SAMPLE_IMAGES[1], caption: "Вилла над морем · церемония на закате" }],
       },
@@ -75,6 +76,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       type: "TIMELINE",
       content: {
         v: 1,
+        tag: "Детали свадебного дня",
         title: "Этот день",
         items: [
           { time: "16:00", title: "Встреча гостей", note: "Аперитив на террасе" },
@@ -88,6 +90,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       type: "DRESSCODE",
       content: {
         v: 1,
+        tag: "Дресс-код",
         title: "Дресс-код",
         text: "Будем рады вечерним образам в спокойной природной палитре.",
         palette: ["#172018", "#344637", "#857358", "#c1b7a5", "#eee8dc"],
@@ -97,6 +100,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       type: "PHOTOS",
       content: {
         v: 1,
+        tag: "Наша история в кадрах",
         title: "Мгновения, из которых сложится наша история",
         items: [
           { imageUrl: EVERGREEN_SAMPLE_IMAGES[2], caption: "Прикосновение, которое говорит больше слов" },
@@ -109,6 +113,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       type: "RSVP_FORM",
       content: {
         v: 1,
+        tag: "Ответ на приглашение",
         title: "Мы будем ждать вас",
         text: "Пожалуйста, подтвердите присутствие заранее — так мы сможем позаботиться о каждом госте.",
         buttonLabel: "Ответить на приглашение",
@@ -118,6 +123,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       type: "TEXT",
       content: {
         v: 1,
+        tag: "С любовью",
         title: "До встречи, с любовью",
         text: "Спасибо, что вы рядом. Впереди — наш самый красивый вечер.",
       },
