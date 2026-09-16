@@ -22,7 +22,7 @@ export function VisualInviteEditor({
   advancedHref: string;
   assets: PickerAsset[];
   saveField: (input: { blockId: string; path: string; value: string }) => Promise<SaveResult>;
-  blockAction: (input: { blockId: string; action: "up" | "down" | "hide" }) => Promise<SaveResult>;
+  blockAction: (input: { blockId: string; action: "up" | "down" | "hide" | "add-detail" }) => Promise<SaveResult>;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -54,11 +54,11 @@ export function VisualInviteEditor({
         setTarget({ blockId: message.blockId, path: message.path, current: typeof message.current === "string" ? message.current : "" });
       }
 
-      if (message.kind === "block-action" && typeof message.blockId === "string" && (message.action === "up" || message.action === "down" || message.action === "hide")) {
-        setNotice("Обновляю структуру…");
+      if (message.kind === "block-action" && typeof message.blockId === "string" && (message.action === "up" || message.action === "down" || message.action === "hide" || message.action === "add-detail")) {
+        setNotice(message.action === "add-detail" ? "Добавляю новую деталь…" : "Обновляю структуру…");
         startSaving(async () => {
-          const result = await blockAction({ blockId: message.blockId as string, action: message.action as "up" | "down" | "hide" });
-          setNotice(result.ok ? "Сохранено" : result.message);
+          const result = await blockAction({ blockId: message.blockId as string, action: message.action as "up" | "down" | "hide" | "add-detail" });
+          setNotice(result.ok ? (message.action === "add-detail" ? "Деталь добавлена — нажмите на неё, чтобы заполнить" : "Сохранено") : result.message);
           if (result.ok) setRevision((value) => value + 1);
         });
       }

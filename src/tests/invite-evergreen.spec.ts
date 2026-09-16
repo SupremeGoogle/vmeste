@@ -47,6 +47,9 @@ describe("Эвергрин", () => {
     expect(page).toContain("eg-scroll-vine");
     expect(page).toContain("eg-progress");
     expect(page).toContain("data-eg-parallax");
+    expect(page).toContain("eg-flying-ring");
+    expect(inviteScript(blocks, EVERGREEN_TEMPLATE.theme, "Александр и Елизавета")).toContain("--eg-ring-y");
+    expect(page).not.toContain("Добавить деталь дня");
     expect(page).not.toContain("data-inline-edit");
   });
 
@@ -58,6 +61,8 @@ describe("Эвергрин", () => {
     expect(body).toContain('data-path="imageUrl"');
     expect(body).toContain('data-path="items.0.imageUrl"');
     expect(body).toContain('data-block-action="up"');
+    expect(body).toContain('data-block-action="add-detail"');
+    expect(body).toContain("Добавить деталь дня");
     expect(EVERGREEN_EDITOR_SCRIPT).toContain("postMessage");
   });
 
