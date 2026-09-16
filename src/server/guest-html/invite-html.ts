@@ -26,6 +26,8 @@ import { renderPromiseBlocks } from "@/server/guest-html/promise/markup";
 import { renderStoryBlocks } from "@/server/guest-html/story/markup";
 import { STORY_FONTS_LINK } from "@/server/guest-html/story/style";
 import { PROMISE_SCRIPT } from "@/server/guest-html/promise/script";
+import { renderEvergreenBlocks } from "@/server/guest-html/evergreen/markup";
+import { EVERGREEN_SCRIPT } from "@/server/guest-html/evergreen/script";
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -136,7 +138,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 ${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -404,7 +406,7 @@ export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, name
   const parts = [
     hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
-    theme.template === "promise" ? PROMISE_SCRIPT : REVEAL_SCRIPT,
+    theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : REVEAL_SCRIPT,
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join(";") : undefined;
@@ -426,6 +428,11 @@ export function renderBlocks(
   theme: InviteTheme = defaultTheme(),
   timezone = "UTC",
 ): string {
+  if (theme.template === "evergreen") {
+    return renderEvergreenBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
+    );
+  }
   if (theme.template === "promise") {
     return renderPromiseBlocks(blocks, theme, eventDate, timezone, (block) =>
       renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
