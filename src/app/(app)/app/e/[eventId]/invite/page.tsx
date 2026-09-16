@@ -32,7 +32,7 @@ import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
   addBlock, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
-  moveBlock, setBlockVisible, updateBlockContent,
+  moveBlock, setBlockVisible, updateBlockContent, updateInlineBlockField,
 } from "@/server/repositories/invites";
 import { blockContentFromForm } from "@/server/services/invite-forms";
 import { TemplatePicker } from "@/components/invite/template-picker";
@@ -42,6 +42,7 @@ import { BLOCK_LABELS, BLOCK_ORDER } from "@/lib/invite-blocks";
 import type { BlockType } from "@/generated/prisma/enums";
 import { BlockFields } from "@/components/invite/block-form";
 import { listAssets } from "@/server/services/assets";
+import { VisualInviteEditor } from "@/components/invite/visual-invite-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const eventSlug = event.slug;
   const [blocks, theme, assets] = await Promise.all([
     listBlocks(ctx),
     getTheme(ctx),
@@ -138,6 +140,28 @@ export default async function InvitePage({ params, searchParams }: Props) {
     redirect(`/app/e/${eventId}/invite?edit=1`);
   }
 
+  async function saveInline(input: { blockId: string; path: string; value: string }) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const result = await updateInlineBlockField(ctx, input.blockId, input.path, input.value);
+    if (result.ok) {
+      updateTag(eventTag(eventId));
+      updateTag(inviteSlugTag(eventSlug));
+    }
+    return result;
+  }
+
+  async function visualBlockAction(input: { blockId: string; action: "up" | "down" | "hide" }) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    if (input.action === "up") await moveBlock(ctx, input.blockId, -1);
+    else if (input.action === "down") await moveBlock(ctx, input.blockId, 1);
+    else await setBlockVisible(ctx, input.blockId, false);
+    updateTag(eventTag(eventId));
+    updateTag(inviteSlugTag(eventSlug));
+    return { ok: true } as const;
+  }
+
   const publicHref = `/i/${event.slug}`;
   const hasInvite = blocks.length > 0;
 
@@ -160,7 +184,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
    * а редактор живёт за `?edit=1` — туда уводит и клик по шаблону,
    * и кнопка «Продолжить редактирование» для уже начатого.
    */
-  const showEditor = edit === "1" && hasInvite;
+  const showEditor = (edit === "1" || edit === "classic") && hasInvite;
 
   if (!showEditor) {
     return (
@@ -203,6 +227,37 @@ export default async function InvitePage({ params, searchParams }: Props) {
             hasBlocks={hasInvite}
           />
         </div>
+      </main>
+    );
+  }
+
+  if (theme.template === "evergreen" && edit !== "classic") {
+    return (
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <a href={`/app/e/${eventId}/invite`} className="text-sm text-stone-500 hover:text-stone-900">← Все шаблоны</a>
+            <h1 className="mt-1 text-xl text-stone-900">Эвергрин</h1>
+            <p className="mt-1 text-sm text-stone-500">Нажмите прямо на текст или фотографию внутри приглашения.</p>
+          </div>
+          <form action={publish}>
+            <input type="hidden" name="slug" value={event.slug} />
+            <input type="hidden" name="status" value={event.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"} />
+            <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm text-stone-800">
+              {event.status === "PUBLISHED" ? "Снять с публикации" : "Опубликовать"}
+            </button>
+          </form>
+        </div>
+        {error ? <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
+        <VisualInviteEditor
+          eventId={eventId}
+          canvasSrc={`/app/e/${eventId}/invite/canvas`}
+          publicHref={publicHref}
+          advancedHref={`/app/e/${eventId}/invite?edit=classic`}
+          assets={assets}
+          saveField={saveInline}
+          blockAction={visualBlockAction}
+        />
       </main>
     );
   }

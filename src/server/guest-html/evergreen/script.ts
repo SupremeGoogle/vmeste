@@ -1,0 +1,22 @@
+export const EVERGREEN_SCRIPT = `(function(){document.documentElement.classList.add('eg-motion');var es=document.querySelectorAll('[data-evergreen-block]');if(!('IntersectionObserver'in window)){for(var i=0;i<es.length;i++)es[i].classList.add('eg-in');return}var o=new IntersectionObserver(function(xs){xs.forEach(function(x){if(x.isIntersecting){x.target.classList.add('eg-in');o.unobserve(x.target)}})},{threshold:.12});for(var i=0;i<es.length;i++)o.observe(es[i])})()`;
+
+export const EVERGREEN_EDITOR_SCRIPT = `(function(){
+document.documentElement.classList.add('eg-editing');
+var active=null,original='';
+function send(payload){parent.postMessage(Object.assign({source:'evergreen-canvas'},payload),'*')}
+document.addEventListener('click',function(e){
+ var tool=e.target.closest('[data-block-action]');
+ if(tool){e.preventDefault();e.stopPropagation();send({kind:'block-action',action:tool.dataset.blockAction,blockId:tool.closest('[data-block-id]').dataset.blockId});return}
+ var image=e.target.closest('[data-image-edit]');
+ if(image){e.preventDefault();e.stopPropagation();send({kind:'image-edit',blockId:image.dataset.blockId,path:image.dataset.path,current:image.getAttribute('src')||''});return}
+ var field=e.target.closest('[data-inline-edit]');
+ if(!field)return;
+ e.preventDefault();e.stopPropagation();
+ if(active&&active!==field)active.blur();
+ active=field;original=field.innerText;field.contentEditable='true';field.focus();
+ var range=document.createRange();range.selectNodeContents(field);range.collapse(false);var sel=getSelection();sel.removeAllRanges();sel.addRange(range)
+});
+document.addEventListener('keydown',function(e){if(!active)return;if(e.key==='Escape'){active.innerText=original;active.blur()}if(e.key==='Enter'&&!e.shiftKey&&active.dataset.multiline!=='true'){e.preventDefault();active.blur()}});
+document.addEventListener('focusout',function(e){var field=e.target.closest&&e.target.closest('[data-inline-edit]');if(!field||field!==active)return;field.contentEditable='false';var value=field.innerText.trim();if(value!==original)send({kind:'text-edit',blockId:field.dataset.blockId,path:field.dataset.path,value:value});active=null});
+window.addEventListener('message',function(e){var m=e.data||{};if(m.source!=='evergreen-editor')return;if(m.kind==='image-saved'){var image=document.querySelector('[data-image-edit][data-block-id="'+CSS.escape(m.blockId)+'"][data-path="'+CSS.escape(m.path)+'"]');if(image)image.src=m.value}})
+})()`;

@@ -15,6 +15,7 @@
  */
 import { z } from "zod";
 import type { BlockType } from "@/generated/prisma/enums";
+import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 
 /** Текущая версия содержимого. Растёт, когда меняется форма данных. */
 export const BLOCK_SCHEMA_VERSION = 1;
@@ -50,6 +51,7 @@ const httpUrl = z
  */
 const imageRef = httpUrl
   .or(z.string().regex(/^\/api\/asset\/[a-z0-9]+\/[a-z0-9]+$/, "неизвестный адрес картинки"))
+  .or(z.enum(EVERGREEN_SAMPLE_IMAGES))
   .or(z.literal(""));
 
 export const blockContentSchemas = {

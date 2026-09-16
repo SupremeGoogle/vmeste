@@ -12,7 +12,7 @@ import { unstable_cache } from "next/cache";
 import { db } from "@/server/db";
 import type { EventContext } from "@/server/context";
 import type { BlockType } from "@/generated/prisma/enums";
-import { defaultContent, readBlockContent } from "@/lib/invite-blocks";
+import { defaultContent, parseBlockContent, readBlockContent } from "@/lib/invite-blocks";
 import { eventTag as eventCacheTag, inviteSlugTag as inviteCacheTag } from "@/lib/cache-tags";
 import type { AnyBlockContent } from "@/lib/invite-blocks";
 import { readTheme, type InviteTheme } from "@/lib/invite-theme";
@@ -84,6 +84,56 @@ export async function updateBlockContent(
     data: { content },
   });
   return updated.count === 1;
+}
+
+const INLINE_FIELDS: Record<BlockType, RegExp> = {
+  COVER: /^(title|names|dateText|subtitle|imageUrl)$/,
+  TEXT: /^(title|text)$/,
+  PHOTOS: /^(title|items\.(?:0|1|2|3)\.(?:imageUrl|caption))$/,
+  VENUE: /^(title|name|address|note)$/,
+  TIMELINE: /^(title|items\.(?:[0-9]|[12][0-9])\.(?:time|title|note))$/,
+  DRESSCODE: /^(title|text)$/,
+  RSVP_FORM: /^(title|text|buttonLabel)$/,
+  MAP: /^(title|note)$/,
+  CALENDAR: /^(title|message)$/,
+  COUNTDOWN: /^(title|doneText)$/,
+};
+
+/** Update one safe field from the on-page editor, then validate the whole block. */
+export async function updateInlineBlockField(
+  ctx: EventContext,
+  blockId: string,
+  path: string,
+  value: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const row = await db.inviteBlock.findFirst({
+    where: { id: blockId, eventId: ctx.eventId },
+    select: { type: true, content: true },
+  });
+  if (!row) return { ok: false, message: "Раздел не найден" };
+  if (!INLINE_FIELDS[row.type].test(path)) return { ok: false, message: "Это поле нельзя менять на странице" };
+
+  const parsedCurrent = readBlockContent(row.type, row.content).content;
+  const next = JSON.parse(JSON.stringify(parsedCurrent)) as Record<string, unknown>;
+  const parts = path.split(".");
+  let cursor: Record<string, unknown> | unknown[] = next;
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const key = parts[index];
+    const child = Array.isArray(cursor) ? cursor[Number(key)] : cursor[key];
+    if (!child || typeof child !== "object") return { ok: false, message: "Поле больше не существует" };
+    cursor = child as Record<string, unknown> | unknown[];
+  }
+  const last = parts.at(-1)!;
+  if (Array.isArray(cursor)) cursor[Number(last)] = value;
+  else cursor[last] = value;
+
+  const checked = parseBlockContent(row.type, next);
+  if (!checked.ok) return checked;
+  const updated = await db.inviteBlock.updateMany({
+    where: { id: blockId, eventId: ctx.eventId },
+    data: { content: checked.content },
+  });
+  return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось сохранить" };
 }
 
 export async function setBlockVisible(ctx: EventContext, blockId: string, visible: boolean) {
