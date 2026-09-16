@@ -19,11 +19,11 @@ function draw(){
  if(!reduce){
   for(var j=0;j<pics.length;j++){var box=pics[j].getBoundingClientRect(),mid=box.top+box.height/2-innerHeight/2,shift=Math.max(-28,Math.min(28,-mid*.045));pics[j].style.setProperty('--eg-parallax',shift+'px')}
   if(ringOne&&ringTwo&&intro&&sheet){
-   var ib=intro.getBoundingClientRect(),start=scrollY+ib.top-innerHeight*.58,end=Math.max(start+1,max),p=Math.max(0,Math.min(1,(scrollY-start)/(end-start))),merge=smooth((p-.78)/.22),swing=Math.min(245,sheet.clientWidth*.39),baseY=innerHeight*(.08+p*.68),finalY=innerHeight*.43,opacity=Math.min(1,p*12);
-   var x1=Math.sin(p*Math.PI*7.4)*swing+Math.cos(p*Math.PI*17)*34-54,y1=baseY+Math.sin(p*Math.PI*9.2)*62;
-   var x2=Math.cos(p*Math.PI*6.6)*swing*.92+Math.sin(p*Math.PI*15)*42+58,y2=baseY+Math.cos(p*Math.PI*8.4)*68;
-   x1=mix(x1,-24,merge);x2=mix(x2,24,merge);y1=mix(y1,finalY-5,merge);y2=mix(y2,finalY+5,merge);
-   var scale=mix(.58+Math.sin(p*Math.PI*4)*.09,1.48,merge);
+   var ib=intro.getBoundingClientRect(),start=scrollY+ib.top-innerHeight*.58,end=Math.max(start+1,max),p=Math.max(0,Math.min(1,(scrollY-start)/(end-start))),lift=smooth((p-.7)/.14),merge=smooth((p-.84)/.16),lane=Math.min(225,sheet.clientWidth*.36),baseY=innerHeight*(.08+p*.68),finalY=innerHeight*.09,finalX=Math.min(165,sheet.clientWidth*.27),opacity=Math.min(1,p*12);
+   var x1=-lane+Math.sin(p*Math.PI*7.4)*lane*.28+Math.cos(p*Math.PI*17)*22,y1=baseY+Math.sin(p*Math.PI*9.2)*52;
+   var x2=lane+Math.cos(p*Math.PI*6.6)*lane*.28+Math.sin(p*Math.PI*15)*24,y2=baseY+Math.cos(p*Math.PI*8.4)*56;
+   x1=mix(x1,finalX-24,merge);x2=mix(x2,finalX+24,merge);y1=mix(y1,finalY-5,lift);y2=mix(y2,finalY+5,lift);
+   var scale=mix(.58+Math.sin(p*Math.PI*4)*.09,1.35,merge);
    place(ringOne,x1,y1,mix(p*1980,-24,merge),mix(Math.sin(p*Math.PI*8)*42,-8,merge),scale,opacity);
    place(ringTwo,x2,y2,mix(-p*1740,31,merge),mix(Math.cos(p*Math.PI*7)*38,12,merge),scale,opacity);
   }
