@@ -48,9 +48,16 @@ describe("Эвергрин", () => {
     expect(page).toContain("eg-progress");
     expect(page).toContain("data-eg-parallax");
     expect(page).toContain("eg-journey-ring");
+    expect(page.match(/class="eg-journey-ring eg-ring-/g)).toHaveLength(2);
+    expect(page).toContain("eg-ring-one");
+    expect(page).toContain("eg-ring-two");
     expect(page).toContain("/media/invite-evergreen/flying-ring.webp");
-    expect(inviteScript(blocks, EVERGREEN_TEMPLATE.theme, "Александр и Елизавета")).toContain("--eg-ring-y");
-    expect(inviteScript(blocks, EVERGREEN_TEMPLATE.theme, "Александр и Елизавета")).toContain(".eg-intro");
+    const script = inviteScript(blocks, EVERGREEN_TEMPLATE.theme, "Александр и Елизавета");
+    expect(script).toContain("--eg-ring-y");
+    expect(script).toContain(".eg-intro");
+    expect(script).toContain("eg-ring-one");
+    expect(script).toContain("eg-ring-two");
+    expect(script).toContain("merge");
     expect(page).not.toContain("Добавить деталь дня");
     expect(page).not.toContain("data-inline-edit");
   });

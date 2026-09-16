@@ -82,6 +82,6 @@ export function renderEvergreenBlocks(
   options: Options = {},
 ): string {
   const editable = options.editable === true;
-  const chrome = `<div class="eg-progress" aria-hidden="true"><i></i></div><img class="eg-journey-ring" src="/media/invite-evergreen/flying-ring.webp" alt="" aria-hidden="true">`;
+  const chrome = `<div class="eg-progress" aria-hidden="true"><i></i></div><div class="eg-journey-rings" aria-hidden="true"><img class="eg-journey-ring eg-ring-one" src="/media/invite-evergreen/flying-ring.webp" alt=""><img class="eg-journey-ring eg-ring-two" src="/media/invite-evergreen/flying-ring.webp" alt=""></div>`;
   return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
 }
