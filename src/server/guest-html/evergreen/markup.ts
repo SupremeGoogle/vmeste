@@ -53,9 +53,8 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
     }
     case "TIMELINE": {
       const c = block.content as BlockContentMap["TIMELINE"];
-      const ring = `<svg class="eg-flying-ring" viewBox="0 0 120 120" fill="none" aria-hidden="true"><ellipse cx="58" cy="62" rx="35" ry="20" transform="rotate(-24 58 62)"/><ellipse cx="58" cy="62" rx="29" ry="15" transform="rotate(-24 58 62)"/><path class="eg-ring-glint" d="M87 27V43M79 35H95M28 75V87M22 81H34"/></svg>`;
       const addDetail = editable ? `<button type="button" class="eg-add-detail" data-block-action="add-detail">＋ Добавить деталь дня</button>` : "";
-      return section(block, "eg-timeline", `${ring}<p class="eg-label">Wedding details</p><h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><ol class="eg-schedule">${c.items.map((item, index) => `<li><time${editable ? attrs(block.id, `items.${index}.time`) : ""}>${esc(item.time)}</time><div><strong${editable ? attrs(block.id, `items.${index}.title`) : ""}>${esc(item.title)}</strong><small${editable ? attrs(block.id, `items.${index}.note`) : ""}>${esc(item.note)}</small></div></li>`).join("")}</ol>${addDetail}`, editable);
+      return section(block, "eg-timeline", `<p class="eg-label">Wedding details</p><h2 class="eg-section-title"${editable ? attrs(block.id, "title") : ""}>${esc(c.title)}</h2><ol class="eg-schedule">${c.items.map((item, index) => `<li><time${editable ? attrs(block.id, `items.${index}.time`) : ""}>${esc(item.time)}</time><div><strong${editable ? attrs(block.id, `items.${index}.title`) : ""}>${esc(item.title)}</strong><small${editable ? attrs(block.id, `items.${index}.note`) : ""}>${esc(item.note)}</small></div></li>`).join("")}</ol>${addDetail}`, editable);
     }
     case "DRESSCODE": {
       const c = block.content as BlockContentMap["DRESSCODE"];
@@ -83,6 +82,6 @@ export function renderEvergreenBlocks(
   options: Options = {},
 ): string {
   const editable = options.editable === true;
-  const chrome = `<div class="eg-progress" aria-hidden="true"><i></i></div>`;
+  const chrome = `<div class="eg-progress" aria-hidden="true"><i></i></div><img class="eg-journey-ring" src="/media/invite-evergreen/flying-ring.webp" alt="" aria-hidden="true">`;
   return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
 }
