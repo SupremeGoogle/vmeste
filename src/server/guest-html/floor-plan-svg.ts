@@ -10,7 +10,8 @@
  * без рантайма React (CLAUDE.md, решение 1) — это пиковая нагрузка входа,
  * и 174 КБ там неуместны. SVG рисуется теми же тремя примитивами.
  */
-import { PLAN_HEIGHT, PLAN_WIDTH, isRound, seatPosition } from "@/lib/seating-geometry";
+import { DEFAULT_HALL, isRound, seatPosition, type Hall } from "@/lib/seating-geometry";
+import { COUPLE_TABLE } from "@/lib/couple-table-style";
 import { MARK_RADIUS, markFor, hasCouple } from "@/lib/couple-marks";
 import { COLORS } from "@/server/guest-html/theme";
 import { esc } from "@/server/guest-html/layout";
@@ -25,6 +26,7 @@ export type PlanTable = {
   width: number;
   height: number;
   capacity: number;
+  isCouple?: boolean;
   taken: number;
   /** Роль сидящего на каждом месте: по ней рисуются значки молодожёнов. */
   roles?: GuestRole[];
@@ -78,7 +80,27 @@ function coupleMark(role: GuestRole, x: number, y: number, decorative = false): 
 ${figure}</g>`;
 }
 
-export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | null): string {
+/** Стол молодожёнов: двойная золотая рамка и кольца над названием. */
+function coupleBody(table: PlanTable, highlighted: boolean): string {
+  const left = table.x - table.width / 2;
+  const top = table.y - table.height / 2;
+  const inset = COUPLE_TABLE.innerInset;
+  const fill = highlighted ? "#1c1917" : COUPLE_TABLE.fill;
+  const rings = COUPLE_TABLE.rings
+    .map(
+      (ring) =>
+        `<circle cx="${n(table.x + ring.cx)}" cy="${n(table.y + ring.cy)}" r="${ring.r}" fill="none" stroke="${highlighted ? "#ffffff" : COUPLE_TABLE.ringStroke}" stroke-width="2"/>`,
+    )
+    .join("");
+  return `<rect x="${n(left)}" y="${n(top)}" width="${n(table.width)}" height="${n(table.height)}" rx="14" fill="${fill}" stroke="${COUPLE_TABLE.stroke}" stroke-width="3"/>
+<rect x="${n(left + inset)}" y="${n(top + inset)}" width="${n(table.width - inset * 2)}" height="${n(table.height - inset * 2)}" rx="9" fill="none" stroke="${COUPLE_TABLE.innerStroke}" stroke-width="1.5"/>${rings}`;
+}
+
+export function floorPlanSvg(
+  tables: PlanTable[],
+  highlightTableId?: string | null,
+  hall: Hall = DEFAULT_HALL,
+): string {
   if (tables.length === 0) return "";
 
   const shapes = tables
@@ -88,7 +110,9 @@ export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | nu
       const stroke = highlighted ? "#1c1917" : "#a8a29e";
       const textFill = highlighted ? "#ffffff" : "#44403c";
 
-      const body = isRound(table.shape)
+      const body = table.isCouple
+        ? coupleBody(table, highlighted)
+        : isRound(table.shape)
         ? `<ellipse cx="${n(table.x)}" cy="${n(table.y)}" rx="${n(table.width / 2)}" ry="${n(table.height / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`
         : `<rect x="${n(table.x - table.width / 2)}" y="${n(table.y - table.height / 2)}" width="${n(table.width)}" height="${n(table.height)}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
 
@@ -105,7 +129,9 @@ export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | nu
         return `<circle cx="${n(point.x)}" cy="${n(point.y)}" r="7" fill="${occupied ? "#cfc4b2" : COLORS.card}" stroke="#d6cec2" stroke-width="1.5"/>`;
       }).join("");
 
-      const label = `<text x="${n(table.x)}" y="${n(table.y + 6)}" text-anchor="middle" font-size="20" font-family="sans-serif" fill="${textFill}">${esc(table.label)}</text>`;
+      const labelY = table.isCouple ? table.y + COUPLE_TABLE.labelOffset : table.y + 6;
+      const labelFill = table.isCouple && !highlighted ? COUPLE_TABLE.text : textFill;
+      const label = `<text x="${n(table.x)}" y="${n(labelY)}" text-anchor="middle" font-size="20" font-family="sans-serif" fill="${labelFill}">${esc(table.label)}</text>`;
 
       return seats + body + label;
     })
@@ -113,8 +139,8 @@ export function floorPlanSvg(tables: PlanTable[], highlightTableId?: string | nu
 
   const roles = tables.flatMap((table) => table.roles ?? []);
 
-  return `<svg viewBox="0 0 ${PLAN_WIDTH} ${PLAN_HEIGHT}" class="plan" role="img" aria-label="План зала">
-<rect x="0" y="0" width="${PLAN_WIDTH}" height="${PLAN_HEIGHT}" fill="${COLORS.card}"/>
+  return `<svg viewBox="0 0 ${n(hall.width)} ${n(hall.height)}" class="plan" role="img" aria-label="План зала">
+<rect x="0" y="0" width="${n(hall.width)}" height="${n(hall.height)}" fill="${COLORS.card}"/>
 ${shapes}
 </svg>${hasCouple(roles) ? coupleLegend() : ""}`;
 }

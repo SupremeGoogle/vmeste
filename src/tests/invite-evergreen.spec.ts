@@ -24,6 +24,9 @@ describe("Эвергрин", () => {
     expect(EVERGREEN_SAMPLE_IMAGES).toEqual([
       "/media/invite-evergreen/couple.webp",
       "/media/invite-evergreen/venue.webp",
+      "/media/invite-evergreen/rings.webp",
+      "/media/invite-evergreen/dinner.webp",
+      "/media/invite-evergreen/dance.webp",
     ]);
     const cover = EVERGREEN_TEMPLATE.blocks.find((block) => block.type === "COVER")!;
     const gallery = EVERGREEN_TEMPLATE.blocks.find((block) => block.type === "PHOTOS")!;
@@ -38,7 +41,24 @@ describe("Эвергрин", () => {
     expect(page).toContain('class="sheet evergreen"');
     expect(page).toContain(EVERGREEN_SAMPLE_IMAGES[0]);
     expect(page).toContain(EVERGREEN_SAMPLE_IMAGES[1]);
+    expect(page).toContain(EVERGREEN_SAMPLE_IMAGES[4]);
     expect(page).toContain("eg-schedule");
+    expect(page).toContain("eg-gallery-mosaic");
+    expect(page).toContain("eg-scroll-vine");
+    expect(page).toContain("eg-progress");
+    expect(page).toContain("data-eg-parallax");
+    expect(page).toContain("eg-journey-ring");
+    expect(page.match(/class="eg-journey-ring eg-ring-/g)).toHaveLength(2);
+    expect(page).toContain("eg-ring-one");
+    expect(page).toContain("eg-ring-two");
+    expect(page).toContain("/media/invite-evergreen/flying-ring.webp");
+    const script = inviteScript(blocks, EVERGREEN_TEMPLATE.theme, "Александр и Елизавета");
+    expect(script).toContain("--eg-ring-y");
+    expect(script).toContain(".eg-intro");
+    expect(script).toContain("eg-ring-one");
+    expect(script).toContain("eg-ring-two");
+    expect(script).toContain("merge");
+    expect(page).not.toContain("Добавить деталь дня");
     expect(page).not.toContain("data-inline-edit");
   });
 
@@ -50,6 +70,8 @@ describe("Эвергрин", () => {
     expect(body).toContain('data-path="imageUrl"');
     expect(body).toContain('data-path="items.0.imageUrl"');
     expect(body).toContain('data-block-action="up"');
+    expect(body).toContain('data-block-action="add-detail"');
+    expect(body).toContain("Добавить деталь дня");
     expect(EVERGREEN_EDITOR_SCRIPT).toContain("postMessage");
   });
 

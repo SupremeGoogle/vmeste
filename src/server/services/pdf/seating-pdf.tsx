@@ -18,8 +18,9 @@
 import React from "react";
 import path from "node:path";
 import {
-  PLAN_HEIGHT, PLAN_WIDTH, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName,
+  DEFAULT_HALL, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName, type Hall,
 } from "@/lib/seating-geometry";
+import { COUPLE_TABLE } from "@/lib/couple-table-style";
 import { COLORS } from "@/server/guest-html/theme";
 import {
   Document, Font, G, Page, Path, Polygon, StyleSheet, Svg, Circle, Ellipse, Rect,
@@ -51,6 +52,7 @@ export type PdfTable = {
   width: number;
   height: number;
   capacity: number;
+  isCouple?: boolean;
   seats: {
     id: string;
     index: number;
@@ -63,6 +65,8 @@ export type PdfInput = {
   eventDate: Date;
   venueName: string | null;
   tables: PdfTable[];
+  /** Размер зала; без него — прежние 1000×700. */
+  hall?: Hall;
   generatedAt: Date;
 };
 
@@ -154,14 +158,34 @@ const PlanText = SvgText as unknown as React.ComponentType<
   }>
 >;
 
-function FloorPlanPdf({ tables }: { tables: PdfTable[] }) {
+function FloorPlanPdf({ tables, hall }: { tables: PdfTable[]; hall: Hall }) {
   return (
-    <Svg viewBox={`0 0 ${PLAN_WIDTH} ${PLAN_HEIGHT}`} style={{ width: "100%", height: 440 }}>
+    <Svg viewBox={`0 0 ${hall.width} ${hall.height}`} style={{ width: "100%", height: 440 }}>
       {tables.map((table) => {
         const round = isRound(table.shape);
+        const inset = COUPLE_TABLE.innerInset;
         return (
           <React.Fragment key={table.id}>
-            {round ? (
+            {table.isCouple ? (
+              <>
+                <Rect
+                  x={table.x - table.width / 2} y={table.y - table.height / 2}
+                  width={table.width} height={table.height} rx={14}
+                  fill={COUPLE_TABLE.fill} stroke={COUPLE_TABLE.stroke} strokeWidth={3}
+                />
+                <Rect
+                  x={table.x - table.width / 2 + inset} y={table.y - table.height / 2 + inset}
+                  width={table.width - inset * 2} height={table.height - inset * 2} rx={9}
+                  fill="none" stroke={COUPLE_TABLE.innerStroke} strokeWidth={1.5}
+                />
+                {COUPLE_TABLE.rings.map((ring, index) => (
+                  <Circle
+                    key={index} cx={table.x + ring.cx} cy={table.y + ring.cy} r={ring.r}
+                    fill="none" stroke={COUPLE_TABLE.ringStroke} strokeWidth={2}
+                  />
+                ))}
+              </>
+            ) : round ? (
               <Ellipse
                 cx={table.x} cy={table.y} rx={table.width / 2} ry={table.height / 2}
                 fill="#f5f1ea" stroke="#c9bfb0" strokeWidth={2}
@@ -174,8 +198,11 @@ function FloorPlanPdf({ tables }: { tables: PdfTable[] }) {
               />
             )}
             <PlanText
-              x={table.x} y={table.y + 6} textAnchor="middle"
-              fontFamily="Roboto" fontWeight={700} fontSize={20} fill="#3a332c"
+              x={table.x}
+              y={table.isCouple ? table.y + COUPLE_TABLE.labelOffset : table.y + 6}
+              textAnchor="middle"
+              fontFamily="Roboto" fontWeight={700} fontSize={20}
+              fill={table.isCouple ? COUPLE_TABLE.text : "#3a332c"}
             >
               {table.label}
             </PlanText>
@@ -239,7 +266,9 @@ function splitColumns<T>(rows: T[]): [T[], T[]] {
   return [rows.slice(0, half), rows.slice(half)];
 }
 
-export function SeatingDocument({ eventTitle, eventDate, venueName, tables, generatedAt }: PdfInput) {
+export function SeatingDocument({
+  eventTitle, eventDate, venueName, tables, hall = DEFAULT_HALL, generatedAt,
+}: PdfInput) {
   const seated = tables.flatMap((table) =>
     table.seats
       .filter((seat) => seat.guest)
@@ -258,7 +287,7 @@ export function SeatingDocument({ eventTitle, eventDate, venueName, tables, gene
         <Text style={styles.meta}>
           {subtitle} · {seated.length} гостей за {tables.length} столами
         </Text>
-        <FloorPlanPdf tables={tables} />
+        <FloorPlanPdf tables={tables} hall={hall} />
         {tables.some((table) =>
           table.seats.some((seat) => seat.guest?.role && seat.guest.role !== "GUEST"),
         ) ? (

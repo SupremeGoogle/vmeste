@@ -175,6 +175,12 @@ model Event {
   // редактирование в двух вкладках (PLAN.md §5.4).
   seatingVersion Int @default(0)
 
+  // Размер зала в условных единицах плана. Организатор растягивает зал
+  // мышью; 1000×700 — прежний фиксированный размер, чтобы старые планы
+  // остались на своих местах.
+  hallWidth  Float @default(1000)
+  hallHeight Float @default(700)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -427,6 +433,9 @@ model SeatTable {
   width    Float      @default(120)
   height   Float      @default(120)
   capacity Int        @default(8)
+  // Стол молодожёнов: места в один ряд лицом к залу, пара — в центре.
+  // Один на мероприятие — это держит частичный уникальный индекс в миграции.
+  isCouple Boolean    @default(false)
 
   event Event  @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
   seats Seat[]

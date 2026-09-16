@@ -49,25 +49,30 @@ export async function countGuests(ctx: EventContext) {
  * из словаря уменьшительных — иначе гость «Настя» себя на входе не найдёт.
  */
 export async function createGuest(ctx: EventContext, input: GuestInput) {
-  const displayName = input.displayName.trim();
-  const aliases = expandGuestName(displayName);
+  return db.guest.create({ data: newGuestData(ctx, input) });
+}
 
-  return db.guest.create({
-    data: {
-      orgId: ctx.orgId,
-      eventId: ctx.eventId,
-      displayName,
-      searchKey: normalizeName(displayName),
-      phone: input.phone ?? null,
-      email: input.email ?? null,
-      note: input.note ?? null,
-      plusOneAllowed: input.plusOneAllowed ?? false,
-      linkToken: generateLinkToken(),
-      aliases: {
-        create: aliases.map((alias) => ({ orgId: ctx.orgId, alias })),
-      },
+/**
+ * Данные нового гостя — одни на все пути создания: форма гостей, импорт
+ * CSV и рассадка, где гостя вписывают прямо у места. Разойдись они —
+ * вписанный в рассадке гость не нашёлся бы на входе по уменьшительному имени.
+ */
+export function newGuestData(ctx: { orgId: string; eventId: string }, input: GuestInput) {
+  const displayName = input.displayName.trim();
+  return {
+    orgId: ctx.orgId,
+    eventId: ctx.eventId,
+    displayName,
+    searchKey: normalizeName(displayName),
+    phone: input.phone ?? null,
+    email: input.email ?? null,
+    note: input.note ?? null,
+    plusOneAllowed: input.plusOneAllowed ?? false,
+    linkToken: generateLinkToken(),
+    aliases: {
+      create: expandGuestName(displayName).map((alias) => ({ orgId: ctx.orgId, alias })),
     },
-  });
+  };
 }
 
 /** Массовое создание для импорта CSV. Одна транзакция на весь файл:
@@ -76,28 +81,8 @@ export async function createGuests(ctx: EventContext, rows: GuestInput[]) {
   return db.$transaction(async (tx) => {
     const created = [];
     for (const row of rows) {
-      const displayName = row.displayName.trim();
-      if (!displayName) continue;
-      const guest = await tx.guest.create({
-        data: {
-          orgId: ctx.orgId,
-          eventId: ctx.eventId,
-          displayName,
-          searchKey: normalizeName(displayName),
-          phone: row.phone ?? null,
-          email: row.email ?? null,
-          note: row.note ?? null,
-          plusOneAllowed: row.plusOneAllowed ?? false,
-          linkToken: generateLinkToken(),
-          aliases: {
-            create: expandGuestName(displayName).map((alias) => ({
-              orgId: ctx.orgId,
-              alias,
-            })),
-          },
-        },
-      });
-      created.push(guest);
+      if (!row.displayName.trim()) continue;
+      created.push(await tx.guest.create({ data: newGuestData(ctx, row) }));
     }
     return created;
   });

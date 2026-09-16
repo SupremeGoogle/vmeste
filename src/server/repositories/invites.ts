@@ -136,6 +136,31 @@ export async function updateInlineBlockField(
   return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось сохранить" };
 }
 
+/** Add one editable row to the visual timeline editor. */
+export async function appendTimelineItem(
+  ctx: EventContext,
+  blockId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const row = await db.inviteBlock.findFirst({
+    where: { id: blockId, eventId: ctx.eventId, type: "TIMELINE" },
+    select: { content: true },
+  });
+  if (!row) return { ok: false, message: "Блок «Этот день» не найден" };
+
+  const current = readBlockContent("TIMELINE", row.content).content;
+  if (current.items.length >= 30) return { ok: false, message: "Можно добавить не больше 30 деталей" };
+  const checked = parseBlockContent("TIMELINE", {
+    ...current,
+    items: [...current.items, { time: "", title: "Новая деталь", note: "Нажмите, чтобы изменить" }],
+  });
+  if (!checked.ok) return checked;
+  const updated = await db.inviteBlock.updateMany({
+    where: { id: blockId, eventId: ctx.eventId },
+    data: { content: checked.content },
+  });
+  return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось добавить деталь" };
+}
+
 export async function setBlockVisible(ctx: EventContext, blockId: string, visible: boolean) {
   await db.inviteBlock.updateMany({
     where: { id: blockId, eventId: ctx.eventId },

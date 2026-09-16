@@ -13,14 +13,14 @@ function block(type: InviteBlockView["type"], content: object): InviteBlockView 
 
 describe("Обещание: интеграция с редактором и гостевыми страницами", () => {
   it("сохраняет все блоки после JSON и чтения схемами редактора", () => {
-    // Шаблон берём напрямую, а не через реестр: на витрине он больше не
-    // стоит (там ровно одна «История»), но сам шаблон рабочий, и его
-    // блоки обязаны переживать сохранение и чтение схемами редактора.
+    expect(findTemplate("promise")).toBe(PROMISE_TEMPLATE);
     const saved = JSON.parse(JSON.stringify(PROMISE_TEMPLATE));
     for (const item of saved.blocks) {
       const parsed = readBlockContent(item.type, item.content);
       expect(parsed.degraded).toBe(false);
-      expect(parsed.content).toEqual(item.content);
+      // Схема со временем получает новые поля со значениями по умолчанию —
+      // важно, что ни одно значение шаблона не потерялось.
+      expect(parsed.content).toMatchObject(item.content);
     }
   });
 

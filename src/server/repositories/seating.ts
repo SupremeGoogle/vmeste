@@ -16,7 +16,8 @@ import type { EventContext } from "@/server/context";
 export async function listTables(ctx: EventContext) {
   return db.seatTable.findMany({
     where: { eventId: ctx.eventId },
-    orderBy: { label: "asc" },
+    // Стол молодожёнов первым: в списке и в распечатке его ищут в первую очередь.
+    orderBy: [{ isCouple: "desc" }, { label: "asc" }],
     include: {
       seats: {
         orderBy: { index: "asc" },
@@ -149,13 +150,56 @@ export async function getSeatingPlan(ctx: EventContext) {
   const [event, tables] = await Promise.all([
     db.event.findFirst({
       where: { id: ctx.eventId, orgId: ctx.orgId },
-      select: { title: true, eventDate: true, venueName: true, seatingVersion: true },
+      select: {
+        title: true, eventDate: true, venueName: true, seatingVersion: true,
+        hallWidth: true, hallHeight: true,
+      },
     }),
     listTables(ctx),
   ]);
 
   return { event, tables };
 }
+
+/**
+ * Всё, что нужно редактору рассадки, одним снимком.
+ *
+ * Этот же снимок сервер возвращает после каждой операции: редактор
+ * подменяет им своё состояние и больше не перезагружает страницу. Так
+ * план на экране всегда равен тому, что лежит в базе, — включая правки
+ * из другого окна, которые приходят вместе с отказом по версии.
+ */
+export async function getEditorPlan(ctx: EventContext) {
+  const [event, tables, unseated] = await Promise.all([
+    db.event.findFirst({
+      where: { id: ctx.eventId, orgId: ctx.orgId },
+      select: { seatingVersion: true, hallWidth: true, hallHeight: true },
+    }),
+    listTables(ctx),
+    listUnseatedGuests(ctx),
+  ]);
+  if (!event) return null;
+
+  return {
+    version: event.seatingVersion,
+    hall: { width: event.hallWidth, height: event.hallHeight },
+    tables: tables.map((table) => ({
+      id: table.id,
+      label: table.label,
+      shape: table.shape,
+      isCouple: table.isCouple,
+      x: table.x,
+      y: table.y,
+      width: table.width,
+      height: table.height,
+      capacity: table.capacity,
+      seats: table.seats.map((seat) => ({ id: seat.id, index: seat.index, guest: seat.guest })),
+    })),
+    unseated,
+  };
+}
+
+export type EditorPlan = NonNullable<Awaited<ReturnType<typeof getEditorPlan>>>;
 
 
 export type PublicPlanTable = {
@@ -167,9 +211,12 @@ export type PublicPlanTable = {
   width: number;
   height: number;
   capacity: number;
+  isCouple: boolean;
   taken: number;
   roles: GuestRole[];
 };
+
+export type PublicPlan = { hall: { width: number; height: number }; tables: PublicPlanTable[] };
 
 /**
  * План зала для гостевой страницы.
@@ -183,15 +230,21 @@ export type PublicPlanTable = {
  * сидит», а список имён на публичной странице — это выгрузка списка
  * гостей для любого, кто знает код.
  */
-export function getPublicPlan(eventId: string): Promise<PublicPlanTable[]> {
+export function getPublicPlan(eventId: string): Promise<PublicPlan> {
   return unstable_cache(
     async () => {
+      // Размер зала лежит в том же кеше, что и столы: его меняет та же
+      // операция рассадки, что сбрасывает тег.
+      const event = await db.event.findFirst({
+        where: { id: eventId },
+        select: { hallWidth: true, hallHeight: true },
+      });
       const tables = await db.seatTable.findMany({
         where: { eventId },
-        orderBy: { label: "asc" },
+        orderBy: [{ isCouple: "desc" }, { label: "asc" }],
         select: {
           id: true, label: true, shape: true, x: true, y: true,
-          width: true, height: true, capacity: true,
+          width: true, height: true, capacity: true, isCouple: true,
           seats: {
             orderBy: { index: "asc" },
             select: { index: true, guestId: true, guest: { select: { role: true } } },
@@ -199,7 +252,8 @@ export function getPublicPlan(eventId: string): Promise<PublicPlanTable[]> {
         },
       });
 
-      return tables.map((table) => ({
+      const hall = { width: event?.hallWidth ?? 1000, height: event?.hallHeight ?? 700 };
+      return { hall, tables: tables.map((table) => ({
         id: table.id,
         label: table.label,
         shape: table.shape,
@@ -208,12 +262,13 @@ export function getPublicPlan(eventId: string): Promise<PublicPlanTable[]> {
         width: table.width,
         height: table.height,
         capacity: table.capacity,
+        isCouple: table.isCouple,
         taken: table.seats.filter((seat) => seat.guestId).length,
         // Роли на местах: гостю нужно знать, где сидят молодожёны, но не
         // кто где сидит поимённо — список имён на публичной странице был бы
         // выгрузкой списка гостей для любого, кто знает код.
         roles: table.seats.map((seat) => seat.guest?.role ?? "GUEST"),
-      }));
+      })) };
     },
     ["public-plan", eventId],
     { tags: [seatingTag(eventId)], revalidate: 60 },

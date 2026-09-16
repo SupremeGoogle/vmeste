@@ -31,7 +31,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
-  addBlock, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
+  addBlock, appendTimelineItem, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
   moveBlock, setBlockVisible, updateBlockContent, updateInlineBlockField,
 } from "@/server/repositories/invites";
 import { blockContentFromForm } from "@/server/services/invite-forms";
@@ -151,12 +151,16 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return result;
   }
 
-  async function visualBlockAction(input: { blockId: string; action: "up" | "down" | "hide" }) {
+  async function visualBlockAction(input: { blockId: string; action: "up" | "down" | "hide" | "add-detail" }) {
     "use server";
     const ctx = await requireEventContext(eventId);
     if (input.action === "up") await moveBlock(ctx, input.blockId, -1);
     else if (input.action === "down") await moveBlock(ctx, input.blockId, 1);
-    else await setBlockVisible(ctx, input.blockId, false);
+    else if (input.action === "hide") await setBlockVisible(ctx, input.blockId, false);
+    else {
+      const result = await appendTimelineItem(ctx, input.blockId);
+      if (!result.ok) return result;
+    }
     updateTag(eventTag(eventId));
     updateTag(inviteSlugTag(eventSlug));
     return { ok: true } as const;

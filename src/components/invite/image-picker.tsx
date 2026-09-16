@@ -13,6 +13,7 @@
  * нажав только одно.
  */
 import { useRef, useState } from "react";
+import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 
 export type PickerAsset = { id: string; url: string; alt: string };
 
@@ -25,7 +26,11 @@ export function ImagePicker({
   value: string;
   assets: PickerAsset[];
 }) {
-  const [items, setItems] = useState(assets);
+  const [items, setItems] = useState<PickerAsset[]>(() =>
+    PROMISE_SAMPLE_IMAGES.some((url) => url === value) && !assets.some((asset) => asset.url === value)
+      ? [{ id: "promise-sample", url: value, alt: "Пример фотографии — можно заменить своей" }, ...assets]
+      : assets,
+  );
   const [chosen, setChosen] = useState(value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
