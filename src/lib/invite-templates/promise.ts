@@ -1,5 +1,6 @@
 import { defaultTheme } from "@/lib/invite-theme";
 import type { InviteTemplate } from "@/lib/invite-templates";
+import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 
 /** Only standard editor blocks: photographs and every line of copy stay editable. */
 export const PROMISE_TEMPLATE: InviteTemplate = {
@@ -33,11 +34,11 @@ export const PROMISE_TEMPLATE: InviteTemplate = {
     align: "center",
   },
   blocks: [
-    { type: "COVER", content: { v: 1, title: "Приглашаем вас на нашу свадьбу", names: "Имя и Имя", dateText: "", subtitle: "Один день. Одна любовь. Целая жизнь вместе.", imageUrl: "" } },
+    { type: "COVER", content: { v: 1, title: "Приглашаем вас на нашу свадьбу", names: "Имя и Имя", dateText: "", subtitle: "Один день. Одна любовь. Целая жизнь вместе.", imageUrl: PROMISE_SAMPLE_IMAGES[0] } },
     { type: "TEXT", content: { v: 1, title: "Быть рядом — бесценно", text: "Есть моменты, которые хочется разделить с самыми близкими.\nМы будем счастливы, если в день начала нашей семьи вы будете рядом.\n\nПриглашаем вас стать частью нашей истории любви." } },
     { type: "CALENDAR", content: { v: 1, title: "Наш особенный день", message: "Сохраните эту дату. Впереди — самые тёплые воспоминания." } },
     { type: "COUNTDOWN", content: { v: 1, title: "До нашей встречи", doneText: "Этот день настал. До встречи на празднике!" } },
-    { type: "PHOTOS", content: { v: 1, title: "Место, где начинается праздник", items: [{ imageUrl: "", caption: "Здесь будет фотография нашей площадки" }] } },
+    { type: "PHOTOS", content: { v: 1, title: "Место, где начинается праздник", items: [{ imageUrl: PROMISE_SAMPLE_IMAGES[2], caption: "Вечер, который мы запомним навсегда" }] } },
     { type: "VENUE", content: { v: 1, title: "Ждём вас здесь", name: "Название вашей площадки", address: "Город, улица, дом", note: "Церемония под открытым небом, тёплый вечер и самые близкие люди." } },
     { type: "MAP", content: { v: 1, title: "Дорога к нам", yandexUrl: "", googleUrl: "", note: "Точный маршрут и подробности про парковку мы добавим ближе к празднику." } },
     { type: "TIMELINE", content: { v: 1, title: "Маленькие моменты большого дня", items: [
@@ -47,7 +48,7 @@ export const PROMISE_TEMPLATE: InviteTemplate = {
       { time: "20:00", title: "Танцы под звёздами", note: "Пусть этот вечер длится чуть дольше" },
     ] } },
     { type: "DRESSCODE", content: { v: 1, title: "В оттенках нежности", text: "Нам будет особенно приятно, если вы поддержите настроение нашего дня.\nМягкие природные оттенки, лёгкие ткани и ваше прекрасное настроение.", palette: ["#eee2d3", "#d9b8ab", "#b98e80", "#9ca389", "#666f55"] } },
-    { type: "PHOTOS", content: { v: 1, title: "Наша маленькая вечность", items: [{ imageUrl: "", caption: "С этого всё началось" }, { imageUrl: "", caption: "И столько прекрасного впереди" }] } },
+    { type: "PHOTOS", content: { v: 1, title: "Наша маленькая вечность", items: [{ imageUrl: PROMISE_SAMPLE_IMAGES[0], caption: "С этого всё началось" }, { imageUrl: PROMISE_SAMPLE_IMAGES[1], caption: "И столько прекрасного впереди" }] } },
     { type: "TEXT", content: { v: 1, title: "Несколько тёплых пожеланий", text: "Самый важный подарок для нас — ваше присутствие.\nВместо букета можно привезти бутылку любимого вина: мы сохраним её для одного из наших семейных вечеров.\n\nЕсли у вас есть вопросы или сюрприз для нас, свяжитесь с нашим организатором — контакты мы добавим здесь." } },
     { type: "RSVP_FORM", content: { v: 1, title: "Вы разделите с нами этот день?", text: "Пожалуйста, расскажите о своих планах заранее.\nТак мы сможем позаботиться о каждом госте.", buttonLabel: "С радостью ответим" } },
     { type: "TEXT", content: { v: 1, title: "До встречи, с любовью", text: "Спасибо, что вы — часть нашей истории.\nВсё самое прекрасное только начинается." } },

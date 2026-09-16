@@ -23,6 +23,7 @@ import type { BlockType } from "@/generated/prisma/enums";
 import type { InviteTheme } from "@/lib/invite-theme";
 import { defaultTheme } from "@/lib/invite-theme";
 import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
+import { PROMISE_TEMPLATE } from "@/lib/invite-templates/promise";
 
 export type TemplateBlock = {
   type: BlockType;
@@ -187,13 +188,8 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
       },
     ],
   },
+  PROMISE_TEMPLATE,
   EVERGREEN_TEMPLATE,
-  // Шаблон пока ровно один — копия присланного образца. Второй
-  // («Обещание», `invite-templates/promise.ts`) написан и работает, но
-  // на витрину не выведен: его оформление придумано с нуля, а не снято
-  // с образца, и показывать выбор из «того, что просили» и «чего-то
-  // ещё» — значит предлагать ошибиться. Файлы и рендерер оставлены:
-  // вернуть его в список — одна строка.
 ];
 
 export function findTemplate(id: string): InviteTemplate | null {

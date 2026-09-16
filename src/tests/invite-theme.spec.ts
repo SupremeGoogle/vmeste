@@ -67,8 +67,12 @@ describe("тема: чтение", () => {
 });
 
 describe("шаблоны", () => {
-  it("шаблон есть хотя бы один, и идентификаторы не повторяются", () => {
-    expect(INVITE_TEMPLATES.length).toBeGreaterThanOrEqual(1);
+  it("все шаблоны доступны, и идентификаторы не повторяются", () => {
+    expect(INVITE_TEMPLATES.map((template) => template.id)).toEqual([
+      "story",
+      "promise",
+      "evergreen",
+    ]);
 
     // Повторяющийся id — это молчаливая подмена: выбрав один шаблон,
     // организатор получит другой.
@@ -111,7 +115,7 @@ describe("шаблоны", () => {
     // Два шаблона с одинаковым набором осей — это один шаблон в двух
     // палитрах, и человек, выбрав второй, не увидит разницы.
     const shapes = INVITE_TEMPLATES.map((t) =>
-      [t.theme.headingFont, t.theme.corner, t.theme.divider, t.theme.timeline,
+      [t.theme.template, t.theme.headingFont, t.theme.corner, t.theme.divider, t.theme.timeline,
        t.theme.sections, t.theme.dateStyle, t.theme.align, t.theme.capsHeadings].join("/"),
     );
     expect(new Set(shapes).size).toBe(INVITE_TEMPLATES.length);
@@ -120,6 +124,8 @@ describe("шаблоны", () => {
   it("несуществующий шаблон не находится", () => {
     expect(findTemplate("нет такого")).toBeNull();
     expect(findTemplate("story")?.name).toBe("История");
+    expect(findTemplate("promise")?.name).toBe("Обещание");
+    expect(findTemplate("evergreen")?.name).toBe("Эвергрин");
   });
 });
 
