@@ -112,6 +112,63 @@ h2 {
   animation-delay: calc(min(var(--i, 0), 6) * 45ms);
 }
 
+/* Гость сел на место — кружок коротко «вспыхивает»: видно, что попал
+   именно туда, куда целился. */
+@keyframes seat-pop {
+  0% { transform: scale(0.55); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.seat-pop {
+  animation: seat-pop 0.26s var(--ease-soft) both;
+}
+
+/* То, что тащат, приподнимается над планом в момент захвата. */
+@keyframes drag-lift {
+  from { transform: scale(0.92); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.drag-lift {
+  animation: drag-lift 0.16s var(--ease-out-back) both;
+}
+
+/*
+ * Заглушки загрузки. Блик идёт по всем заглушкам экрана одной волной:
+ * фон закреплён за окном (background-attachment: fixed), а не за каждым
+ * прямоугольником, поэтому десяток серых плашек не мерцает вразнобой.
+ */
+@keyframes skeleton-sweep {
+  from { background-position: -60vw 0; }
+  to { background-position: 100vw 0; }
+}
+
+.skeleton {
+  background-color: var(--color-stone-200);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 70%
+  );
+  background-size: 60vw 100%;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  animation: skeleton-sweep 1.5s ease-in-out infinite;
+}
+
+/* Заглушка не мелькает, если страница пришла быстро: проявляется
+   с задержкой, за которую обычный переход успевает закончиться. */
+@keyframes loading-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.loading-in {
+  animation: loading-in 0.3s ease-out 0.15s both;
+}
+
 /*
  * Уважение к системной настройке — не формальность: вестибулярные
  * расстройства делают «красивое» появление физически неприятным.

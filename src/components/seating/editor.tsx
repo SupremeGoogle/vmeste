@@ -19,12 +19,13 @@
  * и лишнее место прокручивается. Раньше кнопки «Размер зала» только
  * увеличивали картинку, а места для столов не прибавлялось.
  */
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, pointerWithin,
   useDraggable, useDroppable, useSensor, useSensors,
-  type DragEndEvent, type DragStartEvent,
+  type ClientRect, type DragEndEvent, type DragStartEvent, type MeasuringConfiguration,
 } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import {
   COUPLE_TABLE_LABEL, HALL_MAX, HALL_MIN, SHAPES, SHAPE_LABEL, clampToPlan, contentExtent, freeSpot, isRound,
   tableSize,
@@ -174,7 +175,7 @@ function SeatDot({
             ? `${seat.guest.displayName} — щёлкните, чтобы перенести`
             : "Свободное место — щёлкните, чтобы посадить гостя"
         }
-        className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
+        className="pointer-events-auto absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
         style={{
           left: pct(pos.x, hall.width),
           top: pct(pos.y, hall.height),
@@ -185,10 +186,11 @@ function SeatDot({
         }}
       >
         {seat.guest?.role && seat.guest.role !== "GUEST" ? (
-          <CoupleGlyph role={seat.guest.role} active={isOver || isSelected} />
+          <span key={seat.guest.id} className="seat-pop block"><CoupleGlyph role={seat.guest.role} active={isOver || isSelected} /></span>
         ) : (
           <span
-            className={`block rounded-full border transition-colors ${
+            key={seat.guest?.id ?? "empty"}
+            className={`block rounded-full border transition-colors ${seat.guest ? "seat-pop " : ""}${
               isOver || isSelected
                 ? "border-stone-900 bg-stone-900"
                 : seat.guest
@@ -216,12 +218,90 @@ function SeatDot({
   );
 }
 
+/** Ближе скольких единиц плана стол «прилипает» к оси соседнего стола. */
+const ALIGN_PULL = 14;
+
+/**
+ * Куда встанет стол, если отпустить его сейчас.
+ *
+ * Одна функция и для подсказки во время перетаскивания, и для самого
+ * сохранения: иначе контур показывал бы одно место, а стол вставал в другое.
+ * Порядок важен: сетка, потом притяжение к соседям (ровный ряд столов
+ * важнее кратности десяти), потом стены зала.
+ */
+function landingPoint(
+  table: EditorTable,
+  delta: Point,
+  scale: number,
+  hall: Hall,
+  others: EditorTable[],
+): { point: Point; alignX: boolean; alignY: boolean } {
+  let x = snap(table.x + delta.x / scale);
+  let y = snap(table.y + delta.y / scale);
+  let alignX = false;
+  let alignY = false;
+  let bestX = ALIGN_PULL;
+  let bestY = ALIGN_PULL;
+  for (const other of others) {
+    if (other.id === table.id) continue;
+    if (Math.abs(other.x - x) <= bestX) { bestX = Math.abs(other.x - x); x = other.x; alignX = true; }
+    if (Math.abs(other.y - y) <= bestY) { bestY = Math.abs(other.y - y); y = other.y; alignY = true; }
+  }
+  const point = clampToPlan(table, { x, y }, hall);
+  return { point, alignX: alignX && point.x === x, alignY: alignY && point.y === y };
+}
+
+/** Столы наезжают друг на друга — по самим столам с кружками мест, без подписей. */
+function overlaps(table: EditorTable, at: Point, others: EditorTable[]): boolean {
+  const reach = (t: EditorTable) => ({ w: t.width / 2 + 16, h: t.height / 2 + 16 });
+  const a = reach(table);
+  return others.some((other) => {
+    if (other.id === table.id) return false;
+    const b = reach(other);
+    return Math.abs(other.x - at.x) < a.w + b.w && Math.abs(other.y - at.y) < a.h + b.h;
+  });
+}
+
+/**
+ * Как dnd-kit измеряет то, что тащат.
+ *
+ * Библиотека вычитает из сдвига курсора то, насколько сам элемент уехал
+ * на экране, — это защита от перестройки страницы. Но стол мы и так
+ * двигаем за курсором, сдвигая его группу, и без поправки получалась петля:
+ * стол уезжал, библиотека отнимала этот сдвиг, стол дёргался назад.
+ * Поэтому меряем место элемента без сдвига группы и без «приподнятого»
+ * увеличения — там, где он стоит в раскладке.
+ */
+const MEASURING: MeasuringConfiguration = {
+  draggable: {
+    measure(node): ClientRect {
+      const rect = node.getBoundingClientRect();
+      const group = node.closest<HTMLElement>("[data-drag-group]");
+      const shift = group ? new DOMMatrixReadOnly(getComputedStyle(group).transform) : null;
+      const width = node.offsetWidth || rect.width;
+      const height = node.offsetHeight || rect.height;
+      const left = rect.left + rect.width / 2 - (shift?.m41 ?? 0) - width / 2;
+      const top = rect.top + rect.height / 2 - (shift?.m42 ?? 0) - height / 2;
+      return { left, top, width, height, right: left + width, bottom: top + height };
+    },
+  },
+};
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 function TableShape({
-  table, hall, compact, selected, editing, onSelect, onPlace, onEdit, onOpenEmpty,
+  table, tables, hall, scale, compact, animate, selected, editing, onSelect, onPlace, onEdit, onOpenEmpty,
 }: {
   table: EditorTable;
+  /** Все столы зала — для притяжения к соседям и предупреждения о наложении. */
+  tables: EditorTable[];
   hall: Hall;
+  /** Пикселей экрана на единицу плана. */
+  scale: number;
   compact: boolean;
+  /** Плавно доводить стол до нового места. Выключено, пока тянут стену зала. */
+  animate: boolean;
   selected: EditorGuest | null;
   editing: boolean;
   onSelect: (guest: EditorGuest | null) => void;
@@ -237,8 +317,92 @@ function TableShape({
   const round = isRound(table.shape) && !table.isCouple;
   const taken = table.seats.filter((seat) => seat.guest).length;
 
+  // Во время перетаскивания стол вместе с местами идёт за курсором каждый
+  // кадр, упираясь в стены. Раньше он бледнел на месте и перескакивал
+  // только после отпускания — двигать приходилось вслепую.
+  const dragging = draggable.isDragging && draggable.transform !== null;
+  const delta = dragging ? { x: draggable.transform!.x, y: draggable.transform!.y } : { x: 0, y: 0 };
+  const live = dragging
+    ? clampToPlan(table, { x: table.x + delta.x / scale, y: table.y + delta.y / scale }, hall)
+    : { x: table.x, y: table.y };
+  const landing = dragging ? landingPoint(table, delta, scale, hall, tables) : null;
+  const blocked = landing ? overlaps(table, landing.point, tables) : false;
+
+  /**
+   * Доводка на место (FLIP). Запоминаем, где стол был виден в прошлом
+   * кадре, и, если он оказался в другом месте, проигрываем путь оттуда.
+   * Так плавно встаёт на сетку отпущенный стол, отъезжает назад отменённый
+   * ход и приезжает стол, который передвинули с другого устройства.
+   */
+  const group = useRef<HTMLDivElement>(null);
+  const shownAt = useRef<Point | null>(null);
+  useLayoutEffect(() => {
+    const node = group.current;
+    const previous = shownAt.current;
+    shownAt.current = live;
+    if (!node) return;
+    if (dragging) {
+      node.getAnimations().forEach((animation) => animation.cancel());
+      return;
+    }
+    if (!previous || !animate || prefersReducedMotion()) return;
+    const dx = (previous.x - live.x) * scale;
+    const dy = (previous.y - live.y) * scale;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+    node.getAnimations().forEach((animation) => animation.cancel());
+    node.animate(
+      [{ transform: `translate3d(${dx}px, ${dy}px, 0)` }, { transform: "translate3d(0, 0, 0)" }],
+      { duration: 320, easing: "cubic-bezier(0.34, 1.3, 0.64, 1)" },
+    );
+  });
+
   return (
     <>
+      {landing && (
+        <>
+          {/* Направляющие: стол встанет ровно в ряд или в столбец с соседом. */}
+          {landing.alignX && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 w-px border-l border-dashed border-sky-400"
+              style={{ left: pct(landing.point.x, hall.width) }}
+            />
+          )}
+          {landing.alignY && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 h-px border-t border-dashed border-sky-400"
+              style={{ top: pct(landing.point.y, hall.height) }}
+            />
+          )}
+          {/* Контур места, куда стол встанет, если отпустить сейчас. */}
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 border-2 border-dashed transition-[left,top,background-color,border-color] duration-100 ${
+              round ? "rounded-full" : table.isCouple ? "rounded-2xl" : "rounded-lg"
+            } ${blocked ? "border-rose-400 bg-rose-50/70" : "border-stone-400 bg-stone-100/70"}`}
+            style={{
+              left: pct(landing.point.x, hall.width),
+              top: pct(landing.point.y, hall.height),
+              width: pct(table.width, hall.width),
+              height: pct(table.height, hall.height),
+            }}
+          />
+        </>
+      )}
+
+      <div
+        ref={group}
+        data-drag-group=""
+        className="pointer-events-none absolute inset-0"
+        style={{
+          transform: dragging
+            ? `translate3d(${(live.x - table.x) * scale}px, ${(live.y - table.y) * scale}px, 0)`
+            : undefined,
+          zIndex: dragging ? 25 : undefined,
+          willChange: dragging ? "transform" : undefined,
+        }}
+      >
       <div
         ref={draggable.setNodeRef}
         {...draggable.listeners}
@@ -248,9 +412,9 @@ function TableShape({
           onEdit(table.id);
         }}
         title="Щёлкните, чтобы изменить стол; перетащите, чтобы передвинуть"
-        className={`absolute flex -translate-x-1/2 -translate-y-1/2 cursor-move flex-col items-center justify-center ${
-          round ? "rounded-full" : table.isCouple ? "rounded-2xl" : "rounded-lg"
-        } ${draggable.isDragging ? "opacity-40" : ""} ${
+        className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center transition-[scale,box-shadow] duration-150 ${
+          dragging ? "cursor-grabbing" : "cursor-grab"
+        } ${round ? "rounded-full" : table.isCouple ? "rounded-2xl" : "rounded-lg"} ${
           editing ? "ring-2 ring-stone-900 ring-offset-2" : ""
         }`}
         style={{
@@ -258,13 +422,20 @@ function TableShape({
           top: pct(table.y, hall.height),
           width: pct(table.width, hall.width),
           height: pct(table.height, hall.height),
+          scale: dragging ? "1.04" : undefined,
           ...(table.isCouple
             ? {
                 background: COUPLE_TABLE.fill,
                 border: `3px solid ${COUPLE_TABLE.stroke}`,
-                boxShadow: "0 6px 18px -8px rgba(176, 141, 87, 0.55)",
+                boxShadow: dragging
+                  ? "0 22px 40px -14px rgba(176, 141, 87, 0.7)"
+                  : "0 6px 18px -8px rgba(176, 141, 87, 0.55)",
               }
-            : { background: "#f5f5f4", border: "1px solid #d6cec2" }),
+            : {
+                background: "#f5f5f4",
+                border: "1px solid #d6cec2",
+                boxShadow: dragging ? "0 22px 40px -16px rgba(41, 37, 36, 0.45)" : undefined,
+              }),
         }}
       >
         {table.isCouple && (
@@ -301,6 +472,7 @@ function TableShape({
           onOpenEmpty={onOpenEmpty}
         />
       ))}
+      </div>
     </>
   );
 }
@@ -339,6 +511,31 @@ function NewTableChip({
     >
       <span aria-hidden>⠿</span> Новый стол — перетащите на план
     </button>
+  );
+}
+
+/**
+ * Что тянут с кнопки «Новый стол»: сразу настоящий размер и форма стола
+ * в масштабе плана, центром под курсором — там, где он и встанет.
+ */
+function NewTableGhost({
+  payload, scale,
+}: {
+  payload: Extract<DragPayload, { type: "new-table" }>;
+  scale: number;
+}) {
+  const size = tableSize({ shape: payload.shape, capacity: payload.capacity });
+  const round = isRound(payload.shape);
+  return (
+    <div
+      className={`drag-lift flex flex-col items-center justify-center border-2 border-dashed border-stone-500 bg-stone-50/90 shadow-xl backdrop-blur-sm ${
+        round ? "rounded-full" : "rounded-lg"
+      }`}
+      style={{ width: size.width * scale, height: size.height * scale }}
+    >
+      <span className="max-w-full truncate px-1 text-xs font-semibold text-stone-700">{payload.label || "Новый стол"}</span>
+      <span className="text-[10px] text-stone-500">{payload.capacity} мест</span>
+    </div>
   );
 }
 
@@ -650,15 +847,9 @@ export function SeatingEditor({
       const table = seating.tables.find((t) => t.id === payload.tableId);
       if (!table || !rect) return;
 
-      // delta приходит в пикселях экрана — переводим в единицы плана.
-      const next = clampToPlan(
-        table,
-        {
-          x: snap(table.x + (event.delta.x / rect.width) * seating.hall.width),
-          y: snap(table.y + (event.delta.y / rect.height) * seating.hall.height),
-        },
-        seating.hall,
-      );
+      // delta приходит в пикселях экрана — та же функция, что рисует
+      // контур под столом, переводит её в точку на плане.
+      const next = landingPoint(table, event.delta, rect.width / seating.hall.width, seating.hall, seating.tables).point;
       if (next.x === table.x && next.y === table.y) return;
       seating.moveTable(table.id, next.x, next.y);
       return;
@@ -755,6 +946,7 @@ export function SeatingEditor({
       // идентификаторы сквозным счётчиком, и сервер с клиентом расходятся.
       id="seating"
       sensors={sensors}
+      measuring={MEASURING}
       // Попадание по КУРСОРУ, а не по габаритам карточки: широкая карточка
       // с именем перекрывает сразу несколько мест.
       collisionDetection={pointerWithin}
@@ -848,8 +1040,11 @@ export function SeatingEditor({
                     <TableShape
                       key={table.id}
                       table={table}
+                      tables={tables}
                       hall={hall}
+                      scale={scale}
                       compact={overview}
+                      animate={!resize}
                       selected={selected}
                       editing={editingTableId === table.id}
                       onSelect={select}
@@ -996,17 +1191,13 @@ export function SeatingEditor({
         />
       )}
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={null} modifiers={dragging?.type === "new-table" ? [snapCenterToCursor] : undefined}>
         {dragging?.type === "guest" && (
-          <div className="rounded-lg border border-stone-400 bg-white px-3 py-1.5 text-sm shadow-lg">
+          <div className="drag-lift rounded-lg border border-stone-400 bg-white px-3 py-1.5 text-sm shadow-lg">
             {dragging.guest.displayName}
           </div>
         )}
-        {dragging?.type === "new-table" && (
-          <div className="rounded-lg border-2 border-dashed border-stone-500 bg-stone-50 px-3 py-1.5 text-sm font-medium shadow-lg">
-            {dragging.label || "Новый стол"}
-          </div>
-        )}
+        {dragging?.type === "new-table" && <NewTableGhost payload={dragging} scale={scale} />}
       </DragOverlay>
     </DndContext>
   );

@@ -12,9 +12,28 @@
  * не помещаются в ряд, и открыв «Настройки», человек видел ленту,
  * отмотанную в начало, — без единого признака, что он вообще где-то.
  */
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+
+/**
+ * Нажатую вкладку видно сразу, пока раздел ещё грузится: под ней бежит
+ * полоска. Без неё на медленной связи казалось, что нажатие не прошло,
+ * и по вкладке стучали ещё раз.
+ */
+function PendingBar() {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden
+      className={`absolute inset-x-2 bottom-0 h-0.5 overflow-hidden rounded-full transition-opacity duration-150 ${
+        pending ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <span className={`skeleton block h-full w-full ${pending ? "" : "hidden"}`} style={{ backgroundColor: "var(--color-stone-400)" }} />
+    </span>
+  );
+}
 
 export function EventTabs({ eventId }: { eventId: string }) {
   const pathname = usePathname();
@@ -108,6 +127,7 @@ export function EventTabs({ eventId }: { eventId: string }) {
                 }`}
                 style={{ transitionTimingFunction: "var(--ease-soft)" }}
               />
+              <PendingBar />
             </Link>
           );
         })}
