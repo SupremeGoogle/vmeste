@@ -29,6 +29,9 @@ import { PROMISE_SCRIPT } from "@/server/guest-html/promise/script";
 import { renderEvergreenBlocks } from "@/server/guest-html/evergreen/markup";
 import { EVERGREEN_SCRIPT } from "@/server/guest-html/evergreen/script";
 import { renderTiliBlocks, type TiliRsvp } from "@/server/guest-html/tili/markup";
+import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
+
+const NO_EDIT = editAttrs("", false);
 import { TILI_CSS, TILI_FONTS_LINK } from "@/server/guest-html/tili/style";
 import { TILI_HEAD_SCRIPT, TILI_SCRIPT } from "@/server/guest-html/tili/script";
 
@@ -176,51 +179,52 @@ ${TILI_FONTS_LINK}
 }
 
 /** Пользовательский текст: переносы строк сохраняем, разметку — нет. */
-function paragraphs(text: string, className = ""): string {
-  if (!text.trim()) return "";
-  return `<p class="pre center ${className}">${esc(text)}</p>`;
+function paragraphs(text: string, className = "", attrs = ""): string {
+  // В редакторе пустой абзац всё равно рисуется: иначе его нечем заполнить.
+  if (!text.trim() && !attrs) return "";
+  return `<p class="pre center ${className}"${attrs}>${esc(text)}</p>`;
 }
 
-function cover(content: BlockContentMap["COVER"]): string {
+function cover(content: BlockContentMap["COVER"], e: EditAttrs = NO_EDIT): string {
   return `<section class="cover">
-${content.imageUrl ? `<img src="${esc(content.imageUrl)}" alt="">` : ""}
-${content.names ? `<p class="names">${esc(content.names)}</p>` : ""}
-<h1>${esc(content.title)}</h1>
-${content.dateText ? `<p class="date">${esc(content.dateText)}</p>` : ""}
-${paragraphs(content.subtitle, "muted")}
+${content.imageUrl ? `<img src="${esc(content.imageUrl)}" alt=""${e.image("imageUrl")}>` : ""}
+${content.names || e.enabled ? `<p class="names"${e.text("names")}>${esc(content.names)}</p>` : ""}
+<h1${e.text("title")}>${esc(content.title)}</h1>
+${content.dateText || e.enabled ? `<p class="date"${e.text("dateText")}>${esc(content.dateText)}</p>` : ""}
+${paragraphs(content.subtitle, "muted", e.text("subtitle", { multiline: true }))}
 </section>`;
 }
 
-function timeline(content: BlockContentMap["TIMELINE"], theme: InviteTheme): string {
+function timeline(content: BlockContentMap["TIMELINE"], theme: InviteTheme, e: EditAttrs = NO_EDIT): string {
   const items = content.items
-    .map((item) => {
+    .map((item, index) => {
       // Значок подбирается по смыслу подписи. Не угадали — значка нет,
       // и это лучше, чем блюдо напротив церемонии.
       const icon = theme.timelineIcons ? timelineIcon(item.title, theme.accent) : "";
-      return `<li>${icon}<time>${esc(item.time)}</time><span class="what">${esc(item.title)}
-${item.note ? `<span class="note">${esc(item.note)}</span>` : ""}</span></li>`;
+      return `<li>${icon}<time${e.text(`items.${index}.time`)}>${esc(item.time)}</time><span class="what"><span${e.text(`items.${index}.title`)}>${esc(item.title)}</span>
+${item.note || e.enabled ? `<span class="note"${e.text(`items.${index}.note`)}>${esc(item.note)}</span>` : ""}</span></li>`;
     })
     .join("");
-  return `<section><h2>${esc(content.title)}</h2><ul class="timeline">${items}</ul></section>`;
+  return `<section><h2${e.text("title")}>${esc(content.title)}</h2><ul class="timeline">${items}</ul></section>`;
 }
 
-function venue(content: BlockContentMap["VENUE"]): string {
-  return `<section><h2>${esc(content.title)}</h2>
-${content.name ? `<p class="center">${esc(content.name)}</p>` : ""}
-${paragraphs(content.address, "small muted")}
-${paragraphs(content.note, "small")}
+function venue(content: BlockContentMap["VENUE"], e: EditAttrs = NO_EDIT): string {
+  return `<section><h2${e.text("title")}>${esc(content.title)}</h2>
+${content.name || e.enabled ? `<p class="center"${e.text("name")}>${esc(content.name)}</p>` : ""}
+${paragraphs(content.address, "small muted", e.text("address", { multiline: true }))}
+${paragraphs(content.note, "small", e.text("note", { multiline: true }))}
 </section>`;
 }
 
-function dresscode(content: BlockContentMap["DRESSCODE"]): string {
+function dresscode(content: BlockContentMap["DRESSCODE"], e: EditAttrs = NO_EDIT): string {
   const swatches = content.palette
-    .map((color) => `<span class="swatch" style="background:${esc(color)}"></span>`)
+    .map((color, index) => `<span class="swatch" style="background:${esc(color)}" data-color="${esc(color)}"${e.color(`palette.${index}`)}></span>`)
     .join("");
-  return `<section><h2>${esc(content.title)}</h2>${paragraphs(content.text)}
+  return `<section><h2${e.text("title")}>${esc(content.title)}</h2>${paragraphs(content.text, "", e.text("text", { multiline: true }))}
 ${swatches ? `<div class="palette">${swatches}</div>` : ""}</section>`;
 }
 
-function mapBlock(content: BlockContentMap["MAP"]): string {
+function mapBlock(content: BlockContentMap["MAP"], e: EditAttrs = NO_EDIT): string {
   const links = [
     { url: content.yandexUrl, label: "Яндекс Карты" },
     { url: content.googleUrl, label: "Google Maps" },
@@ -232,31 +236,34 @@ function mapBlock(content: BlockContentMap["MAP"]): string {
     )
     .join("");
 
-  return `<section><h2>${esc(content.title)}</h2>${paragraphs(content.note, "small")}
-${links ? `<div class="links">${links}</div>` : ""}</section>`;
+  return `<section><h2${e.text("title")}>${esc(content.title)}</h2>${paragraphs(content.note, "small", e.text("note", { multiline: true }))}
+${links ? `<div class="links">${links}</div>` : ""}${e.enabled ? `<p class="center">${e.link("yandexUrl", content.yandexUrl)} ${e.link("googleUrl", content.googleUrl)}</p>` : ""}</section>`;
 }
 
-function textBlock(content: BlockContentMap["TEXT"]): string {
-  return `<section>${content.title ? `<h2>${esc(content.title)}</h2>` : ""}
-${paragraphs(content.text)}</section>`;
+function textBlock(content: BlockContentMap["TEXT"], e: EditAttrs = NO_EDIT): string {
+  return `<section>${content.title || e.enabled ? `<h2${e.text("title")}>${esc(content.title)}</h2>` : ""}
+${paragraphs(content.text, "", e.text("text", { multiline: true }))}</section>`;
 }
 
 /** Галерея-полароид: детские фотографии под обложкой, снимки пары ниже —
  *  один и тот же блок, поставленный дважды с разным содержимым. */
-function photos(content: BlockContentMap["PHOTOS"]): string {
-  const items = content.items.filter((item) => item.imageUrl || item.caption);
+function photos(content: BlockContentMap["PHOTOS"], e: EditAttrs = NO_EDIT): string {
+  // Номер пункта — по исходному списку: по нему редактор знает, что сохранять.
+  const items = content.items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => e.enabled || item.imageUrl || item.caption);
   if (items.length === 0) return "";
 
   const cards = items
     .map(
-      (item, index) => `<figure class="polaroid p${(index % 2) + 1}">
-${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt="">` : `<span class="polaroid-empty"></span>`}
-${item.caption ? `<figcaption>${esc(item.caption)}</figcaption>` : ""}
+      ({ item, index }) => `<figure class="polaroid p${(index % 2) + 1}">
+${item.imageUrl ? `<img src="${esc(item.imageUrl)}" alt=""${e.image(`items.${index}.imageUrl`)}>` : `<span class="polaroid-empty"${e.image(`items.${index}.imageUrl`)}></span>`}
+${item.caption || e.enabled ? `<figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption>` : ""}
 </figure>`,
     )
     .join("");
 
-  return `<section class="center">${content.title ? `<h2>${esc(content.title)}</h2>` : ""}
+  return `<section class="center">${content.title || e.enabled ? `<h2${e.text("title")}>${esc(content.title)}</h2>` : ""}
 <div class="polaroids">${cards}</div></section>`;
 }
 
@@ -284,7 +291,7 @@ function eventDateParts(date: Date, timezone: string) {
  * Дата — из мероприятия, не из блока (см. схему в `lib/invite-blocks.ts`):
  * те же соображения, что и у отсчёта.
  */
-function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, timezone: string): string {
+function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, timezone: string, e: EditAttrs = NO_EDIT): string {
   const { day, month, year } = eventDateParts(eventDate, timezone);
   const monthName = MONTHS_NOMINATIVE[month - 1];
   const label = monthName.charAt(0).toUpperCase() + monthName.slice(1);
@@ -306,27 +313,30 @@ function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, ti
 
   const big = `${String(day).padStart(2, "0")} / ${String(month).padStart(2, "0")} / ${String(year).slice(-2)}`;
 
-  return `<section class="center"><h2>${esc(content.title)}</h2>
+  return `<section class="center"><h2${e.text("title")}>${esc(content.title)}</h2>
 <div class="cal-card"><p class="cal-month">${esc(label)} ${year}</p>
 <div class="cal-grid">${weekdayNames}${cells.join("")}</div></div>
 <p class="big-date">${esc(big)}</p>
-${paragraphs(content.message, "small muted")}</section>`;
+${paragraphs(content.message, "small muted", e.text("message", { multiline: true }))}</section>`;
 }
 
 function rsvpCall(
   content: BlockContentMap["RSVP_FORM"],
   href: string | null,
   answered: string | null,
+  e: EditAttrs = NO_EDIT,
 ): string {
   const action = answered
     ? `<p class="center" style="margin-top:1.25rem">Ваш ответ: <b>${esc(answered)}</b>${
         href ? ` · <a href="${esc(href)}">изменить</a>` : ""
       }</p>`
     : href
-      ? `<p class="center"><a class="cta" href="${esc(href)}">${esc(content.buttonLabel)}</a></p>`
-      : `<p class="center small muted" style="margin-top:1.25rem">Ответить можно по именной ссылке из приглашения.</p>`;
+      ? `<p class="center"><a class="cta" href="${esc(href)}"${e.text("buttonLabel")}>${esc(content.buttonLabel)}</a></p>`
+      : e.enabled
+        ? `<p class="center"><span class="cta"${e.text("buttonLabel")}>${esc(content.buttonLabel)}</span></p>`
+        : `<p class="center small muted" style="margin-top:1.25rem">Ответить можно по именной ссылке из приглашения.</p>`;
 
-  return `<section><h2>${esc(content.title)}</h2>${paragraphs(content.text)}${action}</section>`;
+  return `<section><h2${e.text("title")}>${esc(content.title)}</h2>${paragraphs(content.text, "", e.text("text", { multiline: true }))}${action}</section>`;
 }
 
 /**
@@ -347,12 +357,12 @@ function rsvpCall(
  * Дата берётся у мероприятия, а не из блока: две даты в двух местах
  * разойдутся ровно в тот день, когда это важно.
  */
-function countdown(content: BlockContentMap["COUNTDOWN"], eventDate: Date): string {
+function countdown(content: BlockContentMap["COUNTDOWN"], eventDate: Date, e: EditAttrs = NO_EDIT): string {
   const left = eventDate.getTime() - Date.now();
 
   if (left <= 0) {
-    return `<section class="center"><h2>${esc(content.title)}</h2>
-<p class="pre">${esc(content.doneText)}</p></section>`;
+    return `<section class="center"><h2${e.text("title")}>${esc(content.title)}</h2>
+<p class="pre"${e.text("doneText")}>${esc(content.doneText)}</p></section>`;
   }
 
   const minutes = Math.floor(left / 60000);
@@ -376,7 +386,7 @@ function countdown(content: BlockContentMap["COUNTDOWN"], eventDate: Date): stri
     )
     .join("");
 
-  return `<section class="center"><h2>${esc(content.title)}</h2>
+  return `<section class="center"><h2${e.text("title")}>${esc(content.title)}</h2>
 <div class="countdown" data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div></section>`;
 }
 
@@ -476,44 +486,51 @@ export function renderBlocks(
   }
   if (theme.template === "promise") {
     return renderPromiseBlocks(blocks, theme, eventDate, timezone, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      editable,
     );
   }
   if (theme.template === "story") {
     return renderStoryBlocks(blocks, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone),
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      editable,
     );
   }
   return blocks
     .map((block) => {
-      switch (block.type) {
-        case "COUNTDOWN":
-          // Без даты мероприятия считать нечего — так бывает только в
-          // тестах рендерера, которым блок отдают в одиночку.
-          return eventDate
-            ? countdown(block.content as BlockContentMap["COUNTDOWN"], eventDate)
-            : "";
-        case "CALENDAR":
-          return eventDate
-            ? calendarBlock(block.content as BlockContentMap["CALENDAR"], eventDate, timezone)
-            : "";
-        case "COVER":
-          return cover(block.content as BlockContentMap["COVER"]);
-        case "PHOTOS":
-          return photos(block.content as BlockContentMap["PHOTOS"]);
-        case "TIMELINE":
-          return timeline(block.content as BlockContentMap["TIMELINE"], theme);
-        case "VENUE":
-          return venue(block.content as BlockContentMap["VENUE"]);
-        case "DRESSCODE":
-          return dresscode(block.content as BlockContentMap["DRESSCODE"]);
-        case "MAP":
-          return mapBlock(block.content as BlockContentMap["MAP"]);
-        case "TEXT":
-          return textBlock(block.content as BlockContentMap["TEXT"]);
-        case "RSVP_FORM":
-          return rsvpCall(block.content as BlockContentMap["RSVP_FORM"], rsvpHref, answered);
-      }
+      const e = editAttrs(block.id, editable);
+      const html = (() => {
+        switch (block.type) {
+          case "COUNTDOWN":
+            // Без даты мероприятия считать нечего — так бывает только в
+            // тестах рендерера, которым блок отдают в одиночку.
+            return eventDate
+              ? countdown(block.content as BlockContentMap["COUNTDOWN"], eventDate, e)
+              : "";
+          case "CALENDAR":
+            return eventDate
+              ? calendarBlock(block.content as BlockContentMap["CALENDAR"], eventDate, timezone, e)
+              : "";
+          case "COVER":
+            return cover(block.content as BlockContentMap["COVER"], e);
+          case "PHOTOS":
+            return photos(block.content as BlockContentMap["PHOTOS"], e);
+          case "TIMELINE":
+            return timeline(block.content as BlockContentMap["TIMELINE"], theme, e);
+          case "VENUE":
+            return venue(block.content as BlockContentMap["VENUE"], e);
+          case "DRESSCODE":
+            return dresscode(block.content as BlockContentMap["DRESSCODE"], e);
+          case "MAP":
+            return mapBlock(block.content as BlockContentMap["MAP"], e);
+          case "TEXT":
+            return textBlock(block.content as BlockContentMap["TEXT"], e);
+          case "RSVP_FORM":
+            return rsvpCall(block.content as BlockContentMap["RSVP_FORM"], rsvpHref, answered, e);
+        }
+      })();
+      // В редакторе раздел получает признак и панель «вверх / вниз / скрыть».
+      return editable && html ? html.replace(/<section([^>]*)>/, `<section$1${e.section()}>${e.tools()}`) : html;
     })
     .join("");
 }

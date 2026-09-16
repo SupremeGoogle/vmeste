@@ -7,6 +7,7 @@
  * с первой на первой же правке.
  */
 import type { InviteBlockView } from "@/server/repositories/invites";
+import { editAttrs } from "@/server/guest-html/inline-editor";
 
 /** Гирлянда флажков над обложкой. Девять — как в образце. */
 function bunting(): string {
@@ -20,14 +21,15 @@ function bunting(): string {
  * шаблон не должен диктовать чужую считалку — поле правится в редакторе
  * и, если его очистить, строки просто не будет.
  */
-function rhyme(title: string): string {
+function rhyme(title: string, attrs = ""): string {
   const clean = title.trim();
-  return clean ? `<p class="story-rhyme">${clean}</p>` : "";
+  return clean || attrs ? `<p class="story-rhyme"${attrs}>${clean}</p>` : "";
 }
 
 export function renderStoryBlocks(
   blocks: InviteBlockView[],
   standard: (block: InviteBlockView) => string,
+  editable = false,
 ): string {
   return blocks
     .map((block) => {
@@ -40,8 +42,8 @@ export function renderStoryBlocks(
       // Обычная обложка печатает заголовок как <h1>. Здесь этот же текст
       // уже стоит присказкой над гирляндой, и оставить оба значило бы
       // показать его дважды — вырезаем исходный заголовок.
-      const withoutHeading = html.replace(/<h1>[\s\S]*?<\/h1>\n?/, "");
-      return `${bunting()}${rhyme(title)}${withoutHeading}`;
+      const withoutHeading = html.replace(/<h1[^>]*>[\s\S]*?<\/h1>\n?/, "");
+      return `${bunting()}${rhyme(title, editAttrs(block.id, editable).text("title"))}${withoutHeading}`;
     })
     .join("");
 }

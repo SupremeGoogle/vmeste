@@ -2,6 +2,7 @@ import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
+import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
 
 const BACKDROP = "/media/invite-promise/garden.webp";
 
@@ -16,7 +17,7 @@ function namesMarkup(names: string): string {
   return `<span>${esc(parts[0])}</span><span class="promise-amp" aria-label="и">&amp;</span><span>${esc(parts[1])}</span>`;
 }
 
-function cover(content: BlockContentMap["COVER"], theme: InviteTheme, date?: Date, timezone = "UTC"): string {
+function cover(content: BlockContentMap["COVER"], theme: InviteTheme, date: Date | undefined, timezone: string, e: EditAttrs): string {
   const dateText = content.dateText || (date ? new Intl.DateTimeFormat("ru-RU", {
     day: "numeric", month: "long", year: "numeric", timeZone: timezone,
   }).format(date).replace(/\s*г\.$/, "") : "");
@@ -24,23 +25,23 @@ function cover(content: BlockContentMap["COVER"], theme: InviteTheme, date?: Dat
   return `<section class="cover promise-cover${photo ? " promise-with-photo" : ""}${theme.cover === "frame" ? " promise-framed" : ""}">
 <div class="promise-scene" aria-hidden="true"></div>
 <div class="promise-petals" aria-hidden="true">${"<i></i>".repeat(6)}</div>
-${photo ? `<div class="promise-portrait"><img src="${esc(content.imageUrl)}" alt="" fetchpriority="high" decoding="async"></div>` : ""}
+${photo ? `<div class="promise-portrait"><img src="${esc(content.imageUrl)}" alt="" fetchpriority="high" decoding="async"${e.image("imageUrl")}></div>` : ""}
 <div class="promise-cover-copy">
-${content.title ? `<p class="promise-kicker">${esc(content.title)}</p>` : ""}
-<h1 class="promise-names">${namesMarkup(content.names)}</h1>
-${content.subtitle ? `<p class="promise-subtitle pre">${esc(content.subtitle)}</p>` : ""}
-${dateText ? `<p class="promise-date">${esc(dateText)}</p>` : ""}
+${content.title || e.enabled ? `<p class="promise-kicker"${e.text("title")}>${esc(content.title)}</p>` : ""}
+<h1 class="promise-names"${e.text("names", { join: " и " })}>${namesMarkup(content.names)}</h1>
+${content.subtitle || e.enabled ? `<p class="promise-subtitle pre"${e.text("subtitle", { multiline: true })}>${esc(content.subtitle)}</p>` : ""}
+${dateText || e.enabled ? `<p class="promise-date"${e.text("dateText")}>${esc(dateText)}</p>` : ""}
 ${promiseSprig()}
 </div></section>`;
 }
 
-function photos(content: BlockContentMap["PHOTOS"]): string {
-  const items = content.items.filter(item => item.imageUrl || item.caption);
+function photos(content: BlockContentMap["PHOTOS"], e: EditAttrs): string {
+  const items = content.items.map((item, index) => ({ item, index })).filter(({ item }) => e.enabled || item.imageUrl || item.caption);
   if (!items.length) return "";
-  return `<section class="promise-gallery"><div class="promise-gallery-heading">${content.title ? `<h2>${esc(content.title)}</h2>` : ""}</div>
-<div class="promise-photos${items.length === 1 ? " promise-single" : ""}">${items.map(item => `<figure>
-<div class="promise-photo-window"><img src="${esc(item.imageUrl || BACKDROP)}" alt="" loading="lazy" decoding="async" width="600" height="750"></div>
-${item.caption ? `<figcaption>${esc(item.caption)}</figcaption>` : ""}</figure>`).join("")}</div></section>`;
+  return `<section class="promise-gallery"><div class="promise-gallery-heading">${content.title || e.enabled ? `<h2${e.text("title")}>${esc(content.title)}</h2>` : ""}</div>
+<div class="promise-photos${items.length === 1 ? " promise-single" : ""}">${items.map(({ item, index }) => `<figure>
+<div class="promise-photo-window"><img src="${esc(item.imageUrl || BACKDROP)}" alt="" loading="lazy" decoding="async" width="600" height="750"${e.image(`items.${index}.imageUrl`)}></div>
+${item.caption || e.enabled ? `<figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption>` : ""}</figure>`).join("")}</div></section>`;
 }
 
 /** Reuse the standard renderer for functional blocks (RSVP, maps, calendar, etc.). */
@@ -50,14 +51,19 @@ export function renderPromiseBlocks(
   date: Date | undefined,
   timezone: string,
   standard: (block: InviteBlockView) => string,
+  editable = false,
 ): string {
   return blocks.map((block, index) => {
+    const e = editAttrs(block.id, editable);
+    const own = block.type === "COVER" || block.type === "PHOTOS";
     let html = block.type === "COVER"
-      ? cover(block.content as BlockContentMap["COVER"], theme, date, timezone)
+      ? cover(block.content as BlockContentMap["COVER"], theme, date, timezone, e)
       : block.type === "PHOTOS"
-        ? photos(block.content as BlockContentMap["PHOTOS"])
+        ? photos(block.content as BlockContentMap["PHOTOS"], e)
         : standard(block);
     if (!html) return "";
+    // Свои разделы получают признак и панель здесь; остальные — в общем рендерере.
+    if (own && editable) html = html.replace(/<section([^>]*)>/, `<section$1${e.section()}>${e.tools()}`);
     const closing = index === blocks.length - 1 && block.type === "TEXT";
     html = html.replace("<section", `<section data-promise-block="${block.type}"${closing ? ' data-promise-closing="true"' : ""}`);
     if (closing) html = html.replace(/(<section[^>]*>)/, `$1${promiseSprig()}`);

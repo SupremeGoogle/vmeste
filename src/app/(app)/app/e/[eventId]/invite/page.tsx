@@ -32,8 +32,10 @@ import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
   addBlock, appendTimelineItem, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
-  moveBlock, setBlockVisible, updateBlockContent, updateInlineBlockField,
+  moveBlock, saveTheme, setBlockVisible, updateBlockContent, updateInlineBlockField,
 } from "@/server/repositories/invites";
+import { findTemplate } from "@/lib/invite-templates";
+import { inviteThemeSchema } from "@/lib/invite-theme";
 import { blockContentFromForm } from "@/server/services/invite-forms";
 import { TemplatePicker } from "@/components/invite/template-picker";
 import { InvitePreview } from "@/components/invite/preview";
@@ -41,8 +43,8 @@ import { ConfirmButton } from "@/components/invite/confirm-button";
 import { BLOCK_LABELS, BLOCK_ORDER } from "@/lib/invite-blocks";
 import type { BlockType } from "@/generated/prisma/enums";
 import { BlockFields } from "@/components/invite/block-form";
-import { listAssets } from "@/server/services/assets";
-import { VisualInviteEditor } from "@/components/invite/visual-invite-editor";
+import { listAssets, listAudioAssets } from "@/server/services/assets";
+import { VisualInviteEditor, type BlockAction } from "@/components/invite/visual-invite-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +60,11 @@ export default async function InvitePage({ params, searchParams }: Props) {
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
   const eventSlug = event.slug;
-  const [blocks, theme, assets] = await Promise.all([
+  const [blocks, theme, assets, audio] = await Promise.all([
     listBlocks(ctx),
     getTheme(ctx),
     listAssets(ctx),
+    listAudioAssets(ctx),
   ]);
 
   /** Сброс кеша приглашения по обоим тегам: именная страница помечена id,
@@ -151,16 +154,30 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return result;
   }
 
-  async function visualBlockAction(input: { blockId: string; action: "up" | "down" | "hide" | "add-detail" }) {
+  async function visualBlockAction(input: { blockId: string; action: BlockAction }) {
     "use server";
     const ctx = await requireEventContext(eventId);
     if (input.action === "up") await moveBlock(ctx, input.blockId, -1);
     else if (input.action === "down") await moveBlock(ctx, input.blockId, 1);
     else if (input.action === "hide") await setBlockVisible(ctx, input.blockId, false);
+    else if (input.action === "show") await setBlockVisible(ctx, input.blockId, true);
     else {
       const result = await appendTimelineItem(ctx, input.blockId);
       if (!result.ok) return result;
     }
+    updateTag(eventTag(eventId));
+    updateTag(inviteSlugTag(eventSlug));
+    return { ok: true } as const;
+  }
+
+  /** Музыка приглашения хранится в теме: проверка адреса — схемой темы. */
+  async function saveMusic(url: string) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const current = await getTheme(ctx);
+    const parsed = inviteThemeSchema.safeParse({ ...current, musicUrl: url });
+    if (!parsed.success) return { ok: false, message: "Этот файл нельзя поставить музыкой" } as const;
+    await saveTheme(ctx, parsed.data);
     updateTag(eventTag(eventId));
     updateTag(inviteSlugTag(eventSlug));
     return { ok: true } as const;
@@ -235,13 +252,14 @@ export default async function InvitePage({ params, searchParams }: Props) {
     );
   }
 
-  if (theme.template === "evergreen" && edit !== "classic") {
+  // Визуальный редактор — для любого шаблона; формы остаются за «Разделы и поля».
+  if (edit !== "classic") {
     return (
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <a href={`/app/e/${eventId}/invite`} className="text-sm text-stone-500 hover:text-stone-900">← Все шаблоны</a>
-            <h1 className="mt-1 text-xl text-stone-900">Эвергрин</h1>
+            <h1 className="mt-1 text-xl text-stone-900">{findTemplate(theme.template)?.name ?? "Приглашение"}</h1>
             <p className="mt-1 text-sm text-stone-500">Нажмите прямо на текст или фотографию внутри приглашения.</p>
           </div>
           <form action={publish}>
@@ -255,12 +273,17 @@ export default async function InvitePage({ params, searchParams }: Props) {
         {error ? <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
         <VisualInviteEditor
           eventId={eventId}
+          template={theme.template}
           canvasSrc={`/app/e/${eventId}/invite/canvas`}
           publicHref={publicHref}
           advancedHref={`/app/e/${eventId}/invite?edit=classic`}
           assets={assets}
+          audio={audio}
+          musicUrl={theme.musicUrl}
+          hidden={blocks.filter((block) => !block.visible).map((block) => ({ id: block.id, label: BLOCK_LABELS[block.type] }))}
           saveField={saveInline}
           blockAction={visualBlockAction}
+          saveMusic={saveMusic}
         />
       </main>
     );

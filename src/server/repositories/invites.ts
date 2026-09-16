@@ -87,15 +87,15 @@ export async function updateBlockContent(
 }
 
 const INLINE_FIELDS: Record<BlockType, RegExp> = {
-  COVER: /^(title|names|dateText|subtitle|imageUrl)$/,
-  TEXT: /^(title|text)$/,
+  COVER: /^(title|names|dateText|subtitle|imageUrl|footer|photos\.[01]\.(?:imageUrl|caption))$/,
+  TEXT: /^(tag|title|text)$/,
   PHOTOS: /^(title|items\.(?:0|1|2|3)\.(?:imageUrl|caption))$/,
-  VENUE: /^(title|name|address|note)$/,
-  TIMELINE: /^(title|items\.(?:[0-9]|[12][0-9])\.(?:time|title|note))$/,
-  DRESSCODE: /^(title|text)$/,
-  RSVP_FORM: /^(title|text|buttonLabel)$/,
-  MAP: /^(title|note)$/,
-  CALENDAR: /^(title|message)$/,
+  VENUE: /^(tag|title|name|address|note|imageUrl|mapUrl|mapLabel)$/,
+  TIMELINE: /^(title|items\.(?:[0-9]|[12][0-9])\.(?:time|title|note|icon))$/,
+  DRESSCODE: /^(tag|title|text|imageUrl|palette\.[0-7])$/,
+  RSVP_FORM: /^(tag|title|text|buttonLabel|nameLabel|attendanceLabel|yesLabel|noLabel|drinksLabel|musicLabel|musicPlaceholder|successText)$/,
+  MAP: /^(title|note|yandexUrl|googleUrl)$/,
+  CALENDAR: /^(tag|title|message)$/,
   COUNTDOWN: /^(title|doneText)$/,
 };
 
@@ -119,7 +119,15 @@ export async function updateInlineBlockField(
   let cursor: Record<string, unknown> | unknown[] = next;
   for (let index = 0; index < parts.length - 1; index += 1) {
     const key = parts[index];
-    const child = Array.isArray(cursor) ? cursor[Number(key)] : cursor[key];
+    let child = Array.isArray(cursor) ? cursor[Number(key)] : cursor[key];
+    // Пустой слот фотографии (второй полароид, которого ещё нет) редактор
+    // показывает, и заполнить его должно быть можно: создаём запись, а
+    // значения по умолчанию дольёт схема. Дырявых массивов не бывает —
+    // только следующий по счёту элемент.
+    if (child === undefined && Array.isArray(cursor) && Number(key) === cursor.length) {
+      child = {};
+      cursor.push(child);
+    }
     if (!child || typeof child !== "object") return { ok: false, message: "Поле больше не существует" };
     cursor = child as Record<string, unknown> | unknown[];
   }
