@@ -183,6 +183,7 @@ model Event {
   assets       EventAsset[]
   guests       Guest[]
   mealOptions  MealOption[]
+  drinkOptions DrinkOption[]
   tables       SeatTable[]
   seats        Seat[]
   photos       Photo[]
@@ -299,6 +300,39 @@ model MealOption {
   @@map("meal_options")
 }
 
+/// Напиток в баре. Устроен как блюдо: не удаляется, а выключается.
+model DrinkOption {
+  id      String  @id @default(cuid())
+  orgId   String
+  eventId String
+  title   String
+  order   Int
+  active  Boolean @default(true)
+
+  event   Event        @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  choices GuestDrink[]
+
+  @@unique([eventId, id])
+  @@index([eventId])
+  @@map("drink_options")
+}
+
+/// Что гость будет пить. В отличие от блюда, напитков можно отметить
+/// несколько: вино за ужином и шампанское на тост — обычное дело.
+model GuestDrink {
+  orgId         String
+  eventId       String
+  guestId       String
+  drinkOptionId String
+
+  guest Guest       @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Cascade)
+  drink DrinkOption @relation(fields: [eventId, drinkOptionId], references: [eventId, id], onDelete: Restrict)
+
+  @@id([guestId, drinkOptionId])
+  @@index([eventId, drinkOptionId])
+  @@map("guest_drinks")
+}
+
 model Guest {
   id      String @id @default(cuid())
   orgId   String
@@ -339,6 +373,7 @@ model Guest {
   photos        Photo[]
   wishes        Wish[]
   aliases       GuestAlias[]
+  drinks        GuestDrink[]
   raffleEntries RaffleEntry[]
 
   @@unique([eventId, id])

@@ -156,6 +156,19 @@ export default async function EventDashboard({
               </span>
             ))}
           </p>
+          {rsvp.drinks.length > 0 ? (
+            <>
+              <p className="mt-3 font-medium">В бар</p>
+              <p className="mt-1 text-stone-600">
+                {rsvp.drinks.map((drink, i) => (
+                  <span key={drink.id} className="inline-block whitespace-nowrap">
+                    {i > 0 && <span className="mx-1.5 text-stone-300">·</span>}
+                    {drink.title}: {drink.count}
+                  </span>
+                ))}
+              </p>
+            </>
+          ) : null}
           <p className="mt-1 text-xs text-stone-400">
             Всего гостей в списке: {guests.total}, из них спутников: {rsvp.plusOnes}
           </p>

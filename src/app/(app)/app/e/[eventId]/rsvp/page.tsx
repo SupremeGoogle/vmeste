@@ -74,6 +74,14 @@ export default async function RsvpSummaryPage({
           <p className="mt-1">
             {summary.meals.map((meal) => `${meal.title}: ${meal.count}`).join(" · ")}
           </p>
+          {summary.drinks.length > 0 ? (
+            <>
+              <p className="mt-3 font-medium text-stone-900">В бар</p>
+              <p className="mt-1">
+                {summary.drinks.map((drink) => `${drink.title}: ${drink.count}`).join(" · ")}
+              </p>
+            </>
+          ) : null}
           <p className="mt-1 text-stone-500">Из них спутников (+1): {summary.plusOnes}</p>
         </div>
 
@@ -112,6 +120,7 @@ export default async function RsvpSummaryPage({
             <th className="py-2 font-normal">Гость</th>
             <th className="py-2 font-normal">Ответ</th>
             <th className="py-2 font-normal">Блюдо</th>
+            <th className="py-2 font-normal">Напитки</th>
             <th className="py-2 font-normal">Комментарий</th>
             <th className="py-2 font-normal">Ссылка</th>
           </tr>
@@ -142,6 +151,9 @@ export default async function RsvpSummaryPage({
                 </form>
               </td>
               <td className="py-2 text-stone-600">{guest.mealOption?.title ?? "—"}</td>
+              <td className="py-2 text-stone-600">
+                {guest.drinks.map((row) => row.drink.title).join(", ") || "—"}
+              </td>
               <td className="py-2 text-stone-600">
                 {guest.comment ? (
                   <span className="block text-stone-500">{guest.comment}</span>

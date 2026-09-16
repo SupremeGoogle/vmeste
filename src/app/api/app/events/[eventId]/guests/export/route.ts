@@ -32,6 +32,10 @@ export async function GET(
       comment: true, note: true, linkToken: true, linkOpenedAt: true,
       parentGuestId: true,
       mealOption: { select: { title: true } },
+      drinks: {
+        select: { drink: { select: { title: true } } },
+        orderBy: { drink: { order: "asc" } },
+      },
       parentGuest: { select: { displayName: true } },
       seat: { select: { index: true, table: { select: { label: true } } } },
     },
@@ -45,7 +49,7 @@ export async function GET(
 
   const csv = toCsv(
     [
-      "Гость", "Ответ", "Когда ответил", "Блюдо",
+      "Гость", "Ответ", "Когда ответил", "Блюдо", "Напитки",
       "Комментарий", "Спутник кого", "Стол", "Место", "Телефон", "Почта",
       "Заметка", "Ссылка открыта", "Именная ссылка",
     ],
@@ -54,6 +58,7 @@ export async function GET(
       RSVP[guest.rsvpStatus],
       guest.rsvpAt ? guest.rsvpAt.toISOString().slice(0, 16).replace("T", " ") : "",
       guest.mealOption?.title ?? "",
+      guest.drinks.map((row) => row.drink.title).join(", "),
       guest.comment ?? "",
       guest.parentGuest?.displayName ?? "",
       guest.seat?.table.label ?? "",

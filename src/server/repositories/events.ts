@@ -257,3 +257,48 @@ export async function toggleMealOption(ctx: OrgContext, eventId: string, mealId:
   });
   return true;
 }
+
+export async function listDrinkOptions(ctx: OrgContext, eventId: string) {
+  return db.drinkOption.findMany({
+    where: { eventId, orgId: ctx.orgId },
+    orderBy: { order: "asc" },
+    select: { id: true, title: true, order: true, active: true, _count: { select: { choices: true } } },
+  });
+}
+
+export async function addDrinkOption(ctx: OrgContext, eventId: string, title: string) {
+  const clean = title.trim().slice(0, 60);
+  if (!clean) return null;
+
+  const event = await db.event.findFirst({
+    where: { id: eventId, orgId: ctx.orgId },
+    select: { id: true },
+  });
+  if (!event) return null;
+
+  const last = await db.drinkOption.findFirst({
+    where: { eventId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+
+  return db.drinkOption.create({
+    data: { orgId: ctx.orgId, eventId, title: clean, order: (last?.order ?? -1) + 1 },
+    select: { id: true, title: true },
+  });
+}
+
+/** Напиток, как и блюдо, выключается, а не удаляется: его уже могли выбрать. */
+export async function toggleDrinkOption(ctx: OrgContext, eventId: string, drinkId: string) {
+  const drink = await db.drinkOption.findFirst({
+    where: { id: drinkId, eventId, orgId: ctx.orgId },
+    select: { id: true, active: true },
+  });
+  if (!drink) return false;
+
+  await db.drinkOption.updateMany({
+    where: { id: drinkId, eventId },
+    data: { active: !drink.active },
+  });
+  return true;
+}

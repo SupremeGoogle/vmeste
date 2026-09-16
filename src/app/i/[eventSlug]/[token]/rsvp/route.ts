@@ -11,7 +11,9 @@
  *
  * Токен в адресе — это и есть удостоверение личности гостя (PLAN.md §1.3).
  */
-import { findGuestByLinkToken, listMealOptions } from "@/server/repositories/guests";
+import {
+  findGuestByLinkToken, listDrinkOptions, listMealOptions,
+} from "@/server/repositories/guests";
 import { submitRsvp } from "@/server/services/rsvp";
 import { setGuestSession } from "@/server/guest-access/session";
 import { formatDeadline } from "@/lib/format-datetime";
@@ -57,7 +59,10 @@ export async function GET(
   }
 
   const theme = await getInviteTheme(guest.eventId);
-  const meals = await listMealOptions(guest.eventId);
+  const [meals, drinks] = await Promise.all([
+    listMealOptions(guest.eventId),
+    listDrinkOptions(guest.eventId),
+  ]);
   const plusOne = guest.plusOnes[0] ?? null;
   const plusOneAllowed =
     guest.event.allowPlusOne && guest.plusOneAllowed && guest.parentGuestId === null;
@@ -81,6 +86,21 @@ export async function GET(
       ? ""
       : `<fieldset><legend>${esc(legend)}</legend>
 ${meals.map((meal) => choice(name, meal.id, meal.title, selected === meal.id)).join("")}
+</fieldset>`;
+
+  // Напитков можно отметить несколько, поэтому флажки, а не переключатель.
+  const drinkFieldset = (name: string, legend: string, selected: { drinkOptionId: string }[]) =>
+    drinks.length === 0
+      ? ""
+      : `<fieldset><legend>${esc(legend)}</legend>
+${drinks
+  .map(
+    (drink) =>
+      `<label class="choice"><input type="checkbox" name="${name}" value="${esc(drink.id)}"${
+        selected.some((row) => row.drinkOptionId === drink.id) ? " checked" : ""
+      }><span>${esc(drink.title)}</span></label>`,
+  )
+  .join("")}
 </fieldset>`;
 
   const body = `<p class="who">${esc(guest.displayName)}</p>
@@ -115,6 +135,17 @@ ${error ? `<p class="error">${esc(ERRORS[error] ?? ERRORS.invalid)}</p>` : ""}
       : ""
   }
 
+  ${drinkFieldset("drinkOptionIds", "Что будете пить — можно отметить несколько", guest.drinks)}
+  ${
+    plusOneAllowed
+      ? drinkFieldset(
+          "plusOneDrinkOptionIds",
+          "Что будет пить спутник — если придёте вдвоём",
+          plusOne?.drinks ?? [],
+        )
+      : ""
+  }
+
   <label class="field"><span>Что-то ещё для организатора</span>
   <textarea name="comment" maxlength="500" rows="3">${esc(guest.comment ?? "")}</textarea></label>
 
@@ -144,6 +175,8 @@ export async function POST(
     comment: String(form.get("comment") ?? ""),
     plusOneName: String(form.get("plusOneName") ?? ""),
     plusOneMealOptionId: String(form.get("plusOneMealOptionId") ?? "") || null,
+    drinkOptionIds: form.getAll("drinkOptionIds").map(String),
+    plusOneDrinkOptionIds: form.getAll("plusOneDrinkOptionIds").map(String),
   });
 
   const back = (query: string) =>

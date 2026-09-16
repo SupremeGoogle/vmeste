@@ -325,3 +325,69 @@ describe("сводка для организатора", () => {
     expect(untouched.rsvpStatus).toBe("PENDING");
   });
 });
+
+describe("бар", () => {
+  const drinksOf = async (world: World, titles: string[]) => {
+    const created = [];
+    for (const [order, title] of titles.entries()) {
+      created.push(await testDb.drinkOption.create({
+        data: { orgId: world.orgId, eventId: world.eventId, title, order },
+      }));
+    }
+    return created;
+  };
+
+  const chosen = async (eventId: string, guestId: string) =>
+    (await testDb.guestDrink.findMany({ where: { eventId, guestId }, include: { drink: true } }))
+      .map((row) => row.drink.title)
+      .sort();
+
+  it("гость отмечает несколько напитков, повторный ответ их заменяет", async () => {
+    const [wine, champagne, juice] = await drinksOf(a, ["Вино", "Шампанское", "Сок"]);
+
+    await submitRsvp(a.guestToken, { status: "ACCEPTED", drinkOptionIds: [wine.id, champagne.id] });
+    expect(await chosen(a.eventId, a.guestId)).toEqual(["Вино", "Шампанское"]);
+
+    await submitRsvp(a.guestToken, { status: "ACCEPTED", drinkOptionIds: [juice.id] });
+    expect(await chosen(a.eventId, a.guestId)).toEqual(["Сок"]);
+  });
+
+  it("отказ снимает выбор напитков", async () => {
+    const [wine] = await drinksOf(a, ["Вино"]);
+    await submitRsvp(a.guestToken, { status: "ACCEPTED", drinkOptionIds: [wine.id] });
+    await submitRsvp(a.guestToken, { status: "DECLINED", drinkOptionIds: [wine.id] });
+    expect(await chosen(a.eventId, a.guestId)).toEqual([]);
+  });
+
+  it("не принимает чужой или выключенный напиток", async () => {
+    const [foreign] = await drinksOf(b, ["Вино"]);
+    expect(
+      await submitRsvp(a.guestToken, { status: "ACCEPTED", drinkOptionIds: [foreign.id] }),
+    ).toMatchObject({ ok: false, reason: "invalid" });
+
+    const [off] = await drinksOf(a, ["Водка"]);
+    await testDb.drinkOption.update({ where: { id: off.id }, data: { active: false } });
+    expect(
+      await submitRsvp(a.guestToken, { status: "ACCEPTED", drinkOptionIds: [off.id] }),
+    ).toMatchObject({ ok: false, reason: "invalid" });
+  });
+
+  it("спутнику напитки пишутся отдельно, в сводку идут только пришедшие", async () => {
+    const [wine, juice] = await drinksOf(a, ["Вино", "Сок"]);
+    await submitRsvp(a.guestToken, {
+      status: "ACCEPTED", drinkOptionIds: [wine.id],
+      plusOneName: "Настя Иванова", plusOneDrinkOptionIds: [wine.id, juice.id],
+    });
+
+    const plusOne = await testDb.guest.findFirstOrThrow({
+      where: { eventId: a.eventId, parentGuestId: a.guestId },
+    });
+    expect(await chosen(a.eventId, plusOne.id)).toEqual(["Вино", "Сок"]);
+
+    const summary = await rsvpSummary(a.eventId);
+    expect(summary.drinks).toEqual([
+      { id: wine.id, title: "Вино", count: 2 },
+      { id: juice.id, title: "Сок", count: 1 },
+    ]);
+  });
+});

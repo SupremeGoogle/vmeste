@@ -123,6 +123,12 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
       <p className="mt-1 text-sm text-stone-600">
         {RSVP[guest.rsvpStatus]}
         {guest.mealOption ? ` · ${guest.mealOption.title}` : ""}
+        {guest.drinks.length > 0
+          ? ` · ${[...guest.drinks]
+              .sort((a, b) => a.drink.order - b.drink.order)
+              .map((row) => row.drink.title)
+              .join(", ")}`
+          : ""}
         {guest.seat ? ` · ${guest.seat.table.label}, место ${guest.seat.index + 1}` : " · без места"}
       </p>
 

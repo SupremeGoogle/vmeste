@@ -17,7 +17,7 @@
  *    Блюдо проверяется по списку мероприятия, +1 — по двум флагам сразу
  *    (`Event.allowPlusOne` и `Guest.plusOneAllowed`), срок — по `rsvpDeadline`.
  *    Проверка на стороне сервера, потому что форму открывают в браузере, и
- *    поле `mealOptionId` в ней можно поправить руками.
+ *    поле `mealOptionId` в ней можно поправить руками. С напитками так же.
  */
 import { z } from "zod";
 import { db } from "@/server/db";
@@ -33,6 +33,9 @@ export const rsvpInputSchema = z.object({
   // Блюдо спутника: без него он попадал в сводку для кухни как
   // «не выбрано», и повару приходилось звонить и уточнять.
   plusOneMealOptionId: z.string().trim().max(40).nullable().default(null),
+  // Напитки — флажками, поэтому списком: бокал вина и шампанское на тост.
+  drinkOptionIds: z.array(z.string().trim().max(40)).max(30).default([]),
+  plusOneDrinkOptionIds: z.array(z.string().trim().max(40)).max(30).default([]),
 });
 
 export type RsvpInput = z.infer<typeof rsvpInputSchema>;
@@ -92,6 +95,23 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
     return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
   }
 
+  // Напитки проверяются так же, как блюдо: только включённые и только своего бара.
+  const pickDrinks = async (ids: string[]): Promise<string[] | "invalid"> => {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (input.status !== "ACCEPTED" || unique.length === 0) return [];
+    const found = await db.drinkOption.findMany({
+      where: { id: { in: unique }, eventId: guest.eventId, active: true },
+      select: { id: true },
+    });
+    return found.length === unique.length ? unique : "invalid";
+  };
+
+  const drinkOptionIds = await pickDrinks(input.drinkOptionIds);
+  const plusOneDrinkOptionIds = await pickDrinks(input.plusOneDrinkOptionIds);
+  if (drinkOptionIds === "invalid" || plusOneDrinkOptionIds === "invalid") {
+    return { ok: false, reason: "invalid", message: "Такого напитка нет в баре" };
+  }
+
   // Спутника приводит только приглашённый и только с разрешения обеих сторон.
   // Спутник спутника не приводит — иначе список гостей растёт цепочкой.
   const plusOneAllowed =
@@ -100,6 +120,17 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
     input.status === "ACCEPTED" && plusOneAllowed ? input.plusOneName.trim() : "";
 
   await db.$transaction(async (tx) => {
+    // Выбор напитков переписывается целиком: так снятый флажок тоже сохраняется.
+    const setDrinks = async (guestId: string, ids: string[]) => {
+      await tx.guestDrink.deleteMany({ where: { eventId: guest.eventId, guestId } });
+      if (ids.length === 0) return;
+      await tx.guestDrink.createMany({
+        data: ids.map((drinkOptionId) => ({
+          orgId: guest.orgId, eventId: guest.eventId, guestId, drinkOptionId,
+        })),
+      });
+    };
+
     await tx.guest.update({
       where: { eventId_id: { eventId: guest.eventId, id: guest.id } },
       data: {
@@ -110,6 +141,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
         plusOneName: plusOneName || null,
       },
     });
+    await setDrinks(guest.id, drinkOptionIds);
 
     const existing = await tx.guest.findFirst({
       where: { eventId: guest.eventId, parentGuestId: guest.id, archivedAt: null },
@@ -124,6 +156,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
           where: { eventId_id: { eventId: guest.eventId, id: existing.id } },
           data: { mealOptionId: plusOneMealOptionId },
         });
+        await setDrinks(existing.id, plusOneDrinkOptionIds);
 
         if (existing.displayName !== plusOneName) {
           // Имя спутника поменяли — переписываем и ключ поиска, и алиасы,
@@ -144,7 +177,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
           });
         }
       } else {
-        await tx.guest.create({
+        const created = await tx.guest.create({
           data: {
             orgId: guest.orgId,
             eventId: guest.eventId,
@@ -160,7 +193,9 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
               create: expandGuestName(plusOneName).map((alias) => ({ orgId: guest.orgId, alias })),
             },
           },
+          select: { id: true },
         });
+        await setDrinks(created.id, plusOneDrinkOptionIds);
       }
     } else if (existing) {
       // Передумали брать спутника: он уходит в архив, а не удаляется —
@@ -192,7 +227,7 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
 
 /** Сводка ответов для панели организатора. */
 export async function rsvpSummary(eventId: string) {
-  const [byStatus, meals, plusOnes, notOpened] = await Promise.all([
+  const [byStatus, meals, drinks, plusOnes, notOpened] = await Promise.all([
     db.guest.groupBy({
       by: ["rsvpStatus"],
       where: { eventId, archivedAt: null },
@@ -203,6 +238,13 @@ export async function rsvpSummary(eventId: string) {
       where: { eventId, archivedAt: null, rsvpStatus: "ACCEPTED" },
       _count: { _all: true },
     }),
+    // Для бара считаются только те, кто придёт: отказавшийся гость
+    // мог выбрать вино ещё до того, как передумал.
+    db.guestDrink.groupBy({
+      by: ["drinkOptionId"],
+      where: { eventId, guest: { archivedAt: null, rsvpStatus: "ACCEPTED" } },
+      _count: { _all: true },
+    }),
     db.guest.count({ where: { eventId, archivedAt: null, parentGuestId: { not: null } } }),
     db.guest.count({ where: { eventId, archivedAt: null, linkOpenedAt: null } }),
   ]);
@@ -210,11 +252,18 @@ export async function rsvpSummary(eventId: string) {
   const count = (status: string) =>
     byStatus.find((row) => row.rsvpStatus === status)?._count._all ?? 0;
 
-  const options = await db.mealOption.findMany({
-    where: { eventId },
-    orderBy: { order: "asc" },
-    select: { id: true, title: true },
-  });
+  const [options, drinkOptions] = await Promise.all([
+    db.mealOption.findMany({
+      where: { eventId },
+      orderBy: { order: "asc" },
+      select: { id: true, title: true },
+    }),
+    db.drinkOption.findMany({
+      where: { eventId },
+      orderBy: { order: "asc" },
+      select: { id: true, title: true },
+    }),
+  ]);
 
   return {
     total: byStatus.reduce((sum, row) => sum + row._count._all, 0),
@@ -235,6 +284,11 @@ export async function rsvpSummary(eventId: string) {
         count: meals.find((row) => row.mealOptionId === null)?._count._all ?? 0,
       },
     ],
+    drinks: drinkOptions.map((option) => ({
+      id: option.id,
+      title: option.title,
+      count: drinks.find((row) => row.drinkOptionId === option.id)?._count._all ?? 0,
+    })),
   };
 }
 
@@ -282,6 +336,10 @@ export async function listRsvp(eventId: string) {
       comment: true, linkToken: true, linkOpenedAt: true,
       parentGuestId: true, plusOneName: true,
       mealOption: { select: { title: true } },
+      drinks: {
+        select: { drink: { select: { title: true } } },
+        orderBy: { drink: { order: "asc" } },
+      },
       parentGuest: { select: { displayName: true } },
     },
   });

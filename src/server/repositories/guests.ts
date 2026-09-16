@@ -110,6 +110,7 @@ export async function getGuest(ctx: EventContext, guestId: string) {
       aliases: true,
       seat: { include: { table: true } },
       mealOption: true,
+      drinks: { select: { drink: { select: { title: true, order: true } } } },
     },
   });
 }
@@ -275,9 +276,13 @@ export async function findGuestByLinkToken(linkToken: string) {
         },
       },
       mealOption: { select: { id: true, title: true } },
+      drinks: { select: { drinkOptionId: true } },
       plusOnes: {
         where: { archivedAt: null },
-        select: { id: true, displayName: true, mealOptionId: true },
+        select: {
+          id: true, displayName: true, mealOptionId: true,
+          drinks: { select: { drinkOptionId: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -299,6 +304,15 @@ export async function markLinkOpened(eventId: string, guestId: string) {
 /** Список блюд мероприятия для формы ответа. */
 export async function listMealOptions(eventId: string) {
   return db.mealOption.findMany({
+    where: { eventId, active: true },
+    orderBy: { order: "asc" },
+    select: { id: true, title: true },
+  });
+}
+
+/** Список напитков бара для формы ответа. */
+export async function listDrinkOptions(eventId: string) {
+  return db.drinkOption.findMany({
     where: { eventId, active: true },
     orderBy: { order: "asc" },
     select: { id: true, title: true },

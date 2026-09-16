@@ -10,8 +10,8 @@ import { revalidatePath, updateTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import {
-  addMealOption, getEvent, listMealOptions, rotateGuestSecret, setEventStatus,
-  toggleMealOption, updateEventSettings,
+  addDrinkOption, addMealOption, getEvent, listDrinkOptions, listMealOptions,
+  rotateGuestSecret, setEventStatus, toggleDrinkOption, toggleMealOption, updateEventSettings,
 } from "@/server/repositories/events";
 import { formatEventDateTime } from "@/lib/format-datetime";
 import { allEventTags } from "@/lib/cache-tags";
@@ -80,7 +80,10 @@ export default async function SettingsPage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
-  const meals = await listMealOptions(ctx, eventId);
+  const [meals, drinks] = await Promise.all([
+    listMealOptions(ctx, eventId),
+    listDrinkOptions(ctx, eventId),
+  ]);
 
   async function save(formData: FormData) {
     "use server";
@@ -118,6 +121,20 @@ export default async function SettingsPage({ params, searchParams }: Props) {
     "use server";
     const ctx = await requireEventContext(eventId);
     await toggleMealOption(ctx, eventId, String(formData.get("mealId")));
+    revalidatePath(`/app/e/${eventId}/settings`);
+  }
+
+  async function addDrink(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    await addDrinkOption(ctx, eventId, String(formData.get("title") ?? ""));
+    revalidatePath(`/app/e/${eventId}/settings`);
+  }
+
+  async function toggleDrink(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    await toggleDrinkOption(ctx, eventId, String(formData.get("drinkId")));
     revalidatePath(`/app/e/${eventId}/settings`);
   }
 
@@ -267,6 +284,38 @@ export default async function SettingsPage({ params, searchParams }: Props) {
         <form action={addMeal} className="mt-3 flex gap-2">
           <input
             name="title" placeholder="Например, «Рыба»"
+            className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          />
+          <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Добавить</button>
+        </form>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-stone-200 bg-white p-5">
+        <h2 className="text-sm font-medium">Бар</h2>
+        <p className="mt-1 text-xs text-stone-500">
+          Гость отмечает в форме ответа, что будет пить, — можно несколько
+          напитков. Выключенный напиток пропадает из формы, но остаётся
+          в сводке для бара у тех, кто его уже выбрал.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {drinks.map((drink) => (
+            <li key={drink.id} className="flex items-center justify-between gap-3 text-sm">
+              <span className={drink.active ? "" : "text-stone-400 line-through"}>
+                {drink.title}
+                <span className="ml-2 text-xs text-stone-400">выбрали: {drink._count.choices}</span>
+              </span>
+              <form action={toggleDrink}>
+                <input type="hidden" name="drinkId" value={drink.id} />
+                <button className="text-xs text-stone-500 underline">
+                  {drink.active ? "выключить" : "включить"}
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+        <form action={addDrink} className="mt-3 flex gap-2">
+          <input
+            name="title" placeholder="Например, «Красное вино»"
             className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
           />
           <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Добавить</button>

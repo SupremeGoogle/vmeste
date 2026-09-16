@@ -85,7 +85,7 @@ body{font-size:17px;background-color:var(--bg);background-image:radial-gradient(
 .sheet form fieldset:first-child legend{grid-column:1/-1}
 .sheet .choice{font-size:.95rem;line-height:1.5;padding:1.1rem;background:transparent;transition:background .25s,border-color .25s}
 .sheet .choice:has(input:checked){background:var(--line);border-color:var(--accent)}
-.sheet input[type=radio]{accent-color:var(--accent);flex-shrink:0}
+.sheet input[type=radio],.sheet input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
 .sheet .field input,.sheet .field textarea{background:transparent;font-size:1rem}
 .sheet a:focus-visible,.sheet button:focus-visible,.sheet input:focus-visible,.sheet textarea:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 .promise-progress{position:fixed;left:0;right:0;top:0;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;z-index:30;pointer-events:none}

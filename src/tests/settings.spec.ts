@@ -8,7 +8,8 @@
 import { beforeEach, afterAll, describe, expect, it } from "vitest";
 import { testDb, resetDb } from "./helpers/db";
 import {
-  addMealOption, createEvent, getEvent, listMealOptions, rotateGuestSecret,
+  addDrinkOption, addMealOption, createEvent, getEvent, listDrinkOptions, listMealOptions,
+  rotateGuestSecret, toggleDrinkOption,
   toggleMealOption, updateEventSettings,
 } from "@/server/repositories/events";
 import { slugify } from "@/lib/slugify";
@@ -163,5 +164,30 @@ describe("меню на ужин", () => {
   it("чужое блюдо не переключается", async () => {
     const meal = await addMealOption(ctxB, eventB, "Мясо");
     expect(await toggleMealOption(ctxA, eventA, meal!.id)).toBe(false);
+  });
+});
+
+describe("бар", () => {
+  it("добавляется по порядку", async () => {
+    await addDrinkOption(ctxA, eventA, "Красное вино");
+    await addDrinkOption(ctxA, eventA, "Шампанское");
+
+    const drinks = await listDrinkOptions(ctxA, eventA);
+    expect(drinks.map((drink) => drink.title)).toEqual(["Красное вино", "Шампанское"]);
+    expect(drinks.map((drink) => drink.order)).toEqual([0, 1]);
+  });
+
+  it("не заводится в чужом мероприятии", async () => {
+    expect(await addDrinkOption(ctxA, eventB, "Чужое")).toBeNull();
+    expect(await listDrinkOptions(ctxB, eventB)).toHaveLength(0);
+  });
+
+  it("выключается и включается, а чужой напиток не трогается", async () => {
+    const drink = await addDrinkOption(ctxA, eventA, "Сок");
+    expect(await toggleDrinkOption(ctxA, eventA, drink!.id)).toBe(true);
+    expect((await listDrinkOptions(ctxA, eventA))[0].active).toBe(false);
+
+    expect(await toggleDrinkOption(ctxB, eventB, drink!.id)).toBe(false);
+    expect((await listDrinkOptions(ctxA, eventA))[0].active).toBe(false);
   });
 });

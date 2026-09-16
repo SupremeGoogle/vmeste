@@ -18,6 +18,8 @@ const EVENT_SCOPED = new Set([
   "Guest",
   "GuestAlias",
   "MealOption",
+  "DrinkOption",
+  "GuestDrink",
   "SeatTable",
   "Seat",
   "Photo",
