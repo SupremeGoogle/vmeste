@@ -6,7 +6,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { peekImportDraft, saveImportDraft, takeImportDraft } from "@/server/services/import-draft";
-import { parseGuestCsv } from "@/server/services/csv-import";
+import { analyzeImport } from "@/server/import/analyze";
 import type { EventContext } from "@/server/context";
 
 const ctxA: EventContext = {
@@ -17,21 +17,24 @@ const ctxB: EventContext = {
 };
 
 const parsed = () =>
-  parseGuestCsv(
-    new TextEncoder().encode("Имя;Телефон\nАнна Петрова;+79990000000\nБорис Смирнов;\n")
+  analyzeImport({
+    buffer: new TextEncoder().encode("Имя;Телефон\nАнна Петрова;+79990000000\nБорис Смирнов;\n")
       .buffer as ArrayBuffer,
-  );
+    fileName: "guests.csv",
+    smart: false,
+    existingNames: new Map(),
+  });
 
 let draftId: string;
 
 beforeEach(async () => {
-  draftId = await saveImportDraft(ctxA, parsed());
+  draftId = saveImportDraft(ctxA, await parsed());
 });
 
 describe("черновик импорта", () => {
   it("сохраняет разобранные строки для предпросмотра", () => {
     const draft = peekImportDraft(ctxA, draftId);
-    expect(draft?.rows.map((row) => row.displayName)).toEqual(["Анна Петрова", "Борис Смирнов"]);
+    expect(draft?.guests.map((guest) => guest.displayName)).toEqual(["Анна Петрова", "Борис Смирнов"]);
   });
 
   it("подсмотр не расходует черновик — страница перерисовывается", () => {

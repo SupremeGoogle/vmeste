@@ -364,6 +364,9 @@ model Guest {
   comment        String?
   // «Какую музыку предпочитаете?» из анкеты шаблона «Тили-тесто».
   musicWish      String?
+  // Каким импортом из файла создан гость: по нему импорт можно отменить
+  // в первые минуты, пока гостям ещё не разослали ссылки.
+  importBatchId  String?
 
   // Спутник (+1) ссылается на «родителя». Он же связывает семью:
   // поиск на входе возвращает всю группу, см. PLAN.md §7 вопрос 1.
@@ -385,6 +388,7 @@ model Guest {
   raffleEntries RaffleEntry[]
 
   @@unique([eventId, id])
+  @@index([eventId, importBatchId])
   @@index([eventId, rsvpStatus])
   @@index([eventId, searchKey])
   // Триграммный индекс: поиск гостя по имени с опечатками (PLAN.md §1.4)

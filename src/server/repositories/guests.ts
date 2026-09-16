@@ -20,6 +20,7 @@ export type GuestInput = {
   email?: string | null;
   note?: string | null;
   plusOneAllowed?: boolean;
+  plusOneName?: string | null;
 };
 
 export async function listGuests(ctx: EventContext) {
@@ -27,11 +28,20 @@ export async function listGuests(ctx: EventContext) {
     where: { eventId: ctx.eventId, archivedAt: null },
     orderBy: { searchKey: "asc" },
     select: {
-      id: true, displayName: true, phone: true, rsvpStatus: true, role: true,
-      plusOneAllowed: true, linkToken: true, linkOpenedAt: true,
+      id: true, displayName: true, phone: true, email: true, note: true, rsvpStatus: true, role: true,
+      plusOneAllowed: true, plusOneName: true, parentGuestId: true, linkToken: true, linkOpenedAt: true,
       seat: { select: { index: true, table: { select: { label: true } } } },
     },
   });
+}
+
+/** Ключи поиска уже добавленных гостей → имя: импорт по ним находит повторы. */
+export async function existingGuestNames(ctx: EventContext): Promise<Map<string, string>> {
+  const rows = await db.guest.findMany({
+    where: { eventId: ctx.eventId, archivedAt: null },
+    select: { searchKey: true, displayName: true },
+  });
+  return new Map(rows.map((row) => [row.searchKey, row.displayName]));
 }
 
 export async function countGuests(ctx: EventContext) {
@@ -68,6 +78,7 @@ export function newGuestData(ctx: { orgId: string; eventId: string }, input: Gue
     email: input.email ?? null,
     note: input.note ?? null,
     plusOneAllowed: input.plusOneAllowed ?? false,
+    plusOneName: input.plusOneName ?? null,
     linkToken: generateLinkToken(),
     aliases: {
       create: expandGuestName(displayName).map((alias) => ({ orgId: ctx.orgId, alias })),
@@ -75,17 +86,62 @@ export function newGuestData(ctx: { orgId: string; eventId: string }, input: Gue
   };
 }
 
-/** Массовое создание для импорта CSV. Одна транзакция на весь файл:
+/** Массовое создание для импорта. Одна транзакция на весь файл:
  *  половина импортированного списка хуже, чем ничего. */
-export async function createGuests(ctx: EventContext, rows: GuestInput[]) {
+export async function createGuests(ctx: EventContext, rows: GuestInput[], importBatchId?: string) {
+  return db.$transaction(
+    async (tx) => {
+      const created = [];
+      for (const row of rows) {
+        if (!row.displayName.trim()) continue;
+        created.push(await tx.guest.create({ data: { ...newGuestData(ctx, row), importBatchId: importBatchId ?? null } }));
+      }
+      return created;
+    },
+    // Полторы тысячи гостей с алиасами — дольше пяти секунд по умолчанию.
+    { timeout: 60_000 },
+  );
+}
+
+/** Сколько минут после импорта его ещё можно отменить. */
+export const IMPORT_UNDO_MINUTES = 15;
+
+/**
+ * Отмена импорта: гости этой загрузки уходят в архив.
+ *
+ * Трогаем только тех, кто ещё никак не «ожил»: не открыл ссылку,
+ * не ответил и не сидит за столом. Если организатор уже успел
+ * разослать приглашения, отменять их молча нельзя — такие гости
+ * остаются, и мы говорим, сколько их.
+ */
+export async function undoImport(ctx: EventContext, importBatchId: string) {
+  const since = new Date(Date.now() - IMPORT_UNDO_MINUTES * 60_000);
   return db.$transaction(async (tx) => {
-    const created = [];
-    for (const row of rows) {
-      if (!row.displayName.trim()) continue;
-      created.push(await tx.guest.create({ data: newGuestData(ctx, row) }));
+    const batch = await tx.guest.findMany({
+      where: { eventId: ctx.eventId, importBatchId, archivedAt: null },
+      select: { id: true, createdAt: true, rsvpStatus: true, linkOpenedAt: true, seat: { select: { id: true } } },
+    });
+    if (batch.length === 0 || batch.some((guest) => guest.createdAt < since)) {
+      return { archived: 0, kept: batch.length, expired: batch.length > 0 };
     }
-    return created;
+    const untouched = batch.filter((g) => g.rsvpStatus === "PENDING" && !g.linkOpenedAt && !g.seat).map((g) => g.id);
+    await tx.guest.updateMany({
+      where: { eventId: ctx.eventId, id: { in: untouched } },
+      data: { archivedAt: new Date() },
+    });
+    return { archived: untouched.length, kept: batch.length - untouched.length, expired: false };
   });
+}
+
+/** Сколько гостей добавила загрузка и можно ли её ещё отменить. */
+export async function importBatchInfo(ctx: EventContext, importBatchId: string) {
+  const guests = await db.guest.findMany({
+    where: { eventId: ctx.eventId, importBatchId, archivedAt: null },
+    select: { createdAt: true },
+  });
+  if (guests.length === 0) return null;
+  const since = Date.now() - IMPORT_UNDO_MINUTES * 60_000;
+  return { count: guests.length, undoable: guests.every((g) => g.createdAt.getTime() >= since) };
 }
 
 export async function getGuest(ctx: EventContext, guestId: string) {
@@ -239,6 +295,16 @@ export async function archiveGuest(ctx: EventContext, guestId: string) {
       data: { archivedAt: new Date() },
     });
   });
+}
+
+/** Вернуть из архива — кнопка «Отменить» сразу после «В архив».
+ *  Место за столом не возвращается: его могли уже отдать другому. */
+export async function restoreGuest(ctx: EventContext, guestId: string) {
+  const updated = await db.guest.updateMany({
+    where: { id: guestId, eventId: ctx.eventId },
+    data: { archivedAt: null },
+  });
+  return updated.count === 1;
 }
 
 /**

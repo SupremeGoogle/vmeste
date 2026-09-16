@@ -1,8 +1,8 @@
 /**
  * Черновик импорта гостей — то, что показывается в предпросмотре.
  *
- * Живёт в памяти процесса, а не в базе: это данные на две минуты между
- * «выбрал файл» и «нажал импортировать». Таблица ради них — лишняя
+ * Живёт в памяти процесса, а не в базе: это данные на несколько минут
+ * между «выбрал файл» и «добавить гостей». Таблица ради них — лишняя
  * миграция и лишняя уборка; потеря черновика при перезапуске означает
  * ровно одно — организатор выберет файл заново.
  *
@@ -11,12 +11,12 @@
  */
 import { randomUUID } from "node:crypto";
 import type { EventContext } from "@/server/context";
-import type { ParseResult } from "@/server/services/csv-import";
+import type { ImportWorkspace } from "@/server/import/analyze";
 
-type Draft = ParseResult & { eventId: string; createdAt: number };
+type Draft = { workspace: ImportWorkspace; eventId: string; createdAt: number };
 
-/** Пятнадцать минут: дольше живого предпросмотра не бывает. */
-const TTL_MS = 15 * 60_000;
+/** Полчаса: предпросмотр большого списка правят не спеша. */
+const TTL_MS = 30 * 60_000;
 /** Потолок на процесс: защита от «загружу двести файлов и уйду». */
 const MAX_DRAFTS = 50;
 
@@ -35,23 +35,32 @@ function sweep() {
   }
 }
 
-export async function saveImportDraft(ctx: EventContext, parsed: ParseResult): Promise<string> {
+export function saveImportDraft(ctx: EventContext, workspace: ImportWorkspace): string {
   sweep();
   const id = randomUUID();
-  drafts.set(id, { ...parsed, eventId: ctx.eventId, createdAt: Date.now() });
+  drafts.set(id, { workspace, eventId: ctx.eventId, createdAt: Date.now() });
   return id;
 }
 
 /** Посмотреть, не расходуя: страница предпросмотра перерисовывается. */
-export function peekImportDraft(ctx: EventContext, id: string): ParseResult | null {
+export function peekImportDraft(ctx: EventContext, id: string): ImportWorkspace | null {
   sweep();
   const draft = drafts.get(id);
   if (!draft || draft.eventId !== ctx.eventId) return null;
-  return draft;
+  return draft.workspace;
 }
 
-/** Забрать и удалить: импорт и отмена одинаково закрывают черновик. */
-export function takeImportDraft(ctx: EventContext, id: string): ParseResult | null {
+/** Заменить разбор после смены ролей столбцов; срок жизни продлевается. */
+export function replaceImportDraft(ctx: EventContext, id: string, workspace: ImportWorkspace): boolean {
+  const draft = drafts.get(id);
+  if (!draft || draft.eventId !== ctx.eventId) return false;
+  drafts.set(id, { ...draft, workspace, createdAt: Date.now() });
+  return true;
+}
+
+/** Забрать и удалить: импорт и отмена одинаково закрывают черновик.
+ *  Повторное нажатие «Добавить» получит null и ничего не создаст. */
+export function takeImportDraft(ctx: EventContext, id: string): ImportWorkspace | null {
   const draft = peekImportDraft(ctx, id);
   if (draft) drafts.delete(id);
   return draft;
