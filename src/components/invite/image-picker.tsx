@@ -18,6 +18,7 @@ import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
+import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
 
 export type PickerAsset = { id: string; url: string; alt: string };
 
@@ -27,6 +28,7 @@ const TEMPLATE_IMAGES = [
   ...PEARL_SAMPLE_IMAGES,
   ...SILK_SAMPLE_IMAGES,
   ...TILI_SAMPLE_IMAGES,
+  ...TUSCANY_SAMPLE_IMAGES,
 ] as const;
 
 export function ImagePicker({

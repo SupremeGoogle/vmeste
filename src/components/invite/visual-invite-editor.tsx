@@ -18,6 +18,7 @@ import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
+import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
 
 type SaveResult = { ok: true } | { ok: false; message: string };
 type Target = { kind: "image" | "link" | "color"; blockId: string; path: string; current: string };
@@ -29,6 +30,7 @@ const SAMPLES: Record<string, readonly string[]> = {
   promise: PROMISE_SAMPLE_IMAGES,
   silk: SILK_SAMPLE_IMAGES,
   tili: TILI_SAMPLE_IMAGES,
+  tuscany: TUSCANY_SAMPLE_IMAGES,
 };
 
 export function VisualInviteEditor({

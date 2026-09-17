@@ -1,0 +1,7 @@
+export const TUSCANY_SCRIPT = `(function(){
+var d=document,r=d.documentElement;r.classList.add('tuscany-motion');
+var sections=d.querySelectorAll('.tuscany>section'),photos=d.querySelectorAll('[data-tuscany-parallax]'),seals=d.querySelectorAll('.tuscany-seal'),bar=d.querySelector('.tuscany-progress i'),busy=0,reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+if(!('IntersectionObserver'in window)){for(var i=0;i<sections.length;i++)sections[i].classList.add('tuscany-in')}else{var io=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('tuscany-in');io.unobserve(entry.target)}})},{threshold:.1,rootMargin:'0px 0px -6%'});for(var i=0;i<sections.length;i++)io.observe(sections[i])}
+function draw(){busy=0;var max=d.documentElement.scrollHeight-innerHeight,ratio=max>0?scrollY/max:0;if(bar)bar.style.transform='scaleX('+Math.max(0,Math.min(1,ratio))+')';if(reduce)return;for(var j=0;j<photos.length;j++){var box=photos[j].getBoundingClientRect(),mid=box.top+box.height/2-innerHeight/2,shift=Math.max(-25,Math.min(25,-mid*.033));photos[j].style.setProperty('--tuscany-parallax',shift+'px')}for(var k=0;k<seals.length;k++)seals[k].style.setProperty('--tuscany-turn',(-8+ratio*24)+'deg')}
+function ask(){if(!busy)busy=requestAnimationFrame(draw)}addEventListener('scroll',ask,{passive:true});addEventListener('resize',ask);draw();
+})()`.replace(/\n/g, "");
