@@ -16,6 +16,7 @@ import { useRef, useState } from "react";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
+import { RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
@@ -26,6 +27,7 @@ const TEMPLATE_IMAGES = [
   ...PROMISE_SAMPLE_IMAGES,
   ...EVERGREEN_SAMPLE_IMAGES,
   ...PEARL_SAMPLE_IMAGES,
+  ...RUBY_SAMPLE_IMAGES,
   ...SILK_SAMPLE_IMAGES,
   ...TILI_SAMPLE_IMAGES,
   ...TUSCANY_SAMPLE_IMAGES,

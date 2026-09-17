@@ -32,6 +32,8 @@ import { renderSilkBlocks } from "@/server/guest-html/silk/markup";
 import { SILK_SCRIPT } from "@/server/guest-html/silk/script";
 import { renderPearlBlocks } from "@/server/guest-html/pearl/markup";
 import { PEARL_SCRIPT } from "@/server/guest-html/pearl/script";
+import { renderRubyBlocks } from "@/server/guest-html/ruby/markup";
+import { RUBY_SCRIPT } from "@/server/guest-html/ruby/script";
 import { renderTuscanyBlocks } from "@/server/guest-html/tuscany/markup";
 import { TUSCANY_SCRIPT } from "@/server/guest-html/tuscany/script";
 import { renderTiliBlocks, type TiliRsvp } from "@/server/guest-html/tili/markup";
@@ -161,7 +163,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 ${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -460,7 +462,7 @@ export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, name
   const parts = [
     hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
-    theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : theme.template === "tuscany" ? TUSCANY_SCRIPT : REVEAL_SCRIPT,
+    theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : theme.template === "ruby" ? RUBY_SCRIPT : theme.template === "tuscany" ? TUSCANY_SCRIPT : REVEAL_SCRIPT,
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join(";") : undefined;
@@ -507,6 +509,12 @@ export function renderBlocks(
   }
   if (theme.template === "tuscany") {
     return renderTuscanyBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
+  if (theme.template === "ruby") {
+    return renderRubyBlocks(blocks, theme, rsvpHref, answered, (block) =>
       renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );

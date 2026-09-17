@@ -25,6 +25,7 @@ import { defaultTheme } from "@/lib/invite-theme";
 import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
 import { PEARL_TEMPLATE } from "@/lib/invite-templates/pearl";
 import { PROMISE_TEMPLATE } from "@/lib/invite-templates/promise";
+import { RUBY_TEMPLATE } from "@/lib/invite-templates/ruby";
 import { SILK_TEMPLATE } from "@/lib/invite-templates/silk";
 import { TILI_TEMPLATE } from "@/lib/invite-templates/tili";
 import { TUSCANY_TEMPLATE } from "@/lib/invite-templates/tuscany";
@@ -197,6 +198,7 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
   SILK_TEMPLATE,
   PEARL_TEMPLATE,
   TUSCANY_TEMPLATE,
+  RUBY_TEMPLATE,
   TILI_TEMPLATE,
 ];
 

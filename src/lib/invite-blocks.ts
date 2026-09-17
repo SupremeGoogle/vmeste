@@ -18,6 +18,7 @@ import type { BlockType } from "@/generated/prisma/enums";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
+import { RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES, TILI_TIMELINE_ICONS } from "@/lib/invite-templates/tili-assets";
 import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
@@ -59,6 +60,7 @@ const imageRef = httpUrl
   .or(z.enum(EVERGREEN_SAMPLE_IMAGES))
   .or(z.enum(PEARL_SAMPLE_IMAGES))
   .or(z.enum(PROMISE_SAMPLE_IMAGES))
+  .or(z.enum(RUBY_SAMPLE_IMAGES))
   .or(z.enum(SILK_SAMPLE_IMAGES))
   .or(z.enum(TILI_SAMPLE_IMAGES))
   .or(z.enum(TUSCANY_SAMPLE_IMAGES))

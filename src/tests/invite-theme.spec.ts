@@ -75,6 +75,7 @@ describe("шаблоны", () => {
       "silk",
       "pearl",
       "tuscany",
+      "ruby",
       "tili",
     ]);
 
@@ -133,6 +134,7 @@ describe("шаблоны", () => {
     expect(findTemplate("silk")?.name).toBe("Шёлк");
     expect(findTemplate("pearl")?.name).toBe("Жемчуг");
     expect(findTemplate("tuscany")?.name).toBe("Тоскана");
+    expect(findTemplate("ruby")?.name).toBe("Рубин");
     expect(findTemplate("tili")?.name).toBe("Тили-тесто");
   });
 });

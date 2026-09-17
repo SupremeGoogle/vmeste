@@ -18,6 +18,7 @@ import { STORY_CSS } from "@/server/guest-html/story/style";
 import { EVERGREEN_CSS } from "@/server/guest-html/evergreen/style";
 import { SILK_CSS } from "@/server/guest-html/silk/style";
 import { PEARL_CSS } from "@/server/guest-html/pearl/style";
+import { RUBY_CSS } from "@/server/guest-html/ruby/style";
 import { TUSCANY_CSS } from "@/server/guest-html/tuscany/style";
 import {
   DECOR_CSS, ORNAMENT_CSS, PAPER_CSS, TIMELINE_ICON_CSS, ornamentBackground,
@@ -163,6 +164,7 @@ pointer-events:none;z-index:0}`
     theme.template === "evergreen" ? EVERGREEN_CSS : "",
     theme.template === "silk" ? SILK_CSS : "",
     theme.template === "pearl" ? PEARL_CSS : "",
+    theme.template === "ruby" ? RUBY_CSS : "",
     theme.template === "tuscany" ? TUSCANY_CSS : "",
   ];
 
