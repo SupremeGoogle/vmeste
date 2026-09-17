@@ -73,6 +73,7 @@ describe("шаблоны", () => {
       "promise",
       "evergreen",
       "silk",
+      "pearl",
       "tili",
     ]);
 
@@ -129,6 +130,7 @@ describe("шаблоны", () => {
     expect(findTemplate("promise")?.name).toBe("Обещание");
     expect(findTemplate("evergreen")?.name).toBe("Эвергрин");
     expect(findTemplate("silk")?.name).toBe("Шёлк");
+    expect(findTemplate("pearl")?.name).toBe("Жемчуг");
     expect(findTemplate("tili")?.name).toBe("Тили-тесто");
   });
 });

@@ -14,6 +14,7 @@
  */
 import { useRef, useState } from "react";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
+import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
@@ -23,6 +24,7 @@ export type PickerAsset = { id: string; url: string; alt: string };
 const TEMPLATE_IMAGES = [
   ...PROMISE_SAMPLE_IMAGES,
   ...EVERGREEN_SAMPLE_IMAGES,
+  ...PEARL_SAMPLE_IMAGES,
   ...SILK_SAMPLE_IMAGES,
   ...TILI_SAMPLE_IMAGES,
 ] as const;

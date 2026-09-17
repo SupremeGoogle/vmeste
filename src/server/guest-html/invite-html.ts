@@ -30,6 +30,8 @@ import { renderEvergreenBlocks } from "@/server/guest-html/evergreen/markup";
 import { EVERGREEN_SCRIPT } from "@/server/guest-html/evergreen/script";
 import { renderSilkBlocks } from "@/server/guest-html/silk/markup";
 import { SILK_SCRIPT } from "@/server/guest-html/silk/script";
+import { renderPearlBlocks } from "@/server/guest-html/pearl/markup";
+import { PEARL_SCRIPT } from "@/server/guest-html/pearl/script";
 import { renderTiliBlocks, type TiliRsvp } from "@/server/guest-html/tili/markup";
 import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
 
@@ -157,7 +159,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 ${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -456,7 +458,7 @@ export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, name
   const parts = [
     hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
-    theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : REVEAL_SCRIPT,
+    theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : REVEAL_SCRIPT,
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join(";") : undefined;
@@ -491,6 +493,12 @@ export function renderBlocks(
   }
   if (theme.template === "silk") {
     return renderSilkBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
+  if (theme.template === "pearl") {
+    return renderPearlBlocks(blocks, theme, rsvpHref, answered, (block) =>
       renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );

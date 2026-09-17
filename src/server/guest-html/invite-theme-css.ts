@@ -17,6 +17,7 @@ import { PROMISE_CSS } from "@/server/guest-html/promise/style";
 import { STORY_CSS } from "@/server/guest-html/story/style";
 import { EVERGREEN_CSS } from "@/server/guest-html/evergreen/style";
 import { SILK_CSS } from "@/server/guest-html/silk/style";
+import { PEARL_CSS } from "@/server/guest-html/pearl/style";
 import {
   DECOR_CSS, ORNAMENT_CSS, PAPER_CSS, TIMELINE_ICON_CSS, ornamentBackground,
 } from "@/server/guest-html/invite-decor";
@@ -160,6 +161,7 @@ pointer-events:none;z-index:0}`
     theme.template === "story" ? STORY_CSS : "",
     theme.template === "evergreen" ? EVERGREEN_CSS : "",
     theme.template === "silk" ? SILK_CSS : "",
+    theme.template === "pearl" ? PEARL_CSS : "",
   ];
 
   return rules.filter(Boolean).join("").replace(/\n/g, "");
