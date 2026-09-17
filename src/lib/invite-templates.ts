@@ -22,6 +22,7 @@
 import type { BlockType } from "@/generated/prisma/enums";
 import type { InviteTheme } from "@/lib/invite-theme";
 import { defaultTheme } from "@/lib/invite-theme";
+import { CONSTELLATION_TEMPLATE } from "@/lib/invite-templates/constellation";
 import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
 import { PEARL_TEMPLATE } from "@/lib/invite-templates/pearl";
 import { PROMISE_TEMPLATE } from "@/lib/invite-templates/promise";
@@ -199,6 +200,7 @@ export const INVITE_TEMPLATES: InviteTemplate[] = [
   PEARL_TEMPLATE,
   TUSCANY_TEMPLATE,
   RUBY_TEMPLATE,
+  CONSTELLATION_TEMPLATE,
   TILI_TEMPLATE,
 ];
 

@@ -38,7 +38,9 @@ describe("Рубин", () => {
     expect(page).toContain("ruby-progress");
     expect(page).toContain("data-ruby-parallax");
     for (const image of RUBY_SAMPLE_IMAGES) expect(page).toContain(image);
-    expect(inviteScript(blocks, RUBY_TEMPLATE.theme, "Элеонора и Джеймс")).toContain("ruby-motion");
+    const script = inviteScript(blocks, RUBY_TEMPLATE.theme, "Элеонора и Джеймс");
+    expect(script).toContain("ruby-motion");
+    expect(script).not.toContain("<script>");
   });
 
   it("даёт редактировать тексты, фотографии, карту, цвета и детали", () => {

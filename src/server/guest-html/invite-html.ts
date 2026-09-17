@@ -22,6 +22,8 @@ import { inviteThemeCss } from "@/server/guest-html/invite-theme-css";
 import { defaultTheme, type InviteTheme } from "@/lib/invite-theme";
 import { envelopeMarkup, introScript } from "@/server/guest-html/invite-intro";
 import { decorMarkup, timelineIcon } from "@/server/guest-html/invite-decor";
+import { renderConstellationBlocks } from "@/server/guest-html/constellation/markup";
+import { CONSTELLATION_SCRIPT } from "@/server/guest-html/constellation/script";
 import { renderPromiseBlocks } from "@/server/guest-html/promise/markup";
 import { renderStoryBlocks } from "@/server/guest-html/story/markup";
 import { STORY_FONTS_LINK } from "@/server/guest-html/story/style";
@@ -163,7 +165,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 ${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -462,7 +464,7 @@ export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, name
   const parts = [
     hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
-    theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : theme.template === "ruby" ? RUBY_SCRIPT : theme.template === "tuscany" ? TUSCANY_SCRIPT : REVEAL_SCRIPT,
+    theme.template === "constellation" ? CONSTELLATION_SCRIPT : theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : theme.template === "ruby" ? RUBY_SCRIPT : theme.template === "tuscany" ? TUSCANY_SCRIPT : REVEAL_SCRIPT,
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join(";") : undefined;
@@ -497,6 +499,12 @@ export function renderBlocks(
   }
   if (theme.template === "silk") {
     return renderSilkBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
+  if (theme.template === "constellation") {
+    return renderConstellationBlocks(blocks, theme, rsvpHref, answered, (block) =>
       renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );

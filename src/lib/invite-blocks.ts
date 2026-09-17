@@ -15,6 +15,7 @@
  */
 import { z } from "zod";
 import type { BlockType } from "@/generated/prisma/enums";
+import { CONSTELLATION_SAMPLE_IMAGES } from "@/lib/invite-templates/constellation-assets";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
@@ -56,6 +57,7 @@ const httpUrl = z
  * чужой домен. Здесь пройдут только идентификаторы, которые выдали мы.
  */
 const imageRef = httpUrl
+  .or(z.enum(CONSTELLATION_SAMPLE_IMAGES))
   .or(z.string().regex(/^\/api\/asset\/[a-z0-9]+\/[a-z0-9]+$/, "неизвестный адрес картинки"))
   .or(z.enum(EVERGREEN_SAMPLE_IMAGES))
   .or(z.enum(PEARL_SAMPLE_IMAGES))

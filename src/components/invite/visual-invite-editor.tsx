@@ -13,6 +13,7 @@
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { PickerAsset } from "@/components/invite/image-picker";
+import { CONSTELLATION_SAMPLE_IMAGES } from "@/lib/invite-templates/constellation-assets";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
@@ -26,6 +27,7 @@ type Target = { kind: "image" | "link" | "color"; blockId: string; path: string;
 export type BlockAction = "up" | "down" | "hide" | "show" | "add-detail" | "remove-detail";
 
 const SAMPLES: Record<string, readonly string[]> = {
+  constellation: CONSTELLATION_SAMPLE_IMAGES,
   evergreen: EVERGREEN_SAMPLE_IMAGES,
   pearl: PEARL_SAMPLE_IMAGES,
   promise: PROMISE_SAMPLE_IMAGES,

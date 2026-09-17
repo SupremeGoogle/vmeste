@@ -76,6 +76,7 @@ describe("шаблоны", () => {
       "pearl",
       "tuscany",
       "ruby",
+      "constellation",
       "tili",
     ]);
 
@@ -135,6 +136,7 @@ describe("шаблоны", () => {
     expect(findTemplate("pearl")?.name).toBe("Жемчуг");
     expect(findTemplate("tuscany")?.name).toBe("Тоскана");
     expect(findTemplate("ruby")?.name).toBe("Рубин");
+    expect(findTemplate("constellation")?.name).toBe("Созвездие");
     expect(findTemplate("tili")?.name).toBe("Тили-тесто");
   });
 });

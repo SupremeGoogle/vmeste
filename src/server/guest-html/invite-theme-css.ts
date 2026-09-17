@@ -13,6 +13,7 @@
  */
 import { CORNER_RADIUS, FONT_STACKS, type InviteTheme } from "@/lib/invite-theme";
 import { INTRO_CSS } from "@/server/guest-html/invite-intro";
+import { CONSTELLATION_CSS } from "@/server/guest-html/constellation/style";
 import { PROMISE_CSS } from "@/server/guest-html/promise/style";
 import { STORY_CSS } from "@/server/guest-html/story/style";
 import { EVERGREEN_CSS } from "@/server/guest-html/evergreen/style";
@@ -160,6 +161,7 @@ pointer-events:none;z-index:0}`
     theme.frame && theme.frameOrnament ? ORNAMENT_CSS + ornamentBackground(theme) : "",
     theme.timelineIcons ? TIMELINE_ICON_CSS : "",
     theme.template === "promise" ? PROMISE_CSS : "",
+    theme.template === "constellation" ? CONSTELLATION_CSS : "",
     theme.template === "story" ? STORY_CSS : "",
     theme.template === "evergreen" ? EVERGREEN_CSS : "",
     theme.template === "silk" ? SILK_CSS : "",
