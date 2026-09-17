@@ -1,11 +1,12 @@
 import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
+import { RUBY_DECOR_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
 
-function rose(className = ""): string {
-  return `<svg class="ruby-rose ${className}" viewBox="0 0 180 320" fill="none" aria-hidden="true"><path class="ruby-stem" pathLength="1" d="M87 312C77 250 105 209 91 154C83 121 91 88 112 54"/><g class="ruby-leaves"><path d="M87 248C48 238 31 209 38 178C70 186 91 213 87 248Z"/><path d="M96 202C128 192 147 166 146 137C116 144 98 169 96 202Z"/><path d="M91 155C61 143 49 119 57 95C84 105 99 129 91 155Z"/></g><g class="ruby-bloom"><path d="M111 67C78 55 75 23 100 15C106-7 143-3 145 20C171 21 177 54 155 67C159 91 126 104 111 84C90 96 70 77 82 58Z"/><path d="M111 65C99 46 113 30 129 39C146 31 157 49 146 62C148 79 126 87 116 75Z"/><circle cx="128" cy="61" r="7"/></g></svg>`;
+function rose(className = "", variant: "rose" | "cluster" = "rose"): string {
+  return `<img class="ruby-rose ${className}" src="${RUBY_DECOR_IMAGES[variant]}" alt="" loading="lazy" decoding="async" aria-hidden="true">`;
 }
 
 function seal(label = "E · J"): string {
@@ -33,8 +34,8 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
       const closing = /с любовью|до скорой|до встречи/i.test(`${c.tag} ${c.title}`);
-      if (closing) return wrap(block, "ruby-closing", `${rose("ruby-closing-rose")}<p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${seal("♥")}`, editable);
-      return wrap(block, "ruby-story", `${rose("ruby-story-rose")}<div id="ruby-story"></div><p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="ruby-handnote" aria-hidden="true">Love looks<br>good here</div>`, editable);
+      if (closing) return wrap(block, "ruby-closing", `${rose("ruby-closing-rose", "cluster")}<p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${seal("♥")}`, editable);
+      return wrap(block, "ruby-story", `${rose("ruby-story-rose", "cluster")}<div id="ruby-story"></div><p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="ruby-handnote" aria-hidden="true">Love looks<br>good here</div>`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];

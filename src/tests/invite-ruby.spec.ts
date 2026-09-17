@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseBlockContent, readBlockContent } from "@/lib/invite-blocks";
 import { findTemplate } from "@/lib/invite-templates";
-import { RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
+import { RUBY_DECOR_IMAGES, RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { RUBY_TEMPLATE } from "@/lib/invite-templates/ruby";
 import { invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
 import type { InviteBlockView } from "@/server/repositories/invites";
@@ -38,6 +38,7 @@ describe("Рубин", () => {
     expect(page).toContain("ruby-progress");
     expect(page).toContain("data-ruby-parallax");
     for (const image of RUBY_SAMPLE_IMAGES) expect(page).toContain(image);
+    for (const image of Object.values(RUBY_DECOR_IMAGES)) expect(page).toContain(image);
     const script = inviteScript(blocks, RUBY_TEMPLATE.theme, "Элеонора и Джеймс");
     expect(script).toContain("ruby-motion");
     expect(script).not.toContain("<script>");
