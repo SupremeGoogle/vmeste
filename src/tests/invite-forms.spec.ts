@@ -57,7 +57,7 @@ describe("обычный редактор приглашения", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok && result.content && "items" in result.content) {
-      expect(result.content.items.map((item) => item.icon)).toEqual([
+      expect(result.content.items.map((item) => ("icon" in item ? item.icon : undefined))).toEqual([
         TILI_TIMELINE_ICONS[0],
         TILI_TIMELINE_ICONS[1],
       ]);
