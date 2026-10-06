@@ -24,6 +24,7 @@
  * человека взглянуть на него.
  */
 import { fork, type ChildProcess } from "node:child_process";
+import { setPriority } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 
@@ -70,6 +71,12 @@ function ensureWorker(): ChildProcess {
     // Модели хватает с запасом; при утечке процесс упадёт сам, а не сервер.
     execArgv: ["--max-old-space-size=384"],
   });
+  // Ниже приоритет — позже процессор: страницы сайта и соседей идут первыми.
+  try {
+    if (child.pid) setPriority(child.pid, 15);
+  } catch {
+    // Нет прав на смену приоритета — работаем как есть.
+  }
   child.on("message", (message: { id: number; score?: number; error?: string }) => {
     settle(message.id, typeof message.score === "number" ? message.score : null);
   });

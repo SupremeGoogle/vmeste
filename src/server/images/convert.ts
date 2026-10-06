@@ -15,9 +15,17 @@
  *
  * HEIC (HEVC) готовые сборки libvips не декодируют — патенты, — поэтому
  * для него отдельный путь через libheif в WASM (`heic-decode`).
+ *
+ * Сама работа идёт в отдельном процессе `workers/images.mjs` с пониженным
+ * приоритетом: нагрузочный тест 6 октября 2026 показал, что 10 фото разом
+ * внутри сайта отнимали процессор у страниц (приглашения и анкета отвечали
+ * по 10–20 с). Теперь страницы получают процессор первыми. Процесс
+ * запускается при первом фото и закрывается после 90 с простоя; упадёт или
+ * съест память — упадёт он, а не сайт.
  */
-import sharp, { type Sharp } from "sharp";
-import decodeHeic from "heic-decode";
+import { fork, type ChildProcess } from "node:child_process";
+import { setPriority } from "node:os";
+import path from "node:path";
 
 export type ImagePreset = {
   /** Длинная сторона итогового файла. Меньшие картинки не растягиваются. */
@@ -51,19 +59,6 @@ export const INVITE_ASSET: ImagePreset = {
   quality: 88,
   animated: true,
 };
-const ANIMATED_MAX_SIDE = 1200;
-
-/**
- * Больше — это уже не фото, а попытка съесть память сервера. 70 Мп
- * пропускают 48-мегапиксельный кадр айфона с запасом.
- */
-const MAX_PIXELS = 70_000_000;
-
-// Кеш libvips держит в памяти недавние файлы ради повторных операций, а
-// у нас каждый файл обрабатывается один раз. На сервере в 1 ГБ эти
-// сотни мегабайт нужнее Next и Postgres.
-sharp.cache(false);
-
 export type Converted = {
   body: Buffer;
   width: number;
@@ -74,126 +69,92 @@ export type Converted = {
 
 export class UnreadableImage extends Error {}
 
-/**
- * Файлы перекодируются строго по одному: 48-мегапиксельный HEIC в памяти —
- * это ~200 МБ, а сервер — 1 ГБ на всё. Сотня гостей после первого танца
- * иначе уронила бы его разом; в очереди же каждый ждёт меньше секунды.
- */
-const MAX_PARALLEL = 1;
-let running = 0;
-const waiting: Array<() => void> = [];
+/** Путь собирается из частей нарочно: буквальный путь Turbopack принимает за импорт. */
+const WORKER_PATH = ["workers", "images.mjs"];
+/** 48-Мп HEIC на занятом ядре с низким приоритетом может идти долго. */
+const TIMEOUT_MS = 180_000;
+/** Ниже приоритет — позже процессор: страницы сайта и соседних сайтов идут первыми. */
+const NICE = 15;
 
-async function withSlot<T>(task: () => Promise<T>): Promise<T> {
-  if (running >= MAX_PARALLEL) await new Promise<void>((resolve) => waiting.push(resolve));
-  running++;
-  try {
-    return await task();
-  } finally {
-    running--;
-    waiting.shift()?.();
-  }
+type Reply = { id: number; body?: Uint8Array; width?: number; height?: number; thumb?: Uint8Array | null; error?: "unreadable" | "failed"; message?: string };
+type Job = { resolve: (value: Converted) => void; reject: (error: Error) => void; timer: NodeJS.Timeout; child: ChildProcess };
+
+let worker: ChildProcess | null = null;
+const pending = new Map<number, Job>();
+let nextId = 1;
+
+function finish(id: number, settle: (job: Job) => void) {
+  const job = pending.get(id);
+  if (!job) return;
+  clearTimeout(job.timer);
+  pending.delete(id);
+  settle(job);
 }
 
-export function convertImage(input: Buffer, preset: ImagePreset): Promise<Converted> {
-  return withSlot(() => convert(input, preset));
+/** Задания, ушедшие в этот процесс, — не в новый, поднятый ему на смену. */
+function failAllOf(child: ChildProcess, reason: string) {
+  for (const [id, job] of [...pending.entries()]) if (job.child === child) finish(id, (j) => j.reject(new Error(reason)));
 }
 
-async function convert(input: Buffer, preset: ImagePreset): Promise<Converted> {
-  const { image, animated } = await open(input, preset.animated);
-  const maxSide = animated ? Math.min(preset.maxSide, ANIMATED_MAX_SIDE) : preset.maxSide;
-
-  const resized = image.resize({
-    width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true,
+function ensureWorker(): ChildProcess {
+  if (worker && worker.connected && worker.exitCode === null) return worker;
+  const child = fork(path.join(process.cwd(), ...WORKER_PATH), [], {
+    serialization: "advanced",
+    stdio: ["ignore", "ignore", "inherit", "ipc"],
+    execArgv: ["--max-old-space-size=256"],
   });
-
-  // Обычное фото: декодируем и уменьшаем один раз, фото и превью кодируем из
-  // готовых пикселей. Сжатие WebP — effort 2 без smartSubsample: нагрузочный
-  // тест 6 октября 2026 показал 3,4 с на снимок на сервере (30 гостей ждали
-  // по 5 минут), замер — в 3–4,5 раза быстрее при весе +5 % и том же виде.
-  if (!animated) {
-    const { data, info } = await resized.raw().toBuffer({ resolveWithObject: true });
-    const pixels = { raw: { width: info.width, height: info.height, channels: info.channels } };
-    const [main, thumb] = await Promise.all([
-      sharp(data, pixels).webp({ quality: preset.quality, alphaQuality: 90, effort: 2 }).toBuffer(),
-      preset.thumb
-        ? sharp(data, pixels)
-            .resize({ width: preset.thumb.maxSide, height: preset.thumb.maxSide, fit: "inside", withoutEnlargement: true })
-            .webp({ quality: preset.thumb.quality, effort: 2 })
-            .toBuffer()
-        : Promise.resolve(null),
-    ]);
-    return { body: main, width: info.width, height: info.height, thumb, contentType: "image/webp" };
+  try {
+    if (child.pid) setPriority(child.pid, NICE);
+  } catch {
+    // Нет прав на смену приоритета (Windows без прав) — работаем как есть.
   }
-
-  const [main, thumb] = await Promise.all([
-    resized.clone()
-      .webp({ quality: preset.quality, alphaQuality: 90, effort: 4, smartSubsample: true })
-      .toBuffer({ resolveWithObject: true }),
-    preset.thumb
-      ? resized.clone()
-          .resize({
-            width: preset.thumb.maxSide, height: preset.thumb.maxSide,
-            fit: "inside", withoutEnlargement: true,
-          })
-          .webp({ quality: preset.thumb.quality, effort: 4 })
-          .toBuffer()
-      : Promise.resolve(null),
-  ]);
-
-  return {
-    body: main.data,
-    width: main.info.width,
-    // У анимации sharp отдаёт высоту всей ленты кадров.
-    height: main.info.pageHeight ?? main.info.height,
-    thumb,
-    contentType: "image/webp",
-  };
-}
-
-async function open(input: Buffer, allowAnimation: boolean): Promise<{ image: Sharp; animated: boolean }> {
-  const meta = await sharp(input, { limitInputPixels: MAX_PIXELS }).metadata().catch(() => null);
-
-  // SVG — это документ, а не фото: со ссылками, шрифтами и скриптами.
-  if (meta?.format === "svg") throw new UnreadableImage("SVG не принимаем");
-
-  if (meta && !(meta.format === "heif" && meta.compression === "hevc")) {
-    const animated = allowAnimation && (meta.pages ?? 1) > 1;
-    const image = sharp(input, {
-      animated,
-      limitInputPixels: MAX_PIXELS,
-      // Обрезанный на полпути JPEG (гость потерял связь) — всё равно кадр:
-      // пусть с серой полосой внизу, но лучше, чем отказ.
-      failOn: "none",
-    })
-      .rotate()
-      .toColorspace("srgb");
-    return { image, animated };
-  }
-
-  if (meta?.format === "heif" || looksLikeHeif(input)) {
-    if (meta?.width && meta?.height && meta.width * meta.height > MAX_PIXELS) {
-      throw new UnreadableImage("Слишком большое разрешение");
-    }
-    try {
-      // libheif сам применяет поворот из контейнера (irot/imir),
-      // поэтому `rotate()` здесь не нужен.
-      const decoded = await decodeHeic({ buffer: input });
-      const image = sharp(Buffer.from(decoded.data.buffer, decoded.data.byteOffset, decoded.data.byteLength), {
-        raw: { width: decoded.width, height: decoded.height, channels: 4 },
-        limitInputPixels: MAX_PIXELS,
+  child.on("message", (reply: Reply) => {
+    finish(reply.id, (job) => {
+      if (reply.error === "unreadable") job.reject(new UnreadableImage(reply.message ?? "Не похоже на изображение"));
+      else if (reply.error || !reply.body) job.reject(new Error(reply.message ?? "Перекодирование не удалось"));
+      else job.resolve({
+        body: Buffer.from(reply.body.buffer, reply.body.byteOffset, reply.body.byteLength),
+        width: reply.width ?? 0,
+        height: reply.height ?? 0,
+        thumb: reply.thumb ? Buffer.from(reply.thumb.buffer, reply.thumb.byteOffset, reply.thumb.byteLength) : null,
+        contentType: "image/webp",
       });
-      return { image, animated: false };
-    } catch {
-      throw new UnreadableImage("Не удалось прочитать HEIC");
-    }
-  }
-
-  throw new UnreadableImage("Не похоже на изображение");
+    });
+  });
+  child.on("exit", () => {
+    if (worker === child) worker = null;
+    failAllOf(child, "Процесс перекодирования завершился");
+  });
+  child.on("error", () => {
+    if (worker === child) worker = null;
+    failAllOf(child, "Процесс перекодирования не запустился");
+  });
+  worker = child;
+  return child;
 }
 
-/** Контейнер ISO BMFF с «картинкой» внутри: `....ftypheic`, `ftypmif1` и т. п. */
-function looksLikeHeif(input: Buffer): boolean {
-  if (input.length < 12 || input.toString("latin1", 4, 8) !== "ftyp") return false;
-  const brand = input.toString("latin1", 8, 12);
-  return ["heic", "heix", "heim", "heis", "hevc", "hevx", "mif1", "msf1"].includes(brand);
+/** Остановить процесс перекодирования (тесты, завершение сайта). */
+export function stopImageWorker(): void {
+  worker?.kill();
+  worker = null;
+}
+
+/**
+ * Перекодировать картинку. Файлы обрабатываются строго по одному (в самом
+ * процессе): 48-Мп HEIC в памяти — ~200 МБ, а сервер — 1 ГБ на всё.
+ */
+export function convertImage(input: Buffer, preset: ImagePreset): Promise<Converted> {
+  return new Promise((resolve, reject) => {
+    const id = nextId++;
+    try {
+      const child = ensureWorker();
+      const timer = setTimeout(() => finish(id, (job) => job.reject(new Error("Перекодирование не уложилось во время"))), TIMEOUT_MS);
+      pending.set(id, { resolve, reject, timer, child });
+      child.send({ id, input: new Uint8Array(input.buffer, input.byteOffset, input.byteLength), preset }, (error) => {
+        if (error) finish(id, (job) => job.reject(error));
+      });
+    } catch (error) {
+      reject(error as Error);
+    }
+  });
 }
