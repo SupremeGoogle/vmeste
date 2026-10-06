@@ -106,6 +106,25 @@ async function convert(input: Buffer, preset: ImagePreset): Promise<Converted> {
     width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true,
   });
 
+  // Обычное фото: декодируем и уменьшаем один раз, фото и превью кодируем из
+  // готовых пикселей. Сжатие WebP — effort 2 без smartSubsample: нагрузочный
+  // тест 6 октября 2026 показал 3,4 с на снимок на сервере (30 гостей ждали
+  // по 5 минут), замер — в 3–4,5 раза быстрее при весе +5 % и том же виде.
+  if (!animated) {
+    const { data, info } = await resized.raw().toBuffer({ resolveWithObject: true });
+    const pixels = { raw: { width: info.width, height: info.height, channels: info.channels } };
+    const [main, thumb] = await Promise.all([
+      sharp(data, pixels).webp({ quality: preset.quality, alphaQuality: 90, effort: 2 }).toBuffer(),
+      preset.thumb
+        ? sharp(data, pixels)
+            .resize({ width: preset.thumb.maxSide, height: preset.thumb.maxSide, fit: "inside", withoutEnlargement: true })
+            .webp({ quality: preset.thumb.quality, effort: 2 })
+            .toBuffer()
+        : Promise.resolve(null),
+    ]);
+    return { body: main, width: info.width, height: info.height, thumb, contentType: "image/webp" };
+  }
+
   const [main, thumb] = await Promise.all([
     resized.clone()
       .webp({ quality: preset.quality, alphaQuality: 90, effort: 4, smartSubsample: true })
