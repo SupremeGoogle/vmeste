@@ -103,9 +103,14 @@ function createClient() {
       ? (process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL)
       : process.env.DATABASE_URL;
 
-  const adapter = new PrismaPg({ connectionString });
+  // Пул и ожидание транзакции — по нагрузочному тесту 6 октября 2026: при
+  // 10 подключениях и 2 с ожидания (по умолчанию) ответы на анкету под общей
+  // нагрузкой падали «Unable to start a transaction in the given time».
+  // Postgres разрешает 30 подключений; 12 — сайту, остальное — бэкапам и консоли.
+  const adapter = new PrismaPg({ connectionString, max: 12, connectionTimeoutMillis: 15_000 });
   const base = new PrismaClient({
     adapter,
+    transactionOptions: { maxWait: 10_000, timeout: 20_000 },
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 
