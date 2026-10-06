@@ -44,4 +44,5 @@ scp -q -i "$KEY" -o IdentitiesOnly=yes "$ARCHIVE" "$HOST:/root/vmeste-app.tgz"
 rm -f "$ARCHIVE"
 
 echo "→ установка на сервере"
-"${SSH[@]}" 'bash -s' < scripts/deploy-remote.sh
+# Переводы строк Windows (git на Windows) bash на сервере не понимает.
+sed 's/$//' scripts/deploy-remote.sh | "${SSH[@]}" 'bash -s'

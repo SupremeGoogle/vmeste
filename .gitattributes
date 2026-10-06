@@ -1,0 +1,3 @@
+# Скрипты выполняются на Linux-сервере — переводы строк только LF
+*.sh text eol=lf
+scripts/server/* text eol=lf
