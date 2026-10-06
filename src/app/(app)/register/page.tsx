@@ -5,7 +5,7 @@ import { BrandLogo } from "@/components/brand";
  * Google по-прежнему первым: не нужно придумывать пароль, почта уже
  * подтверждена, восстановление доступа — забота Google. Но не у всех
  * есть Google-аккаунт (Яндекс, Mail.ru), поэтому есть и форма: кабинет
- * заводится сразу, а открывается только после ссылки из письма
+ * заводится сразу, а открывается только после кода из письма
  * (services/email-auth.ts). Без подтверждения войти нельзя — иначе любой
  * занял бы чужой адрес.
  */
@@ -30,7 +30,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
 
 async function register(formData: FormData) {
   "use server";
-  // Письма не настроены — кабинет без ссылки подтверждения не открыть.
+  // Письма не настроены — кабинет без кода подтверждения не открыть.
   if (!emailConfigured()) redirect("/register");
   const email = normalizeEmail(String(formData.get("email") ?? ""));
   const { ip } = await requestOrigin();
@@ -40,21 +40,20 @@ async function register(formData: FormData) {
     redirect("/register?error=rate");
   }
   const result = await registerWithEmail({
-    name: String(formData.get("name") ?? ""),
     email,
     password: String(formData.get("password") ?? ""),
   });
-  if (!result.ok) redirect(`/register?error=${result.code}&name=${encodeURIComponent(String(formData.get("name") ?? "").slice(0, 80))}&email=${encodeURIComponent(email)}`);
+  if (!result.ok) redirect(`/register?error=${result.code}&email=${encodeURIComponent(email)}`);
   redirect(`/register/check?email=${encodeURIComponent(email)}`);
 }
 
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; name?: string; email?: string }>;
+  searchParams: Promise<{ error?: string; email?: string }>;
 }) {
   if (await getSessionUser()) redirect("/app");
-  const { error, name, email } = await searchParams;
+  const { error, email } = await searchParams;
   const enabled = googleEnabled();
   const emailOn = emailConfigured();
   const message = error ? (AUTH_MESSAGES[error as AuthCode] ?? GOOGLE_ERRORS[error] ?? "Не получилось, попробуйте ещё раз.") : null;
@@ -85,13 +84,6 @@ export default async function RegisterPage({
 
       {emailOn && <form action={register} className="space-y-4">
         <div>
-          <label className="block text-sm text-stone-600" htmlFor="name">Как к вам обращаться</label>
-          <input
-            id="name" name="name" required minLength={2} maxLength={80} autoComplete="name" defaultValue={name ?? ""}
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
-          />
-        </div>
-        <div>
           <label className="block text-sm text-stone-600" htmlFor="email">Почта</label>
           <input
             id="email" name="email" type="email" required maxLength={200} autoComplete="email" defaultValue={email ?? ""}
@@ -113,7 +105,7 @@ export default async function RegisterPage({
           Создать кабинет
         </button>
         <p className="text-center text-xs leading-relaxed text-stone-500">
-          Пришлём письмо со ссылкой — кабинет откроется, когда вы подтвердите почту.
+          Пришлём на почту код из 6 цифр — введите его, и кабинет откроется.
         </p>
       </form>}
       {!emailOn && message && <p className="mt-5 text-center text-sm text-red-700">{message}</p>}

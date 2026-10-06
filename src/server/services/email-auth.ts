@@ -7,20 +7,24 @@
  *     кабинеты склеятся и у постороннего останется рабочий пароль (на этот
  *     случай Google-вход ещё и стирает неподтверждённый пароль);
  *   — сайт никогда не говорит, есть ли кабинет с таким адресом: ответ всегда
- *     «письмо отправлено», а что именно в письме — решает сервер (ссылка
+ *     «письмо отправлено», а что именно в письме — решает сервер (код
  *     подтверждения, «кабинет уже есть» или сброс пароля);
- *   — ссылки из писем одноразовые, в базе хранится только их SHA-256, новая
- *     ссылка гасит прежние того же назначения.
+ *   — почта подтверждается 6-значным кодом из письма: 15 минут и 5 попыток,
+ *     потом код сгорает. В письме нет ни ссылок, ни кнопок — такие письма
+ *     почтовики реже уносят в спам, а код удобно ввести с телефона;
+ *   — коды и ссылки сброса одноразовые, в базе только их SHA-256, новый гасит
+ *     прежние того же назначения.
  */
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { db } from "@/server/db";
 import { hashPassword } from "@/server/auth/password";
 import { createAccount } from "@/server/services/signup";
 import { sendEmail } from "@/server/email/send";
-import { alreadyRegistered, resetPassword, verifyEmail } from "@/server/email/templates";
+import { alreadyRegistered, resetPassword, verifyCode } from "@/server/email/templates";
 
 const HOUR = 60 * 60 * 1000;
-export const VERIFY_TTL_MS = 24 * HOUR;
+export const CODE_TTL_MS = 15 * 60 * 1000;
+export const CODE_ATTEMPTS = 5;
 export const RESET_TTL_MS = HOUR;
 export const PASSWORD_MIN = 8;
 
@@ -32,7 +36,6 @@ export function normalizeEmail(raw: string): string {
 
 /** Коды ошибок форм: в адрес страницы уходит код, а не текст — его не подделать. */
 export const AUTH_MESSAGES = {
-  name: "Напишите, как к вам обращаться.",
   email: "Проверьте адрес почты.",
   password_short: `Пароль — не короче ${PASSWORD_MIN} символов.`,
   password_long: "Слишком длинный пароль.",
@@ -40,6 +43,9 @@ export const AUTH_MESSAGES = {
   password_mismatch: "Пароли не совпадают.",
   link: "Ссылка устарела или уже использована — запросите новую.",
   rate: "Слишком много попыток — подождите несколько минут.",
+  code_wrong: "Код не подходит — проверьте цифры из письма.",
+  code_expired: "Код устарел — мы пришлём новый.",
+  code_attempts: "Слишком много неверных попыток — запросите новый код.",
 } as const;
 export type AuthCode = keyof typeof AUTH_MESSAGES;
 
@@ -72,6 +78,68 @@ export async function issueToken(userId: string, email: string, purpose: Purpose
   return token;
 }
 
+/** Имя в кабинете из адреса: anna.petrova@… → «Anna Petrova». Поменять можно в настройках. */
+export function nameFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? "";
+  const words = local.split(/[._+-]+/).filter((word) => /[a-zа-яё]/i.test(word)).slice(0, 3);
+  const name = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ").slice(0, 80);
+  return name.length >= 2 ? name : "Организатор";
+}
+
+const codeHash = (id: string, code: string) => createHash("sha256").update(`${id}:${code}`).digest("hex");
+
+/** Новый код подтверждения; прежние неиспользованные гаснут. */
+export async function issueCode(userId: string, email: string): Promise<string> {
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  // Хеш привязан к id записи: одинаковые коды у разных людей дают разные хеши.
+  const id = randomBytes(16).toString("base64url");
+  await db.$transaction([
+    db.emailToken.updateMany({ where: { userId, purpose: "VERIFY", usedAt: null }, data: { usedAt: new Date() } }),
+    db.emailToken.create({ data: { id, userId, email, purpose: "VERIFY", tokenHash: codeHash(id, code), expiresAt: new Date(Date.now() + CODE_TTL_MS) } }),
+  ]);
+  return code;
+}
+
+export type CodeResult = { ok: true; userId: string } | { ok: false; code: "code_wrong" | "code_expired" | "code_attempts"; left?: number };
+
+/**
+ * Код из письма. Неверный ввод тратит попытку (атомарно — параллельный
+ * перебор не получит лишних); после пятой код сгорает.
+ */
+export async function confirmEmailCode(rawEmail: string, rawCode: string): Promise<CodeResult> {
+  const email = normalizeEmail(rawEmail);
+  const code = rawCode.replace(/\D/g, "");
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, emailVerified: true, blockedAt: true } });
+  if (!user || user.blockedAt || user.emailVerified) return { ok: false, code: "code_wrong" };
+  const row = await db.emailToken.findFirst({
+    where: { userId: user.id, purpose: "VERIFY", usedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, email: true, tokenHash: true, expiresAt: true, attempts: true },
+  });
+  if (!row || row.email.toLowerCase() !== email) return { ok: false, code: "code_expired" };
+  if (row.expiresAt < new Date()) return { ok: false, code: "code_expired" };
+  if (row.attempts >= CODE_ATTEMPTS) return { ok: false, code: "code_attempts" };
+
+  const expected = Buffer.from(row.tokenHash, "hex");
+  const actual = Buffer.from(codeHash(row.id, code), "hex");
+  if (code.length !== 6 || !timingSafeEqual(expected, actual)) {
+    const { count } = await db.emailToken.updateMany({
+      where: { id: row.id, usedAt: null, attempts: { lt: CODE_ATTEMPTS } },
+      data: { attempts: { increment: 1 } },
+    });
+    const left = CODE_ATTEMPTS - row.attempts - 1;
+    if (!count || left <= 0) return { ok: false, code: "code_attempts" };
+    return { ok: false, code: "code_wrong", left };
+  }
+
+  const { count } = await db.emailToken.updateMany({ where: { id: row.id, usedAt: null }, data: { usedAt: new Date() } });
+  if (count !== 1) return { ok: false, code: "code_expired" };
+  const confirmed = await db.user.update({ where: { id: user.id }, data: { emailVerified: true }, select: { email: true } });
+  const { notifySignup } = await import("@/server/notify/events");
+  notifySignup(confirmed.email, "регистрация по почте");
+  return { ok: true, userId: user.id };
+}
+
 /**
  * Погасить ссылку. Возвращает пользователя, если ссылка живая, не
  * использована и выдана на его нынешний адрес. Гашение атомарное: два
@@ -91,10 +159,9 @@ export async function consumeToken(token: string, purpose: Purpose): Promise<{ i
 
 export type RegisterResult = { ok: true } | { ok: false; code: AuthCode };
 
-export async function registerWithEmail(input: { name: string; email: string; password: string }): Promise<RegisterResult> {
-  const name = input.name.trim().replace(/\s+/g, " ").slice(0, 80);
+export async function registerWithEmail(input: { email: string; password: string }): Promise<RegisterResult> {
   const email = normalizeEmail(input.email);
-  if (name.length < 2) return { ok: false, code: "name" };
+  const name = nameFromEmail(email);
   const problem = emailProblem(email) ?? passwordProblem(input.password);
   if (problem) return { ok: false, code: problem };
 
@@ -116,8 +183,7 @@ export async function registerWithEmail(input: { name: string; email: string; pa
     // войти ею всё равно нельзя, а хозяин почты подтвердит уже свою.
     await db.user.update({ where: { id: existing.id }, data: { name, passwordHash: await hashPassword(input.password) } });
     await db.session.deleteMany({ where: { userId: existing.id } });
-    const token = await issueToken(existing.id, email, "VERIFY", VERIFY_TTL_MS);
-    await sendEmail(verifyEmail(email, name, link("/verify-email", token)));
+    await sendEmail(verifyCode(email, await issueCode(existing.id, email)));
     return { ok: true };
   }
 
@@ -129,28 +195,16 @@ export async function registerWithEmail(input: { name: string; email: string; pa
     if ((error as { code?: string }).code === "P2002") return { ok: true };
     throw error;
   }
-  const token = await issueToken(userId, email, "VERIFY", VERIFY_TTL_MS);
-  await sendEmail(verifyEmail(email, name, link("/verify-email", token)));
+  await sendEmail(verifyCode(email, await issueCode(userId, email)));
   return { ok: true };
 }
 
-/** Прислать письмо подтверждения ещё раз — только неподтверждённым. */
+/** Прислать код ещё раз — только неподтверждённым. */
 export async function resendVerification(rawEmail: string): Promise<void> {
   const email = normalizeEmail(rawEmail);
-  const user = await db.user.findUnique({ where: { email }, select: { id: true, name: true, emailVerified: true, passwordHash: true, blockedAt: true } });
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, emailVerified: true, passwordHash: true, blockedAt: true } });
   if (!user || user.emailVerified || !user.passwordHash || user.blockedAt) return;
-  const token = await issueToken(user.id, email, "VERIFY", VERIFY_TTL_MS);
-  await sendEmail(verifyEmail(email, user.name, link("/verify-email", token)));
-}
-
-/** Ссылка из письма подтверждения. Возвращает id пользователя для входа. */
-export async function confirmEmail(token: string): Promise<string | null> {
-  const user = await consumeToken(token, "VERIFY");
-  if (!user) return null;
-  const before = await db.user.update({ where: { id: user.id }, data: { emailVerified: true }, select: { name: true, email: true } });
-  const { notifySignup } = await import("@/server/notify/events");
-  notifySignup(before.email, `${before.name} (по почте)`);
-  return user.id;
+  await sendEmail(verifyCode(email, await issueCode(user.id, email)));
 }
 
 /** «Забыли пароль?» — письмо со ссылкой, если кабинет есть. Ответ сайта всегда одинаковый. */

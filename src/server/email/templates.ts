@@ -32,14 +32,29 @@ function layout(title: string, lead: string, button: { href: string; label: stri
 </td></tr></table></body></html>`;
 }
 
-export function verifyEmail(to: string, name: string, link: string): Email {
-  const hello = name ? `${esc(name)}, здравствуйте!` : "Здравствуйте!";
+/**
+ * Код подтверждения. Письмо нарочно простое: без картинок, ссылок и кнопок —
+ * короткое письмо с кодом почтовики (Gmail, Mail.ru, Яндекс) реже уносят в
+ * спам, чем рассылочное с кнопкой. Код в теме — его видно в уведомлении.
+ */
+export function verifyCode(to: string, code: string): Email {
+  const pretty = `${code.slice(0, 3)} ${code.slice(3)}`;
   return {
     to,
-    subject: "Подтвердите почту — Вместе",
-    html: layout("Подтвердите почту", `${hello}<br>Остался один шаг, чтобы открыть кабинет «Вместе». Нажмите кнопку — и можно собирать приглашение.`, { href: link, label: "Подтвердить почту" },
-      "Ссылка работает 24 часа. Если вы не регистрировались — просто удалите письмо, без подтверждения кабинет не откроется."),
-    text: `${name ? `${name}, здравствуйте!` : "Здравствуйте!"}\n\nПодтвердите почту, чтобы открыть кабинет «Вместе»:\n${link}\n\nСсылка работает 24 часа. Если вы не регистрировались — просто удалите письмо.`,
+    subject: `${pretty} — код подтверждения «Вместе»`,
+    html: `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Код подтверждения</title></head>
+<body style="margin:0;padding:24px 12px;background:#f7f1ea;font-family:Arial,Helvetica,sans-serif;color:#3b2f2a">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#fffdf9;border:1px solid #eadfd3;border-radius:16px">
+<tr><td style="padding:32px 28px 8px;font-family:Georgia,'Times New Roman',serif;font-size:22px;text-align:center">Вместе</td></tr>
+<tr><td style="padding:8px 28px 0;font-size:15px;line-height:1.55;text-align:center;color:#5c4f48">Ваш код подтверждения почты:</td></tr>
+<tr><td style="padding:18px 28px;text-align:center"><span style="display:inline-block;font-size:34px;font-weight:bold;letter-spacing:8px;color:#3b2f2a;background:#f7f1ea;border-radius:12px;padding:14px 20px">${esc(code)}</span></td></tr>
+<tr><td style="padding:0 28px 28px;font-size:13px;line-height:1.55;text-align:center;color:#8a7c73">Введите его на странице регистрации. Код действует 15 минут.<br>Если вы не регистрировались во «Вместе», просто удалите это письмо.</td></tr>
+</table></td></tr></table></body></html>`,
+    text: `Ваш код подтверждения почты для «Вместе»: ${code}
+
+Введите его на странице регистрации. Код действует 15 минут.
+Если вы не регистрировались во «Вместе», просто удалите это письмо.`,
   };
 }
 

@@ -230,8 +230,9 @@ model Membership {
   @@map("memberships")
 }
 
-/// Одноразовая ссылка из письма: подтверждение почты или сброс пароля.
-/// В базе — только SHA-256 токена: утечка таблицы не даёт рабочих ссылок.
+/// Одноразовый секрет из письма: код подтверждения почты (VERIFY) или
+/// ссылка сброса пароля (RESET). В базе — только SHA-256: утечка таблицы
+/// не даёт ни рабочих ссылок, ни кодов.
 model EmailToken {
   id        String            @id @default(cuid())
   userId    String
@@ -241,6 +242,8 @@ model EmailToken {
   email     String            @db.Citext
   expiresAt DateTime
   usedAt    DateTime?
+  /// Неверные попытки ввести код из письма: после пятой код сгорает.
+  attempts  Int               @default(0)
   createdAt DateTime          @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
