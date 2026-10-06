@@ -3,6 +3,8 @@ import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
+import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
+import { L } from "@/server/guest-html/template-labels";
 
 function driedStem(className = ""): string {
   return `<svg class="tuscany-stem ${className}" viewBox="0 0 190 300" fill="none" aria-hidden="true"><path class="tuscany-stem-line" pathLength="1" d="M23 292C70 230 53 163 112 103C137 78 153 45 159 9M63 219C29 207 15 180 20 151M78 178C112 166 134 142 140 112M105 119C78 95 74 68 83 45M133 73C110 54 111 31 122 17"/><g class="tuscany-seeds"><path d="M61 222C26 216 11 190 16 157C49 168 66 191 61 222Z"/><path d="M79 181C111 177 134 151 139 119C106 124 84 149 79 181Z"/><path d="M106 122C75 107 70 76 81 50C110 64 120 94 106 122Z"/><path d="M134 76C108 66 106 39 119 20C143 34 148 56 134 76Z"/></g><g class="tuscany-buds"><circle cx="159" cy="9" r="6"/><circle cx="20" cy="151" r="5"/><circle cx="140" cy="112" r="4"/></g></svg>`;
@@ -11,7 +13,7 @@ function driedStem(className = ""): string {
 function namesMarkup(value: string): string {
   const parts = value.trim().split(/\s+(?:и|&|and)\s+/i);
   if (parts.length !== 2) return esc(value);
-  return `<span>${esc(parts[0])}</span><i>&amp;</i><span>${esc(parts[1])}</span>`;
+  return `<span>${esc(parts[0])}</span><i>&amp;<wbr></i><span>${esc(parts[1])}</span>`;
 }
 
 function waxSeal(label = "O · D"): string {
@@ -33,13 +35,13 @@ function renderBlock(
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
-      return wrap(block, "tuscany-cover", `<div class="tuscany-cover-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high" data-tuscany-parallax${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}<div class="tuscany-cover-words"><span>Two hearts</span><span>A brighter tomorrow</span></div></div>${driedStem("tuscany-cover-stem")}<div class="tuscany-cover-paper"><p class="tuscany-kicker"${e.text("title")}>${esc(c.title)}</p><h1 class="tuscany-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><p class="tuscany-date"${e.text("dateText")}>${esc(c.dateText)}</p><span class="tuscany-pin">⌖</span><p class="tuscany-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p>${waxSeal()}</div><div class="tuscany-scroll" aria-hidden="true"><small>История начинается</small><span>↓</span></div>`, editable);
+      return wrap(block, "tuscany-cover", `<div class="tuscany-cover-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high" data-tuscany-parallax${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}<div class="tuscany-cover-words">${L("tuscany.words.first", "Два сердца", { tag: "span" })}${L("tuscany.words.second", "Наше светлое завтра", { tag: "span" })}</div></div>${driedStem("tuscany-cover-stem")}<div class="tuscany-cover-paper"><p class="tuscany-kicker"${e.text("title")}>${esc(c.title)}</p><h1 class="tuscany-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><p class="tuscany-date"${e.text("dateText")}>${esc(c.dateText)}</p><span class="tuscany-pin">⌖</span><p class="tuscany-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p>${waxSeal()}</div><div class="tuscany-scroll" aria-hidden="true"><small>${L("tuscany.t4", "История начинается")}</small><span>↓</span></div>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
       const closing = /до встречи|с любовью|тоскан/i.test(c.title);
       if (closing) return wrap(block, "tuscany-closing", `${driedStem("tuscany-closing-left")}${driedStem("tuscany-closing-right")}<p class="tuscany-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="tuscany-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${waxSeal("∞")}`, editable);
-      return wrap(block, "tuscany-story", `${driedStem("tuscany-story-stem")}<p class="tuscany-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="tuscany-rule"></span><p class="tuscany-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="tuscany-handnote" aria-hidden="true">Here begins<br>forever <span>♡</span></div>`, editable);
+      return wrap(block, "tuscany-story", `${driedStem("tuscany-story-stem")}<p class="tuscany-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="tuscany-rule"></span><p class="tuscany-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${(c as { wishlist?: boolean }).wishlist ? "" : `<div class="tuscany-handnote" aria-hidden="true">${L("tuscany.t3", "Здесь начинается")}<br>${L("tuscany.t6", "навсегда")} <span>♡</span></div>`}`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];
@@ -62,8 +64,7 @@ function renderBlock(
     }
     case "RSVP_FORM": {
       const c = block.content as BlockContentMap["RSVP_FORM"];
-      const result = answered === "yes" ? "Спасибо, мы будем вас ждать!" : answered === "no" ? "Спасибо, что сообщили нам." : "";
-      return wrap(block, "tuscany-rsvp", `<div class="tuscany-steps" aria-hidden="true"><b>1</b><i></i><span>2</span><i></i><span>3</span></div><p class="tuscany-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="tuscany-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="tuscany-options" aria-hidden="true"><span class="active">Да, буду</span><span>К сожалению, нет</span><span>Возможно</span></div>${result ? `<p class="tuscany-answer">${result}</p>` : rsvpHref ? `<a class="tuscany-cta" href="${esc(rsvpHref)}"${editable ? " data-editor-ui" : ""}><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b><span>→</span></a>` : `<span class="tuscany-cta"><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b><span>→</span></span>`}`, editable);
+      return wrap(block, "tuscany-rsvp", `<p class="tuscany-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="tuscany-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${inlineRsvpForm(block)}`, editable);
     }
     default:
       return "";

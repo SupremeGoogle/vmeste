@@ -39,7 +39,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
       content: {
         v: 1,
         title: "Вместе — навсегда",
-        names: "Александр и Елизавета",
+        names: "Валерия и Давид",
         dateText: "18 октября 2027",
         subtitle: "Приглашаем вас разделить с нами день, с которого начнётся наша семья",
         imageUrl: EVERGREEN_SAMPLE_IMAGES[0],
@@ -69,7 +69,7 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
         title: "Локация",
         name: "Вилла Санта Лючия",
         address: "Побережье Амальфи, Италия",
-        note: "Сбор гостей в 16:00. Точный маршрут и детали трансфера мы отправим ближе к празднику.",
+        note: "Сбор гостей в 16:00. Точный маршрут мы отправим ближе к празднику.",
       },
     },
     {

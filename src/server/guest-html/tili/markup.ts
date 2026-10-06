@@ -17,6 +17,7 @@ import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
+import { L } from "@/server/guest-html/template-labels";
 import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
 import { TILI_ENVELOPE } from "@/lib/invite-templates/tili-assets";
 
@@ -39,6 +40,14 @@ export type TiliRsvp = {
   };
   saved: boolean;
   error: string | null;
+  /** Поля конструктора анкеты (`rsvpFieldsHtml`) — перед кнопкой отправки. */
+  extraFields?: string;
+  /** Что именно не так с ответом — для общей анкеты (`inline-rsvp-form.ts`). */
+  errorText?: string;
+  /** Только вопросы конструктора, без строки ошибки. */
+  questionFields?: string;
+  /** Организатор убрал из анкеты «Что будете пить». */
+  drinksHidden?: boolean;
 };
 
 export type TiliContext = {
@@ -73,7 +82,7 @@ function tag(text: string, e: EditAttrs, className = "section-tag"): string {
 }
 
 function img(src: string, alt: string, attrs: string, extra = ""): string {
-  if (!src) return attrs ? `<span class="ie-image-placeholder"${attrs}>Добавить фотографию</span>` : "";
+  if (!src) return attrs.includes("data-image-edit") ? `<span class="ie-image-placeholder"${attrs}>Добавить фотографию</span>` : "";
   return `<img src="${esc(src)}" alt="${esc(alt)}"${attrs}${extra}>`;
 }
 
@@ -94,7 +103,7 @@ function cover(block: InviteBlockView, e: EditAttrs): string {
     Array.from({ length: 9 }, (_, index) => `<span class="flag f${index + 1}"></span>`).join("")
   }</div>
 ${c.title.trim() || e.enabled ? `<p class="hero-rhyme fade-in-hero"${e.text("title")}>${esc(c.title)}</p>` : ""}
-<div class="polaroids fade-in-hero delay-1">${photos
+${!c.photos.length ? `<div class="polaroids fade-in-hero delay-1"><div class="polaroid"><div class="polaroid-img">${img(c.imageUrl, "Наша фотография", e.image("imageUrl"))}</div></div></div>` : `<div class="polaroids fade-in-hero delay-1">${photos
     .map((photo, index) =>
       photo.imageUrl || e.enabled
         ? `<div class="polaroid ${side[index]}"><div class="polaroid-img">${img(
@@ -102,7 +111,7 @@ ${c.title.trim() || e.enabled ? `<p class="hero-rhyme fade-in-hero"${e.text("tit
           )}</div><p class="polaroid-caption"${e.text(`photos.${index}.caption`, { multiline: true })}>${lines(photo.caption)}</p></div>`
         : "",
     )
-    .join("")}</div>
+    .join("")}</div>`}
 ${intro.length > 0 || e.enabled
     ? `<div class="hero-intro-text fade-in-hero delay-2"${e.text("subtitle", { multiline: true })}>${intro
         .map((line, index) => `<p${index === 0 ? ' class="intro-ital"' : ""}>${esc(line)}</p>`)
@@ -178,7 +187,7 @@ function venue(block: InviteBlockView, e: EditAttrs): string {
 function mapBlock(block: InviteBlockView, e: EditAttrs): string {
   const c = block.content as BlockContentMap["MAP"];
   const links = [
-    c.yandexUrl ? `<a class="map-btn" href="${esc(c.yandexUrl)}" target="_blank" rel="noopener">Яндекс Карты</a>` : "",
+    c.yandexUrl ? `<a class="map-btn" href="${esc(c.yandexUrl)}" target="_blank" rel="noopener">${L("tili.t2", "Яндекс Карты")}</a>` : "",
     c.googleUrl ? `<a class="map-btn" href="${esc(c.googleUrl)}" target="_blank" rel="noopener">Google Maps</a>` : "",
   ].filter(Boolean);
   return `<section class="location-section"${e.section()}>${e.tools()}<div class="section-tag reveal"${e.text("title")}>${esc(c.title)}</div>${
@@ -266,13 +275,13 @@ function rsvpForm(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): strin
     ].join("") : ""
   }
 <div class="fg"><label class="fl" for="guestName"${e.text("nameLabel")}>${esc(label("nameLabel"))}</label><input class="fi" type="text" id="guestName" name="guestName" placeholder="Иван Петров"${
-    r?.action ? ` value="${esc(r.guestName)}" readonly` : " required"
+    ` value="${esc(r?.guestName ?? "")}" required`
   }></div>
 <div class="fg"><span class="fl"${e.text("attendanceLabel")}>${esc(label("attendanceLabel"))}</span><div class="radio-group">
 <label class="rl"><input type="radio" name="status" value="ACCEPTED" required${r?.status === "ACCEPTED" ? " checked" : ""}><span class="rc"></span><span${e.text("yesLabel")}>${esc(label("yesLabel"))}</span></label>
 <label class="rl"><input type="radio" name="status" value="DECLINED"${r?.status === "DECLINED" ? " checked" : ""}><span class="rc"></span><span${e.text("noLabel")}>${esc(label("noLabel"))}</span></label>
 </div></div>${
-    drinks.length > 0 || e.enabled
+    !r?.drinksHidden && (drinks.length > 0 || e.enabled)
       ? `<div class="fg"><span class="fl"${e.text("drinksLabel")}>${esc(label("drinksLabel"))}</span><div class="check-group">${
           drinks.length > 0
             ? drinks
@@ -287,7 +296,8 @@ function rsvpForm(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): strin
 <div class="fg"><label class="fl" for="music"${e.text("musicLabel")}>${esc(label("musicLabel"))}</label><input class="fi" type="text" id="music" name="musicWish" maxlength="200" placeholder="${esc(label("musicPlaceholder"))}" value="${esc(r?.musicWish ?? "")}">${
     e.enabled ? `<span class="rsvp-note">Подсказка в поле: <span${e.text("musicPlaceholder")}>${esc(label("musicPlaceholder"))}</span></span>` : ""
   }</div>
-${r?.error ? `<p class="rsvp-note">${esc(RSVP_ERRORS[r.error] ?? RSVP_ERRORS.invalid)}</p>` : ""}
+${r?.error ? `<p class="rsvp-note" role="alert">${esc(r.errorText ?? RSVP_ERRORS[r.error] ?? RSVP_ERRORS.invalid)}</p>` : ""}
+${r?.questionFields ?? r?.extraFields ?? ""}
 <p class="rsvp-note" id="rsvpNoLink" hidden>Ответить можно по именной ссылке из вашего приглашения.</p>
 <button class="submit-btn" type="submit" id="submitBtn"><span${e.text("buttonLabel")}>${esc(answered ? "Изменить ответ" : c.buttonLabel)}</span></button>
 </form>`;
@@ -296,7 +306,7 @@ ${r?.error ? `<p class="rsvp-note">${esc(RSVP_ERRORS[r.error] ?? RSVP_ERRORS.inv
     c.title.trim() || e.enabled ? `<p class="rsvp-intro reveal"${e.text("title")}>${esc(c.title)}</p>` : ""
   }${c.text.trim() || e.enabled ? `<p class="rsvp-sub reveal"${e.text("text", { multiline: true })}>${esc(c.text)}</p>` : ""}${form}
 <div class="rsvp-success${showSuccess ? " show" : ""}" id="rsvpSuccess"><div class="success-emoji">🎊</div><p${e.text("successText", { multiline: true })}>${esc(label("successText"))}</p>${
-    showSuccess ? '<button type="button" class="rsvp-again" id="rsvpAgain">Изменить ответ</button>' : ""
+    showSuccess ? `<button type="button" class="rsvp-again" id="rsvpAgain">${L("tili.t1", "Изменить ответ")}</button>` : ""
   }</div>${e.enabled ? `<p class="rsvp-note">Текст после отправки: <span${e.text("successText", { multiline: true })}>${esc(label("successText"))}</span></p>` : ""}</section>`;
 }
 
@@ -313,6 +323,8 @@ function renderBlock(block: InviteBlockView, ctx: TiliContext): string {
     case "DRESSCODE": return dresscode(block, e);
     case "TEXT": return text(block, e);
     case "RSVP_FORM": return rsvpForm(block, e, ctx);
+    // Виш-лист рисуется общим рендером поверх шаблона (см. invite-html).
+    default: return "";
   }
 }
 
@@ -320,11 +332,14 @@ export function renderTiliBlocks(blocks: InviteBlockView[], theme: InviteTheme, 
   const coverBlock = blocks.find((block) => block.type === "COVER");
   const coverContent = coverBlock?.content as BlockContentMap["COVER"] | undefined;
   const names = coverContent ? splitNames(coverContent.names).filter(Boolean).join(" & ") : "";
+  // Имена на конверте — текстом поверх картинки, а не частью рисунка:
+  // так на конверте стоят имена этой пары, а не пары из образца.
+  const [envelopeFirst, envelopeSecond] = coverContent ? splitNames(coverContent.names) : ["", ""];
   const footerEdit = coverBlock ? editAttrs(coverBlock.id, ctx.editable) : editAttrs("", false);
 
   const envelope = ctx.editable
     ? ""
-    : `<div class="cover" id="cover" role="button" tabindex="0" aria-label="Открыть приглашение"><div class="cover-inner"><img class="cover-envelope" src="${TILI_ENVELOPE}" alt="" fetchpriority="high"><p class="cover-hint">нажмите, чтобы открыть</p></div></div>`;
+    : `<div class="cover" id="cover" role="button" tabindex="0" aria-label="Открыть приглашение"><div class="cover-inner"><div class="cover-env"><img class="cover-envelope" src="${TILI_ENVELOPE}" alt="" fetchpriority="high"><span class="cover-names" aria-hidden="true">${esc(envelopeFirst)}${envelopeSecond ? `<br>${esc(envelopeSecond)}` : ""}</span></div><p class="cover-hint">${L("tili.t3", "нажмите, чтобы открыть")}</p></div></div>`;
 
   const music = theme.musicUrl
     ? `<audio id="weddingMusic" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="music-toggle" id="musicToggle" type="button" aria-label="Музыка"><span>🎵</span></button>`

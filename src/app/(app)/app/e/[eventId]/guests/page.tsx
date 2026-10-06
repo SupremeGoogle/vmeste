@@ -21,7 +21,11 @@ import { ImportCard } from "@/components/guests/import-card";
 import { ImportPreview, type PreviewData } from "@/components/guests/import-preview";
 import { plural } from "@/lib/plural";
 import { GuestList, type ListGuest } from "@/components/guests/guest-list";
-import { undoImportAction } from "./actions";
+import { CountUp } from "@/components/motion/motion";
+import { InviteShare } from "@/components/guests/invite-share";
+import { inviteByNameAction, undoImportAction } from "./actions";
+import { RsvpAnswers } from "./answers";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +34,7 @@ export default async function GuestsPage({
   searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ draft?: string; view?: string; imported?: string; importError?: string; notice?: string }>;
+  searchParams: Promise<{ draft?: string; view?: string; tab?: string; imported?: string; importError?: string; notice?: string }>;
 }) {
   const { eventId } = await params;
   const query = await searchParams;
@@ -69,6 +73,13 @@ export default async function GuestsPage({
     };
   }
 
+  // Гость, вписавший себя сам, мог просто потерять именную ссылку: если в
+  // списке уже есть человек с тем же именем, подсказываем организатору.
+  const invitedByKey = new Map<string, string>();
+  for (const guest of guests) {
+    if (!guest.selfRegistered && guest.parentGuestId === null && !invitedByKey.has(guest.searchKey)) invitedByKey.set(guest.searchKey, guest.displayName);
+  }
+
   const listData: ListGuest[] = guests.map((guest) => ({
     id: guest.id,
     displayName: guest.displayName,
@@ -81,6 +92,8 @@ export default async function GuestsPage({
     isPlusOne: guest.parentGuestId !== null,
     linkToken: guest.linkToken,
     linkOpened: guest.linkOpenedAt !== null,
+    selfRegistered: guest.selfRegistered,
+    maybeDuplicateOf: guest.selfRegistered ? invitedByKey.get(guest.searchKey) ?? null : null,
     table: guest.seat?.table.label ?? null,
     seatIndex: guest.seat?.index ?? null,
   }));
@@ -91,15 +104,15 @@ export default async function GuestsPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="rise-stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Всего гостей", value: counts.total, hint: `ответили ${answered}%`, bar: answered },
           { label: "Придут", value: counts.accepted, tone: "text-emerald-700" },
           { label: "Ждём ответа", value: pending, hint: counts.declined ? `не придут: ${counts.declined}` : undefined },
           { label: "Рассажено", value: counts.seated, hint: counts.accepted ? `${seatedShare}% пришедших` : undefined, bar: seatedShare },
-        ].map((tile) => (
-          <div key={tile.label} className="rounded-2xl border border-stone-200 bg-white p-4">
-            <p className={`tile-value text-2xl tabular-nums ${tile.tone ?? "text-stone-900"}`}>{tile.value}</p>
+        ].map((tile, i) => (
+          <div key={tile.label} style={{ "--i": i } as React.CSSProperties} className="rounded-2xl border border-stone-200 bg-card p-4 transition-[transform,box-shadow] duration-300 ease-[var(--ease-out-back)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-stone-900/5">
+            <p className={`tile-value text-2xl tabular-nums ${tile.tone ?? "text-stone-900"}`}><CountUp value={tile.value} /></p>
             <p className="text-sm text-stone-500">{tile.label}</p>
             {tile.bar !== undefined && (
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-stone-100" aria-hidden>
@@ -111,13 +124,29 @@ export default async function GuestsPage({
         ))}
       </div>
 
+      {/* Список и ответы анкеты — одни и те же гости, два взгляда на них. */}
+      <nav className="mt-6 inline-flex rounded-xl border border-stone-200 bg-card p-1 text-sm" aria-label="Вид">
+        {[
+          { key: "list", label: "Список гостей", href: `/app/e/${eventId}/guests` },
+          { key: "answers", label: "Ответы анкеты", href: `/app/e/${eventId}/guests?tab=answers` },
+        ].map((item) => {
+          const active = (query.tab === "answers" ? "answers" : "list") === item.key;
+          return (
+            <Link key={item.key} href={item.href} aria-current={active ? "page" : undefined} className={`rounded-lg px-3 py-1.5 transition-colors ${active ? "bg-stone-900 text-white" : "text-stone-600 hover:text-stone-900"}`}>
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {query.tab === "answers" ? <RsvpAnswers eventId={eventId} event={event} /> : <>
       {query.importError && (
         <p role="alert" className="rise mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {query.importError}
         </p>
       )}
       {query.notice && (
-        <p role="status" className="rise mt-6 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+        <p role="status" className="rise mt-6 rounded-xl border border-stone-200 bg-card px-4 py-3 text-sm text-stone-700">
           {query.notice}
         </p>
       )}
@@ -133,7 +162,7 @@ export default async function GuestsPage({
             <form action={undoImportAction}>
               <input type="hidden" name="eventId" value={eventId} />
               <input type="hidden" name="batchId" value={query.imported} />
-              <button className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-emerald-900 hover:bg-emerald-100">
+              <button className="rounded-lg border border-emerald-300 bg-card px-3 py-1.5 text-emerald-900 hover:bg-emerald-100">
                 Отменить импорт
               </button>
             </form>
@@ -144,13 +173,22 @@ export default async function GuestsPage({
       {preview && query.draft ? (
         <ImportPreview key={`${query.draft}-${preview.sheetIndex}-${preview.columns.map((c) => c.role).join()}`} eventId={eventId} draftId={query.draft} data={preview} />
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
+        // Добавление по одному — то, чем пользуются каждый день; загрузка
+        // файла свёрнута в строку под ним и разворачивается по нажатию.
+        <div className="mt-6 space-y-3">
           <AddGuestCard eventId={eventId} />
           <ImportCard eventId={eventId} aiAvailable={aiConfigured()} />
+          <InviteShare
+            publicPath={`/i/${event.slug}`}
+            published={event.status === "PUBLISHED"}
+            editorHref={`/app/e/${eventId}/invite?edit=1`}
+            inviteByName={inviteByNameAction.bind(null, eventId)}
+          />
         </div>
       )}
 
       <GuestList eventId={eventId} eventSlug={event.slug} guests={listData} byTable={query.view === "bytable"} />
+      </>}
     </main>
   );
 }

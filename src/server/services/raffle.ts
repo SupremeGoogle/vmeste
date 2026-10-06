@@ -20,6 +20,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/server/db";
+import { ONLY_GUESTS } from "@/server/repositories/guests";
 import type { EventContext } from "@/server/context";
 import { bus } from "@/server/events/bus";
 
@@ -54,6 +55,7 @@ export async function eligibleGuests(eventId: string): Promise<Entry[]> {
     where: {
       eventId,
       archivedAt: null,
+      ...ONLY_GUESTS,
       photos: { some: { status: "APPROVED" } },
     },
     orderBy: { searchKey: "asc" },
@@ -63,7 +65,7 @@ export async function eligibleGuests(eventId: string): Promise<Entry[]> {
 }
 
 export async function createRaffle(ctx: EventContext, title: string) {
-  return db.raffle.create({
+  const raffle = await db.raffle.create({
     data: {
       orgId: ctx.orgId,
       eventId: ctx.eventId,
@@ -71,6 +73,8 @@ export async function createRaffle(ctx: EventContext, title: string) {
     },
     select: { id: true, title: true },
   });
+  await db.event.updateMany({ where: { id: ctx.eventId, orgId: ctx.orgId }, data: { activeRaffleId: raffle.id } });
+  return raffle;
 }
 
 export async function listRaffles(ctx: EventContext) {
@@ -181,8 +185,8 @@ export async function drawWinner(
   const usedSeed = seed?.trim() || generateSeed();
   const winner = pickWinner(raffle.entries, usedSeed)!;
 
-  await db.raffle.updateMany({
-    where: { id: raffleId, eventId: ctx.eventId },
+  const updated = await db.raffle.updateMany({
+    where: { id: raffleId, eventId: ctx.eventId, drawnAt: null },
     data: {
       seed: usedSeed,
       drawnAt: new Date(),
@@ -190,6 +194,9 @@ export async function drawWinner(
       winnerLabel: winner.label,
     },
   });
+
+  if (!updated.count) return { ok: false, reason: "drawn", message: "Розыгрыш уже состоялся" };
+  await db.event.updateMany({ where: { id: ctx.eventId, orgId: ctx.orgId }, data: { activeRaffleId: raffleId } });
 
   await bus.publish(ctx.eventId, "raffle", raffleId);
   return { ok: true, winner, seed: usedSeed };

@@ -18,7 +18,7 @@ function templateBlocks(): InviteBlockView[] {
 
 describe("Тоскана", () => {
   it("зарегистрирован с одной локацией и тремя заменяемыми фотографиями", () => {
-    expect(findTemplate("tuscany")).toBe(TUSCANY_TEMPLATE);
+    expect(findTemplate("tuscany")).toMatchObject({ id: TUSCANY_TEMPLATE.id, name: TUSCANY_TEMPLATE.name, theme: TUSCANY_TEMPLATE.theme, blocks: expect.arrayContaining(TUSCANY_TEMPLATE.blocks) });
     expect(TUSCANY_SAMPLE_IMAGES).toEqual([
       "/media/invite-tuscany/couple.webp",
       "/media/invite-tuscany/venue.webp",

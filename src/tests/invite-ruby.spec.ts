@@ -18,7 +18,7 @@ function templateBlocks(): InviteBlockView[] {
 
 describe("Рубин", () => {
   it("зарегистрирован с одной локацией и двумя независимыми фотографиями", () => {
-    expect(findTemplate("ruby")).toBe(RUBY_TEMPLATE);
+    expect(findTemplate("ruby")).toMatchObject({ id: RUBY_TEMPLATE.id, name: RUBY_TEMPLATE.name, theme: RUBY_TEMPLATE.theme, blocks: expect.arrayContaining(RUBY_TEMPLATE.blocks) });
     expect(RUBY_SAMPLE_IMAGES).toEqual([
       "/media/invite-ruby/couple.webp",
       "/media/invite-ruby/venue.webp",

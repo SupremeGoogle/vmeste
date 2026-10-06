@@ -165,13 +165,24 @@ export async function applyOp(
 
   try {
     return await db.$transaction(async (tx) => {
+      // Claim the version before reading or changing seats. The conditional UPDATE
+      // serializes competing requests for this event in PostgreSQL, so only one
+      // request based on a given version can commit.
+      const claimed = await tx.event.updateMany({
+        where: {
+          id: ctx.eventId,
+          orgId: ctx.orgId,
+          ...(expectedVersion === null ? {} : { seatingVersion: expectedVersion }),
+        },
+        data: { seatingVersion: { increment: 1 } },
+      });
       const event = await tx.event.findFirst({
         where: { id: ctx.eventId, orgId: ctx.orgId },
         select: { seatingVersion: true, hallWidth: true, hallHeight: true },
       });
       if (!event) return fail("gone", "Мероприятие не найдено");
 
-      if (expectedVersion !== null && event.seatingVersion !== expectedVersion) {
+      if (claimed.count === 0) {
         return { ok: false, reason: "conflict", version: event.seatingVersion } as const;
       }
 
@@ -182,13 +193,7 @@ export async function applyOp(
 
       await runOp(tx, ctx, op, hall);
 
-      const updated = await tx.event.update({
-        where: { orgId_id: { orgId: ctx.orgId, id: ctx.eventId } },
-        data: { seatingVersion: { increment: 1 } },
-        select: { seatingVersion: true },
-      });
-
-      return { ok: true, version: updated.seatingVersion, undo } as const;
+      return { ok: true, version: event.seatingVersion, undo } as const;
     });
   } catch (error) {
     if (error instanceof OpFailure) return error.result;

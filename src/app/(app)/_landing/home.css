@@ -1,0 +1,1214 @@
+/*
+ * Титульная страница: спокойная редакционная вёрстка.
+ *
+ * Светлая слоновая кость, один глубокий винный акцент и тонкие золотые
+ * линии. Заголовки — Cormorant Garamond, текст — Manrope. Шрифты лежат
+ * рядом с файлом, а не тянутся с Google при сборке: сервер собирает
+ * проект сам, и сеть ему для этого нужна не должна.
+ */
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-cyrillic-400-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-cyrillic-500-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-cyrillic-400-italic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-latin-400-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-cyrillic-500-italic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/cormorant-garamond-latin-500-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("./fonts/manrope-cyrillic-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("./fonts/manrope-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── Палитра ──────────────────────────────────────────────────
+   Внутренние блоки (вкладки, цены, демо) написаны на утилитах stone-*.
+   Переопределяем шкалу здесь, и они сами встают в палитру страницы:
+   stone-900 — кнопки и акценты, поэтому он винный, а не серый. */
+.home,
+.home-nav {
+  --ivory: #fbf8f3;
+  --sand: #f4eee6;
+  --paper: #fffdfa;
+  --ink: #2a211f;
+  --text: #5b4f49;
+  --muted: #8b7e75;
+  --line: #e6ddd2;
+  --wine: #5e2a35;
+  --wine-hover: #74394a;
+  --wine-deep: #35191f;
+  --gold: #a8875a;
+  --gold-soft: #d8c09a;
+
+  --font-serif: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Manrope", -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-card: #fffdfa;
+  --color-stone-50: #faf6f0;
+  --color-stone-100: #f3ede4;
+  --color-stone-200: #e6ddd2;
+  --color-stone-300: #d6c9ba;
+  --color-stone-400: #b2a497;
+  --color-stone-500: #8b7e75;
+  --color-stone-600: #6f625b;
+  --color-stone-700: #54483f;
+  --color-stone-800: #3d322e;
+  --color-stone-900: #5e2a35;
+  --color-stone-950: #2a211f;
+
+  font-family: var(--font-sans);
+  font-variant-numeric: lining-nums;
+}
+
+.home {
+  overflow-x: clip;
+  color: var(--text);
+  background: var(--ivory);
+}
+
+.home ::selection { color: var(--paper); background: var(--wine); }
+
+.home-container {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 4vw, 48px);
+}
+
+.home-section { padding-block: clamp(88px, 11vw, 148px); }
+.home-section--sand { background: var(--sand); }
+
+/* ── Типографика ──────────────────────────────────────────── */
+.home-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+
+.home-kicker::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+}
+
+.home h1,
+.home h2,
+.home h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+
+.home h1 em,
+.home h2 em {
+  color: var(--wine);
+  font-style: italic;
+}
+
+.home-h2 {
+  margin-top: 20px !important;
+  font-size: clamp(40px, 4.6vw, 64px);
+  line-height: 1.04;
+}
+
+/* Курсивная часть заголовка — всегда второй строкой: так заголовки
+   читаются одинаково и не рвутся посередине фразы. */
+.home-h2 em,
+.home-final h2 em { display: block; }
+
+.home-lead {
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.home-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+  align-items: end;
+  gap: 24px 64px;
+  margin-bottom: clamp(44px, 6vw, 72px);
+}
+
+.home-head .home-lead { max-width: 440px; justify-self: end; }
+
+.home-head--center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.home-head--center .home-lead { max-width: 560px; justify-self: auto; }
+
+/* ── Кнопки ───────────────────────────────────────────────── */
+.home-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 54px;
+  padding: 0 30px;
+  border-radius: 999px;
+  color: var(--paper);
+  background: var(--wine);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
+}
+
+.home-button:hover {
+  background: var(--wine-hover);
+  box-shadow: 0 14px 30px -16px rgba(94, 42, 53, .7);
+  transform: translateY(-1px);
+}
+
+.home-button span { transition: transform .25s ease; }
+.home-button:hover span { transform: translateX(3px); }
+
+.home-button--light { color: var(--wine); background: var(--paper); }
+.home-button--light:hover { color: var(--wine); background: #fff; }
+
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 6px;
+  border-bottom: 1px solid var(--gold-soft);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  transition: color .2s ease, border-color .2s ease;
+}
+
+.home-link:hover { color: var(--wine); border-color: var(--wine); }
+
+.home-button:focus-visible,
+.home-link:focus-visible,
+.home-nav a:focus-visible,
+.home-nav button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+/* ── Шапка ────────────────────────────────────────────────── */
+.home-nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  border-bottom: 1px solid transparent;
+  color: var(--ink);
+  transition: background .3s ease, border-color .3s ease;
+}
+
+.home-nav[data-solid="true"] {
+  border-color: var(--line);
+  background: rgba(251, 248, 243, .88);
+  backdrop-filter: saturate(1.4) blur(16px);
+}
+
+.home-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  height: 76px;
+}
+
+.home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.home-brand img { width: 34px; height: 24px; }
+
+.home-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  font-size: 14px;
+}
+
+.home-nav-links a {
+  position: relative;
+  padding-block: 6px;
+  color: var(--text);
+  transition: color .2s ease;
+}
+
+.home-nav-links a::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--wine);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .3s ease;
+}
+
+.home-nav-links a:hover,
+.home-nav-links a[aria-current="true"] { color: var(--ink); }
+.home-nav-links a[aria-current="true"]::after { transform: scaleX(1); }
+
+.home-nav-actions { display: flex; align-items: center; gap: 22px; }
+.home-nav-actions .home-button { min-height: 44px; padding: 0 22px; font-size: 14px; }
+
+.home-nav-login {
+  color: var(--text);
+  font-size: 14px;
+  transition: color .2s ease;
+}
+
+.home-nav-login:hover { color: var(--wine); }
+
+.home-burger {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+}
+
+.home-burger span {
+  width: 22px;
+  height: 1.5px;
+  background: var(--ink);
+  transition: transform .3s ease;
+}
+
+.home-burger[aria-expanded="true"] span:first-child { transform: translateY(3.75px) rotate(45deg); }
+.home-burger[aria-expanded="true"] span:last-child { transform: translateY(-3.75px) rotate(-45deg); }
+
+.home-menu {
+  max-height: calc(100dvh - 76px);
+  overflow-y: auto;
+  padding-bottom: 32px;
+  border-top: 1px solid var(--line);
+  background: var(--ivory);
+}
+
+.home-menu nav { display: flex; flex-direction: column; }
+
+.home-menu nav a {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 26px;
+}
+
+.home-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.home-menu-actions .home-button { width: 100%; }
+
+.home-button--outline {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: transparent;
+}
+
+.home-button--outline:hover { color: var(--ink); background: var(--paper); box-shadow: none; }
+
+/* ── Первый экран ─────────────────────────────────────────── */
+.home-hero {
+  position: relative;
+  padding-top: clamp(124px, 14vw, 168px);
+  padding-bottom: clamp(72px, 8vw, 112px);
+  /* Ровный фон без пятен: у ролика с птичкой фон того же цвета, и любое
+     пятно за ним выдало бы прямоугольник видео. */
+  background: var(--ivory);
+}
+
+/* Первый экран проявляется на CSS, а не через Reveal: ему нельзя ждать
+   загрузки скриптов, иначе на медленном телефоне человек несколько
+   секунд смотрит на пустую страницу. */
+.home-rise { animation: home-rise .9s cubic-bezier(.22, 1, .36, 1) both; }
+
+@keyframes home-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+.home-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .92fr);
+  align-items: center;
+  gap: clamp(48px, 7vw, 112px);
+}
+
+.home-hero h1 {
+  margin-top: 28px;
+  font-size: clamp(50px, 6.4vw, 94px);
+  line-height: .98;
+  letter-spacing: -.02em;
+}
+
+.home-hero h1 em { display: block; }
+
+.home-hero .home-lead {
+  max-width: 470px;
+  margin-top: 30px;
+  font-size: 18px;
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 32px;
+  margin-top: 40px;
+}
+
+.home-hero-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 36px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.home-hero-note span { display: inline-flex; align-items: center; gap: 8px; }
+
+.home-hero-note span::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.home-hero-visual {
+  position: relative;
+  justify-self: end;
+  width: min(100%, 500px);
+}
+
+/* Рамка первого экрана; с роликом она без формы и фона (`--video`). */
+.home-arch {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 999px 999px 6px 6px;
+  background: var(--sand);
+}
+
+.home-arch img { object-fit: cover; object-position: 74% center; }
+
+.home-hero-screen {
+  width: min(100%, 280px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 9px solid #2c2425;
+  border-radius: 34px;
+  background: #fffaf6;
+  box-shadow: 0 28px 60px -24px rgba(57, 38, 31, .3);
+}
+.home-hero-screen img { display: block; width: 100%; height: auto; }
+
+/* Арка с живой птичкой: ролик заполняет арку целиком, фон у него свой,
+   тот же тёплый розовый. Картинка-заставка лежит под ним. */
+/* Птичка стоит прямо на странице: без арки, фон ролика — цвет страницы,
+   а края кадра растворены маской, чтобы не было видно даже шва сжатия. */
+.home-arch--video { border-radius: 0; background: var(--ivory); }
+
+.home-arch--video .home-arch-poster,
+.home-arch--video .home-arch-video {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 10%, #000 90%, transparent),
+    linear-gradient(to bottom, transparent, #000 12%, #000 92%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 10%, #000 90%, transparent),
+    linear-gradient(to bottom, transparent, #000 12%, #000 92%, transparent);
+  mask-composite: intersect;
+}
+
+.home-arch .home-arch-poster,
+.home-arch .home-arch-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+}
+
+.home-arch-video { z-index: 1; }
+
+
+/* ── Панель-витрина для интерактивных блоков ─────────────── */
+.home-panel {
+  padding: clamp(20px, 3.6vw, 48px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  color: var(--text);
+  background: var(--paper);
+  box-shadow: 0 40px 80px -56px rgba(53, 25, 31, .35);
+}
+
+/* Лента вкладок прокручивается вбок на телефоне — без полосы. */
+.story-feature-tabrail { scrollbar-width: none; }
+.story-feature-tabrail::-webkit-scrollbar { display: none; }
+
+/* ── Приглашения ──────────────────────────────────────────── */
+.home-invite {
+  color: #eadbd2;
+  background:
+    radial-gradient(60% 70% at 100% 0%, rgba(168, 135, 90, .16), transparent 70%),
+    var(--wine-deep);
+}
+
+.home-invite .home-kicker { color: var(--gold-soft); }
+.home-invite h2 { color: #fffaf3; }
+.home-invite h2 em { color: #e3b9ad; }
+.home-invite .home-lead { max-width: 440px; color: #d9c6bc; }
+
+/* Лента телефонов едет сама и бесконечно. Список нарисован дважды;
+   сдвиг на −50% ровно возвращает его в начало. Отступ между телефонами
+   задан у каждого справа, а не через gap, — иначе половина ленты была бы
+   на один зазор короче и на стыке телефон дёргался. */
+.home-marquee {
+  overflow: hidden;
+  padding-block: 12px 8px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.home-phones {
+  display: flex;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: home-marquee 100s linear infinite;
+}
+
+.home-marquee:focus-within .home-phones { animation-play-state: paused; }
+
+@keyframes home-marquee {
+  to { transform: translateX(-50%); }
+}
+
+.home-phone-item {
+  flex: 0 0 auto;
+  width: clamp(200px, 21vw, 270px);
+  padding: 10px clamp(10px, 1.3vw, 18px) 28px;
+}
+
+.home-phone {
+  position: relative;
+  display: block;
+  padding: 9px;
+  border-radius: 46px;
+  background: linear-gradient(145deg, #3a2a2d, #120a0c 55%, #2a1d20);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .08),
+    0 40px 70px -36px rgba(0, 0, 0, .75);
+  transition: transform .45s cubic-bezier(.22, 1, .36, 1), box-shadow .45s ease;
+}
+
+/* «Островок» камеры. */
+.home-phone::before {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: 50%;
+  z-index: 2;
+  width: 30%;
+  height: 20px;
+  border-radius: 20px;
+  background: #0b0607;
+  transform: translateX(-50%);
+}
+
+.home-phone:hover,
+.home-phone:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .12),
+    0 50px 80px -36px rgba(0, 0, 0, .85);
+  transform: translateY(-8px);
+}
+
+.home-phone:focus-visible { outline: 2px solid var(--gold-soft); outline-offset: 6px; }
+
+.home-phone-screen {
+  position: relative;
+  display: block;
+  aspect-ratio: 390 / 844;
+  overflow: hidden;
+  border-radius: 38px;
+  background: #1c1013;
+}
+
+.home-phone-screen img { object-fit: cover; object-position: top; }
+
+
+/* ── Вход по QR ───────────────────────────────────────────── */
+/* Рассадка: сверху план зала крупно, ниже — что видит гость. */
+.home-seat-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.home-seat-label span {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--gold-soft);
+  border-radius: 50%;
+  color: var(--gold);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-style: italic;
+}
+
+.home-seat-guest {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 96px);
+  margin-top: clamp(56px, 7vw, 96px);
+}
+
+.home-seat-steps {
+  display: grid;
+  gap: 24px;
+  margin: 28px 0 0 15px;
+  padding: 0 0 0 31px;
+  border-left: 1px solid var(--line);
+  list-style: none;
+}
+
+.home-seat-steps strong {
+  display: block;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.home-seat-steps p { margin-top: 4px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+@media (max-width: 860px) {
+  .home-seat-guest { grid-template-columns: minmax(0, 1fr); }
+}
+
+.seat-finder { justify-content: flex-end; min-height: 0; }
+.home-seat-guest .seat-finder-sign { top: 30px; width: 200px; }
+
+@media (max-width: 1100px) {
+  .home-seat-grid { grid-template-columns: minmax(0, 1fr); }
+  .home-seat-guest .seat-finder { justify-content: center; }
+}
+
+.seat-finder {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 560px;
+}
+
+/* Табличка на входе — бумага с QR, чуть повёрнута и стоит за телефоном. */
+.seat-finder-sign {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 230px;
+  padding: 26px 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: 0 30px 60px -36px rgba(53, 25, 31, .45);
+  transform: rotate(-6deg);
+  text-align: center;
+}
+
+.seat-finder-sign-kicker { color: var(--gold); font-size: 10px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; }
+.seat-finder-sign-title { color: var(--ink); font-family: var(--font-serif); font-size: 24px; line-height: 1.1; }
+.seat-finder-sign-note { color: var(--muted); font-size: 12px; }
+
+.seat-finder-qr {
+  display: grid;
+  grid-template-columns: repeat(21, 1fr);
+  width: 150px;
+  aspect-ratio: 1;
+  padding: 8px;
+  background: #fff;
+}
+
+.seat-finder-qr i.on { background: var(--ink); }
+
+.seat-finder-phone {
+  display: block;
+  position: relative;
+  z-index: 1;
+  width: 290px;
+  margin-left: 120px;
+  padding: 10px;
+  border-radius: 46px;
+  background: linear-gradient(145deg, #3a2a2d, #120a0c 55%, #2a1d20);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 40px 70px -36px rgba(53, 25, 31, .6);
+}
+
+.seat-finder-phone::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  z-index: 2;
+  width: 30%;
+  height: 20px;
+  border-radius: 20px;
+  background: #0b0607;
+  transform: translateX(-50%);
+}
+
+.seat-finder-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+  padding: 58px 22px 26px;
+  border-radius: 37px;
+  background: var(--ivory);
+  text-align: center;
+}
+
+.seat-finder-eyebrow { color: var(--gold); font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
+.seat-finder-label { margin-top: 18px; color: var(--ink); font-family: var(--font-serif); font-size: 28px; line-height: 1.1; }
+
+.seat-finder-input {
+  width: 100%;
+  margin-top: 16px;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  outline: none;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+  font-size: 16px;
+  text-align: center;
+}
+
+.seat-finder-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(168, 135, 90, .15); }
+
+.seat-finder-list { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.seat-finder-list button {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  font-size: 15px;
+}
+.seat-finder-list button:hover { border-color: var(--gold-soft); }
+
+.seat-finder-empty,
+.seat-finder-tip { margin-top: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+.seat-finder-result { margin-top: 20px; animation: home-rise .5s cubic-bezier(.22, 1, .36, 1) both; }
+.seat-finder-hello { color: var(--text); font-size: 14px; }
+.seat-finder-table { margin-top: 8px; color: var(--ink); font-family: var(--font-serif); font-size: 26px; line-height: 1; }
+.seat-finder-table b { display: block; margin-top: 4px; color: var(--wine); font-size: 64px; font-weight: 500; }
+.seat-finder-seat { margin-top: 2px; color: var(--muted); font-size: 14px; }
+
+.seat-finder-map {
+  position: relative;
+  height: 120px;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+
+.seat-finder-map span:not(.seat-finder-stage) {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  background: #fff;
+  font-size: 12px;
+  transform: translate(-50%, -50%);
+  transition: background .3s, color .3s, transform .3s;
+}
+
+.seat-finder-map span.on {
+  border-color: var(--wine);
+  color: #fff;
+  background: var(--wine);
+  transform: translate(-50%, -50%) scale(1.15);
+  box-shadow: 0 0 0 6px rgba(94, 42, 53, .12);
+}
+
+.seat-finder-stage {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  padding: 2px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--sand);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 560px) {
+  .seat-finder { flex-direction: column; min-height: 0; }
+  .seat-finder-sign { position: relative; top: auto; left: auto; width: 200px; margin-bottom: -40px; transform: rotate(-4deg); }
+  .seat-finder-phone { width: min(100%, 290px); margin-left: 0; }
+  .seat-finder-screen { min-height: 440px; }
+}
+
+/* ── Вопросы ──────────────────────────────────────────────── */
+.seat-finder--live {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 330px);
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 0;
+}
+.home-seat-guest .seat-finder--live .seat-finder-sign {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 160px;
+  padding: 22px 12px;
+  transform: rotate(-4deg);
+}
+.seat-finder--live .seat-finder-sign-title { font-size: 22px; }
+.seat-finder--live .seat-finder-sign-kicker { font-size: 8px; }
+.seat-finder-real-qr { width: 136px; height: 136px; background: white; }
+.seat-finder-sign-link { color: var(--wine); font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
+.seat-finder-device { min-width: 0; }
+.seat-finder--live .seat-finder-phone { width: 100%; margin: 0; padding: 10px; }
+.seat-finder-live-screen {
+  display: block;
+  width: 100%;
+  height: 680px;
+  padding-top: 30px;
+  border: 0;
+  border-radius: 37px;
+  background: #fffaf6;
+}
+/* Снимок начинается под «чёлкой» телефона, как раньше живая страница. */
+.seat-finder-photo { position: relative; overflow: hidden; }
+.seat-finder-photo-frame { position: absolute; inset: 30px 0 0; }
+.seat-finder-photo img { object-fit: cover; object-position: center top; }
+.seat-finder-photo-frame--real img { display: block; width: 100%; height: auto; object-fit: contain; }
+.seat-finder-photo:has(.seat-finder-photo-frame--real) { height: auto; aspect-ratio: auto; }
+.seat-finder-photo-frame--real { position: relative; display: block; inset: auto; }
+/* Камера в телефоне: наводится на табличку, рамки сходятся на QR,
+   всплывает ссылка, нажатие — и поверх выезжает страница гостя.
+   Один цикл 9 с, всё на CSS. */
+.sf-page { position: absolute; inset: 0; z-index: 2; background: #fffaf6; animation: sf-page 9s cubic-bezier(.22, 1, .36, 1) infinite; }
+.sf-cam {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 214, 160, .55) 0 7%, transparent 18%),
+    radial-gradient(circle at 82% 30%, rgba(255, 190, 140, .45) 0 6%, transparent 16%),
+    radial-gradient(circle at 70% 82%, rgba(255, 226, 180, .35) 0 8%, transparent 20%),
+    radial-gradient(ellipse at 50% 60%, #6a4c3c 0%, #3a2820 55%, #1e1512 100%);
+}
+.sf-cam-top {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  z-index: 3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffd60a;
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: 600;
+  transform: translateX(-50%);
+}
+.sf-cam-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 700px;
+  animation: sf-focus 9s ease-out infinite, sf-hand 3s ease-in-out infinite;
+}
+.sf-cam-sign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 168px;
+  padding: 16px 12px 18px;
+  border-radius: 6px;
+  background: #fffdf9;
+  box-shadow: 0 24px 40px -18px rgba(0, 0, 0, .7);
+  transform: rotateX(12deg) rotateZ(-3deg);
+}
+.sf-cam-kicker { color: var(--gold); font-size: 7px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
+.sf-cam-title { color: var(--ink); font-family: var(--font-serif); font-size: 17px; line-height: 1.1; text-align: center; }
+.sf-cam-qr { position: relative; display: block; width: 110px; height: 110px; margin-top: 4px; background: white; }
+.sf-cam-qr img { display: block; width: 100%; height: 100%; }
+.sf-cam-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #ffd60a;
+  animation: sf-corner 9s cubic-bezier(.22, 1, .36, 1) infinite;
+}
+.sf-cam-corner.tl { top: -9px; left: -9px; border-right: 0; border-bottom: 0; border-top-left-radius: 6px; --dx: -46px; --dy: -70px; }
+.sf-cam-corner.tr { top: -9px; right: -9px; border-left: 0; border-bottom: 0; border-top-right-radius: 6px; --dx: 46px; --dy: -70px; }
+.sf-cam-corner.bl { bottom: -9px; left: -9px; border-right: 0; border-top: 0; border-bottom-left-radius: 6px; --dx: -46px; --dy: 70px; }
+.sf-cam-corner.br { bottom: -9px; right: -9px; border-left: 0; border-top: 0; border-bottom-right-radius: 6px; --dx: 46px; --dy: 70px; }
+.sf-cam-chip {
+  position: absolute;
+  left: 50%;
+  bottom: 118px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #ffd60a;
+  color: #1a1a1a;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .6);
+  animation: sf-chip 9s cubic-bezier(.22, 1, .36, 1) infinite;
+}
+.sf-cam-tap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .75);
+  opacity: 0;
+  animation: sf-tap 9s ease-out infinite;
+}
+.sf-cam-shutter {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  z-index: 3;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, .35), 0 0 0 7px #fff;
+  transform: translateX(-50%);
+}
+@keyframes sf-page {
+  0%, 46% { transform: translateY(105%); opacity: 1; }
+  54%, 90% { transform: translateY(0); opacity: 1; }
+  96% { transform: translateY(0); opacity: 0; }
+  97%, 100% { transform: translateY(105%); opacity: 0; }
+}
+@keyframes sf-focus {
+  0% { filter: blur(6px); }
+  9%, 100% { filter: blur(0); }
+}
+@keyframes sf-hand {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  33% { translate: 3px -2px; rotate: .6deg; }
+  66% { translate: -2px 2px; rotate: -.5deg; }
+}
+@keyframes sf-corner {
+  0%, 6% { transform: translate(var(--dx), var(--dy)); border-color: rgba(255, 255, 255, .85); }
+  26% { transform: translate(0, 0); border-color: rgba(255, 255, 255, .85); }
+  29%, 100% { transform: translate(0, 0); border-color: #ffd60a; }
+}
+@keyframes sf-chip {
+  0%, 29% { opacity: 0; transform: translateX(-50%) translateY(12px) scale(.9); }
+  34%, 47% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  42% { transform: translateX(-50%) scale(.95); }
+  52%, 100% { opacity: 0; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes sf-tap {
+  0%, 40% { opacity: 0; transform: scale(.3); }
+  42% { opacity: .9; transform: scale(.6); }
+  48%, 100% { opacity: 0; transform: scale(2.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-cam { display: none; }
+  .sf-page { animation: none; }
+}
+.seat-finder-caption { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.5; text-align: center; }
+@media (max-width: 1100px) and (min-width: 861px) {
+  .seat-finder--live { grid-template-columns: minmax(0, 1fr); max-width: 330px; margin: 0 auto; }
+  .home-seat-guest .seat-finder--live .seat-finder-sign { display: none; }
+}
+@media (max-width: 560px) {
+  .seat-finder--live { grid-template-columns: minmax(0, 330px); }
+  .seat-finder-device { grid-row: 1; }
+  .home-seat-guest .seat-finder--live .seat-finder-sign { justify-self: center; margin: 12px 0 0; }
+  .seat-finder-live-screen { height: 650px; }
+}
+
+.home-faq {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 48px clamp(48px, 8vw, 120px);
+}
+
+.home-faq-aside { position: sticky; top: 120px; }
+.home-faq-aside .home-lead { margin-top: 24px; max-width: 360px; }
+.home-faq-aside .home-link { margin-top: 28px; }
+
+.home-faq-list button span:first-child {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 23px;
+  line-height: 1.3;
+}
+
+.home-faq-list button { padding-block: 22px !important; }
+
+/* ── Финальный призыв ─────────────────────────────────────── */
+.home-final {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-height: min(680px, 90svh);
+  overflow: hidden;
+  color: #f4e8df;
+  text-align: center;
+}
+
+.home-final > img { z-index: -2; object-fit: cover; object-position: center 60%; }
+
+.home-final::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(31, 15, 19, .55), rgba(31, 15, 19, .72)),
+    radial-gradient(60% 60% at 50% 50%, transparent, rgba(31, 15, 19, .4));
+}
+
+.home-final .home-container { display: flex; flex-direction: column; align-items: center; }
+.home-final .home-kicker { color: var(--gold-soft); }
+.home-final h2 {
+  max-width: 820px;
+  margin-top: 24px;
+  color: #fffaf3;
+  font-size: clamp(46px, 6vw, 84px);
+  line-height: 1;
+}
+.home-final h2 em { color: #ecc7bc; }
+.home-final .home-lead { max-width: 480px; margin: 26px auto 0; color: #e6d6cd; }
+.home-final .home-button { margin-top: 40px; }
+
+/* ── Подвал ───────────────────────────────────────────────── */
+.home-footer {
+  padding-top: 72px;
+  padding-bottom: 36px;
+  border-top: 1px solid var(--line);
+  background: var(--ivory);
+}
+
+.home-footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, .7fr));
+  gap: 40px;
+}
+
+.home-footer-grid p {
+  max-width: 320px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.home-footer h4 {
+  margin: 0 0 18px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.home-footer ul { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.home-footer ul a { color: var(--text); transition: color .2s ease; }
+.home-footer ul a:hover { color: var(--wine); }
+
+.home-footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ── Адаптив ──────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .home-nav-links { gap: 24px; }
+  .home-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); }
+}
+
+@media (max-width: 860px) {
+  .home-nav-links,
+  .home-nav-actions { display: none; }
+  .home-burger { display: flex; }
+  .home-nav-bar { height: 64px; }
+  .home-menu { max-height: calc(100dvh - 64px); }
+
+  .home-hero-grid,
+  .home-faq { grid-template-columns: minmax(0, 1fr); }
+  .home-hero-visual { justify-self: center; width: min(100% - 36px, 440px); margin-top: 24px; }
+  .home-head { grid-template-columns: minmax(0, 1fr); }
+  .home-head .home-lead { justify-self: start; }
+  .home-faq-aside { position: static; }
+  .home-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-footer-grid > div:first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .home-hero h1 { font-size: clamp(44px, 12.4vw, 58px); }
+  .home-hero .home-lead { font-size: 16px; }
+  .home-hero-actions .home-button { width: 100%; }
+  .home-panel { border-radius: 18px; }
+  .home-faq-list button span:first-child { font-size: 20px; }
+  .home-footer-bottom { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-marquee { overflow-x: auto; -webkit-mask-image: none; mask-image: none; }
+  .home-phones { animation: none; }
+  .home-rise { animation: none; }
+  .home-arch-video { display: none; }
+  .home-button,
+  .home-button span,
+  .home-phone,
+  .home-nav-links a::after { transition: none; }
+}

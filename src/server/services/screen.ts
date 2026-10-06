@@ -101,11 +101,11 @@ export type ScreenSnapshot = {
  * заметят все.
  */
 export async function screenSnapshot(access: ScreenAccess, limit = 40): Promise<ScreenSnapshot> {
-  const [event, photos, wishes, raffle] = await Promise.all([
-    db.event.findFirst({
+  const event = await db.event.findFirst({
       where: { id: access.eventId, orgId: access.orgId },
-      select: { title: true, screenMode: true },
-    }),
+      select: { title: true, screenMode: true, activeRaffleId: true },
+    });
+  const [photos, wishes, raffle] = await Promise.all([
     db.photo.findMany({
       where: { eventId: access.eventId, status: "APPROVED", previewOk: true },
       orderBy: { createdAt: "desc" },
@@ -122,7 +122,7 @@ export async function screenSnapshot(access: ScreenAccess, limit = 40): Promise<
       select: { id: true, authorName: true, text: true },
     }),
     db.raffle.findFirst({
-      where: { eventId: access.eventId },
+      where: { eventId: access.eventId, ...(event?.activeRaffleId ? { id: event.activeRaffleId } : {}) },
       orderBy: { createdAt: "desc" },
       select: {
         id: true, title: true, winnerLabel: true, drawnAt: true,

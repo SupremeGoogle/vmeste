@@ -14,15 +14,31 @@
  * делается «на чтении» (см. `migrate`), строки в БД не переписываются.
  */
 import { z } from "zod";
+import { SCRAPBOOK_SAMPLE_IMAGES } from "@/lib/invite-templates/scrapbook-assets";
+import { photoSettingsSchema } from "@/lib/invite-personalization";
 import type { BlockType } from "@/generated/prisma/enums";
 import { CONSTELLATION_SAMPLE_IMAGES } from "@/lib/invite-templates/constellation-assets";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
+import { PRISM_SAMPLE_IMAGES } from "@/lib/invite-templates/prism-assets";
 import { RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES, TILI_TIMELINE_ICONS } from "@/lib/invite-templates/tili-assets";
 import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
+import { VINYL_SAMPLE_IMAGES } from "@/lib/invite-templates/vinyl-assets";
+import { AQUARELLE_SAMPLE_IMAGES } from "@/lib/invite-templates/aquarelle-assets";
+import { LILY_SAMPLE_IMAGES } from "@/lib/invite-templates/lily-assets";
+import { BOHEMA_SAMPLE_IMAGES } from "@/lib/invite-templates/bohema-assets";
+import { KRASKI_SAMPLE_IMAGES } from "@/lib/invite-templates/kraski-assets";
+import { SERDCE_SAMPLE_IMAGES } from "@/lib/invite-templates/serdce-assets";
+import { ANTIC_SAMPLE_IMAGES } from "@/lib/invite-templates/antic-assets";
+import { SKVOZ_VREMYA_SAMPLE_IMAGES } from "@/lib/invite-templates/skvoz-vremya-assets";
+import { BURGUNDY_SAMPLE_IMAGES } from "@/lib/invite-templates/burgundy-assets";
+import { ROSERAIE_SAMPLE_IMAGES } from "@/lib/invite-templates/roseraie-assets";
+import { FLORAL_GARDEN_SAMPLE_IMAGES } from "@/lib/invite-templates/floral-garden-assets";
+import { ISKRA_SAMPLE_IMAGES } from "@/lib/invite-templates/iskra-assets";
+import { WEDWED_SAMPLE_IMAGES } from "@/lib/invite-templates/wedwed-assets";
 
 /** Текущая версия содержимого. Растёт, когда меняется форма данных. */
 export const BLOCK_SCHEMA_VERSION = 1;
@@ -57,15 +73,30 @@ const httpUrl = z
  * чужой домен. Здесь пройдут только идентификаторы, которые выдали мы.
  */
 const imageRef = httpUrl
+  .or(z.enum(SCRAPBOOK_SAMPLE_IMAGES))
   .or(z.enum(CONSTELLATION_SAMPLE_IMAGES))
   .or(z.string().regex(/^\/api\/asset\/[a-z0-9]+\/[a-z0-9]+$/, "неизвестный адрес картинки"))
   .or(z.enum(EVERGREEN_SAMPLE_IMAGES))
   .or(z.enum(PEARL_SAMPLE_IMAGES))
   .or(z.enum(PROMISE_SAMPLE_IMAGES))
+  .or(z.enum(PRISM_SAMPLE_IMAGES))
   .or(z.enum(RUBY_SAMPLE_IMAGES))
   .or(z.enum(SILK_SAMPLE_IMAGES))
   .or(z.enum(TILI_SAMPLE_IMAGES))
   .or(z.enum(TUSCANY_SAMPLE_IMAGES))
+  .or(z.enum(VINYL_SAMPLE_IMAGES))
+  .or(z.enum(AQUARELLE_SAMPLE_IMAGES))
+  .or(z.enum(LILY_SAMPLE_IMAGES))
+  .or(z.enum(BOHEMA_SAMPLE_IMAGES))
+  .or(z.enum(KRASKI_SAMPLE_IMAGES))
+  .or(z.enum(SERDCE_SAMPLE_IMAGES))
+  .or(z.enum(ANTIC_SAMPLE_IMAGES))
+  .or(z.enum(SKVOZ_VREMYA_SAMPLE_IMAGES))
+  .or(z.enum(BURGUNDY_SAMPLE_IMAGES))
+  .or(z.enum(ROSERAIE_SAMPLE_IMAGES))
+  .or(z.enum(FLORAL_GARDEN_SAMPLE_IMAGES))
+  .or(z.enum(ISKRA_SAMPLE_IMAGES))
+  .or(z.enum(WEDWED_SAMPLE_IMAGES))
   .or(z.enum(TILI_TIMELINE_ICONS))
   .or(z.literal(""));
 
@@ -91,16 +122,18 @@ export const blockContentSchemas = {
   }),
 
   COVER: z.object({
+    photoSettings: photoSettingsSchema,
     v: version,
     title: shortText.default("Мы женимся"),
     names: shortText.default(""),
     dateText: shortText.default(""),
     subtitle: longText.default(""),
     imageUrl: imageRef.default(""),
-    /** Два снимка на обложке (детские фотографии в «Тили-тесто»). */
+    /** Снимки на обложке: детские фотографии в «Тили-тесто», плитки-
+     *  коллаж в «Виниле». Четыре — столько влезает вокруг имён. */
     photos: z
       .array(z.object({ imageUrl: imageRef.default(""), caption: longText.default("") }))
-      .max(2)
+      .max(4)
       .default([]),
     /** Подпись в самом низу приглашения: «С любовью,». */
     footer: shortText.default(""),
@@ -125,6 +158,7 @@ export const blockContentSchemas = {
       .default([]),
   }),
   VENUE: z.object({
+    photoSettings: photoSettingsSchema,
     v: version,
     tag,
     title: shortText.default("Где"),
@@ -137,6 +171,7 @@ export const blockContentSchemas = {
     mapLabel: shortText.default(""),
   }),
   DRESSCODE: z.object({
+    photoSettings: photoSettingsSchema,
     v: version,
     tag,
     title: shortText.default("Дресс-код"),
@@ -193,6 +228,7 @@ export const blockContentSchemas = {
    * пустыми и не рисуются (см. `readBlockContent`/сборку формы).
    */
   PHOTOS: z.object({
+    photoSettings: photoSettingsSchema,
     v: version,
     tag,
     title: shortText.default(""),
@@ -219,6 +255,25 @@ export const blockContentSchemas = {
     title: shortText.default("Мы ждём вас"),
     message: longText.default(""),
   }),
+
+  /**
+   * Виш-лист внутри приглашения. Сами подарки живут в таблице `Gift` —
+   * их ведут в редакторе приглашения, а гости отмечают «я подарю это».
+   * Здесь только слова раздела: шапка рисуется шаблоном в его стиле
+   * (как текстовый раздел), сетка подарков — общая для всех шаблонов.
+   */
+  WISHLIST: z.object({
+    v: version,
+    tag,
+    title: shortText.default("Наш виш-лист"),
+    text: longText.default(""),
+    /** Кнопка в приглашении, открывающая страницу подарков. */
+    openLabel: shortText.default("Открыть виш-лист"),
+    /** Надпись на кнопке брони у подарка. */
+    buttonLabel: shortText.default("Я подарю это"),
+    /** Заголовок блока с реквизитами для перевода. */
+    envelopeTitle: shortText.default(""),
+  }),
 } as const satisfies Record<BlockType, z.ZodType>;
 
 export type BlockContentMap = {
@@ -238,11 +293,21 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   MAP: "Как добраться",
   TEXT: "Текст",
   RSVP_FORM: "Форма ответа",
+  WISHLIST: "Виш-лист",
 };
 
 export const BLOCK_ORDER: BlockType[] = [
-  "COVER", "PHOTOS", "CALENDAR", "COUNTDOWN", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "RSVP_FORM",
+  "COVER", "PHOTOS", "CALENDAR", "COUNTDOWN", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "WISHLIST", "RSVP_FORM",
 ];
+
+/**
+ * Разделы, которые бывают в приглашении в одном экземпляре: две обложки,
+ * две анкеты или два виш-листа шаблоны не рисуют, а гостя они путают.
+ */
+export const SINGLE_BLOCKS: BlockType[] = ["COVER", "COUNTDOWN", "WISHLIST", "RSVP_FORM"];
+
+/** Обложку можно изменить, но не убрать: на ней имена пары, их читают шаблоны. */
+export const PERMANENT_BLOCKS: BlockType[] = ["COVER"];
 
 /** Пустое содержимое блока: все поля со значениями по умолчанию. */
 export function defaultContent<T extends BlockType>(type: T): BlockContentMap[T] {

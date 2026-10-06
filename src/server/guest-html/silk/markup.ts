@@ -3,15 +3,22 @@ import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
+import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
+import { L } from "@/server/guest-html/template-labels";
 
 function flower(className = ""): string {
   return `<svg class="silk-flower ${className}" viewBox="0 0 150 190" fill="none" aria-hidden="true"><path class="silk-stem" pathLength="1" d="M22 181C45 142 45 92 94 22M45 138C27 123 18 105 20 83M58 111C83 102 101 84 110 61M76 78C61 63 58 48 62 31"/><g class="silk-leaves"><path d="M39 141C12 133 7 111 12 94C35 102 45 119 39 141Z"/><path d="M57 113C80 107 95 91 98 74C76 77 61 91 57 113Z"/><path d="M75 80C52 70 49 52 55 38C75 47 82 62 75 80Z"/></g><g class="silk-blossom"><path d="M91 35C75 18 83 3 100 10C106-3 126 4 121 21C140 18 146 37 130 47C141 61 124 74 111 61C100 77 82 66 88 50C70 53 68 37 91 35Z"/><circle cx="108" cy="37" r="5"/></g></svg>`;
 }
 
+/** Объёмная couture-композиция с отдельной SVG-анимацией нитей и лепестков. */
+function coutureSculpture(): string {
+  return `<figure class="silk-couture-scene" aria-hidden="true"><img src="/media/invite-silk/couture-sculpture.webp" alt="" loading="lazy" decoding="async"><svg class="silk-loom" viewBox="0 0 400 500" fill="none"><path class="silk-thread silk-thread-one" pathLength="1" d="M-25 385C79 308 99 205 190 232C275 257 302 128 432 85"/><path class="silk-thread silk-thread-two" pathLength="1" d="M-31 423C92 347 125 428 218 329C292 250 296 169 438 132"/><g class="silk-glass-petal silk-glass-petal-one"><path d="M0 0C24-13 40 0 34 22C28 41 8 43 0 0Z"/><path d="M3 4C13 14 21 22 29 31"/></g><g class="silk-glass-petal silk-glass-petal-two"><path d="M0 0C24-13 40 0 34 22C28 41 8 43 0 0Z"/><path d="M3 4C13 14 21 22 29 31"/></g><g class="silk-glass-petal silk-glass-petal-three"><path d="M0 0C24-13 40 0 34 22C28 41 8 43 0 0Z"/><path d="M3 4C13 14 21 22 29 31"/></g></svg><figcaption><span>${L("silk.t2", "Ткань нашей истории")}</span><b>∞</b></figcaption></figure>`;
+}
+
 function namesMarkup(value: string): string {
   const parts = value.trim().split(/\s+(?:и|&|and)\s+/i);
   if (parts.length !== 2) return esc(value);
-  return `<span>${esc(parts[0])}</span><i>&amp;</i><span>${esc(parts[1])}</span>`;
+  return `<span>${esc(parts[0])}</span><i>&amp;<wbr></i><span>${esc(parts[1])}</span>`;
 }
 
 function wrap(block: InviteBlockView, className: string, body: string, editable: boolean): string {
@@ -24,20 +31,26 @@ function renderBlock(
   rsvpHref: string | null,
   answered: string | null,
   editable: boolean,
+  names: string,
 ): string {
   const e = editAttrs(block.id, editable);
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
-      return wrap(block, "silk-cover", `<div class="silk-cover-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high"${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}</div><div class="silk-petals" aria-hidden="true">${"<i></i>".repeat(9)}</div><div class="silk-cover-wave"><div class="silk-cover-copy"><p class="silk-kicker"${e.text("title")}>${esc(c.title)}</p><h1 class="silk-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><span class="silk-rule"></span><p class="silk-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="silk-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div></div><div class="silk-scroll" aria-hidden="true"><span></span><small>листайте</small></div>`, editable);
+      return wrap(block, "silk-cover", `<div class="silk-cover-photo">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high"${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}</div><div class="silk-petals" aria-hidden="true">${"<i></i>".repeat(9)}</div><div class="silk-cover-wave"><div class="silk-cover-copy"><p class="silk-kicker"${e.text("title")}>${esc(c.title)}</p><h1 class="silk-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><span class="silk-rule"></span><p class="silk-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="silk-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div></div><div class="silk-scroll" aria-hidden="true"><span></span><small>${L("silk.t4", "листайте")}</small></div>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
       const closing = /благодар|до встречи|с любовью/i.test(c.title);
       if (closing) {
-        return wrap(block, "silk-closing", `${flower("silk-flower-left")}<p class="silk-script"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>`, editable);
+        return wrap(block, "silk-closing", `${flower("silk-flower-left")}<p class="silk-script"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${names ? `<p class="silk-signature">${namesMarkup(names)}</p>` : ""}`, editable);
       }
-      return wrap(block, "silk-story", `${flower("silk-flower-right")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="silk-note-card" aria-hidden="true"><span>♡</span><i>∞</i></div>`, editable);
+      // У виш-листа — только шапка: скульптура и записка под ним были бы
+      // повтором истории пары.
+      if ((c as { wishlist?: boolean }).wishlist) {
+        return wrap(block, "silk-story silk-wishlist", `${flower("silk-flower-right")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>`, editable);
+      }
+      return wrap(block, "silk-story", `${flower("silk-flower-right")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="silk-rule"></span><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${coutureSculpture()}<figure class="silk-note-card" aria-hidden="true"><blockquote>${L("silk.t1", "Одна любовь,")}<br>${L("silk.t6", "одна история —")}<br>${L("silk.t3", "и целая жизнь вдвоём")}</blockquote><figcaption><span>♡</span>${L("silk.t5", "навсегда")}<span>∞</span></figcaption></figure>`, editable);
     }
     case "PHOTOS": {
       const c = block.content as BlockContentMap["PHOTOS"];
@@ -59,8 +72,7 @@ function renderBlock(
     }
     case "RSVP_FORM": {
       const c = block.content as BlockContentMap["RSVP_FORM"];
-      const result = answered === "yes" ? "Спасибо, мы будем вас ждать!" : answered === "no" ? "Спасибо, что сообщили нам." : "";
-      return wrap(block, "silk-rsvp", `${flower("silk-flower-left")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${result ? `<p class="silk-answer">${result}</p>` : rsvpHref ? `<a class="silk-cta" href="${esc(rsvpHref)}"${editable ? ' data-editor-ui' : ""}><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b> <span>→</span></a>` : `<span class="silk-cta"><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b> <span>→</span></span>`}`, editable);
+      return wrap(block, "silk-rsvp", `${flower("silk-flower-left")}<p class="silk-section-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="silk-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${inlineRsvpForm(block)}`, editable);
     }
     default:
       return "";
@@ -69,13 +81,16 @@ function renderBlock(
 
 export function renderSilkBlocks(
   blocks: InviteBlockView[],
-  _theme: InviteTheme,
+  theme: InviteTheme,
   rsvpHref: string | null,
   answered: string | null,
   standard: (block: InviteBlockView) => string,
   options: { editable?: boolean } = {},
 ): string {
   const editable = options.editable === true;
+  // Прощание подписано именами пары — как письмо, а не как раздел сайта.
+  const cover = blocks.find((block) => block.type === "COVER")?.content as BlockContentMap["COVER"] | undefined;
+  const names = theme.wedding?.names ?? cover?.names ?? "";
   const chrome = `<div class="silk-progress" aria-hidden="true"><i></i></div><div class="silk-ribbon silk-ribbon-one" aria-hidden="true"></div><div class="silk-ribbon silk-ribbon-two" aria-hidden="true"></div>`;
-  return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
+  return chrome + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable, names) || standard(block)).join("");
 }

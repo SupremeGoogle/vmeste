@@ -57,7 +57,7 @@ ${opts.mine
     theme: opts.theme,
     title: "Пожелание молодожёнам",
     noindex: true,
-    body: `${opts.saved ? `<p class="ok">Спасибо! Покажем на экране после проверки.</p>` : ""}
+    body: `${opts.saved ? `<p class="ok">Спасибо! Пожелание отправлено.</p>` : ""}
 <section style="padding-bottom:0">
 <h1 class="center" style="font-size:1.5rem">Пожелание молодожёнам</h1>
 <p class="center small muted">${esc(opts.eventTitle)}</p>

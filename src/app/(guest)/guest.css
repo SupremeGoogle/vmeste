@@ -1,0 +1,215 @@
+@import "tailwindcss";
+
+/*
+ * Страница гостя — то, что открывается по QR на входе в зал.
+ *
+ * Стиль — «мягкий интерфейс с сиянием» (Soft UI + Aurora), как у всего
+ * продукта: тёплая бумага, золото, румянец и шалфей. Заголовки — рукописью
+ * (Great Vibes) и антиквой (Cormorant): гость держит в руках свадьбу, а не
+ * форму регистрации. Шрифты локальные: вайфай в зале поделён на полторы
+ * сотни человек, ждать Google Fonts там некогда.
+ */
+@font-face {
+  font-family: "GuestScript";
+  src: url("/fonts/GreatVibes-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GuestSerif";
+  src: url("/fonts/CormorantGaramond-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@theme {
+  --color-paper: #fffaf6;
+  --color-card: #fffdfb;
+  --color-ink: #294038;
+  --color-muted: #746f68;
+  --color-line: #e7d9cd;
+  --color-gold: #906e4c;
+  --color-gold-soft: #c5a279;
+  --color-blush: #ecc4ba;
+  --color-sage: #aabea0;
+  --color-hydrangea: #8092b0;
+  --color-hydrangea-ink: #303c53;
+
+  --font-script: "GuestScript", "Great Vibes", cursive;
+  --font-serif: "GuestSerif", "Cormorant Garamond", Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--color-paper);
+}
+
+body {
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+/* Три размытых пятна за содержимым — «сияние» без картинок и без веса. */
+.guest-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(34rem 24rem at 0% -8%, rgba(236, 196, 186, 0.26), transparent 70%),
+    radial-gradient(30rem 22rem at 105% 10%, rgba(201, 163, 106, 0.2), transparent 70%),
+    radial-gradient(36rem 26rem at 50% 115%, rgba(170, 190, 160, 0.2), transparent 70%);
+}
+
+.guest-wedding-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: clamp(370px, 88vw, 480px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 190px 24px 15px;
+}
+
+.guest-wedding-wreath {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 50%;
+  width: min(100%, 520px);
+  aspect-ratio: 4 / 5;
+  transform: translateX(-50%);
+  background: url("/media/guest-wedding/floral-garland.webp") center 58px / contain no-repeat;
+  mask-image: linear-gradient(#000 0%, #000 76%, transparent 96%);
+  pointer-events: none;
+}
+
+/* Надпись лежит на нижних цветах венка: без светлого ореола буквы
+   сливаются с листьями, особенно на телефоне. */
+.guest-wedding-eyebrow {
+  max-width: 300px;
+  padding: 6px 14px;
+  color: #2f4a3f;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  background: radial-gradient(closest-side, rgba(253, 250, 246, 0.92) 55%, rgba(253, 250, 246, 0));
+  text-shadow: 0 0 6px #fffaf6, 0 0 2px #fffaf6;
+}
+
+.guest-wedding-title {
+  max-width: 410px;
+  margin-top: 8px;
+  color: #785a42;
+  font-size: clamp(48px, 10vw, 69px);
+  line-height: 1.02;
+  text-wrap: balance;
+  text-shadow: 0 1px 0 #fffaf6;
+}
+
+.guest-wedding-divider {
+  display: flex;
+  width: 148px;
+  align-items: center;
+  gap: 11px;
+  margin-top: 14px;
+  color: var(--color-gold-soft);
+}
+
+.guest-wedding-date {
+  max-width: 360px;
+  margin-top: 12px;
+  color: #4f5c51;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.guest-finder-card {
+  position: relative;
+  border-color: #d9c9b9;
+  background: rgba(255, 253, 249, 0.95);
+}
+
+.guest-finder-card::before {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(197, 162, 121, 0.28);
+  border-radius: 1.12rem;
+  content: "";
+  pointer-events: none;
+}
+
+.guest-seat-card {
+  position: relative;
+  padding-top: 100px;
+}
+
+.guest-seat-garland {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: min(82%, 310px);
+  aspect-ratio: 3 / 1;
+  transform: translateX(-50%);
+  background: url("/media/guest-wedding/floral-garland.webp") center / contain no-repeat;
+  pointer-events: none;
+}
+
+.guest-card {
+  background: color-mix(in srgb, var(--color-card) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-line) 80%, transparent);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 1px 2px rgba(64, 56, 51, 0.05),
+    0 18px 40px -26px rgba(64, 56, 51, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 390px) {
+  .guest-wedding-hero { padding-right: 12px; padding-left: 12px; }
+  .guest-wedding-title { font-size: clamp(43px, 12vw, 52px); }
+}
+
+.guest-button {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #a48458, var(--color-gold) 55%, #7a5f3b);
+  color: #fffdf9;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 10px 24px -12px rgba(139, 111, 71, 0.8);
+}
+
+.guest-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: guest-shine 3.6s var(--ease-out) 1.2s infinite;
+  pointer-events: none;
+}
+
+@keyframes guest-shine {
+  0%, 60% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+:where(a, button, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

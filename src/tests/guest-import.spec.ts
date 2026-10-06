@@ -16,7 +16,7 @@ import { ImportError } from "@/server/import/limits";
 import { nameFoundInSource, splitByRules, verifySplit } from "@/server/import/people";
 import { maskContacts } from "@/server/import/deepseek";
 import { normalizeName } from "@/lib/name-normalize";
-import { buildXlsx, toBuffer, type TestSheet } from "./helpers/xlsx";
+import { buildXlsx, toBuffer, type SheetData as TestSheet } from "@/lib/xlsx-write";
 
 const xlsx = (sheets: TestSheet[] | TestSheet["rows"]) =>
   toBuffer(buildXlsx(Array.isArray(sheets[0]) ? [{ name: "Гости", rows: sheets as TestSheet["rows"] }] : (sheets as TestSheet[])));

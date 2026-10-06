@@ -18,7 +18,7 @@
 import React from "react";
 import path from "node:path";
 import {
-  DEFAULT_HALL, isRound, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName, type Hall,
+  DEFAULT_HALL, isRound, MARK_LABEL_SHIFT, fitSeatLabels, labelLines, placeSeatLabel, seatPosition, svgLineOffsets, type Hall,
 } from "@/lib/seating-geometry";
 import { COUPLE_TABLE } from "@/lib/couple-table-style";
 import { COLORS } from "@/server/guest-html/theme";
@@ -209,11 +209,8 @@ function FloorPlanPdf({ tables, hall }: { tables: PdfTable[]; hall: Hall }) {
             {table.seats.map((seat) => {
               const { x, y } = seatPosition(table, seat.index);
               const role = seat.guest?.role ?? "GUEST";
-              const label = labelPosition(
-                table,
-                { x, y },
-                role === "GUEST" ? 0 : MARK_LABEL_SHIFT,
-              );
+              const fit = fitSeatLabels(table, table.seats.flatMap((s) => (s.guest ? [s.guest.displayName] : [])), { base: 13, min: 8 });
+              const label = placeSeatLabel(table, seat.index, fit, 15 + (role === "GUEST" ? 0 : MARK_LABEL_SHIFT));
               return (
                 <React.Fragment key={seat.id}>
                   {role === "GUEST" ? (
@@ -225,14 +222,19 @@ function FloorPlanPdf({ tables, hall }: { tables: PdfTable[]; hall: Hall }) {
                   ) : (
                     <CoupleMark role={role} x={x} y={y} />
                   )}
-                  {seat.guest && (
-                    <PlanText
-                      x={label.x} y={label.y} textAnchor="middle"
-                      fontFamily="Roboto" fontSize={13} fill="#57504a"
-                    >
-                      {shortName(seat.guest.displayName)}
-                    </PlanText>
-                  )}
+                  {seat.guest && (() => {
+                    const lines = labelLines(seat.guest.displayName, fit);
+                    const dys = svgLineOffsets(lines.length, fit.fontSize, label.baseline);
+                    return (
+                      <G transform={`translate(${label.x}, ${label.y})${label.angle ? ` rotate(${label.angle})` : ""}`}>
+                        {lines.map((line, i) => (
+                          <PlanText key={i} x={0} y={dys[i]} textAnchor={label.align} fontFamily="Roboto" fontSize={fit.fontSize} fill="#57504a">
+                            {line}
+                          </PlanText>
+                        ))}
+                      </G>
+                    );
+                  })()}
                 </React.Fragment>
               );
             })}

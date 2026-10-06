@@ -1,70 +1,41 @@
 "use client";
 
 /**
- * Появление блока при прокрутке.
+ * Появление блока при прокрутке — на Motion.
  *
- * Обёртка, а не хук в каждом компоненте: наблюдатель один на страницу,
- * а не по одному на каждый из трёх десятков блоков. Элемент, который уже
- * показался, из наблюдения выходит — обратно ничего не прячется, иначе
- * при прокрутке вверх страница мигает.
+ * Блок слегка поднимается, когда доезжает до экрана. Показавшийся блок обратно
+ * не прячется: при прокрутке вверх страница не мигает.
  *
- * Спрятанное состояние живёт в CSS, а не в состоянии React: иначе первый
- * кадр страницы приходил бы без анимации и дёргался после гидратации.
- * Цена такого решения — страница без JavaScript осталась бы пустой,
- * поэтому в разметке есть <noscript>, который показывает всё сразу.
+ * Содержимое видно уже с сервера: если наблюдатель прокрутки не сработал
+ * при переходе по якорю, страница всё равно остаётся читаемой.
  */
-import { useEffect, useRef, type ElementType, type ReactNode } from "react";
+import { motion } from "motion/react";
+import type { ReactNode } from "react";
+import { EASE_OUT } from "@/components/motion/motion";
 
-let shared: IntersectionObserver | null = null;
-const shown = new WeakSet<Element>();
-
-function observer(): IntersectionObserver {
-  shared ??= new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        shown.add(entry.target);
-        entry.target.setAttribute("data-shown", "true");
-        shared?.unobserve(entry.target);
-      }
-    },
-    // Небольшой отступ снизу: блок «оживает» чуть раньше, чем упрётся
-    // в край экрана, — иначе анимация всегда происходит за кадром.
-    { rootMargin: "0px 0px -12% 0px", threshold: 0.08 },
-  );
-  return shared;
-}
+type Tag = "div" | "p" | "h1" | "h2" | "li" | "section";
 
 type Props = {
   children: ReactNode;
-  /** Задержка, чтобы соседние карточки появлялись волной. */
+  /** Задержка в миллисекундах, чтобы соседние карточки появлялись волной. */
   delay?: number;
   className?: string;
-  as?: ElementType;
+  as?: Tag;
 };
 
-export function Reveal({ children, delay = 0, className = "", as: Tag = "div" }: Props) {
-  const ref = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    if (shown.has(node)) {
-      node.setAttribute("data-shown", "true");
-      return;
-    }
-    const io = observer();
-    io.observe(node);
-    return () => io.unobserve(node);
-  }, []);
-
+export function Reveal({ children, delay = 0, className = "", as = "div" }: Props) {
+  const Component = motion[as];
   return (
-    <Tag
-      ref={ref}
+    <Component
       className={`reveal ${className}`}
-      style={{ "--reveal-delay": `${delay}ms` } as React.CSSProperties}
+      initial={{ opacity: 1, y: 8, filter: "blur(0px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      // Отступ снизу: блок «оживает» чуть раньше, чем упрётся в край
+      // экрана, — иначе анимация всегда происходит за кадром.
+      viewport={{ once: true, margin: "0px 0px -12% 0px", amount: 0.08 }}
+      transition={{ duration: 0.8, delay: delay / 1000, ease: EASE_OUT }}
     >
       {children}
-    </Tag>
+    </Component>
   );
 }

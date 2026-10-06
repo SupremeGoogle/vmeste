@@ -1,0 +1,5 @@
+export const SKVOZ_VREMYA_SCRIPT = `(function(){
+var clock=document.querySelector('.sv-clock');if(clock){var tick=function(){var ms=Math.max(0,Number(clock.dataset.until)-Date.now());if(!ms){clock.textContent=clock.dataset.done||'Сегодня наш день!';return}var s=Math.floor(ms/1000),v={days:Math.floor(s/86400),hours:Math.floor(s/3600)%24,minutes:Math.floor(s/60)%60,seconds:s%60};Object.keys(v).forEach(function(k){var el=clock.querySelector('[data-unit='+k+']');if(el)el.textContent=String(v[k]).padStart(2,'0')})};tick();setInterval(tick,1000)}
+var demo=document.querySelector('.sv-form[data-demo]');if(demo)demo.addEventListener('submit',function(e){e.preventDefault();var note=demo.querySelector('.sv-demo-note');if(note)note.hidden=false});
+var plus=document.querySelector('.sv-form input[name=svPlusOne]'),plusName=document.querySelector('.sv-form input[name=plusOneName]');if(plus&&plusName){var sync=function(){plusName.required=plus.checked;if(!plus.checked)plusName.value=''};plus.addEventListener('change',sync);sync()}
+})()`;

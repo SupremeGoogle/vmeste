@@ -6,7 +6,7 @@
  *   npx tsx scripts/make-guest-sample.ts
  */
 import { writeFileSync } from "node:fs";
-import { buildXlsx } from "../src/tests/helpers/xlsx";
+import { buildXlsx } from "../src/lib/xlsx-write";
 
 const bytes = buildXlsx([
   {

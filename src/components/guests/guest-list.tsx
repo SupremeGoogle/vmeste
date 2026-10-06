@@ -30,6 +30,10 @@ export type ListGuest = {
   isPlusOne: boolean;
   linkToken: string;
   linkOpened: boolean;
+  /** Вписал себя сам по общей ссылке. */
+  selfRegistered?: boolean;
+  /** В списке уже есть приглашённый с тем же именем — возможно, это он же. */
+  maybeDuplicateOf?: string | null;
   table: string | null;
   seatIndex: number | null;
 };
@@ -174,7 +178,7 @@ export function GuestList({
 
   if (guests.length === 0) {
     return (
-      <div className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center">
+      <div className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-card px-6 py-12 text-center">
         <p className="text-4xl" aria-hidden>💌</p>
         <p className="mt-3 text-lg text-stone-900">Гостей пока нет</p>
         <p className="mt-1 text-sm text-stone-500">Добавьте первого вручную или загрузите готовый список из Excel — выше.</p>
@@ -185,7 +189,7 @@ export function GuestList({
   return (
     <div className="mt-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg border border-stone-200 bg-white p-1 text-sm">
+        <div className="flex gap-1 rounded-lg border border-stone-200 bg-card p-1 text-sm">
           <Link href={`/app/e/${eventId}/guests`} scroll={false} className={`rounded-md px-3 py-1 ${!byTable ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}>
             Списком
           </Link>
@@ -201,7 +205,7 @@ export function GuestList({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Найти по имени, телефону, столу"
             aria-label="Поиск гостя"
-            className="w-full rounded-lg border border-stone-300 bg-white py-2 pl-8 pr-3 text-base sm:text-sm"
+            className="w-full rounded-lg border border-stone-300 bg-card py-2 pl-8 pr-3 text-base sm:text-sm"
           />
         </label>
       </div>
@@ -221,7 +225,7 @@ export function GuestList({
             onClick={() => setFilter(value)}
             aria-pressed={filter === value}
             className={`shrink-0 rounded-full border px-3 py-1 text-sm transition-colors ${
-              filter === value ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-600 hover:border-stone-400"
+              filter === value ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-card text-stone-600 hover:border-stone-400"
             }`}
           >
             {label} <span className={filter === value ? "text-white/70" : "text-stone-400"}>{counts[value]}</span>
@@ -248,7 +252,7 @@ export function GuestList({
         </form>
       )}
 
-      <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+      <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-card">
         <div className="hidden items-center gap-3 border-b border-stone-200 px-4 py-2 text-xs text-stone-500 md:grid md:grid-cols-[1.5rem_minmax(0,2fr)_8rem_7rem_9rem_6rem_5.5rem]">
           <input
             type="checkbox"
@@ -305,6 +309,8 @@ export function GuestList({
                             <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900">{ROLE[guest.role]}</span>
                           )}
                           {guest.isPlusOne && <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">спутник</span>}
+                          {guest.selfRegistered && <span title="Вписал себя сам по общей ссылке на приглашение" className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-900">добавился сам</span>}
+                          {guest.maybeDuplicateOf && <span title={`В списке уже есть «${guest.maybeDuplicateOf}». Если это один человек, удалите лишнюю строку.`} className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-800">возможно, повтор</span>}
                         </p>
                         <p className="truncate text-xs text-stone-500">
                           {guest.phone ? <a href={`tel:${guest.phone}`} className="hover:text-stone-800">{guest.phone}</a> : null}
@@ -345,8 +351,12 @@ export function GuestList({
                           title={guest.plusOneAllowed ? "Гость может прийти с парой — нажмите, чтобы запретить" : "Разрешить прийти с парой"}
                           className="flex max-w-full items-center gap-2 rounded-full py-0.5 text-xs text-stone-700"
                         >
-                          <span aria-hidden className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${guest.plusOneAllowed ? "bg-stone-900" : "bg-stone-300"}`}>
-                            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${guest.plusOneAllowed ? "translate-x-4" : "translate-x-0.5"}`} />
+                          {/* Ползунок отсчитывается от левого края дорожки:
+                              без `left-0` абсолютная позиция бралась от места,
+                              где спан оказался в потоке, и кружок уезжал
+                              за пределы переключателя. */}
+                          <span aria-hidden className={`relative block h-5 w-9 shrink-0 rounded-full transition-colors ${guest.plusOneAllowed ? "bg-stone-900" : "bg-stone-200 ring-1 ring-inset ring-stone-300"}`}>
+                            <span className={`absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-card shadow transition-transform ${guest.plusOneAllowed ? "translate-x-4" : "translate-x-0"}`} />
                           </span>
                           <span className="truncate">{guest.plusOneAllowed ? guest.plusOneName ?? "+1" : "без пары"}</span>
                         </button>
@@ -402,7 +412,7 @@ function GuestMenu({
         <summary aria-label="Действия" className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900 [&::-webkit-details-marker]:hidden">
           ⋯
         </summary>
-        <div className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-stone-200 bg-white py-1 text-sm shadow-lg">
+        <div className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-stone-200 bg-card py-1 text-sm shadow-lg">
           <button type="button" onClick={(e) => { onCopy(); e.currentTarget.closest("details")?.removeAttribute("open"); }} className="block w-full px-3 py-2 text-left hover:bg-stone-50">
             {copied ? "✓ Скопировано" : "Скопировать ссылку"}
           </button>

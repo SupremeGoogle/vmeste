@@ -1,0 +1,4 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+*/2 * * * * root /usr/local/bin/vmeste-watchdog >> /var/log/vmeste/watchdog.log 2>&1
+40 3 * * * root /usr/local/bin/vmeste-backup >> /var/log/vmeste/backup.log 2>&1

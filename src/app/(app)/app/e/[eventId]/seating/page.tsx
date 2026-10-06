@@ -92,7 +92,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
       <SeatingEditor
         eventId={eventId}
         initial={plan}

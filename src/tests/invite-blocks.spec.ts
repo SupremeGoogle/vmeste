@@ -1,5 +1,5 @@
 /**
- * Схемы блоков приглашения и разбор форм конструктора.
+ * Схемы блоков приглашения.
  *
  * Тесты без базы: здесь проверяется ровно то, ради чего заведена схема —
  * что мусор не попадёт в БД на записи и что мусор, уже лежащий в БД,
@@ -9,14 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   BLOCK_ORDER, defaultContent, parseBlockContent, readBlockContent,
 } from "@/lib/invite-blocks";
-import {
-  blockContentFromForm, parsePalette, parseTimelineText, timelineToText,
-} from "@/server/services/invite-forms";
 import { toCsv } from "@/server/services/csv-export";
-
-function form(values: Record<string, string>) {
-  return { get: (name: string) => values[name] ?? null };
-}
 
 describe("схемы содержимого блоков", () => {
   it("у каждого типа блока есть содержимое по умолчанию", () => {
@@ -63,61 +56,6 @@ describe("чтение испорченного содержимого", () => {
   it("не спотыкается на null и массиве вместо объекта", () => {
     expect(readBlockContent("TEXT", null).content.text).toBe("");
     expect(readBlockContent("TEXT", ["текст"]).content.text).toBe("");
-  });
-});
-
-describe("тайминг из текста", () => {
-  it("разбирает строки «время | пункт | уточнение»", () => {
-    const items = parseTimelineText("16:00 | Сбор гостей | у входа\n17:00 | Церемония");
-    expect(items).toEqual([
-      { time: "16:00", title: "Сбор гостей", note: "у входа" },
-      { time: "17:00", title: "Церемония", note: "" },
-    ]);
-  });
-
-  it("строку без разделителя считает пунктом без времени, а не временем без пункта", () => {
-    expect(parseTimelineText("Первый танец")).toEqual([
-      { time: "", title: "Первый танец", note: "" },
-    ]);
-  });
-
-  it("переживает круговой обход текст → структура → текст", () => {
-    const text = "16:00 | Сбор гостей | у входа\n17:00 | Церемония";
-    expect(timelineToText(parseTimelineText(text))).toBe(text);
-  });
-
-  it("пропускает пустые строки — их оставляют при копировании из переписки", () => {
-    expect(parseTimelineText("\n16:00 | Сбор\n\n\n")).toHaveLength(1);
-  });
-});
-
-describe("палитра дресс-кода", () => {
-  it("добавляет решётку, если её забыли", () => {
-    expect(parsePalette("c8b7a6, #6b705c")).toEqual(["#c8b7a6", "#6b705c"]);
-  });
-});
-
-describe("форма конструктора", () => {
-  it("собирает блок тайминга из textarea", () => {
-    const result = blockContentFromForm("TIMELINE", form({
-      title: "План дня",
-      items: "16:00 | Сбор",
-    }));
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.content).toMatchObject({ title: "План дня" });
-    }
-  });
-
-  it("возвращает понятную ошибку вместо записи мусора", () => {
-    const result = blockContentFromForm("MAP", form({ yandexUrl: "не ссылка" }));
-    expect(result.ok).toBe(false);
-    // Сообщение читает организатор, а не разработчик: поле названо
-    // по-человечески, текст — по-русски.
-    if (!result.ok) {
-      expect(result.message).toContain("Ссылка на Яндекс Карты");
-      expect(result.message).toMatch(/[а-яё]/i);
-    }
   });
 });
 

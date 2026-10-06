@@ -24,6 +24,7 @@
  * в базе.
  */
 import { z } from "zod";
+import { weddingSchema } from "@/lib/invite-personalization";
 
 /** Цвет в том же формате, что в блоках: значение уходит прямо в `style=`. */
 const color = z
@@ -101,10 +102,28 @@ export const COVER_LABEL = {
 export const INVITE_THEME_VERSION = 1;
 
 export const inviteThemeSchema = z.object({
+  wedding: weddingSchema.optional(),
+  /**
+   * Свои слова для надписей самого шаблона: декоративные подписи, монограмма,
+   * подсказки на заставке (docs/template-standard.md, §4–6). Ключ — имя
+   * надписи в шаблоне, значение — текст; пустая строка прячет надпись.
+   * Нет ключа — надпись из образца.
+   */
+  labels: z.record(z.string().regex(/^[a-z0-9][a-z0-9.-]{0,59}$/), z.string().trim().max(300))
+    // Подписей в шаблоне около сотни; потолок — чтобы тема не росла без конца.
+    .refine((labels) => Object.keys(labels).length <= 500, "Слишком много надписей").optional(),
+  previousTemplate: z.string().max(40).optional(),
   v: z.number().int().min(1).default(INVITE_THEME_VERSION),
 
   /** Шаблон, с которого начали. Нужен только чтобы показать выбор в панели. */
   template: z.string().trim().max(40).default("powder"),
+  /**
+   * Версия дизайна шаблона, на которой собрано приглашение. Закрепляется
+   * при выборе шаблона: если дизайн потом переделают несовместимо, рендер
+   * по этому номеру покажет паре прежний вид (docs/template-standard.md, §10).
+   * Нет поля — версия 1.
+   */
+  templateVersion: z.number().int().min(1).max(999).optional(),
 
   bg: color.default("#faf7f2"),
   card: color.default("#fffdf9"),
@@ -147,6 +166,19 @@ export const inviteThemeSchema = z.object({
    * картинку и не видит ни даты, ни адреса.
    */
   intro: z.enum(["none", "envelope"]).default("none"),
+  /**
+   * Заставку шаблона выключили (docs/template-standard.md, §3): приглашение
+   * открывается сразу. Нет поля — заставка как в образце.
+   */
+  introOff: z.boolean().optional(),
+  /**
+   * Свои цвета и шрифты поверх шаблона (§4): главный тон и замена шрифтов
+   * шаблона «было → стало». Применяется на выдаче (guest-html/invite-style.ts).
+   */
+  style: z.object({
+    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    fonts: z.record(z.string().max(60), z.string().max(60)).optional(),
+  }).optional(),
 
   /**
    * Ботаника: пионы с эвкалиптом по углам листа.

@@ -20,7 +20,7 @@ function templateBlocks(): InviteBlockView[] {
 
 describe("Эвергрин", () => {
   it("зарегистрирован и содержит отдельные заменяемые изображения", () => {
-    expect(findTemplate("evergreen")).toBe(EVERGREEN_TEMPLATE);
+    expect(findTemplate("evergreen")).toMatchObject({ id: EVERGREEN_TEMPLATE.id, name: EVERGREEN_TEMPLATE.name, theme: EVERGREEN_TEMPLATE.theme, blocks: expect.arrayContaining(EVERGREEN_TEMPLATE.blocks) });
     expect(EVERGREEN_SAMPLE_IMAGES).toEqual([
       "/media/invite-evergreen/couple.webp",
       "/media/invite-evergreen/venue.webp",

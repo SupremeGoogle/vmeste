@@ -1,0 +1,9 @@
+#!/bin/bash
+# Ежедневная копия базы «Вместе»: /var/backups/vmeste, хранится 14 дней.
+set -euo pipefail
+DIR=/var/backups/vmeste
+mkdir -p "$DIR"; chmod 700 "$DIR"
+cd /tmp
+sudo -u postgres pg_dump -Fc vmeste > "$DIR/vmeste-$(date +%F).dump"
+find "$DIR" -name 'vmeste-*.dump' -mtime +14 -delete
+echo "$(date -Is) ok $(du -h "$DIR/vmeste-$(date +%F).dump" | cut -f1)"

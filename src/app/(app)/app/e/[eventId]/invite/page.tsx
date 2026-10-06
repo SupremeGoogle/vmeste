@@ -25,28 +25,38 @@
  * `revalidateTag`, потому что организатор сразу жмёт «посмотреть» и обязан
  * увидеть свою правку, а не версию из кеша (read-your-own-writes).
  */
+import { notifyPublished } from "@/server/notify/events";
 import { updateTag } from "next/cache";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent, setEventStatus } from "@/server/repositories/events";
 import {
-  addBlock, appendTimelineItem, applyTemplate, deleteBlock, eventTag, getBlock, getTheme, inviteSlugTag, listBlocks,
-  moveBlock, removeTimelineItem, saveTheme, setBlockVisible, updateBlockContent, updateInlineBlockField,
+  appendTimelineItem, applyTemplate, deleteBlock, eventTag, getTheme, inviteSlugTag, listBlocks,
+  moveBlock, removeTimelineItem, setBlockVisible, updateInlineBlockField,
+  duplicateBlock, insertBlockAfter, moveBlockTo, blockActionProblem, updateTheme,
 } from "@/server/repositories/invites";
 import { findTemplate } from "@/lib/invite-templates";
-import { inviteThemeSchema } from "@/lib/invite-theme";
-import { blockContentFromForm } from "@/server/services/invite-forms";
+import { hasTemplateIntro } from "@/server/guest-html/invite-html";
+import { FONT_CHOICES, isFontChoice } from "@/server/guest-html/invite-style";
+import { inviteImageSlots } from "@/lib/invite-image-slots";
 import { TemplatePicker } from "@/components/invite/template-picker";
-import { InvitePreview } from "@/components/invite/preview";
-import { ConfirmButton } from "@/components/invite/confirm-button";
-import { BLOCK_LABELS, BLOCK_ORDER } from "@/lib/invite-blocks";
+import { BLOCK_LABELS, BLOCK_ORDER, PERMANENT_BLOCKS, SINGLE_BLOCKS } from "@/lib/invite-blocks";
 import type { BlockType } from "@/generated/prisma/enums";
-import { BlockFields } from "@/components/invite/block-form";
 import { listAssets, listAudioAssets } from "@/server/services/assets";
 import { VisualInviteEditor, type BlockAction } from "@/components/invite/visual-invite-editor";
+import { WeddingPanel } from "@/components/invite/wedding-panel";
+import { saveWeddingProfile, savePhotoAdjustment } from "@/server/repositories/invites";
+import { weddingSchema, invitationWarnings, personalizeBlocks, fromLocalInput, toLocalInput, type PhotoAdjustment } from "@/lib/invite-personalization";
 
 export const dynamic = "force-dynamic";
+
+/** Короткая подпись раздела в списке: его заголовок, если он есть. */
+function sectionHint(content: unknown): string {
+  const value = content && typeof content === "object" ? (content as Record<string, unknown>) : {};
+  const text = [value.title, value.names, value.tag].find((item) => typeof item === "string" && item.trim());
+  return typeof text === "string" ? text.trim().slice(0, 60) : "";
+}
 
 type Props = {
   params: Promise<{ eventId: string }>;
@@ -60,12 +70,13 @@ export default async function InvitePage({ params, searchParams }: Props) {
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
   const eventSlug = event.slug;
-  const [blocks, theme, assets, audio] = await Promise.all([
+  const [storedBlocks, theme, assets, audio] = await Promise.all([
     listBlocks(ctx),
     getTheme(ctx),
     listAssets(ctx),
     listAudioAssets(ctx),
   ]);
+  const blocks = personalizeBlocks(storedBlocks, theme, event.eventDate, event.timezone);
 
   /** Сброс кеша приглашения по обоим тегам: именная страница помечена id,
    *  публичная — слагом (тег задаётся до того, как известен id). */
@@ -76,71 +87,23 @@ export default async function InvitePage({ params, searchParams }: Props) {
     revalidatePath(`/app/e/${eventId}/invite`);
   }
 
-  async function add(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    const type = String(formData.get("type") ?? "") as BlockType;
-    if (!BLOCK_ORDER.includes(type)) return;
-    await addBlock(ctx, type);
-    await invalidate(String(formData.get("slug") ?? ""));
-  }
-
-  async function save(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    const blockId = String(formData.get("blockId") ?? "");
-    const type = String(formData.get("type") ?? "") as BlockType;
-    const slug = String(formData.get("slug") ?? "");
-
-    const current = await getBlock(ctx, blockId);
-    if (!current || current.type !== type) {
-      redirect(`/app/e/${eventId}/invite?error=${encodeURIComponent("Раздел не найден")}`);
-    }
-    const parsed = blockContentFromForm(type, formData, current.content);
-    if (!parsed.ok) {
-      redirect(`/app/e/${eventId}/invite?error=${encodeURIComponent(parsed.message)}`);
-    }
-    await updateBlockContent(ctx, blockId, parsed.content);
-    await invalidate(slug);
-  }
-
-  async function move(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    const dir = Number(formData.get("dir")) === 1 ? 1 : -1;
-    await moveBlock(ctx, String(formData.get("blockId")), dir);
-    await invalidate(String(formData.get("slug") ?? ""));
-  }
-
-  async function toggle(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    await setBlockVisible(
-      ctx,
-      String(formData.get("blockId")),
-      formData.get("visible") === "1",
-    );
-    await invalidate(String(formData.get("slug") ?? ""));
-  }
-
-  async function remove(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    await deleteBlock(ctx, String(formData.get("blockId")));
-    await invalidate(String(formData.get("slug") ?? ""));
-  }
-
   async function publish(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
-    await setEventStatus(ctx, eventId, formData.get("status") === "PUBLISHED" ? "PUBLISHED" : "DRAFT");
-    await invalidate(String(formData.get("slug") ?? ""));
+    const status = formData.get("status") === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+    await setEventStatus(ctx, eventId, status);
+    const slug = String(formData.get("slug") ?? "");
+    if (status === "PUBLISHED") {
+      const published = await getEvent(ctx, eventId);
+      if (published) notifyPublished(published.title, `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/i/${published.slug}`);
+    }
+    await invalidate(slug);
   }
 
   async function chooseTemplate(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
-    await applyTemplate(ctx, String(formData.get("template") ?? ""));
+    await applyTemplate(ctx, String(formData.get("template") ?? ""), formData.get("reset") === "1");
     await invalidate(String(formData.get("slug") ?? ""));
     // Выбор шаблона — это и есть «открыть его»: сразу уводим в редактор,
     // иначе человек остаётся на витрине и не понимает, applied ли выбор.
@@ -158,10 +121,20 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return result;
   }
 
-  async function visualBlockAction(input: { blockId: string; action: BlockAction; index?: number }) {
+  async function visualBlockAction(input: { blockId: string; action: BlockAction; index?: number; type?: string }) {
     "use server";
     const ctx = await requireEventContext(eventId);
-    if (input.action === "up") await moveBlock(ctx, input.blockId, -1);
+    const problem = await blockActionProblem(ctx, input.action, input.blockId, input.type as BlockType | undefined);
+    if (problem) return { ok: false, message: problem } as const;
+    if (input.action === "insert-after") {
+      // Новый раздел ниже выбранного; без раздела — в самое начало.
+      const type = String(input.type ?? "") as BlockType;
+      if (!BLOCK_ORDER.includes(type)) return { ok: false, message: "Такого раздела нет" } as const;
+      await insertBlockAfter(ctx, type, input.blockId || null);
+    } else if (input.action === "duplicate") await duplicateBlock(ctx, input.blockId);
+    else if (input.action === "delete") await deleteBlock(ctx, input.blockId);
+    else if (input.action === "move-to") await moveBlockTo(ctx, input.blockId, input.index ?? 0);
+    else if (input.action === "up") await moveBlock(ctx, input.blockId, -1);
     else if (input.action === "down") await moveBlock(ctx, input.blockId, 1);
     else if (input.action === "hide") await setBlockVisible(ctx, input.blockId, false);
     else if (input.action === "show") await setBlockVisible(ctx, input.blockId, true);
@@ -177,30 +150,67 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return { ok: true } as const;
   }
 
+  /** Свои цвета и шрифты поверх шаблона (стандарт, §4). Пусто — как в образце. */
+  async function saveStyle(input: { accent: string | null; fonts: Record<string, string> }) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const fonts = Object.fromEntries(Object.entries(input.fonts ?? {}).filter(([from, to]) => from && to && from !== to && isFontChoice(to)).slice(0, 8));
+    const style = { ...(input.accent ? { accent: input.accent } : {}), ...(Object.keys(fonts).length ? { fonts } : {}) };
+    const saved = await updateTheme(ctx, (current) => ({ ...current, style: Object.keys(style).length ? style : undefined }));
+    if (!saved) return { ok: false, message: "Такой цвет или шрифт не подходит" } as const;
+    updateTag(eventTag(eventId));
+    updateTag(inviteSlugTag(eventSlug));
+    return { ok: true } as const;
+  }
+
+  /** Заставка шаблона: включить или выключить (стандарт, §3). */
+  async function saveIntro(off: boolean) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const saved = await updateTheme(ctx, (current) => ({ ...current, introOff: off }));
+    if (!saved) return { ok: false, message: "Не получилось сохранить" } as const;
+    updateTag(eventTag(eventId));
+    updateTag(inviteSlugTag(eventSlug));
+    return { ok: true } as const;
+  }
+
   /** Музыка приглашения хранится в теме: проверка адреса — схемой темы. */
   async function saveMusic(url: string) {
     "use server";
     const ctx = await requireEventContext(eventId);
-    const current = await getTheme(ctx);
-    const parsed = inviteThemeSchema.safeParse({ ...current, musicUrl: url });
-    if (!parsed.success) return { ok: false, message: "Этот файл нельзя поставить музыкой" } as const;
-    await saveTheme(ctx, parsed.data);
+    const saved = await updateTheme(ctx, (current) => ({ ...current, musicUrl: url }));
+    if (!saved) return { ok: false, message: "Этот файл нельзя поставить музыкой" } as const;
     updateTag(eventTag(eventId));
     updateTag(inviteSlugTag(eventSlug));
     return { ok: true } as const;
   }
 
   const publicHref = `/i/${event.slug}`;
+  async function saveWedding(form: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const latest = await getEvent(ctx, eventId);
+    if (!latest) notFound();
+    const text = (key: string) => String(form.get(key) ?? "").trim();
+    const date = fromLocalInput(text("eventDate"), latest.timezone);
+    const deadline = text("deadline") ? fromLocalInput(`${text("deadline")}T23:59`, latest.timezone) : null;
+    const parsed = weddingSchema.safeParse({ ...Object.fromEntries(form), childhood: form.get("childhood") === "on", deadline: deadline?.toISOString() ?? "" });
+    if (!date || (text("deadline") && !deadline) || !parsed.success || (deadline && date && deadline > date)) redirect(`/app/e/${eventId}/invite?edit=1&error=${encodeURIComponent("Проверьте имена, дату, ссылку на карту и срок ответа — он должен быть не позже свадьбы.")}`);
+    await saveWeddingProfile(ctx, parsed.data, date, deadline);
+    await invalidate(eventSlug);
+    revalidatePath(`/app/e/${eventId}/settings`);
+    redirect(`/app/e/${eventId}/invite?edit=1`);
+  }
+  async function savePhoto(input: { blockId: string; path: string; url: string; settings: PhotoAdjustment }) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const result = await savePhotoAdjustment(ctx, input.blockId, input.path, input.settings, input.url);
+    if (result.ok) await invalidate(eventSlug);
+    return result;
+  }
+  const wedding = theme.wedding ?? weddingSchema.parse({ names: event.title || "Наша свадьба", city: "", venueName: event.venueName ?? "", venueAddress: event.venueAddr ?? "", mapUrl: "" });
+  const warnings = invitationWarnings(personalizeBlocks(blocks, theme, event.eventDate, event.timezone), theme);
   const hasInvite = blocks.length > 0;
-
-  // Предпросмотру нужен признак «что-то изменилось». Считаем дёшево и
-  // честно: тема плюс состав и содержимое блоков. Хеш не нужен — строка
-  // никуда не уходит дальше атрибута `key`.
-  const version = [
-    event.status,
-    JSON.stringify(theme),
-    blocks.map((block) => `${block.id}:${block.order}:${block.visible}:${JSON.stringify(block.content)}`).join("|"),
-  ].join("~").length.toString(36) + "-" + blocks.length;
 
   /*
    * Витрина шаблонов — точка входа в раздел, а не запасной экран.
@@ -215,13 +225,33 @@ export default async function InvitePage({ params, searchParams }: Props) {
   const showEditor = (edit === "1" || edit === "classic") && hasInvite;
 
   if (!showEditor) {
+    // Витрина — это выбор шаблона и ничего больше. Имена, дата и место
+    // («Наша свадьба») спрашиваются в редакторе, куда ведёт любой шаблон:
+    // до выбора дизайна эта форма — стена текста перед тем единственным,
+    // зачем сюда пришли.
     return (
-      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-        <h1 className="text-xl text-stone-900">Приглашение</h1>
-        <p className="mt-2 max-w-2xl text-sm text-stone-600">
-          Выберите шаблон — дальше откроется редактор: там правится текст,
-          загружаются свои фотографии и убираются разделы, которые не нужны.
-        </p>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        {/* Печатное приглашение — не отдельный раздел, а вторая версия
+            того же приглашения: кнопка здесь, а не вкладка в ленте. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl text-stone-900">Приглашение</h1>
+          <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/app/e/${eventId}/invite/print`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-stone-300 bg-card px-4 text-sm font-medium text-stone-800 transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-50"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M5 7V2.5h10V7M5 14.5H3.5A1.5 1.5 0 0 1 2 13V8.5A1.5 1.5 0 0 1 3.5 7h13A1.5 1.5 0 0 1 18 8.5V13a1.5 1.5 0 0 1-1.5 1.5H15M5 11.5h10v6H5z" strokeLinejoin="round" /></svg>
+            Печатное приглашение
+          </a>
+          <a
+            href={`/app/e/${eventId}/invite/form`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-stone-300 bg-card px-4 text-sm font-medium text-stone-800 transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-50"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="3.5" y="2.5" width="13" height="15" rx="2" /><path d="M7 7h6M7 10.5h6M7 14h3.5" strokeLinecap="round" /></svg>
+            Анкета гостя
+          </a>
+          </div>
+        </div>
 
         {error ? (
           <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
@@ -231,13 +261,11 @@ export default async function InvitePage({ params, searchParams }: Props) {
             Без него выбор шаблона был бы единственным выходом с витрины,
             то есть «продолжить» означало бы «затереть написанное». */}
         {hasInvite ? (
-          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
-            <div className="min-w-0 flex-1 text-sm">
-              <p className="font-medium text-stone-900">Приглашение уже собрано</p>
-              <p className="mt-0.5 text-stone-500">
-                Разделов: {blocks.length}. Выбор нового шаблона заменит текст и фотографии примерами.
-              </p>
-            </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-card px-4 py-3">
+            <p className="min-w-0 flex-1 text-sm text-stone-500">
+              Приглашение уже собрано — разделов: {blocks.length}. Другой дизайн
+              можно примерить, тексты и фотографии сохранятся.
+            </p>
             <a
               href={`/app/e/${eventId}/invite?edit=1`}
               className="flex min-h-11 items-center rounded-lg bg-stone-900 px-5 text-sm font-medium text-white transition-[opacity,transform] duration-200 ease-[var(--ease-soft)] hover:opacity-90 active:scale-[0.97]"
@@ -247,216 +275,84 @@ export default async function InvitePage({ params, searchParams }: Props) {
           </div>
         ) : null}
 
-        <div className="mt-8">
+        <div className="mt-6">
           <TemplatePicker
             action={chooseTemplate}
             currentId={theme.template}
             slug={event.slug}
-            hasBlocks={hasInvite}
           />
         </div>
       </main>
     );
   }
 
-  // Визуальный редактор — для любого шаблона; формы остаются за «Разделы и поля».
-  if (edit !== "classic") {
-    return (
-      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <a href={`/app/e/${eventId}/invite`} className="text-sm text-stone-500 hover:text-stone-900">← Все шаблоны</a>
-            <h1 className="mt-1 text-xl text-stone-900">{findTemplate(theme.template)?.name ?? "Приглашение"}</h1>
-            <p className="mt-1 text-sm text-stone-500">Нажмите прямо на текст или фотографию внутри приглашения.</p>
-          </div>
-          <form action={publish}>
-            <input type="hidden" name="slug" value={event.slug} />
-            <input type="hidden" name="status" value={event.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"} />
-            <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm text-stone-800">
-              {event.status === "PUBLISHED" ? "Снять с публикации" : "Опубликовать"}
-            </button>
-          </form>
-        </div>
-        {error ? <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
-        <VisualInviteEditor
-          eventId={eventId}
-          template={theme.template}
-          canvasSrc={`/app/e/${eventId}/invite/canvas`}
-          publicHref={publicHref}
-          advancedHref={`/app/e/${eventId}/invite?edit=classic`}
-          assets={assets}
-          audio={audio}
-          musicUrl={theme.musicUrl}
-          hidden={blocks.filter((block) => !block.visible).map((block) => ({ id: block.id, label: BLOCK_LABELS[block.type] }))}
-          saveField={saveInline}
-          blockAction={visualBlockAction}
-          saveMusic={saveMusic}
-        />
-      </main>
-    );
-  }
-
+  // Редактор один — визуальный, для любого шаблона.
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      {/* Выход с редактора обратно к шаблонам. Без него в витрину можно
-          было бы попасть только стерев все разделы. */}
-      <a
-        href={`/app/e/${eventId}/invite`}
-        className="mb-4 inline-flex min-h-11 items-center text-sm text-stone-500 transition-colors duration-200 hover:text-stone-900"
-      >
-        ← Все шаблоны
-      </a>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4">
-        <div className="text-sm">
-          <p className="text-stone-500">Публичная ссылка</p>
-          <a href={publicHref} className="font-mono text-stone-900 underline">
-            {publicHref}
-          </a>
-          <p className="mt-1 text-xs text-stone-400">
-            Именные ссылки для гостей — на вкладке «Ответы».
-          </p>
+    <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6">
+      {/* На телефоне шапка — две строки: название и три короткие кнопки.
+          Подсказка «нажмите на текст» есть и в панели редактора. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:mb-4">
+        <div className="min-w-0">
+          <a href={`/app/e/${eventId}/invite`} className="text-sm text-stone-500 hover:text-stone-900">← Все шаблоны</a>
+          <h1 className="mt-1 text-xl text-stone-900">{findTemplate(theme.template)?.name ?? "Приглашение"}</h1>
+          <p className="mt-1 hidden text-sm text-stone-500 sm:block">Нажмите прямо на текст, фотографию или дату внутри приглашения.</p>
         </div>
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <a
+          href={`/app/e/${eventId}/invite/print`}
+          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-stone-300 bg-card px-3 text-sm font-medium sm:min-h-11 sm:px-4 text-stone-800 transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-50"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M5 7V2.5h10V7M5 14.5H3.5A1.5 1.5 0 0 1 2 13V8.5A1.5 1.5 0 0 1 3.5 7h13A1.5 1.5 0 0 1 18 8.5V13a1.5 1.5 0 0 1-1.5 1.5H15M5 11.5h10v6H5z" strokeLinejoin="round" /></svg>
+          <span className="sm:hidden">Печать</span><span className="hidden sm:inline">Печатное приглашение</span>
+        </a>
+        <a
+          href={`/app/e/${eventId}/invite/form`}
+          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-stone-300 bg-card px-3 text-sm font-medium sm:min-h-11 sm:px-4 text-stone-800 transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-50"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="3.5" y="2.5" width="13" height="15" rx="2" /><path d="M7 7h6M7 10.5h6M7 14h3.5" strokeLinecap="round" /></svg>
+          Анкета<span className="hidden sm:inline"> гостя</span>
+        </a>
         <form action={publish}>
           <input type="hidden" name="slug" value={event.slug} />
-          <input
-            type="hidden" name="status"
-            value={event.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"}
-          />
-          <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
+          <input type="hidden" name="status" value={event.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"} />
+          <button className="min-h-10 rounded-lg border border-stone-300 bg-card px-3 text-sm text-stone-800 sm:min-h-11 sm:px-4" data-rybbit-event={event.status === "PUBLISHED" ? "invite_unpublish" : "invite_publish"}>
             {event.status === "PUBLISHED" ? "Снять с публикации" : "Опубликовать"}
           </button>
         </form>
-      </div>
-
-      {event.status !== "PUBLISHED" ? (
-        <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Мероприятие не опубликовано: публичная ссылка отдаёт 404. Именные
-          ссылки при этом работают — их можно проверить до публикации.
-        </p>
-      ) : null}
-
-      {error ? (
-        <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
-      ) : null}
-
-      {/* Ниже — две колонки: слева правка, справа то, что получится.
-          На узком экране предпросмотр уходит наверх: смотреть на телефоне
-          «как это выглядит» важнее, чем править там же. */}
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 lg:order-1">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg">Разделы приглашения</h2>
-            <form action={chooseTemplate}>
-              <input type="hidden" name="template" value={theme.template} />
-              <input type="hidden" name="slug" value={event.slug} />
-              <ConfirmButton
-                className="text-xs text-stone-500 underline decoration-dotted"
-                confirmText="Собрать приглашение заново по шаблону? Весь нынешний текст и фотографии заменятся примерами шаблона."
-              >
-                Собрать заново по шаблону
-              </ConfirmButton>
-            </form>
-          </div>
-
-          <form action={add} className="mt-4 flex flex-wrap items-center gap-2">
-            <input type="hidden" name="slug" value={event.slug} />
-            <span className="text-sm text-stone-500">Добавить раздел:</span>
-            {BLOCK_ORDER.map((type) => (
-              <button
-                key={type} name="type" value={type}
-                className="rounded-full border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
-              >
-                {BLOCK_LABELS[type]}
-              </button>
-            ))}
-          </form>
-
-          <div className="mt-6 space-y-4">
-            {blocks.map((block, index) => (
-              <div key={block.id} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">
-                    {BLOCK_LABELS[block.type]}
-                    {!block.visible ? (
-                      <span className="ml-2 text-xs text-stone-400">скрыт</span>
-                    ) : null}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <form action={move}>
-                      <input type="hidden" name="blockId" value={block.id} />
-                      <input type="hidden" name="slug" value={event.slug} />
-                      <input type="hidden" name="dir" value="-1" />
-                      <button
-                        disabled={index === 0}
-                        className="rounded px-2 py-1 text-sm text-stone-500 disabled:opacity-30"
-                        aria-label="Выше"
-                      >
-                        ↑
-                      </button>
-                    </form>
-                    <form action={move}>
-                      <input type="hidden" name="blockId" value={block.id} />
-                      <input type="hidden" name="slug" value={event.slug} />
-                      <input type="hidden" name="dir" value="1" />
-                      <button
-                        disabled={index === blocks.length - 1}
-                        className="rounded px-2 py-1 text-sm text-stone-500 disabled:opacity-30"
-                        aria-label="Ниже"
-                      >
-                        ↓
-                      </button>
-                    </form>
-                    <form action={toggle}>
-                      <input type="hidden" name="blockId" value={block.id} />
-                      <input type="hidden" name="slug" value={event.slug} />
-                      <input type="hidden" name="visible" value={block.visible ? "0" : "1"} />
-                      <button className="rounded px-2 py-1 text-sm text-stone-500">
-                        {block.visible ? "Скрыть" : "Показать"}
-                      </button>
-                    </form>
-                    <form action={remove}>
-                      <input type="hidden" name="blockId" value={block.id} />
-                      <input type="hidden" name="slug" value={event.slug} />
-                      <ConfirmButton
-                        className="rounded px-2 py-1 text-sm text-stone-400 hover:text-red-700"
-                        confirmText={`Удалить раздел «${BLOCK_LABELS[block.type]}»? Отменить не получится.`}
-                      >
-                        Удалить
-                      </ConfirmButton>
-                    </form>
-                  </div>
-                </div>
-
-                {block.degraded ? (
-                  <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    Содержимое блока не совпало со схемой — часть полей показана
-                    значениями по умолчанию. Сохраните блок, чтобы починить запись.
-                  </p>
-                ) : null}
-
-                <form action={save} className="mt-3 space-y-3">
-                  <input type="hidden" name="blockId" value={block.id} />
-                  <input type="hidden" name="type" value={block.type} />
-                  <input type="hidden" name="slug" value={event.slug} />
-                  <BlockFields block={block} eventId={eventId} assets={assets} />
-                  <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
-                    Сохранить
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="lg:sticky lg:top-6 lg:order-2 lg:self-start">
-          <InvitePreview
-            src={publicHref}
-            published={event.status === "PUBLISHED"}
-            version={version}
-          />
         </div>
       </div>
+      {error ? <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
+      {/* Форм над приглашением нет: имена, дата и место открываются в
+          боковой панели редактора, а «перед отправкой» — значком в его
+          панели инструментов. Редактор начинается сразу с самой страницы. */}
+      {theme.previousTemplate && findTemplate(theme.previousTemplate) && <form action={chooseTemplate} className="mb-4"><input type="hidden" name="template" value={theme.previousTemplate} /><input type="hidden" name="slug" value={event.slug} /><button className="text-sm text-stone-600 underline">Вернуть предыдущий дизайн: {findTemplate(theme.previousTemplate)?.name}</button></form>}
+      <VisualInviteEditor
+        key={`${theme.template}:${JSON.stringify(theme.wedding)}`}
+        eventId={eventId}
+        template={theme.template}
+        canvasSrc={`/app/e/${eventId}/invite/canvas`}
+        publicHref={publicHref}
+        assets={assets}
+        audio={audio}
+        musicUrl={theme.musicUrl}
+        photoSlots={inviteImageSlots(blocks)}
+        hidden={blocks.filter((block) => !block.visible).map((block) => ({ id: block.id, label: BLOCK_LABELS[block.type] }))}
+        sections={blocks.map((block) => ({ id: block.id, type: block.type, label: BLOCK_LABELS[block.type], hint: sectionHint(block.content), visible: block.visible, single: SINGLE_BLOCKS.includes(block.type), permanent: PERMANENT_BLOCKS.includes(block.type) }))}
+        blockTypes={BLOCK_ORDER.filter((type) => !(SINGLE_BLOCKS.includes(type) && blocks.some((block) => block.type === type))).map((type) => ({ type, label: BLOCK_LABELS[type] }))}
+        weddingForm={<WeddingPanel variant="plain" value={wedding} date={toLocalInput(event.eventDate, event.timezone)} deadline={event.rsvpDeadline ? toLocalInput(event.rsvpDeadline, event.timezone).slice(0, 10) : ""} timezone={event.timezone} action={saveWedding} warnings={warnings} />}
+        weddingReady={Boolean(theme.wedding)}
+        warnings={warnings}
+        saveField={saveInline}
+        blockAction={visualBlockAction}
+        saveMusic={saveMusic}
+        introAvailable={hasTemplateIntro(theme.template)}
+        introOff={theme.introOff === true}
+        saveIntro={saveIntro}
+        style={{ accent: theme.style?.accent ?? null, fonts: theme.style?.fonts ?? {} }}
+        saveStyle={saveStyle}
+        fontChoices={FONT_CHOICES.map((font) => ({ family: font.family, kind: font.kind }))}
+        savePhoto={savePhoto}
+      />
     </main>
   );
 }

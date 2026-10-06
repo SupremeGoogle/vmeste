@@ -6,10 +6,11 @@
  * будет». Никакое содержимое поля `inviteTheme` не должно этого вызвать.
  */
 import { describe, expect, it } from "vitest";
+import type { InviteTheme } from "@/lib/invite-theme";
 import {
   defaultTheme, parseTheme, readTheme, FONT_STACKS, CORNER_RADIUS,
 } from "@/lib/invite-theme";
-import { INVITE_TEMPLATES, findTemplate } from "@/lib/invite-templates";
+import { INVITE_TEMPLATES, findTemplate, liveTheme, REPLACED_TEMPLATES } from "@/lib/invite-templates";
 import { inviteThemeCss } from "@/server/guest-html/invite-theme-css";
 import { themeFromForm } from "@/server/services/invite-theme-forms";
 
@@ -66,18 +67,50 @@ describe("тема: чтение", () => {
   });
 });
 
+describe("удалённые шаблоны", () => {
+  it("собранное приглашение открывается в замене, а настройки пары остаются", () => {
+    const wedding = { names: "Аня и Миша", city: "", venueName: "Сад", venueAddress: "", mapUrl: "", deadline: "", childhood: true };
+    const old = { ...defaultTheme(), template: "story", bg: "#123456", musicUrl: "/api/asset/e1/song", introOff: true, style: { accent: "#1f5c4a" }, wedding } as InviteTheme;
+    const theme = liveTheme(old);
+    expect(theme.template).toBe("tili");
+    expect(theme.bg).toBe(findTemplate("tili")!.theme.bg);
+    expect(theme).toMatchObject({ musicUrl: "/api/asset/e1/song", introOff: true, style: { accent: "#1f5c4a" }, wedding: { names: "Аня и Миша" } });
+    expect(liveTheme({ ...defaultTheme(), template: "promise" }).template).toBe("roseraie");
+    // Живой шаблон не трогается.
+    const silk = { ...defaultTheme(), template: "silk", bg: "#abcdef" };
+    expect(liveTheme(silk)).toBe(silk);
+    for (const target of Object.values(REPLACED_TEMPLATES)) expect(findTemplate(target)).not.toBeNull();
+  });
+});
+
 describe("шаблоны", () => {
   it("все шаблоны доступны, и идентификаторы не повторяются", () => {
     expect(INVITE_TEMPLATES.map((template) => template.id)).toEqual([
-      "story",
-      "promise",
+      "zefir",
+      "crayon",
       "evergreen",
       "silk",
       "pearl",
       "tuscany",
       "ruby",
       "constellation",
+      "prism",
       "tili",
+      "vinyl",
+      "aquarelle",
+      "lily",
+      "bohema",
+      "kraski",
+      "serdce",
+      "antic",
+      "skvoz-vremya",
+      "burgundy",
+      "roseraie",
+      "floral-garden",
+      "iskra",
+      "odnazhdy",
+      "little-happiness",
+      "priznanie",
     ]);
 
     // Повторяющийся id — это молчаливая подмена: выбрав один шаблон,
@@ -92,7 +125,6 @@ describe("шаблоны", () => {
 
       const types = template.blocks.map((b) => b.type);
       expect(types).toContain("COVER");
-      expect(types).toContain("RSVP_FORM");
 
       // Обложка без имён — это лист, перед которым садятся и не знают,
       // что писать. Шаблон обязан подсказывать.
@@ -129,14 +161,16 @@ describe("шаблоны", () => {
 
   it("несуществующий шаблон не находится", () => {
     expect(findTemplate("нет такого")).toBeNull();
-    expect(findTemplate("story")?.name).toBe("История");
-    expect(findTemplate("promise")?.name).toBe("Обещание");
+    // Удалённые шаблоны не находятся — их приглашения открываются в замене.
+    expect(findTemplate("story")).toBeNull();
+    expect(findTemplate("promise")).toBeNull();
     expect(findTemplate("evergreen")?.name).toBe("Эвергрин");
     expect(findTemplate("silk")?.name).toBe("Шёлк");
     expect(findTemplate("pearl")?.name).toBe("Жемчуг");
     expect(findTemplate("tuscany")?.name).toBe("Тоскана");
     expect(findTemplate("ruby")?.name).toBe("Рубин");
     expect(findTemplate("constellation")?.name).toBe("Созвездие");
+    expect(findTemplate("prism")?.name).toBe("Призма");
     expect(findTemplate("tili")?.name).toBe("Тили-тесто");
   });
 });
@@ -271,9 +305,9 @@ describe("обратный отсчёт", () => {
     expect(COUNTDOWN_SCRIPT).not.toContain("http");
     expect(COUNTDOWN_SCRIPT).not.toContain("fetch");
     expect(COUNTDOWN_SCRIPT).not.toContain("</script");
-    // Раз в минуту, а не в секунду: секундная стрелка перерисовывает
-    // страницу шестьдесят раз в минуту ради украшения.
-    expect(COUNTDOWN_SCRIPT).toContain("6e4");
+    // Секунды тикают (docs/template-standard.md, §11), но только у
+    // таймера, который сейчас на экране.
+    expect(COUNTDOWN_SCRIPT).toContain("IntersectionObserver");
   });
 });
 
@@ -326,7 +360,9 @@ describe("заставка-конверт", () => {
     // Отсчёта и заставки нет — включать нечего, но скролл-переход не
     // хранит и не считает ничего, поэтому он есть всегда.
     const { inviteScript, REVEAL_SCRIPT } = await import("@/server/guest-html/invite-html");
-    expect(inviteScript([], defaultTheme(), "Аня и Миша")).toBe(REVEAL_SCRIPT);
+    const script = inviteScript([], defaultTheme(), "Аня и Миша");
+    expect(script).toContain(REVEAL_SCRIPT);
+    expect(script).toContain("bits-motion");
   });
 
   it("имена для конверта берутся с обложки, иначе из названия", async () => {

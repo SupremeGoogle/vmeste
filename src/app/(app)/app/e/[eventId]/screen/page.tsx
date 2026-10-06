@@ -77,7 +77,7 @@ export default async function ScreenAdminPage({
               className={`w-full rounded-xl border p-3 text-left text-sm ${
                 event.screenMode === mode.value
                   ? "border-stone-900 bg-stone-900 text-white"
-                  : "border-stone-200 bg-white hover:border-stone-400"
+                  : "border-stone-200 bg-card hover:border-stone-400"
               }`}
             >
               <span className="block font-medium">{mode.label}</span>
@@ -105,7 +105,7 @@ export default async function ScreenAdminPage({
         {tokens.map((token) => (
           <li
             key={token.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-3 text-sm"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-card p-3 text-sm"
           >
             <span className="min-w-0">
               <span className="block font-medium">{token.label}</span>
@@ -147,7 +147,7 @@ export default async function ScreenAdminPage({
         </button>
       </form>
 
-      <details className="mt-10 rounded-xl border border-stone-200 bg-white p-4 text-sm">
+      <details className="mt-10 rounded-xl border border-stone-200 bg-card p-4 text-sm">
         <summary className="cursor-pointer font-medium">Памятка для дня свадьбы</summary>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-stone-600">
           <li>Отключите на ноутбуке сон и автоматические обновления.</li>

@@ -1,0 +1,303 @@
+[
+  {
+    "type": "COVER",
+    "content": {
+      "v": 1,
+      "names": "Валерия и Давид",
+      "title": "the Wedding day",
+      "subtitle": "",
+      "dateText": "",
+      "imageUrl": "/media/invite-odnazhdy/d3c28892-splash_1706897790.0968.webp",
+      "photos": []
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Обращение",
+      "title": "Мы",
+      "text": "Если вы сейчас читаете этот текст, значит совсем скоро вы увидите одного из нас в свадебном платье и думаем, что вы догадываетесь, кого именно…"
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "История",
+      "title": "Наша история",
+      "text": "Все началось в институте. Мы были просто знакомыми, проходили мимо друг друга каждый день, но не общались.\nОднажды, на одной из вечеринок института, мы случайно оказались в одной компании. Начали разговаривать, и сразу почувствовали непринужденность и понимание друг друга. Наше общение было легким и приятным, словно мы знали друг друга всю жизнь.\nС тех пор мы стали проводить все больше времени вместе. Часто гуляли по городу, смотрели фильмы, ходили на концерты и просто болтали до поздней ночи. Вскоре мы осознали, что стали неотъемлемой частью жизни друг друга. Мы были всегда рядом, поддерживали друг друга и делились своими мечтами и планами на будущее."
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Моменты",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/1afc8591-main_gallery_items_1706893868.7715.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/4503d434-main_gallery_items_1707820882.2334.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/0508e268-main_gallery_items_1706897831.8639.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/8766adf7-main_gallery_items_1706893623.6948.webp",
+          "caption": ""
+        }
+      ],
+      "title": "MOMENTS"
+    }
+  },
+  {
+    "type": "CALENDAR",
+    "content": {
+      "v": 1,
+      "title": "Мы ждём",
+      "message": ""
+    }
+  },
+  {
+    "type": "VENUE",
+    "content": {
+      "v": 1,
+      "name": "«Hide»",
+      "address": "Адрес: Московская область, городской округ Мытищи, Хлебниковский лесопарк",
+      "note": "",
+      "imageUrl": "/media/invite-odnazhdy/87adf131-location_photo_items_1706897568.0111.webp",
+      "mapUrl": "https://yandex.ru/maps/-/CDBY7C4f",
+      "mapLabel": "Как добраться",
+      "title": "Локация"
+    }
+  },
+  {
+    "type": "TIMELINE",
+    "content": {
+      "v": 1,
+      "items": [
+        {
+          "time": "16:00",
+          "title": "Сбор гостей",
+          "note": ""
+        },
+        {
+          "time": "16:30",
+          "title": "Церемония регистрации",
+          "note": ""
+        },
+        {
+          "time": "17:00",
+          "title": "Начало банкета",
+          "note": ""
+        },
+        {
+          "time": "23:00",
+          "title": "Завершение вечера",
+          "note": ""
+        }
+      ],
+      "title": "Тайминг"
+    }
+  },
+  {
+    "type": "DRESSCODE",
+    "content": {
+      "v": 1,
+      "palette": [
+        "#e4d5be",
+        "#eed8d9",
+        "#a3b9ad",
+        "#6e8b88",
+        "#e58859"
+      ],
+      "imageUrl": "",
+      "title": "Dress code",
+      "text": "Мы очень ждём и готовимся к нашему незабываемому дню! Поддержите нас Вашими улыбками и объятиями, а также красивыми нарядами в палитре мероприятия"
+    }
+  },
+  {
+    "type": "COUNTDOWN",
+    "content": {
+      "v": 1,
+      "doneText": "Сегодня наша свадьба!",
+      "title": "До нашей свадьбы осталось"
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Пожелания",
+      "title": "Пожелания",
+      "text": "Будем очень признательны, если Вы воздержитесь от криков «Горько». Ведь поцелуй – это знак выражения чувств, и он не может быть по заказу."
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Контакты",
+      "title": "Наши",
+      "text": "По всем вопросам, связанным с мероприятием, вы можете связаться с нами:"
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Вместе",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/069409fd-splash_1706894711.4661.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "RSVP_FORM",
+    "content": {
+      "v": 1,
+      "title": "Будем рады видеть",
+      "text": "Пожалуйста, подтвердите ваше присутствие на нашей свадьбе до:",
+      "attendanceLabel": "Планируете ли Вы присутствовать на нашей свадьбе?",
+      "yesLabel": "С удовольствием приду!",
+      "noLabel": "К сожалению, не смогу",
+      "drinksLabel": "Ваши предпочтения",
+      "buttonLabel": "Отправить",
+      "nameLabel": "Ваше имя и фамилия",
+      "successText": "Спасибо! Ваш ответ получен."
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Окончание",
+      "title": "До скорой встречи!",
+      "text": "С любовью"
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Обращение · фотографии",
+      "title": "Обращение",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/b8a96d9b-about-img.jpg",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "История · фотографии",
+      "title": "История",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/7fde3a63-history-img.png",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Дополнительные моменты",
+      "title": "Моменты",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/b9e2c6f3-main_gallery_items_1706893604.3384.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/f885537f-main_gallery_items_1707820658.9427.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Образы для девушек",
+      "title": "Образы для девушек",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/73b0a1ce-dresscode_girls_gallery_items_1706894265.3662.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/3b708fc3-dresscode_girls_gallery_items_1706894304.8567.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/06268b0b-dresscode_girls_gallery_items_1706894310.4852.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/de7a1b0f-dresscode_girls_gallery_items_1706894328.4668.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Образы для мужчин",
+      "title": "Образы для мужчин",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/b43990ee-dresscode_guys_gallery_items_1706894355.3152.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/8a5843da-dresscode_guys_gallery_items_1706894363.7975.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/5df0f404-dresscode_guys_gallery_items_1706894371.7801.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/36ecba86-dresscode_guys_gallery_items_1706894383.5532.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Пожелание 2",
+      "title": "",
+      "text": "А вы знали, что мы собираем коллекцию вин? Предлагаем заменить традиционный букет цветов хорошим экземпляром для нашей семейной винотеки."
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Пожелание 3",
+      "title": "",
+      "text": "Мы любим детей наших друзей, своих племянников и племянниц. Будем рады, если они посетят нашу свадьбу"
+    }
+  }
+]

@@ -9,12 +9,12 @@
  * исказили бы вёрстку.
  */
 export const TILI_FONTS_LINK =
-  '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500&family=Alex+Brush&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">';
+  '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Dancing+Script:wght@400;500;600;700&family=Inter:wght@300;400;500&family=Alex+Brush&family=Marck+Script&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">';
 
 export const TILI_CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--cream:#f8f1ea;--paper:#F7F3EE;--beige:#E8DBC8;--taupe:#BFAF9F;--rose:#E8C4C0;--rose-d:#C09893;--rose-l:#F3E1DE;--brown:#8B6914;--deep:#2A1D0D;--sage:#9EAD80;--green:#5E7A40;--green-d:#3D5A28;--gold:#C8A87A;--gold-l:#F5EAD5;
---serif:'Cormorant Garamond',Georgia,serif;--script:'Dancing Script',cursive;--display:'Alex Brush',cursive;--body:'Cormorant Garamond',Georgia,serif;--modern:'Montserrat',sans-serif}
+--serif:'Cormorant Garamond',Georgia,serif;--script:'Dancing Script','Marck Script',cursive;--display:'Alex Brush','Marck Script',cursive;--body:'Cormorant Garamond',Georgia,serif;--modern:'Montserrat',sans-serif}
 html{scroll-behavior:smooth}
 body{background:#f8f1ea;color:var(--deep);font-family:var(--serif);overflow-x:hidden;-webkit-font-smoothing:antialiased}
 input,button,textarea,select,label{font-family:var(--serif)!important}
@@ -31,7 +31,7 @@ img{max-width:100%}
 .cover.is-open{opacity:0;visibility:hidden;pointer-events:none}
 .cover-inner{text-align:center;display:flex;flex-direction:column;align-items:center;gap:22px}
 .cover-envelope{display:block;width:min(560px,92vw);max-height:78vh;object-fit:contain;transition:transform .8s cubic-bezier(.22,1,.36,1)}
-.cover.opening .cover-envelope{transform:scale(1.05)}
+.cover.opening .cover-envelope{transform:scale(1.05)}.cover-env{position:relative;display:block;width:min(560px,92vw);transition:transform .8s cubic-bezier(.22,1,.36,1)}.cover-env .cover-envelope{width:100%;max-height:none;transform:none!important}.cover.opening .cover-env{transform:scale(1.05)}.cover-names{position:absolute;left:50.4%;top:35.5%;transform:translate(-50%,-50%);width:46%;text-align:center;font-family:var(--serif);font-style:italic;font-weight:400;font-size:calc(min(560px,92vw)*.066);line-height:1.12;letter-spacing:.01em;color:#9c7f52;white-space:nowrap;pointer-events:none}
 .cover-hint{font-family:var(--serif);font-size:1.2rem;font-weight:500;font-style:italic;color:var(--brown);letter-spacing:.05em;animation:hintPulse 2s ease-in-out infinite}
 @keyframes hintPulse{0%,100%{opacity:.6}50%{opacity:1}}
 

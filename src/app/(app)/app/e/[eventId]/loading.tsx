@@ -12,7 +12,7 @@ export default function EventSectionLoading() {
   return (
     <LoadingScreen label="Загружаем раздел">
       <TileRow />
-      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white p-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-card p-4">
         <Bone className="h-4 w-48" />
         <Bone className="ml-auto h-9 w-32 rounded-lg" />
       </div>

@@ -1,0 +1,26 @@
+import { db } from "@/server/db";
+import type { EventContext } from "@/server/context";
+import { timingTemplateSteps } from "@/lib/timing-templates";
+
+/** Append a complete scenario atomically; keep custom, completed and edited stages. */
+export async function applyTimingTemplate(ctx: EventContext, templateId: string) {
+  try {
+    return await db.$transaction(async (tx) => {
+      const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { eventDate: true, timezone: true } });
+      if (!event) return { ok: false, message: "Мероприятие не найдено" };
+      const stages = timingTemplateSteps(templateId, event.eventDate, event.timezone);
+      if (!stages) return { ok: false, message: "Не удалось добавить сценарий — выберите шаблон из списка" };
+      const existing = await tx.dayStep.findMany({ where: { eventId: ctx.eventId, orgId: ctx.orgId }, select: { title: true, startsAt: true } });
+      const keys = new Set(existing.map((stage) => `${stage.startsAt.toISOString()}|${stage.title}`));
+      const additions = stages.filter((stage) => !keys.has(`${stage.startsAt.toISOString()}|${stage.title}`));
+      if (!additions.length) return { ok: true, message: "Этапы этого сценария уже есть в вашем плане" };
+      await tx.dayStep.createMany({ data: additions.map((stage) => ({ ...stage, orgId: ctx.orgId, eventId: ctx.eventId, action: "NONE" as const, reminderMinutes: 0 })) });
+      return { ok: true, message: "Сценарий добавлен. Теперь можно настроить время, ответственных и заметки" };
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2034") {
+      return { ok: false, message: "План только что изменился. Нажмите на сценарий ещё раз" };
+    }
+    throw error;
+  }
+}

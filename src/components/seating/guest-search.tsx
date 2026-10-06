@@ -104,7 +104,7 @@ export function GuestSearch({
                 onPick(guest);
                 setQuery("");
               }}
-              className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-sm hover:border-stone-400"
+              className="w-full rounded-lg border border-stone-200 bg-card px-3 py-2 text-left text-sm hover:border-stone-400"
             >
               {guest.displayName}
               {guest.role && guest.role !== "GUEST" ? (

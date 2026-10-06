@@ -54,3 +54,22 @@ src/generated/
 # Локальный dev-тулчейн (portable Node/PostgreSQL + данные базы) —
 # ставится и пересоздаётся скриптом восстановления, в git не нужен.
 /.localtools/
+
+# Тестовые ролики и фото людей — не для репозитория
+/videos/
+
+# Черновики дизайна и временные файлы
+/tmp/
+/output/
+# Личные заметки владельца — репозиторий публичный
+/founder/
+# Исходники картинок и черновики маскота: сайт их не использует
+/public/media/landing-story/source/
+/public/media/mascot-designs/
+/public/media/mascot-concepts/
+# Промо-ролик (скилл brag) — результат, а не исходники сайта
+/brag-output/
+# Установленные скиллы агентов (видео и т. п.) — не код сайта
+/.agents/
+/.claude/skills/
+/.claude/founder-shared/

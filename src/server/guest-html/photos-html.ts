@@ -1,8 +1,8 @@
 /**
  * Страница фотографий гостя — строка HTML плюс небольшой собственный скрипт.
  *
- * Здесь JavaScript действительно нужен: браузер режет превью в canvas и
- * кладёт файлы прямо в хранилище (PLAN.md §4.4). Но нужен именно он, а не
+ * Здесь JavaScript действительно нужен: браузер ужимает кадр в canvas и
+ * кладёт его прямо в хранилище (PLAN.md §4.4). Но нужен именно он, а не
  * фреймворк: ради ста строк работы с `FileList` и `fetch` рантайм React
  * привозил 174 КБ — на страницу, которую открывают в зале, где вайфай
  * поделён на полторы сотни человек.
@@ -14,7 +14,7 @@ import { esc } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import type { InviteTheme } from "@/lib/invite-theme";
 
-const SCRIPT = `
+export const PHOTO_SCRIPT = `
 (function(){
   var form = document.getElementById('picker');
   if (!form) return;
@@ -43,25 +43,44 @@ const SCRIPT = `
     return {state: state, thumb: img};
   }
 
-  /* Превью: тот же путь, что и в первой версии на React — createImageBitmap
-     плюс canvas. Не получилось (старый телефон, HEIC) — грузим без превью:
-     потерять единственный кадр хуже, чем показать его в модерации без картинки. */
-  function makeThumb(file){
-    return createImageBitmap(file).then(function(bitmap){
-      var scale = Math.min(1, 400 / Math.max(bitmap.width, bitmap.height));
-      var w = Math.max(1, Math.round(bitmap.width * scale));
-      var h = Math.max(1, Math.round(bitmap.height * scale));
-      var canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      var ctx = canvas.getContext('2d');
-      if (!ctx) return null;
-      ctx.drawImage(bitmap, 0, 0, w, h);
-      var size = {w: bitmap.width, h: bitmap.height};
-      bitmap.close();
-      return new Promise(function(resolve){
-        canvas.toBlob(function(blob){ resolve(blob ? {blob: blob, size: size} : null); }, 'image/webp', 0.82);
-      });
-    }).catch(function(){ return null; });
+  /* Кадр ужимается прямо в телефоне: 2560 px по длинной стороне в JPEG
+     вместо 5–8 МБ исходника — на Wi‑Fi зала это разница между «ушло» и
+     «висит». Через <img>, а не createImageBitmap: картинка поворачивается
+     по EXIF во всех браузерах, а у createImageBitmap это зависит от версии.
+     Браузер не смог открыть файл (HEIC в Chrome, редкий формат) — шлём
+     исходник как есть: сервер всё равно перекодирует любой кадр в WebP. */
+  var MAX_SIDE = 2560;
+  function shrink(file){
+    var type = file.type || 'application/octet-stream';
+    return new Promise(function(resolve){
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var scale = Math.min(1, MAX_SIDE / Math.max(w, h, 1));
+        var keep = {blob: file, type: type, preview: url};
+        if (scale === 1 && file.size < 1536 * 1024 && (type === 'image/jpeg' || type === 'image/webp')) {
+          resolve(keep); return;
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(w * scale));
+        canvas.height = Math.max(1, Math.round(h * scale));
+        var ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(keep); return; }
+        /* Белая подложка: прозрачный PNG в JPEG иначе станет чёрным. */
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function(blob){
+          resolve(blob && blob.size < file.size ? {blob: blob, type: 'image/jpeg', preview: url} : keep);
+        }, 'image/jpeg', 0.9);
+      };
+      img.onerror = function(){
+        URL.revokeObjectURL(url);
+        resolve({blob: file, type: type, preview: null});
+      };
+      img.src = url;
+    });
   }
 
   function post(url, payload){
@@ -69,53 +88,43 @@ const SCRIPT = `
       body: JSON.stringify(Object.assign({}, auth, payload))});
   }
 
+  function failed(res){
+    return res.json().catch(function(){ return {}; })
+      .then(function(b){ throw new Error(b.error || 'не получилось'); });
+  }
+
   function upload(file, ui){
-    ui.state.textContent = 'готовим превью';
-    return post('/api/guest/photos/presign', {contentType: file.type, bytes: file.size})
-      .then(function(res){
-        if (!res.ok) return res.json().then(function(b){ throw new Error(b.error || 'не получилось'); });
-        return res.json();
-      })
-      .then(function(ticket){
-        return makeThumb(file).then(function(thumb){
+    ui.state.textContent = 'готовим';
+    return shrink(file).then(function(prepared){
+      if (prepared.preview) ui.thumb.style.backgroundImage = 'url(' + prepared.preview + ')';
+      return post('/api/guest/photos/presign', {contentType: prepared.type, bytes: prepared.blob.size})
+        .then(function(res){ return res.ok ? res.json() : failed(res); })
+        .then(function(ticket){
           ui.state.textContent = 'отправляем';
-          if (thumb) {
-            var url = URL.createObjectURL(thumb.blob);
-            ui.thumb.style.backgroundImage = 'url(' + url + ')';
-          }
-          return fetch(ticket.uploadUrl, {method:'PUT', headers:{'content-type': file.type}, body: file})
+          return fetch(ticket.uploadUrl, {method:'PUT', headers:{'content-type': prepared.type}, body: prepared.blob})
             .then(function(put){
               if (!put.ok) throw new Error('файл не долетел — попробуйте ещё раз');
-              if (!thumb) return false;
-              return fetch(ticket.thumbUploadUrl, {method:'PUT',
-                headers:{'content-type':'image/webp'}, body: thumb.blob}).then(function(r){ return r.ok; });
-            })
-            .then(function(previewOk){
-              return post('/api/guest/photos/complete', {
-                storageKey: ticket.storageKey, thumbKey: ticket.thumbKey,
-                width: thumb ? thumb.size.w : 0, height: thumb ? thumb.size.h : 0,
-                previewOk: !!previewOk
-              }).then(function(res){
-                if (!res.ok) return res.json().then(function(b){ throw new Error(b.error || 'не получилось'); });
-                return res.json().then(function(done){
-                  left = done.left;
-                  counter.textContent = left > 0 ? 'Осталось ' + left + ' из ' + limit
-                                                 : 'Вы прислали все ' + limit;
-                  /* Заголовок тоже меняем: «Выбрать фотографии» над
-                     выключенным полем выглядит как поломка. */
-                  if (title) title.textContent = left > 0 ? 'Выбрать фотографии'
-                                                          : 'Больше фотографий не принимаем';
-                  ui.state.textContent = previewOk ? 'отправлено на модерацию'
-                                                   : 'отправлено, превью не получилось';
-                });
-              });
+              ui.state.textContent = 'обрабатываем';
+              return post('/api/guest/photos/complete', {storageKey: ticket.storageKey});
             });
+        })
+        .then(function(res){ return res.ok ? res.json() : failed(res); })
+        .then(function(done){
+          left = done.left;
+          counter.textContent = left > 0 ? 'Осталось ' + left + ' из ' + limit
+                                         : 'Вы прислали все ' + limit;
+          /* Заголовок тоже меняем: «Выбрать фотографии» над
+             выключенным полем выглядит как поломка. */
+          if (title) title.textContent = left > 0 ? 'Выбрать фотографии'
+                                                  : 'Больше фотографий не принимаем';
+          ui.state.textContent = 'отправлено';
+          if (!prepared.preview) ui.thumb.style.backgroundImage =
+            'url(/api/media/' + form.dataset.event + '/' + done.photoId + ')';
         });
-      })
-      .catch(function(error){
-        ui.state.textContent = error.message || 'не получилось';
-        ui.state.className = 'err small';
-      });
+    }).catch(function(error){
+      ui.state.textContent = error.message || 'не получилось';
+      ui.state.className = 'err small';
+    });
   }
 
   input.addEventListener('change', function(){
@@ -143,7 +152,7 @@ const SCRIPT = `
 })();
 `.trim();
 
-const EXTRA_CSS = `
+export const PHOTO_CSS = `
 .picker{display:block;margin:0 1.5rem;padding:2rem 1.5rem;border:1px dashed #c9bfb3;border-radius:1rem;
 text-align:center;cursor:pointer}
 .picker input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
@@ -169,30 +178,25 @@ const STATUS: Record<string, string> = {
   REJECTED: "не подошло",
 };
 
-export function photosPage(opts: {
-  /** Оформление мероприятия: страница гостя должна выглядеть как его
-   *  приглашение, а не как отдельный сервис. */
-  theme?: InviteTheme;
+export type PhotoSectionsOpts = {
   eventId: string;
-  eventTitle: string;
-  guestName: string;
-  /** Токен именной ссылки, если гость пришёл по ней. */
   token: string | null;
   enabled: boolean;
   left: number;
   limit: number;
   mine: MyPhoto[];
+  /** Только снимки, без имён: кто прислал фото, другим гостям не видно. */
   gallery: { id: string }[];
-  wishHref: string | null;
-  backHref: string;
-  backLabel: string;
-}): string {
+};
+
+/** Загрузка, «ваши фото» и общая галерея — на странице фото и на странице гостя. */
+export function photoSections(opts: PhotoSectionsOpts): { picker: string; mine: string; gallery: string } {
   const media = (id: string, size = "") => `/api/media/${opts.eventId}/${id}${size}`;
 
   const picker = opts.enabled
     ? `<label class="picker" id="picker" data-left="${opts.left}" data-limit="${opts.limit}"
 data-token="${esc(opts.token ?? "")}" data-event="${esc(opts.eventId)}">
-  <input id="files" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple${
+  <input id="files" type="file" accept="image/*,.heic,.heif" multiple${
     opts.left <= 0 ? " disabled" : ""
   }>
   <b>${opts.left > 0 ? "Выбрать фотографии" : "Больше фотографий не принимаем"}</b>
@@ -218,8 +222,8 @@ ${opts.mine
 
   const gallery =
     opts.gallery.length === 0
-      ? `<section><h2>Общая галерея</h2><p class="center small muted">Пока пусто. Фотографии
-появятся здесь после проверки организатором.</p></section>`
+      ? `<section><h2>Общая галерея</h2><p class="center small muted">Пока пусто. Здесь
+появятся снимки гостей.</p></section>`
       : `<section><h2>Общая галерея</h2><ul class="grid">
 ${opts.gallery
   .map(
@@ -229,12 +233,34 @@ ${opts.gallery
   )
   .join("")}</ul></section>`;
 
+  return { picker, mine, gallery };
+}
+
+export function photosPage(opts: {
+  /** Оформление мероприятия: страница гостя должна выглядеть как его
+   *  приглашение, а не как отдельный сервис. */
+  theme?: InviteTheme;
+  eventId: string;
+  eventTitle: string;
+  guestName: string;
+  /** Токен именной ссылки, если гость пришёл по ней. */
+  token: string | null;
+  enabled: boolean;
+  left: number;
+  limit: number;
+  mine: MyPhoto[];
+  gallery: { id: string }[];
+  wishHref: string | null;
+  backHref: string;
+  backLabel: string;
+}): string {
+  const { picker, mine, gallery } = photoSections(opts);
   return invitePage({
     theme: opts.theme,
     title: "Фотографии",
     noindex: true,
-    extraCss: EXTRA_CSS,
-    script: opts.enabled ? SCRIPT : undefined,
+    extraCss: PHOTO_CSS,
+    script: opts.enabled ? PHOTO_SCRIPT : undefined,
     body: `<section style="padding-bottom:1rem">
 <h1 class="center" style="font-size:1.5rem">Фотографии</h1>
 <p class="center small muted">${esc(opts.guestName)} · ${esc(opts.eventTitle)}</p>

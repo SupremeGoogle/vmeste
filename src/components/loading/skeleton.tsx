@@ -26,12 +26,25 @@ export function LoadingScreen({ label, children }: { label: string; children: Re
   );
 }
 
+/** Название будущего раздела остаётся читаемым, пока данные ещё приходят. */
+export function LoadingHeading({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="mb-7 flex items-start gap-3">
+      <div aria-hidden className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500/70 shadow-[0_0_0_5px_rgba(217,170,93,.12)]" />
+      <div>
+        <h1 className="font-serif text-3xl leading-tight text-stone-900">{title}</h1>
+        <p className="mt-1 text-sm text-stone-500">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
 /** Ряд плиток-счётчиков, как на обзоре и в ответах. */
 export function TileRow({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-3 sm:grid-cols-4">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="rounded-xl border border-stone-200 bg-white p-4">
+        <div key={i} className="rounded-xl border border-stone-200 bg-card p-4">
           <Bone className="h-7 w-12" />
           <Bone className="mt-2 h-3.5 w-24" />
         </div>
@@ -44,7 +57,7 @@ export function TileRow({ count = 4 }: { count?: number }) {
 export function Rows({ count = 6 }: { count?: number }) {
   const widths = ["w-40", "w-56", "w-32", "w-48", "w-36", "w-52"];
   return (
-    <div className="mt-8 divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
+    <div className="mt-8 divide-y divide-stone-100 rounded-xl border border-stone-200 bg-card">
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="flex items-center gap-4 px-4 py-3">
           <Bone className="h-8 w-8 shrink-0 rounded-full" />

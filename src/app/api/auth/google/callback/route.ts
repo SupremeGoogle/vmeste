@@ -14,7 +14,7 @@ import { cookies } from "next/headers";
 import { db } from "@/server/db";
 import { exchangeCode, sameSecret } from "@/server/auth/google";
 import { createSession } from "@/server/auth/session";
-import { createAccount } from "@/server/services/signup";
+import { userForGoogleProfile } from "@/server/services/signup";
 import { HANDSHAKE_COOKIE } from "../start/route";
 
 export const dynamic = "force-dynamic";
@@ -38,9 +38,11 @@ export async function GET(request: Request) {
 
   const code = params.get("code") ?? "";
   const state = params.get("state") ?? "";
-  const [savedState, verifier] = handshake.split(".");
+  // В cookie до трёх незавершённых входов ("state.verifier|…") — берём свой.
+  const match = handshake.split("|").map((pair) => pair.split(".")).find(([saved, verifier]) => saved && verifier && sameSecret(state, saved));
+  const verifier = match?.[1];
 
-  if (!code || !savedState || !verifier || !sameSecret(state, savedState)) {
+  if (!code || !verifier) {
     return back("google_state");
   }
 
@@ -51,53 +53,11 @@ export async function GET(request: Request) {
     return back("google_fail");
   }
 
-  const existing = await db.oAuthAccount.findUnique({
-    where: { provider_providerAccountId: { provider: "GOOGLE", providerAccountId: profile.sub } },
-    select: { userId: true },
-  });
+  const userId = await userForGoogleProfile(profile);
 
-  let userId = existing?.userId ?? null;
-
-  if (userId) {
-    await db.oAuthAccount.update({
-      where: { provider_providerAccountId: { provider: "GOOGLE", providerAccountId: profile.sub } },
-      data: { lastLogin: new Date(), email: profile.email },
-    });
-  } else {
-    const byEmail = await db.user.findUnique({
-      where: { email: profile.email },
-      select: { id: true, avatarUrl: true },
-    });
-
-    if (byEmail) {
-      userId = byEmail.id;
-      // Почту Google подтвердил — отмечаем это и у нас, а аватар ставим,
-      // только если своего ещё нет: перезаписывать чужой выбор невежливо.
-      await db.user.update({
-        where: { id: userId },
-        data: {
-          emailVerified: true,
-          avatarUrl: byEmail.avatarUrl ?? profile.picture ?? null,
-        },
-      });
-    } else {
-      userId = await createAccount({
-        name: profile.name,
-        email: profile.email,
-        emailVerified: true,
-        avatarUrl: profile.picture,
-      });
-    }
-
-    await db.oAuthAccount.create({
-      data: {
-        userId,
-        provider: "GOOGLE",
-        providerAccountId: profile.sub,
-        email: profile.email,
-      },
-    });
-  }
+  // Заблокирован в панели суперадмина — Google подтвердил личность, но входа нет.
+  const blocked = await db.user.findUnique({ where: { id: userId }, select: { blockedAt: true } });
+  if (blocked?.blockedAt) return back("blocked");
 
   await createSession(userId);
   return Response.redirect(new URL("/app", process.env.NEXT_PUBLIC_APP_URL));

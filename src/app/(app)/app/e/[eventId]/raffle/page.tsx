@@ -83,7 +83,7 @@ export default async function RafflePage({ params, searchParams }: Props) {
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}
 
-      <div className="rounded-xl border border-stone-200 bg-white p-4">
+      <div className="rounded-xl border border-stone-200 bg-card p-4">
         <p className="text-sm text-stone-600">
           В розыгрыш попадают гости, у которых есть хотя бы одна одобренная
           фотография. Сейчас таких: <b className="text-stone-900">{eligible.length}</b>.
@@ -91,7 +91,7 @@ export default async function RafflePage({ params, searchParams }: Props) {
       </div>
 
       {current ? (
-        <section className="mt-6 rounded-xl border border-stone-200 bg-white p-5">
+        <section className="mt-6 rounded-xl border border-stone-200 bg-card p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-lg font-medium">{current.title}</h2>
             <span className="text-sm text-stone-500">
@@ -187,10 +187,6 @@ export default async function RafflePage({ params, searchParams }: Props) {
         </button>
       </form>
 
-      <p className="mt-6 text-xs text-stone-500">
-        Чтобы зал увидел розыгрыш, переключите экран в режим «Розыгрыш»
-        на вкладке «Экран».
-      </p>
     </main>
   );
 }

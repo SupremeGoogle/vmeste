@@ -1,33 +1,27 @@
 /**
  * Дашборд мероприятия.
  *
- * Открывается по адресу самого мероприятия — раньше он отдавал 404,
- * потому что все переходы вели сразу на вкладки. Это первый экран
- * в день свадьбы, поэтому здесь не «аналитика», а четыре вопроса,
- * которые задают вслух: сколько придёт, что с рассадкой, что на
- * модерации и жив ли экран.
+ * Первый экран показывает статус подготовки, выбранное приглашение
+ * и QR-код, который организатор сможет проверить или распечатать.
  */
 import Link from "next/link";
+import Image from "next/image";
+import QRCode from "qrcode";
 import { notFound } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import { countGuests } from "@/server/repositories/guests";
 import { countPhotos } from "@/server/services/photos";
-import { countWishes } from "@/server/services/wishes";
 import { rsvpSummary } from "@/server/services/rsvp";
-import { listScreenTokens } from "@/server/services/screen";
+import { getTheme, listBlocks } from "@/server/repositories/invites";
+import { getSavedPrintDesigns } from "@/server/services/print-design";
+import { PICKABLE_TEMPLATES, findTemplate } from "@/lib/invite-templates";
+import { PRINT_TEMPLATES, pageScale, paperSize, reconcilePrintDesign } from "@/lib/print-design";
 import { formatEventDateTime } from "@/lib/format-datetime";
+import { CountUp } from "@/components/motion/motion";
+import { IphoneFrame } from "@/components/invite/iphone-frame";
 
 export const dynamic = "force-dynamic";
-
-/** Режим экрана человеку показываем словами, а не кодом перечисления. */
-const SCREEN_MODE: Record<string, string> = {
-  MIXED: "фото и пожелания",
-  PHOTOS: "только фото",
-  WISHES: "только пожелания",
-  RAFFLE: "розыгрыш",
-  IDLE: "заставка",
-};
 
 /**
  * «Сейчас» для серверного рендера.
@@ -39,11 +33,6 @@ const SCREEN_MODE: Record<string, string> = {
  */
 async function currentTime(): Promise<number> {
   return Date.now();
-}
-
-/** «Экран на связи» — если пульс приходил в последние две минуты. */
-function isLive(lastSeenAt: Date | null, now: number): boolean {
-  return lastSeenAt !== null && now - lastSeenAt.getTime() < 120_000;
 }
 
 function daysUntil(date: Date, now: number): string {
@@ -70,28 +59,41 @@ export default async function EventDashboard({
 
   const now = await currentTime();
 
-  const [guests, rsvp, photos, wishes, screens] = await Promise.all([
+  const [guests, rsvp, photos, theme, blocks, savedPrint] = await Promise.all([
     countGuests(ctx),
     rsvpSummary(ctx.eventId),
     countPhotos(ctx.eventId),
-    countWishes(ctx.eventId),
-    listScreenTokens(ctx, eventId),
+    getTheme(ctx),
+    listBlocks(ctx),
+    getSavedPrintDesigns(ctx),
   ]);
-
-  const liveScreen = screens.find(
-    (screen) => !screen.revokedAt && isLive(screen.lastSeenAt, now),
-  );
+  // Шаблон «выбран», только если он есть на витрине. Снятый с показа или
+  // пустой — это не выбор: раньше карточка писала «Шаблон выбран» и
+  // показывала голую раскладку без оформления.
+  const found = findTemplate(theme.template);
+  const template = found && !found.retired ? found : null;
+  const hasInvite = Boolean(template) && blocks.some((block) => block.visible);
+  const sample = PICKABLE_TEMPLATES[0];
+  const previewUrl = hasInvite ? `/app/e/${eventId}/invite/canvas?preview=1` : `/templates/${sample.id}`;
+  const qrLink = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/e/${event.shortCode}`;
+  const qrData = await QRCode.toDataURL(qrLink, { width: 480, margin: 2, errorCorrectionLevel: "H" });
+  const dateLabel = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: event.timezone }).format(event.eventDate);
+  const qrDesign = reconcilePrintDesign(savedPrint.qr, "qr", event.title, dateLabel, []);
+  const qrTemplate = PRINT_TEMPLATES.find((item) => item.id === qrDesign.template);
+  const qrSheet = paperSize(qrDesign.paper, qrDesign.orientation);
+  const qrFont = (size: number) => size * pageScale(qrDesign.paper) * (270 / qrSheet.w) * qrDesign.textScale;
+  const visibleQr = qrDesign.elements.some((item) => item.kind === "qr" && !item.hidden && item.page === 0);
 
   const tiles = [
     {
-      href: `/app/e/${eventId}/rsvp`,
-      value: `${rsvp.accepted}`,
+      href: `/app/e/${eventId}/guests?tab=answers`,
+      value: rsvp.accepted,
       label: "придут",
       hint: `${rsvp.pending} не ответили · ${rsvp.notOpened} не открыли ссылку`,
     },
     {
       href: `/app/e/${eventId}/seating`,
-      value: `${guests.seated}`,
+      value: guests.seated,
       label: "рассажено",
       hint:
         rsvp.accepted > guests.seated
@@ -100,15 +102,9 @@ export default async function EventDashboard({
     },
     {
       href: `/app/e/${eventId}/photos`,
-      value: `${photos.pending}`,
+      value: photos.pending,
       label: "фото на модерации",
       hint: `опубликовано ${photos.approved}`,
-    },
-    {
-      href: `/app/e/${eventId}/wishes`,
-      value: `${wishes.pending}`,
-      label: "пожеланий ждут",
-      hint: `на экране ${wishes.approved}`,
     },
   ];
 
@@ -119,19 +115,17 @@ export default async function EventDashboard({
         {event.venueName ? ` · ${event.venueName}` : ""}
       </p>
 
-      {/* Две колонки уже на телефоне: по одной плитке в ряд четыре
-          ответа занимали четыре экрана прокрутки, хотя весь смысл
-          дашборда — увидеть их разом. */}
-      <div className="rise-stagger mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* На телефоне два показателя помещаются рядом. */}
+      <div className="rise-stagger mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {tiles.map((tile, i) => (
           <Link
             key={tile.label}
             href={tile.href}
             style={{ "--i": i } as React.CSSProperties}
-            className="group rounded-xl border border-stone-200 bg-white p-4 transition-[border-color,box-shadow,transform] duration-200 ease-[var(--ease-soft)] hover:border-stone-400 hover:shadow-sm active:scale-[0.98]"
+            className="group rounded-xl border border-stone-200 bg-card p-4 transition-[border-color,box-shadow,transform] duration-300 ease-[var(--ease-out-back)] hover:-translate-y-1 hover:border-stone-400 hover:shadow-lg hover:shadow-stone-900/5 active:scale-[0.98]"
           >
             <p className="tile-value text-3xl transition-colors duration-200 group-hover:text-stone-900">
-              {tile.value}
+              <CountUp value={tile.value} />
             </p>
             <p className="text-sm text-stone-600">{tile.label}</p>
             {/* Подпись мелкая и длинная — на узком экране ей нужен
@@ -142,88 +136,66 @@ export default async function EventDashboard({
         ))}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rise rounded-xl border border-stone-200 bg-white p-4 text-sm">
-          <p className="font-medium">На кухню</p>
-          {/* Список блюд раньше собирался в одну строку через « · » и
-              на телефоне вылезал за край карточки. Теперь это строки,
-              которые переносятся как обычный текст. */}
-          <p className="mt-1 text-stone-600">
-            {rsvp.meals.map((meal, i) => (
-              <span key={meal.title} className="inline-block whitespace-nowrap">
-                {i > 0 && <span className="mx-1.5 text-stone-300">·</span>}
-                {meal.title}: {meal.count}
-              </span>
-            ))}
-          </p>
-          {rsvp.drinks.length > 0 ? (
-            <>
-              <p className="mt-3 font-medium">В бар</p>
-              <p className="mt-1 text-stone-600">
-                {rsvp.drinks.map((drink, i) => (
-                  <span key={drink.id} className="inline-block whitespace-nowrap">
-                    {i > 0 && <span className="mx-1.5 text-stone-300">·</span>}
-                    {drink.title}: {drink.count}
-                  </span>
-                ))}
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+        <section className="rise rounded-2xl border border-stone-200 bg-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium tracking-[0.18em] text-stone-500 uppercase">Ваше приглашение</p>
+              <h2 className="mt-1 font-serif text-3xl text-stone-900">{template?.name ?? "Шаблон не выбран"}</h2>
+              <p className="mt-1 max-w-md text-sm leading-relaxed text-stone-600">
+                {hasInvite ? "Это приглашение увидят гости. Тексты и фотографии можно изменить в редакторе." : "Выберите оформление и добавьте свои имена, фотографии и детали праздника."}
               </p>
-            </>
-          ) : null}
-          <p className="mt-1 text-xs text-stone-400">
-            Всего гостей в списке: {guests.total}, из них спутников: {rsvp.plusOnes}
-          </p>
-        </div>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs ${hasInvite ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+              {hasInvite ? "Шаблон выбран" : "Нужно настроить"}
+            </span>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-6">
+            {/* Настоящий телефон: приглашение можно пролистать прямо здесь. */}
+            <div className="mx-auto shrink-0 sm:mx-0">
+              <IphoneFrame src={previewUrl} title="Ваше приглашение на телефоне" width={236} interactive />
+              <p className="mt-3 text-center text-xs text-stone-400">Листайте приглашение прямо в телефоне</p>
+            </div>
+            <div className="flex min-w-[190px] flex-1 flex-col gap-2">
+              <p className="mb-1 text-sm leading-relaxed text-stone-600">
+                {hasInvite ? `В приглашении ${blocks.filter((block) => block.visible).length} разделов. Можно менять порядок, тексты и снимки.` : `Начните с выбора одного из готовых свадебных шаблонов. На телефоне — пример: «${sample.name}».`}
+              </p>
+              <Link href={`/app/e/${eventId}/invite${hasInvite ? "?edit=1" : ""}`} className="flex min-h-11 items-center justify-center rounded-xl bg-stone-900 px-4 text-center text-sm font-medium text-white">
+                {hasInvite ? "Редактировать приглашение" : "Выбрать шаблон"}
+              </Link>
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-stone-300 px-4 text-center text-sm text-stone-700">
+                Открыть предпросмотр ↗
+              </a>
+            </div>
+          </div>
+        </section>
 
-        <div className="rise rounded-xl border border-stone-200 bg-white p-4 text-sm">
-          <p className="font-medium">Экран в зале</p>
-          <p className="mt-1 text-stone-600">
-            {liveScreen
-              ? `${liveScreen.label} на связи, режим «${SCREEN_MODE[event.screenMode] ?? event.screenMode}»`
-              : screens.some((screen) => !screen.revokedAt)
-                ? "ссылка есть, но экран не подключён"
-                : "ссылка для проектора ещё не создана"}
-          </p>
-          <Link href={`/app/e/${eventId}/screen`} className="mt-2 inline-block text-xs underline">
-            Управление экраном
-          </Link>
-        </div>
-      </div>
-
-      {/*
-        Раньше это были подчёркнутые строчки высотой в буквы: попасть
-        пальцем можно было только со второй попытки. Теперь у каждой
-        ссылки своя область не ниже 44px — размер подушечки пальца,
-        от которого отталкиваются и Apple, и Google.
-      */}
-      <div className="mt-6 grid gap-2 text-sm sm:grid-cols-3">
-        {[
-          { href: `/e/${event.shortCode}`, label: "Вход гостя по QR", external: true },
-          { href: `/i/${event.slug}`, label: "Публичное приглашение", external: true },
-          { href: `/app/e/${eventId}/print`, label: "Печать и QR", external: false },
-        ].map((link) =>
-          link.external ? (
-            <a
-              key={link.href}
-              href={link.href}
-              target="_blank"
-              rel="noreferrer"
-              className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-4 transition-colors duration-200 hover:border-stone-400 active:bg-stone-50"
-            >
-              {link.label}
-              <span aria-hidden className="text-stone-400">↗</span>
-            </a>
-          ) : (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white px-4 transition-colors duration-200 hover:border-stone-400 active:bg-stone-50"
-            >
-              {link.label}
-              <span aria-hidden className="text-stone-400">→</span>
+        <section className="rise rounded-2xl border border-stone-200 bg-card p-5 sm:p-6">
+          <p className="text-xs font-medium tracking-[0.18em] text-stone-500 uppercase">Вход гостя</p>
+          <h2 className="mt-1 font-serif text-3xl text-stone-900">Ваш QR-код</h2>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">Гость сканирует код, находит себя и сразу видит свой стол.</p>
+          <div
+            className="relative mx-auto mt-5 w-full max-w-[270px] overflow-hidden rounded-sm border bg-center bg-no-repeat shadow-md"
+            style={{ aspectRatio: `${qrSheet.w} / ${qrSheet.h}`, backgroundColor: qrTemplate?.paper ?? "#fffdf8", backgroundImage: qrTemplate ? `url('/media/print-design/${qrTemplate.qrArt}.webp')` : undefined, backgroundSize: "100% 100%", borderColor: qrDesign.accent, color: qrDesign.ink }}
+          >
+            {qrDesign.elements.filter((item) => !item.hidden && item.page === 0 && item.kind !== "code").map((item) => (
+              <div key={item.id} className="absolute leading-tight whitespace-pre-line" style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.w}%`, textAlign: item.align, color: item.id === "title" ? qrDesign.accent : qrDesign.ink, overflowWrap: "anywhere" }}>
+                {item.kind === "qr" ? <Image src={qrData} width={176} height={176} unoptimized alt="QR-код для входа гостей на праздник" className="block h-auto w-full bg-white p-1 shadow-sm" /> : <span className="font-serif" style={{ fontSize: qrFont(item.fontSize), fontStyle: item.id === "title" ? "italic" : "normal" }}>{item.text}</span>}
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-center text-xs text-stone-500">Дизайн для печати: {qrTemplate?.qrName ?? "Классика"}{visibleQr ? "" : " · QR скрыт в макете"}</p>
+          <div className="mt-4 grid gap-2">
+            <Link href={`/app/e/${eventId}/print`} className="flex min-h-11 items-center justify-center rounded-xl bg-stone-900 px-4 text-center text-sm font-medium text-white">
+              Настроить и скачать PDF
             </Link>
-          ),
-        )}
+            <a href={`/e/${event.shortCode}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-stone-300 px-4 text-center text-sm text-stone-700">
+              Проверить страницу гостя ↗
+            </a>
+          </div>
+        </section>
       </div>
+
     </main>
   );
 }

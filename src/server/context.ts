@@ -3,6 +3,7 @@
  * относится запрос. Репозитории принимают его первым аргументом и подмешивают
  * orgId/eventId в каждый запрос (PLAN.md §1.2, слой 2).
  */
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { db } from "@/server/db";
 import { getSessionUser } from "@/server/auth/session";
@@ -19,8 +20,14 @@ export type EventContext = OrgContext & {
   eventId: string;
 };
 
-/** Контекст организации по текущей сессии. null, если не залогинен. */
-export async function getOrgContext(): Promise<OrgContext | null> {
+/**
+ * Контекст организации по текущей сессии. null, если не залогинен.
+ *
+ * Обёрнут в `cache`: за один запрос его зовут и layout мероприятия, и
+ * страница раздела — без обёртки это лишние походы в базу за сессией и
+ * членством, которые внутри одного запроса не меняются.
+ */
+export const getOrgContext = cache(async function getOrgContext(): Promise<OrgContext | null> {
   const user = await getSessionUser();
   if (!user) return null;
 
@@ -33,14 +40,14 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   if (!membership) return null;
 
   return { kind: "org", userId: user.id, orgId: membership.orgId, role: membership.role };
-}
+});
 
 /**
  * Контекст мероприятия. Проверяет, что мероприятие принадлежит организации
  * пользователя. Чужой eventId в URL даёт 404, а не 403: существование чужого
  * мероприятия — тоже утечка.
  */
-export async function requireEventContext(eventId: string): Promise<EventContext> {
+export const requireEventContext = cache(async function requireEventContext(eventId: string): Promise<EventContext> {
   const org = await getOrgContext();
   if (!org) notFound();
 
@@ -51,4 +58,4 @@ export async function requireEventContext(eventId: string): Promise<EventContext
   if (!event) notFound();
 
   return { ...org, eventId: event.id };
-}
+});

@@ -32,7 +32,8 @@ export async function listEvents(ctx: OrgContext) {
     select: {
       id: true, title: true, slug: true, shortCode: true,
       status: true, eventDate: true, venueName: true,
-      _count: { select: { guests: true } },
+      // Жених и невеста — не гости (см. ONLY_GUESTS в репозитории гостей).
+      _count: { select: { guests: { where: { archivedAt: null, role: "GUEST" } } } },
     },
   });
 }

@@ -127,6 +127,19 @@ describe("посадка гостя", () => {
 });
 
 describe("конфликт двух вкладок", () => {
+  it("одновременные операции с одной версией не проходят обе", async () => {
+    const results = await Promise.all([
+      seatGuest(a, 0, 0, 0),
+      seatGuest(a, 1, 1, 0),
+    ]);
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.filter((result) => !result.ok && result.reason === "conflict")).toHaveLength(1);
+    const seats = await testDb.seat.findMany({
+      where: { id: { in: a.seatIds.slice(0, 2) } },
+    });
+    expect(seats.filter((seat) => seat.guestId !== null)).toHaveLength(1);
+  });
+
   it("операция на устаревшей версии отклоняется", async () => {
     await seatGuest(a, 0, 0, 0); // версия стала 1
 

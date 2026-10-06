@@ -34,24 +34,80 @@ model Organization {
 model User {
   id String @id @default(cuid())
 
-  email String @unique @db.Citext
+  email         String   @unique @db.Citext
   // Пароля может не быть вовсе: у пришедшего через Google его никогда не
   // было, и придумывать ему случайный хеш — значит завести в базе строку,
   // которой никто не сможет воспользоваться, но которая выглядит как пароль.
-  passwordHash String?
-  name         String
-  // Подтверждена ли почта. Google подтверждает её за нас; у входа по паролю
-  // подтверждения пока нет, и поле честно остаётся false.
-  emailVerified Boolean @default(false)
+  passwordHash  String?
+  name          String
+  // Подтверждена ли почта. Google подтверждает её за нас, при регистрации по
+  // почте — ссылка из письма (EmailToken). Без подтверждения вход по паролю
+  // закрыт: иначе любой занял бы чужой адрес раньше хозяина.
+  emailVerified Boolean  @default(false)
   // Аватар из профиля Google: единственная картинка, которую мы не рисуем сами.
-  avatarUrl String?
-  createdAt DateTime @default(now())
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+
+  // Права на всю платформу (панель /admin). Владелец платформы задаётся
+  // почтой в SUPERADMIN_EMAILS и здесь не хранится: его нельзя разжаловать
+  // из интерфейса, даже взломав другую учётку с правами ADMIN.
+  platformRole  PlatformRole?
+  // Заблокирован суперадмином: войти нельзя, все сессии погашены.
+  blockedAt     DateTime?
+  blockedReason String?
 
   memberships Membership[]
   sessions    Session[]
   accounts    OAuthAccount[]
+  adminSecret AdminSecret?
+  emailTokens EmailToken[]
 
   @@map("users")
+}
+
+/// Права на всю платформу, выданные владельцем.
+enum PlatformRole {
+  /// Управляет пользователями и мероприятиями, но не другими администраторами.
+  ADMIN
+  /// Только смотрит: статистика, пользователи, мероприятия, журнал.
+  SUPPORT
+}
+
+/// Второй фактор для панели суперадмина: TOTP (Google Authenticator и т. п.).
+///
+/// Секрет хранится зашифрованным ключом из ADMIN_SECRET: утечка одной базы
+/// не даёт коды. Резервные коды — только хешами, каждый одноразовый.
+model AdminSecret {
+  userId       String    @id
+  totpSecret   String
+  confirmedAt  DateTime?
+  /// Последний принятый 30-секундный шаг: один код дважды не проходит.
+  lastStep     Int       @default(0)
+  backupCodes  String[]
+  failedCount  Int       @default(0)
+  lockedUntil  DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_secrets")
+}
+
+/// Журнал панели суперадмина: кто, что и с кем сделал. Только дописывается.
+model AdminAudit {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String
+  action     String
+  targetType String?
+  targetId   String?
+  detail     Json     @default("{}")
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@map("admin_audit")
 }
 
 /// Вход через внешнего поставщика (пока только Google).
@@ -70,7 +126,7 @@ model OAuthAccount {
   /// `sub` из id_token — вечный идентификатор человека у поставщика.
   providerAccountId String
   /// Почта на момент привязки: нужна только для журнала и поддержки.
-  email String @db.Citext
+  email             String @db.Citext
 
   createdAt DateTime @default(now())
   lastLogin DateTime @default(now())
@@ -84,6 +140,74 @@ model OAuthAccount {
 
 enum AuthProvider {
   GOOGLE
+}
+
+/// Резерв хранится отдельно: уникальность giftId защищает от двух
+/// одновременных нажатий, удаление гостя освобождает подарок.
+model Gift {
+  id          String @id @default(cuid())
+  orgId       String
+  eventId     String
+  title       String
+  description String @default("")
+  url         String @default("")
+  /// Картинка пункта виш-листа: адрес загруженной организатором картинки
+  /// (`/api/asset/<eventId>/<id>`). Пусто — без картинки.
+  imageUrl    String @default("")
+  createdAt   DateTime @default(now())
+  event       Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  reservation GiftReservation?
+  @@unique([eventId, id])
+  @@index([eventId, createdAt])
+  @@map("gifts")
+}
+
+model GiftReservation {
+  id        String @id @default(cuid())
+  orgId     String
+  eventId   String
+  giftId    String @unique
+  guestId   String
+  createdAt DateTime @default(now())
+  event     Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  gift      Gift @relation(fields: [eventId, giftId], references: [eventId, id], onDelete: Cascade)
+  guest     Guest @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Cascade)
+  @@unique([eventId, giftId])
+  @@index([eventId, guestId])
+  @@map("gift_reservations")
+}
+
+enum DayStepAction {
+  NONE
+  SCREEN_PHOTOS
+  SCREEN_WISHES
+  SCREEN_MIXED
+  RAFFLE
+}
+
+enum DayStepStatus {
+  PENDING
+  RUNNING
+  DONE
+}
+
+model DayStep {
+  id              String @id @default(cuid())
+  orgId           String
+  eventId         String
+  title           String
+  responsible     String @default("")
+  notes           String @default("")
+  startsAt        DateTime
+  reminderMinutes Int @default(10)
+  action          DayStepAction @default(NONE)
+  raffleId        String?
+  status          DayStepStatus @default(PENDING)
+  completedAt     DateTime?
+  runStartedAt    DateTime?
+  event           Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  @@index([eventId, startsAt])
+  @@map("day_steps")
 }
 
 enum OrgRole {
@@ -106,11 +230,42 @@ model Membership {
   @@map("memberships")
 }
 
+/// Одноразовая ссылка из письма: подтверждение почты или сброс пароля.
+/// В базе — только SHA-256 токена: утечка таблицы не даёт рабочих ссылок.
+model EmailToken {
+  id        String            @id @default(cuid())
+  userId    String
+  purpose   EmailTokenPurpose
+  tokenHash String            @unique
+  /// Адрес, на который ушло письмо: сменилась почта — старая ссылка не годится.
+  email     String            @db.Citext
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@map("email_tokens")
+}
+
+enum EmailTokenPurpose {
+  VERIFY
+  RESET
+}
+
 model Session {
   id        String   @id @default(cuid())
   userId    String
   expiresAt DateTime
   createdAt DateTime @default(now())
+  // Откуда вошли — для списка сессий в панели суперадмина.
+  ip        String?
+  userAgent String?
+  // До какого момента этой сессии открыта панель /admin (после кода 2FA).
+  adminUntil     DateTime?
+  // Сессия «войти как пользователь»: кто из администраторов в ней сидит.
+  impersonatorId String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -149,25 +304,33 @@ model Event {
   status    EventStatus @default(DRAFT)
 
   eventDate DateTime
-  timezone  String  @default("Europe/Moscow")
+  timezone  String   @default("Europe/Moscow")
   venueName String?
   venueAddr String?
   venueLat  Float?
   venueLng  Float?
 
   rsvpDeadline       DateTime?
-  allowPlusOne       Boolean   @default(true)
-  photoLimitPerGuest Int       @default(5)
-  photosEnabled      Boolean   @default(true)
-  wishesEnabled      Boolean   @default(true)
-  raffleEnabled      Boolean   @default(true)
+  allowPlusOne       Boolean    @default(true)
+  photoLimitPerGuest Int        @default(5)
+  photosEnabled      Boolean    @default(true)
+  wishesEnabled      Boolean    @default(true)
+  raffleEnabled      Boolean    @default(true)
   screenMode         ScreenMode @default(MIXED)
+  giftsEnabled       Boolean    @default(false)
+  giftTransferLabel  String     @default("Подарок в конверте")
+  giftTransferDetails String    @default("")
+  giftTransferUrl    String     @default("")
+  albumEnabled       Boolean    @default(true)
+  teamPlanToken      String?    @unique
+  activeRaffleId     String?
 
   // Секрет для подписи гостевых cookie. Ротация обнуляет все гостевые сессии.
   /// Оформление приглашения: шаблон и его настройки. JSON, а не колонки,
   /// потому что набор осей будет меняться чаще, чем хочется писать
   /// миграции, а читается он всегда целиком и терпимо (`invite-theme.ts`).
   inviteTheme Json @default("{}")
+  printDesign Json @default("{}")
 
   guestLinkSecret String @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))
 
@@ -184,18 +347,22 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  blocks       InviteBlock[]
-  assets       EventAsset[]
-  guests       Guest[]
-  mealOptions  MealOption[]
-  drinkOptions DrinkOption[]
-  tables       SeatTable[]
-  seats        Seat[]
-  photos       Photo[]
-  wishes       Wish[]
-  raffles      Raffle[]
-  screens      ScreenToken[]
+  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  blocks        InviteBlock[]
+  assets        EventAsset[]
+  guests        Guest[]
+  mealOptions   MealOption[]
+  drinkOptions  DrinkOption[]
+  tables        SeatTable[]
+  seats         Seat[]
+  photos        Photo[]
+  wishes        Wish[]
+  raffles       Raffle[]
+  screens       ScreenToken[]
+  rsvpQuestions RsvpQuestion[]
+  gifts         Gift[]
+  giftReservations GiftReservation[]
+  daySteps      DayStep[]
 
   @@unique([orgId, id])
   @@unique([orgId, slug])
@@ -219,6 +386,7 @@ enum BlockType {
   RSVP_FORM
   PHOTOS
   CALENDAR
+  WISHLIST
 }
 
 /// Картинка, загруженная организатором: обложка приглашения, фон, снимок
@@ -235,7 +403,7 @@ model EventAsset {
   bytes       Int
   /// Подпись для доступности: её пишет организатор, а показывает браузер
   /// гостя, у которого не загрузилась картинка.
-  alt String @default("")
+  alt         String @default("")
 
   createdAt DateTime @default(now())
 
@@ -274,7 +442,6 @@ model InviteBlock {
 /**
  * Роль на свадьбе. Нужна ровно для одного: показать на плане зала, где
  * сидят молодожёны, — это первый вопрос гостя, который вошёл в зал.
- *
  * Ролей может быть по две одинаковых: свадьбы бывают разные, и схема
  * не должна этому мешать.
  */
@@ -288,6 +455,46 @@ enum RsvpStatus {
   PENDING
   ACCEPTED
   DECLINED
+}
+
+/// Тип поля анкеты RSVP. MEAL и DRINKS — «кто что ест» и «кто что пьёт»:
+/// их варианты — блюда и напитки мероприятия (MealOption / DrinkOption),
+/// а ответы ложатся в Guest.mealOptionId и GuestDrink, как и раньше.
+enum RsvpQuestionType {
+  SHORT_TEXT
+  LONG_TEXT
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  DROPDOWN
+  RATING
+  DATE
+  MEAL
+  DRINKS
+  MUSIC
+}
+
+/// Поле анкеты RSVP в приглашении — конструктор «как в Google Формах».
+/// Нет ни одной строки — анкета как раньше: блюдо и напитки, если заданы.
+/// Меню (MEAL) и бар (DRINKS) — не больше одного на мероприятие: это держит
+/// частичный уникальный индекс в миграции rsvp_singleton_questions.
+model RsvpQuestion {
+  id      String @id @default(cuid())
+  orgId   String
+  eventId String
+
+  type        RsvpQuestionType @default(SHORT_TEXT)
+  title       String
+  description String           @default("")
+  required    Boolean          @default(false)
+  /// Варианты для SINGLE_CHOICE / MULTIPLE_CHOICE / DROPDOWN — массив строк.
+  options     Json             @default("[]")
+  order       Int
+
+  event Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+
+  @@unique([eventId, id])
+  @@index([eventId, order])
+  @@map("rsvp_questions")
 }
 
 model MealOption {
@@ -348,10 +555,10 @@ model Guest {
   role        GuestRole @default(GUEST)
   // Нормализованный ключ поиска: lower + ё→е + латиница→кириллица + без пунктуации.
   // Заполняется приложением (см. src/lib/name-normalize.ts).
-  searchKey String
-  phone     String?
-  email     String?
-  note      String?
+  searchKey   String
+  phone       String?
+  email       String?
+  note        String?
 
   linkToken    String    @unique
   linkOpenedAt DateTime?
@@ -364,9 +571,16 @@ model Guest {
   comment        String?
   // «Какую музыку предпочитаете?» из анкеты шаблона «Тили-тесто».
   musicWish      String?
+  /// Ответы на вопросы анкеты RSVP из конструктора — снимком вместе с
+  /// текстом вопроса: [{ questionId, title, type, value }]. Переименование
+  /// или удаление вопроса старые ответы не портит.
+  rsvpAnswers    Json       @default("[]")
   // Каким импортом из файла создан гость: по нему импорт можно отменить
   // в первые минуты, пока гостям ещё не разослали ссылки.
   importBatchId  String?
+  /// Гость вписал себя сам по общей ссылке на приглашение, а не был
+  /// заведён организатором: в списке он помечен, чтобы его было видно.
+  selfRegistered Boolean   @default(false)
 
   // Спутник (+1) ссылается на «родителя». Он же связывает семью:
   // поиск на входе возвращает всю группу, см. PLAN.md §7 вопрос 1.
@@ -386,6 +600,7 @@ model Guest {
   aliases       GuestAlias[]
   drinks        GuestDrink[]
   raffleEntries RaffleEntry[]
+  giftReservations GiftReservation[]
 
   @@unique([eventId, id])
   @@index([eventId, importBatchId])
@@ -425,11 +640,11 @@ enum TableShape {
 }
 
 model SeatTable {
-  id      String     @id @default(cuid())
-  orgId   String
-  eventId String
-  label   String
-  shape   TableShape @default(ROUND)
+  id       String     @id @default(cuid())
+  orgId    String
+  eventId  String
+  label    String
+  shape    TableShape @default(ROUND)
   // Координаты в условных единицах плана 1000×700 (PLAN.md §4.7), не в пикселях.
   x        Float
   y        Float
@@ -502,6 +717,11 @@ model Photo {
   // принимаем — потерять единственный кадр хуже, — но помечаем: в модерации
   // видно «превью не получилось», а на экран в зале оно не идёт (§5.5).
   previewOk Boolean @default(true)
+
+  /// Оценка «18+» от NSFWJS, 0…1 (`server/images/nsfw.ts`). Пусто — фото
+  /// загружено до фильтра или классификатор не ответил. Это подсказка
+  /// модератору: высокая оценка размывает кадр в очереди, но не отклоняет.
+  nsfwScore Float?
 
   createdAt DateTime @default(now())
 

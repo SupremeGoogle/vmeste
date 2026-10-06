@@ -8,12 +8,18 @@
  */
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { db } from "@/server/db";
+import { albumOpeningLabel } from "@/lib/wedding-day";
+import { archiveAt, purgeAt, retentionDayLabel, retentionStage } from "@/lib/retention";
+import { isRetentionExempt } from "@/server/services/retention";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import {
   countPhotos, deletePhoto, listApprovedPhotos, listPendingPhotos, moderatePhoto,
 } from "@/server/services/photos";
 import { ModerationQueue } from "@/components/photos/moderation-queue";
+import { NSFW_FLAG } from "@/server/images/nsfw";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +43,15 @@ export default async function PhotosPage({
   // Молча — значит «экран пустой, и непонятно почему», поэтому считаем вслух.
   const withoutPreview = approved.filter((photo) => !photo.previewOk).length;
 
+  async function saveAlbum(formData: FormData) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    await db.event.updateMany({ where: { id: eventId, orgId: ctx.orgId }, data: { albumEnabled: formData.get("enabled") === "on" } });
+    revalidatePath(`/app/e/${eventId}/photos`);
+    revalidatePath(`/g/${event!.shortCode}`);
+    revalidatePath(`/g/${event!.shortCode}/album`);
+  }
+
   async function setStatus(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
@@ -53,8 +68,32 @@ export default async function PhotosPage({
     revalidatePath(`/app/e/${eventId}/photos`);
   }
 
+  // Сроки хранения (lib/retention.ts): через 10 дней — архив, через 15 —
+  // фото удаляются. Организатор должен узнать об этом здесь, а не постфактум.
+  const stage = (await isRetentionExempt(ctx.orgId)) ? "exempt" : retentionStage(event.eventDate);
+  const total = counts.pending + counts.approved;
+  const retention = (
+    <section className={`mb-6 rounded-2xl px-5 py-4 text-sm ${stage === "archived" ? "bg-amber-50 text-amber-900" : "border border-stone-200 bg-card text-stone-600"}`}>
+      {stage === "exempt" ? (
+        <p>Свадьба администратора: фотографии хранятся без срока.</p>
+      ) : stage === "active" ? (
+        <p>Фотографии хранятся 15 дней после свадьбы: {retentionDayLabel(archiveAt(event.eventDate), event.timezone)} мероприятие уйдёт в архив, а {retentionDayLabel(purgeAt(event.eventDate), event.timezone)} фото удалятся насовсем. Скачайте их заранее.</p>
+      ) : stage === "archived" ? (
+        <p><b>Фотографии удалятся {retentionDayLabel(purgeAt(event.eventDate), event.timezone)}.</b> Мероприятие в архиве — гости их уже не видят. Скачайте всё, что хотите сохранить.</p>
+      ) : (
+        <p>Фотографии удалены по сроку хранения — через 15 дней после свадьбы. Список гостей и ответы остаются.</p>
+      )}
+      {stage !== "purged" && total > 0 ? (
+        <a href={`/api/app/events/${eventId}/photos/download`} className="mt-3 inline-block rounded-xl bg-stone-900 px-4 py-2 text-white" download>
+          Скачать все фото ({total}) архивом
+        </a>
+      ) : null}
+    </section>
+  );
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      {retention}
       <section>
         {/* Счётчики отрисовывает сам компонент очереди: решения принимаются
             без перезагрузки страницы, и серверные цифры отставали бы. */}
@@ -64,16 +103,23 @@ export default async function PhotosPage({
           photos={pending.map((photo) => ({
             id: photo.id,
             previewOk: photo.previewOk,
+            nsfw: (photo.nsfwScore ?? 0) >= NSFW_FLAG,
             guestName: photo.guest?.displayName ?? null,
             createdAt: photo.createdAt.toISOString(),
           }))}
         />
       </section>
 
+      <section className="mt-6 rounded-2xl border border-stone-200 bg-card p-5">
+        <h2 className="text-xl">Альбом после свадьбы</h2>
+        <p className="mt-2 text-sm text-stone-500">«Наши фото» откроется {albumOpeningLabel(event)} по времени площадки ({event.timezone}). Гости смогут скачать все одобренные снимки архивом или выбрать фотографии, присланные за их столом.</p>
+        <form action={saveAlbum} className="mt-4 flex flex-wrap items-center gap-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" defaultChecked={event.albumEnabled} /> Открыть альбом гостям на следующий день</label><button className="rounded-xl border border-stone-300 px-4 py-2 text-sm">Сохранить</button><Link href={`/g/${event.shortCode}/album`} className="text-sm underline">Открыть страницу альбома ↗</Link></form>
+      </section>
+
       {withoutPreview > 0 ? (
         <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Без превью: {withoutPreview}. Такие фото видны в галерее, но на экран
-          в зале не попадают — телефон гостя не смог сделать уменьшенную копию.
+          Без превью: {withoutPreview}. Такие фото видны в галерее, но без
+          уменьшенной копии — телефон гостя не смог её сделать.
         </p>
       ) : null}
 

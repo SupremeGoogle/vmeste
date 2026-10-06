@@ -15,6 +15,8 @@
  * текста, крупные поля и воздух, а там гротеск и плотная вёрстка.
  */
 import type { BlockContentMap } from "@/lib/invite-blocks";
+import { personalizeBlocks } from "@/lib/invite-personalization";
+import { personalizeMarkup } from "@/server/guest-html/personalization";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
 import { BASE_CSS } from "@/server/guest-html/theme";
@@ -24,22 +26,72 @@ import { envelopeMarkup, introScript } from "@/server/guest-html/invite-intro";
 import { decorMarkup, timelineIcon } from "@/server/guest-html/invite-decor";
 import { renderConstellationBlocks } from "@/server/guest-html/constellation/markup";
 import { CONSTELLATION_SCRIPT } from "@/server/guest-html/constellation/script";
-import { renderPromiseBlocks } from "@/server/guest-html/promise/markup";
-import { renderStoryBlocks } from "@/server/guest-html/story/markup";
-import { STORY_FONTS_LINK } from "@/server/guest-html/story/style";
-import { PROMISE_SCRIPT } from "@/server/guest-html/promise/script";
 import { renderEvergreenBlocks } from "@/server/guest-html/evergreen/markup";
 import { EVERGREEN_SCRIPT } from "@/server/guest-html/evergreen/script";
 import { renderSilkBlocks } from "@/server/guest-html/silk/markup";
 import { SILK_SCRIPT } from "@/server/guest-html/silk/script";
 import { renderPearlBlocks } from "@/server/guest-html/pearl/markup";
 import { PEARL_SCRIPT } from "@/server/guest-html/pearl/script";
+import { renderPrismBlocks } from "@/server/guest-html/prism/markup";
+import { renderVinylBlocks } from "@/server/guest-html/vinyl/markup";
+import { VINYL_SCRIPT } from "@/server/guest-html/vinyl/script";
+import { VINYL_FONTS_LINK } from "@/server/guest-html/vinyl/style";
+import { renderAquarelleBlocks } from "@/server/guest-html/aquarelle/markup";
+import { aquarelleScript } from "@/server/guest-html/aquarelle/script";
+import { AQUARELLE_FONTS_LINK } from "@/server/guest-html/aquarelle/style";
+import { renderLilyBlocks } from "@/server/guest-html/lily/markup";
+import { LILY_SCRIPT } from "@/server/guest-html/lily/script";
+import { LILY_FONTS_LINK } from "@/server/guest-html/lily/style";
+import { renderBohemaBlocks } from "@/server/guest-html/bohema/markup";
+import { BOHEMA_SCRIPT } from "@/server/guest-html/bohema/script";
+import { BOHEMA_FONTS_LINK } from "@/server/guest-html/bohema/style";
+import { renderKraskiBlocks } from "@/server/guest-html/kraski/markup";
+import { KRASKI_SCRIPT } from "@/server/guest-html/kraski/script";
+import { KRASKI_FONTS_LINK } from "@/server/guest-html/kraski/style";
+import { renderSerdceBlocks } from "@/server/guest-html/serdce/markup";
+import { SERDCE_SCRIPT } from "@/server/guest-html/serdce/script";
+import { SERDCE_FONTS_LINK } from "@/server/guest-html/serdce/style";
+import { renderAnticBlocks } from "@/server/guest-html/antic/markup";
+import { ANTIC_SCRIPT } from "@/server/guest-html/antic/script";
+import { ANTIC_FONTS_LINK } from "@/server/guest-html/antic/style";
+import { renderSkvozVremyaBlocks } from "@/server/guest-html/skvoz-vremya/markup";
+import { renderScrapbookBlocks } from "@/server/guest-html/scrapbook/markup";
+import { SCRAPBOOK_SCRIPT } from "@/server/guest-html/scrapbook/script";
+import { SCRAPBOOK_FONTS_LINK } from "@/server/guest-html/scrapbook/style";
+import { SKVOZ_VREMYA_SCRIPT } from "@/server/guest-html/skvoz-vremya/script";
+import { SKVOZ_VREMYA_FONTS_LINK } from "@/server/guest-html/skvoz-vremya/style";
+import { renderBurgundyBlocks } from "@/server/guest-html/burgundy/markup";
+import { BURGUNDY_SCRIPT } from "@/server/guest-html/burgundy/script";
+import { BURGUNDY_FONTS_LINK } from "@/server/guest-html/burgundy/style";
+import { renderRoseraieBlocks } from "@/server/guest-html/roseraie/markup";
+import { ROSERAIE_SCRIPT } from "@/server/guest-html/roseraie/script";
+import { ROSERAIE_FONTS_LINK } from "@/server/guest-html/roseraie/style";
+import { renderFloralGardenBlocks } from "@/server/guest-html/floral-garden/markup";
+import { FLORAL_GARDEN_SCRIPT } from "@/server/guest-html/floral-garden/script";
+import { FLORAL_GARDEN_FONTS_LINK } from "@/server/guest-html/floral-garden/style";
+import { renderIskraBlocks } from "@/server/guest-html/iskra/markup";
+import { ISKRA_SCRIPT } from "@/server/guest-html/iskra/script";
+import { PRISM_SCRIPT } from "@/server/guest-html/prism/script";
 import { renderRubyBlocks } from "@/server/guest-html/ruby/markup";
 import { RUBY_SCRIPT } from "@/server/guest-html/ruby/script";
 import { renderTuscanyBlocks } from "@/server/guest-html/tuscany/markup";
 import { TUSCANY_SCRIPT } from "@/server/guest-html/tuscany/script";
 import { renderTiliBlocks, type TiliRsvp } from "@/server/guest-html/tili/markup";
 import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
+import { renderWithWishlist, type WishlistData } from "@/server/guest-html/wishlist";
+import { withTemplateLabels } from "@/server/guest-html/template-labels";
+import { styleDocument } from "@/server/guest-html/invite-style";
+import { inviteControlsCss } from "@/server/guest-html/invite-controls-css";
+import { FIT_TEXT_SCRIPT } from "@/server/guest-html/fit-text";
+import { errorReporterScript } from "@/server/guest-html/error-reporter";
+import { rybbitScriptTag } from "@/server/analytics/rybbit";
+import { inlineRsvpForm, withInlineRsvp } from "@/server/guest-html/inline-rsvp-form";
+import { countdownCells, COUNTDOWN_SCRIPT as SHARED_COUNTDOWN_SCRIPT } from "@/server/guest-html/countdown";
+import { isWedwedTemplate, renderWedwedBlocks, wedwedDocument } from "@/server/guest-html/wedwed/markup";
+import { WEDWED_SCRIPT } from "@/server/guest-html/wedwed/script";
+import { PREMIUM_MOTION_CSS, PREMIUM_MOTION_SCRIPT } from "@/server/guest-html/motion-enhancements";
+import { floorFontSizes, MAP_LINK_TAP_CSS, MOBILE_DENSITY_CSS } from "@/server/guest-html/mobile-density";
+import { TABLET_DENSITY_CSS } from "@/server/guest-html/tablet-density";
 
 const NO_EDIT = editAttrs("", false);
 import { TILI_CSS, TILI_FONTS_LINK } from "@/server/guest-html/tili/style";
@@ -53,7 +105,7 @@ import { TILI_HEAD_SCRIPT, TILI_SCRIPT } from "@/server/guest-html/tili/script";
  *   rsvp     — анкета прямо на странице (шаблоны, у которых она есть):
  *              кто отвечает и что уже ответил.
  */
-export type RenderOptions = { editable?: boolean; rsvp?: TiliRsvp | null };
+export type RenderOptions = { editable?: boolean; rsvp?: TiliRsvp | null; wishlist?: WishlistData | null; wishlistPage?: boolean };
 
 const CSS = (BASE_CSS + `
 body{font:17px/1.65 var(--serif)}
@@ -142,7 +194,54 @@ border-radius:var(--radius)}
 @media(prefers-reduced-motion:reduce){.js-reveal .sheet>section{transition:none;opacity:1;transform:none}}
 `).replace(/\n/g, "");
 
-export function invitePage(opts: {
+/**
+ * Заставки шаблонов: что прятать и какую кнопку «нажать», если заставку
+ * выключили. Нажимаем настоящую кнопку, а не просто прячем слой: шаблон сам
+ * снимает блокировку прокрутки и запускает свои анимации — как после
+ * нажатия гостя.
+ */
+export const TEMPLATE_INTROS: Record<string, { hide: string; open: string; extra?: string }> = {
+  zefir: { hide: ".sb-intro", open: ".sb-open" },
+  crayon: { hide: ".sb-intro", open: ".sb-open" },
+  iskra: { hide: ".ik-intro", open: ".ik-open" },
+  bohema: { hide: ".bo-intro-cover", open: ".bo-open" },
+  burgundy: { hide: ".bw-envelope", open: ".bw-envelope" },
+  roseraie: { hide: ".rr-intro", open: ".rr-envelope" },
+  // Пластинку дорисовывает скрипт шаблона; щелчок по ней же и открывает.
+  vinyl: { hide: "#vinyl-intro", open: "#vinyl-intro" },
+  // Без заставки содержимое не проявляется после конверта, а стоит сразу.
+  tili: { hide: "#cover", open: "#cover", extra: ".main-content{opacity:1!important;transition:none!important}" },
+};
+
+export function hasTemplateIntro(template: string | undefined): boolean {
+  return Boolean(template && TEMPLATE_INTROS[template]);
+}
+
+/** Стили, прячущие выключенную заставку ещё до первой отрисовки. */
+function introOffCss(theme: InviteTheme | undefined): string {
+  const intro = theme?.introOff ? TEMPLATE_INTROS[theme.template] : undefined;
+  return intro ? `${intro.hide}{display:none!important}${intro.extra ?? ""}` : "";
+}
+
+export function invitePage(opts: Parameters<typeof buildInvitePage>[0] & {
+  /** Страница редактора: положить исходные цвета и шрифты шаблона для панели «Оформление». */
+  styleMeta?: boolean;
+}): string {
+  // Свои цвета и шрифты пары — поверх готовой страницы любого шаблона.
+  const html = styleDocument(buildInvitePage(opts), opts.theme, opts.styleMeta === true);
+  // Длинные имена и заголовки не должны резаться краем телефона — в любом шаблоне.
+  // У wedwed своя подгонка имён, а крупные надписи там нарочно уходят за край.
+  const at = html.lastIndexOf("</body>");
+  const fitted = at < 0 || !opts.script || (opts.theme && isWedwedTemplate(opts.theme.template)) ? html : `${html.slice(0, at)}<script>${FIT_TEXT_SCRIPT}</script>${html.slice(at)}`;
+  // Ошибки браузера гостя — в Sentry, посещения — в Rybbit. В холсте
+  // редактора ни то ни другое не нужно: там смотрит пара, а не гость.
+  if (opts.styleMeta) return fitted;
+  const head = fitted.indexOf("</head>");
+  const watch = `${errorReporterScript(opts.theme?.template ?? "")}${rybbitScriptTag()}`;
+  return head < 0 || !watch ? fitted : `${fitted.slice(0, head)}${watch}${fitted.slice(head)}`;
+}
+
+function buildInvitePage(opts: {
   title: string;
   body: string;
   noindex?: boolean;
@@ -158,14 +257,19 @@ export function invitePage(opts: {
    *  которой в зале почти нет. */
   script?: string;
 }): string {
+  // Выключенная заставка прячется стилями в <head>: без мелькания.
+  const hideIntro = introOffCss(opts.theme);
+  opts = { ...opts, extraCss: `${opts.extraCss ?? ""}${inviteControlsCss(opts.theme?.template ?? "")}${hideIntro}` };
   if (opts.theme?.template === "tili") return tiliDocument(opts);
+  if (opts.theme && isWedwedTemplate(opts.theme.template)) return wedwedDocument({ ...opts, theme: opts.theme });
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
-${(opts.theme ?? defaultTheme()).template === "story" ? STORY_FONTS_LINK : ""}
-<title>${esc(opts.title)}</title><style>${CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${opts.extraCss ?? ""}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "story" ? " story" : ""}${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+${(opts.theme ?? defaultTheme()).template === "vinyl" ? VINYL_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? AQUARELLE_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? LILY_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? BOHEMA_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? KRASKI_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? SERDCE_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? ANTIC_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? SKVOZ_VREMYA_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? BURGUNDY_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? ROSERAIE_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? FLORAL_GARDEN_FONTS_LINK : ""}
+${opts.theme?.template === "zefir" || opts.theme?.template === "crayon" ? SCRAPBOOK_FONTS_LINK : ""}
+<title>${esc(opts.title)}</title><style>${floorFontSizes(`${CSS}${PREMIUM_MOTION_CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${MOBILE_DENSITY_CSS}${TABLET_DENSITY_CSS}${MAP_LINK_TAP_CSS}${opts.extraCss ?? ""}`)}</style></head>
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "prism" ? " prism" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}${(opts.theme ?? defaultTheme()).template === "vinyl" ? " vinyl" : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? " aquarelle" : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? " lily" : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? " bohema" : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? " kraski" : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? " serdce" : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? " antic" : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? " skvoz-vremya" : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? " burgundy" : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? " roseraie" : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? " floral-garden" : ""}${(opts.theme ?? defaultTheme()).template === "iskra" ? " iskra" : ""}${opts.theme?.template === "zefir" ? " zefir" : opts.theme?.template === "crayon" ? " crayon" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -184,7 +288,7 @@ function tiliDocument(opts: { title: string; body: string; noindex?: boolean; ex
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="#f8f1ea">
 ${TILI_FONTS_LINK}
-<title>${esc(opts.title)}</title><script>${TILI_HEAD_SCRIPT}</script><style>${TILI_CSS}${TILI_ROUTE_CSS}${opts.extraCss ?? ""}</style></head>
+<title>${esc(opts.title)}</title><script>${TILI_HEAD_SCRIPT}</script><style>${floorFontSizes(`${TILI_CSS}${PREMIUM_MOTION_CSS}${TILI_ROUTE_CSS}${MOBILE_DENSITY_CSS}${TABLET_DENSITY_CSS}${MAP_LINK_TAP_CSS}${opts.extraCss ?? ""}`)}</style></head>
 <body>${opts.body}${opts.script ? `<script>${opts.script}</script>` : ""}</body></html>`;
 }
 
@@ -333,23 +437,23 @@ function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, ti
 ${paragraphs(content.message, "small muted", e.text("message", { multiline: true }))}</section>`;
 }
 
+/**
+ * Раздел «Анкета»: шапка и форма прямо в приглашении (именной или общей
+ * ссылки, без данных гостя — образец; см. inline-rsvp-form.ts). Уже
+ * ответившему по именной ссылке — его ответ и ссылка «изменить».
+ */
 function rsvpCall(
-  content: BlockContentMap["RSVP_FORM"],
+  block: InviteBlockView,
   href: string | null,
   answered: string | null,
   e: EditAttrs = NO_EDIT,
 ): string {
-  const action = answered
-    ? `<p class="center" style="margin-top:1.25rem">Ваш ответ: <b>${esc(answered)}</b>${
-        href ? ` · <a href="${esc(href)}">изменить</a>` : ""
-      }</p>`
-    : href
-      ? `<p class="center"><a class="cta" href="${esc(href)}"${e.text("buttonLabel")}>${esc(content.buttonLabel)}</a></p>`
-      : e.enabled
-        ? `<p class="center"><span class="cta"${e.text("buttonLabel")}>${esc(content.buttonLabel)}</span></p>`
-        : `<p class="center small muted" style="margin-top:1.25rem">Ответить можно по именной ссылке из приглашения.</p>`;
-
-  return `<section><h2${e.text("title")}>${esc(content.title)}</h2>${paragraphs(content.text, "", e.text("text", { multiline: true }))}${action}</section>`;
+  const content = block.content as BlockContentMap["RSVP_FORM"];
+  const given =
+    answered && href
+      ? `<p class="center" style="margin-top:1.25rem">Ваш ответ: <b>${esc(answered)}</b> · <a href="${esc(href)}">изменить</a></p>`
+      : "";
+  return `<section><h2${e.text("title")}>${esc(content.title)}</h2>${paragraphs(content.text, "", e.text("text", { multiline: true }))}${inlineRsvpForm(block)}${given}</section>`;
 }
 
 /**
@@ -359,72 +463,15 @@ function rsvpCall(
  * @param answered уже данный ответ словами.
  */
 /**
- * Обратный отсчёт.
- *
- * Разметка приходит с сервера уже посчитанной — приглашение обязано
- * выглядеть законченным и без JavaScript, а на телефоне в дороге он
- * доезжает не всегда. Скрипт, если доехал, только уточняет числа раз в
- * минуту; секунд здесь нет намеренно — они заставляют страницу
- * перерисовываться шестьдесят раз в минуту ради украшения.
- *
- * Дата берётся у мероприятия, а не из блока: две даты в двух местах
- * разойдутся ровно в тот день, когда это важно.
+ * Обратный отсчёт: общий красивый таймер (guest-html/countdown.ts) для
+ * шаблонов без своего. Дни, часы, минуты и секунды — в цветах шаблона.
  */
 function countdown(content: BlockContentMap["COUNTDOWN"], eventDate: Date, e: EditAttrs = NO_EDIT): string {
-  const left = eventDate.getTime() - Date.now();
-
-  if (left <= 0) {
-    return `<section class="center"><h2${e.text("title")}>${esc(content.title)}</h2>
-<p class="pre"${e.text("doneText")}>${esc(content.doneText)}</p></section>`;
-  }
-
-  const minutes = Math.floor(left / 60000);
-  const parts = [
-    { value: Math.floor(minutes / 1440), unit: "days" },
-    { value: Math.floor(minutes / 60) % 24, unit: "hours" },
-    { value: minutes % 60, unit: "minutes" },
-  ];
-
-  const words: Record<string, [string, string, string]> = {
-    days: ["день", "дня", "дней"],
-    hours: ["час", "часа", "часов"],
-    minutes: ["минута", "минуты", "минут"],
-  };
-
-  const cells = parts
-    .map(
-      (part) =>
-        `<div><b data-unit="${part.unit}">${part.value}</b>` +
-        `<span data-word="${part.unit}">${plural(part.value, words[part.unit])}</span></div>`,
-    )
-    .join("");
-
-  return `<section class="center"><h2${e.text("title")}>${esc(content.title)}</h2>
-<div class="countdown" data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div></section>`;
+  return `<section class="center"><h2${e.text("title")}>${esc(content.title)}</h2>${countdownCells(content, eventDate, e)}</section>`;
 }
 
-/** «1 день», «2 дня», «5 дней» — по-русски это три разные формы. */
-function plural(value: number, forms: [string, string, string]): string {
-  const mod100 = value % 100;
-  if (mod100 >= 11 && mod100 <= 14) return forms[2];
-  const mod10 = value % 10;
-  if (mod10 === 1) return forms[0];
-  if (mod10 >= 2 && mod10 <= 4) return forms[1];
-  return forms[2];
-}
-
-/**
- * Скрипт отсчёта: уточняет числа раз в минуту. Инлайном и в сто байт —
- * отдельный файл это ещё один запрос по сети, которой в дороге почти нет.
- */
-export const COUNTDOWN_SCRIPT = `(function(){var n=document.querySelector('.countdown');if(!n)return;
-var W={days:['день','дня','дней'],hours:['час','часа','часов'],minutes:['минута','минуты','минут']};
-function f(v,w){var a=v%100;if(a>10&&a<15)return w[2];var b=v%10;return b===1?w[0]:(b>1&&b<5?w[1]:w[2])}
-function t(){var l=+n.dataset.until-Date.now();if(l<=0){n.outerHTML='<p class="pre">'+n.dataset.done+'</p>';return}
-var m=Math.floor(l/6e4),v={days:Math.floor(m/1440),hours:Math.floor(m/60)%24,minutes:m%60};
-for(var k in v){var b=n.querySelector('[data-unit='+k+']'),s=n.querySelector('[data-word='+k+']');
-if(b)b.textContent=v[k];if(s)s.textContent=f(v[k],W[k])}}
-setInterval(t,6e4)})()`;
+/** Скрипт общего таймера — см. guest-html/countdown.ts. */
+export const COUNTDOWN_SCRIPT = SHARED_COUNTDOWN_SCRIPT;
 
 /** Есть ли на странице отсчёт: только тогда нужен его скрипт. */
 export function hasCountdown(blocks: InviteBlockView[]): boolean {
@@ -458,13 +505,26 @@ for(var i=0;i<els.length;i++)io.observe(els[i])})()`;
  * отсчёта и заставки, которым есть что включать или не включать.
  */
 export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
+  const script = templateScript(blocks, theme, names);
+  const intro = theme.introOff ? TEMPLATE_INTROS[theme.template] : undefined;
+  if (!intro) return script;
+  // Заставка выключена — открываем её сразу, тем же путём, что и гость.
+  const open = `(function(){var o=document.querySelector(${JSON.stringify(intro.open)});if(o)o.click();document.body.style.overflow=''})()`;
+  return script ? `${script};${open}` : open;
+}
+
+function templateScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
   // У «Тили-тесто» свой скрипт целиком: отсчёт, конверт и появление
   // разделов устроены как в образце, а не как у остальных шаблонов.
-  if (theme.template === "tili") return TILI_SCRIPT;
+  if (theme.template === "tili") return `${TILI_SCRIPT};${PREMIUM_MOTION_SCRIPT}`;
+  // Таймер wedwed рисует общий рендер, и его скрипт нужен и здесь.
+  if (isWedwedTemplate(theme.template)) return hasCountdown(blocks) ? `${WEDWED_SCRIPT};${COUNTDOWN_SCRIPT}` : WEDWED_SCRIPT;
+  if (theme.template === "zefir" || theme.template === "crayon") return `${hasCountdown(blocks) ? COUNTDOWN_SCRIPT + ";" : ""}${SCRAPBOOK_SCRIPT}`;
   const parts = [
-    hasCountdown(blocks) ? COUNTDOWN_SCRIPT : "",
+    hasCountdown(blocks) && theme.template !== "bohema" && theme.template !== "kraski" && theme.template !== "serdce" && theme.template !== "antic" && theme.template !== "skvoz-vremya" && theme.template !== "burgundy" && theme.template !== "floral-garden" ? COUNTDOWN_SCRIPT : "",
     theme.intro === "envelope" ? introScript(envelopeMarkup(theme, names)) : "",
-    theme.template === "constellation" ? CONSTELLATION_SCRIPT : theme.template === "promise" ? PROMISE_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : theme.template === "ruby" ? RUBY_SCRIPT : theme.template === "tuscany" ? TUSCANY_SCRIPT : REVEAL_SCRIPT,
+    theme.template === "constellation" ? CONSTELLATION_SCRIPT : theme.template === "prism" ? PRISM_SCRIPT : theme.template === "evergreen" ? EVERGREEN_SCRIPT : theme.template === "silk" ? SILK_SCRIPT : theme.template === "pearl" ? PEARL_SCRIPT : theme.template === "ruby" ? RUBY_SCRIPT : theme.template === "tuscany" ? TUSCANY_SCRIPT : theme.template === "vinyl" ? VINYL_SCRIPT : theme.template === "aquarelle" ? aquarelleScript() : theme.template === "lily" ? LILY_SCRIPT : theme.template === "bohema" ? BOHEMA_SCRIPT : theme.template === "kraski" ? KRASKI_SCRIPT : theme.template === "serdce" ? SERDCE_SCRIPT : theme.template === "antic" ? ANTIC_SCRIPT : theme.template === "skvoz-vremya" ? SKVOZ_VREMYA_SCRIPT : theme.template === "burgundy" ? BURGUNDY_SCRIPT : theme.template === "roseraie" ? ROSERAIE_SCRIPT : theme.template === "floral-garden" ? FLORAL_GARDEN_SCRIPT : theme.template === "iskra" ? ISKRA_SCRIPT : REVEAL_SCRIPT,
+    PREMIUM_MOTION_SCRIPT,
   ].filter(Boolean);
 
   return parts.length > 0 ? parts.join(";") : undefined;
@@ -479,6 +539,20 @@ export function coupleNames(blocks: InviteBlockView[], fallback: string): string
 }
 
 export function renderBlocks(
+  blocks: InviteBlockView[], rsvpHref: string | null, answered: string | null,
+  eventDate?: Date, theme: InviteTheme = defaultTheme(), timezone = "UTC", options: RenderOptions = {},
+): string {
+  // Виш-лист шаблон рисует как свой текстовый раздел, а сетку подарков
+  // под ним вставляет общий рендер (см. guest-html/wishlist.ts).
+  if (theme.template === "zefir" || theme.template === "crayon") blocks = blocks.filter(block => block.visible);
+  return withInlineRsvp(options.rsvp, options.editable === true, () => withTemplateLabels(theme, options.editable === true, () => renderWithWishlist(blocks, (list) => {
+    if (!theme.template) return renderRawBlocks(list, rsvpHref, answered, eventDate, theme, timezone, options);
+    const personalized = personalizeBlocks(list, theme, eventDate, timezone);
+    return personalizeMarkup(renderRawBlocks(personalized, rsvpHref, answered, eventDate, theme, timezone, options), personalized, theme, options.editable);
+  }, options.wishlist, options.editable === true, options.wishlistPage ? "page" : "button")));
+}
+
+function renderRawBlocks(
   blocks: InviteBlockView[],
   rsvpHref: string | null,
   answered: string | null,
@@ -488,8 +562,41 @@ export function renderBlocks(
   options: RenderOptions = {},
 ): string {
   const editable = options.editable === true;
+  if (theme.template === "zefir" || theme.template === "crayon") {
+    return renderScrapbookBlocks(blocks, theme, { eventDate, timezone, editable });
+  }
+  if (isWedwedTemplate(theme.template)) {
+    return renderWedwedBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable }, (block) => `<div class="wv-plain">${renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options)}</div>`);
+  }
   if (theme.template === "tili") {
     return renderTiliBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
+  }
+  if (theme.template === "bohema") {
+    return renderBohemaBlocks(blocks, theme, { eventDate, rsvp: options.rsvp ?? null, editable });
+  }
+  if (theme.template === "kraski") {
+    return renderKraskiBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
+  }
+  if (theme.template === "serdce") {
+    return renderSerdceBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
+  }
+  if (theme.template === "antic") {
+    return renderAnticBlocks(blocks, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
+  }
+  if (theme.template === "skvoz-vremya") {
+    return renderSkvozVremyaBlocks(blocks, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
+  }
+  if (theme.template === "burgundy") {
+    return renderBurgundyBlocks(blocks, { eventDate, editable });
+  }
+  if (theme.template === "roseraie") {
+    return renderRoseraieBlocks(blocks, { editable, musicUrl: theme.musicUrl, eventDate });
+  }
+  if (theme.template === "iskra") {
+    return renderIskraBlocks(blocks, { eventDate, timezone, editable, musicUrl: theme.musicUrl });
+  }
+  if (theme.template === "floral-garden") {
+    return renderFloralGardenBlocks(blocks, { eventDate, timezone, rsvp: options.rsvp ?? null, musicUrl: theme.musicUrl, editable });
   }
   if (theme.template === "evergreen") {
     return renderEvergreenBlocks(blocks, theme, rsvpHref, answered, (block) =>
@@ -515,6 +622,30 @@ export function renderBlocks(
       { editable },
     );
   }
+  if (theme.template === "prism") {
+    return renderPrismBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
+  if (theme.template === "lily") {
+    return renderLilyBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
+  if (theme.template === "aquarelle") {
+    return renderAquarelleBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
+  if (theme.template === "vinyl") {
+    return renderVinylBlocks(blocks, theme, rsvpHref, answered, (block) =>
+      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      { editable },
+    );
+  }
   if (theme.template === "tuscany") {
     return renderTuscanyBlocks(blocks, theme, rsvpHref, answered, (block) =>
       renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
@@ -525,18 +656,6 @@ export function renderBlocks(
     return renderRubyBlocks(blocks, theme, rsvpHref, answered, (block) =>
       renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
-    );
-  }
-  if (theme.template === "promise") {
-    return renderPromiseBlocks(blocks, theme, eventDate, timezone, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
-      editable,
-    );
-  }
-  if (theme.template === "story") {
-    return renderStoryBlocks(blocks, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
-      editable,
     );
   }
   return blocks
@@ -569,11 +688,11 @@ export function renderBlocks(
           case "TEXT":
             return textBlock(block.content as BlockContentMap["TEXT"], e);
           case "RSVP_FORM":
-            return rsvpCall(block.content as BlockContentMap["RSVP_FORM"], rsvpHref, answered, e);
+            return rsvpCall(block, rsvpHref, answered, e);
         }
       })();
       // В редакторе раздел получает признак и панель «вверх / вниз / скрыть».
-      return editable && html ? html.replace(/<section([^>]*)>/, `<section$1${e.section()}>${e.tools()}`) : html;
+      return html ? html.replace(/<section([^>]*)>/, `<section$1${e.section()}>${e.tools()}`) : html;
     })
     .join("");
 }

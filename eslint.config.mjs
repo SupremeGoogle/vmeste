@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local agent assets and scratch files are not application source.
+    ".agents/**",
+    ".claude/**",
+    "tmp/**",
+    "output/**",
+    "brag-output/**",
+    // Промо-ролики (в git не входят) со сторонними библиотеками внутри.
+    "videos/**",
   ]),
 ]);
 

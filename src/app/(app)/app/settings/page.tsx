@@ -92,7 +92,7 @@ export default async function OrgSettingsPage({ searchParams }: Props) {
         </p>
       ) : null}
 
-      <form action={rename} className="mt-6 flex flex-wrap items-end gap-2 rounded-xl border border-stone-200 bg-white p-4">
+      <form action={rename} className="mt-6 flex flex-wrap items-end gap-2 rounded-xl border border-stone-200 bg-card p-4">
         <label className="flex-1">
           <span className="text-xs text-stone-500">Название</span>
           <input
@@ -107,7 +107,7 @@ export default async function OrgSettingsPage({ searchParams }: Props) {
         </p>
       </form>
 
-      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+      <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4">
         <h2 className="text-sm font-medium">Участники</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {members.map((member) => (
@@ -132,7 +132,7 @@ export default async function OrgSettingsPage({ searchParams }: Props) {
         </p>
       </section>
 
-      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+      <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4">
         <h2 className="text-sm font-medium">Ваш пароль</h2>
         <form action={changePassword} className="mt-3 flex flex-wrap items-end gap-2">
           <label className="flex-1">

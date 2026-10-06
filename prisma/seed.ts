@@ -87,7 +87,7 @@ function inviteBlocks(names: string, dateText: string, venue: string) {
         v: 1, title: "Как добраться",
         yandexUrl: "https://yandex.ru/maps/",
         googleUrl: "",
-        note: "От метро ходит трансфер в 15:00 — напишите нам, если нужно место.",
+        note: "Если не найдёте дорогу — напишите нам, подскажем.",
       },
     },
     {

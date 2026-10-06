@@ -47,6 +47,9 @@ function coupleGlyph(role: GuestRole): string {
 /** Округление до трёх знаков: длинные дроби раздувают разметку без пользы. */
 const n = (value: number) => Math.round(value * 1000) / 1000;
 
+/** Масштаб, ниже которого план не ужимается: подписи столов ~12 px. */
+const PLAN_SCALE = 0.62;
+
 /** Значок молодожёнов: те же фигуры, что в панели и в PDF. */
 function coupleMark(role: GuestRole, x: number, y: number, decorative = false): string {
   const mark = markFor(role);
@@ -139,8 +142,25 @@ export function floorPlanSvg(
 
   const roles = tables.flatMap((table) => table.roles ?? []);
 
-  return `<svg viewBox="0 0 ${n(hall.width)} ${n(hall.height)}" class="plan" role="img" aria-label="План зала">
+  // Телефон в 375 px ужимал зал 1580 × 960 до подписей высотой 5 px.
+  // Теперь у плана есть нижняя граница ширины: подпись в 20 единиц
+  // становится ~12 px, а то, что не влезло, листается пальцем вбок.
+  const minWidth = Math.round(hall.width * PLAN_SCALE);
+  const focus = tables.find((table) => table.id === highlightTableId);
+  const focusAttr = focus ? ` data-focus="${n(focus.x / hall.width)}"` : "";
+
+  return `<div class="plan-scroll"${focusAttr}><svg viewBox="0 0 ${n(hall.width)} ${n(hall.height)}" class="plan" style="min-width:${minWidth}px" role="img" aria-label="План зала">
 <rect x="0" y="0" width="${n(hall.width)}" height="${n(hall.height)}" fill="${COLORS.card}"/>
 ${shapes}
-</svg>${hasCouple(roles) ? coupleLegend() : ""}`;
+</svg></div><p class="plan-swipe" hidden>Листайте план в сторону</p>${hasCouple(roles) ? coupleLegend() : ""}`;
 }
+
+/**
+ * Скрипт к плану: доводит подсвеченный стол до середины экрана и
+ * показывает подсказку, если план шире экрана. Без скрипта план всё
+ * равно листается — просто начинается с левого края.
+ */
+export const PLAN_SCROLL_SCRIPT = `(function(){var s=document.querySelector(".plan-scroll");if(!s)return;
+var f=parseFloat(s.getAttribute("data-focus"));
+if(f>=0)s.scrollLeft=f*s.scrollWidth-s.clientWidth/2;
+var h=document.querySelector(".plan-swipe");if(h&&s.scrollWidth>s.clientWidth+4)h.hidden=false;})();`;

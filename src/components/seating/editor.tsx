@@ -29,7 +29,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import {
   COUPLE_TABLE_LABEL, HALL_MAX, HALL_MIN, SHAPES, SHAPE_LABEL, clampToPlan, contentExtent, freeSpot, isRound,
   tableSize,
-  MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName, snap, type Hall, type Point,
+  MARK_LABEL_SHIFT, fitSeatLabels, labelLines, placeSeatLabel, seatPosition, snap, type Hall, type LabelFit, type Point,
 } from "@/lib/seating-geometry";
 import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
 import { COUPLE_TABLE } from "@/lib/couple-table-style";
@@ -48,8 +48,14 @@ type DragPayload =
   | { type: "table"; tableId: string }
   | { type: "new-table"; label: string; shape: string; capacity: number };
 
-/** Пикселей экрана на единицу плана: зал 1000 единиц — 860 px, как было. */
+/** Масштаб до первого замера контейнера: зал 1000 единиц — 860 px, как было. */
 const SCALE = 0.86;
+/**
+ * Обычный масштаб подгоняется под ширину окна, но в этих пределах:
+ * мельче — не разглядеть имена, крупнее — зал не влезает по высоте.
+ */
+const SCALE_MIN = 0.5;
+const SCALE_MAX = 1.6;
 /** Поле вокруг зала, чтобы за ручки было за что ухватиться. */
 const GUTTER = 24;
 
@@ -102,12 +108,20 @@ function CoupleGlyph({ role, active }: { role: GuestRole; active: boolean }) {
   );
 }
 
+/** Сдвиг подписи от точки привязки: какой край подписи лежит в ней. */
+const ALIGN_SHIFT = { start: "0%", middle: "-50%", end: "-100%" } as const;
+const BASELINE_SHIFT = { top: "0%", middle: "-50%", bottom: "-100%" } as const;
+
 function SeatDot({
-  table, seat, hall, compact, selected, onSelect, onPlace, onOpenEmpty,
+  table, seat, hall, scale, labelFit, compact, selected, onSelect, onPlace, onOpenEmpty,
 }: {
   table: EditorTable;
   seat: EditorSeat;
   hall: Hall;
+  /** Пикселей экрана на единицу плана. */
+  scale: number;
+  /** Кегль и раскладка подписей — общие на весь стол. */
+  labelFit: LabelFit;
   /** Обзор всего зала: места точками, без подписей — иначе всё сливается. */
   compact: boolean;
   selected: EditorGuest | null;
@@ -118,7 +132,10 @@ function SeatDot({
   const { setNodeRef, isOver } = useDroppable({ id: `seat:${seat.id}` });
   const pos = seatPosition(table, seat.index);
   const role = seat.guest?.role ?? "GUEST";
-  const label = labelPosition(table, pos, role === "GUEST" ? 0 : MARK_LABEL_SHIFT);
+  // Кружок места рисуется в пикселях (22 px), а план — в единицах, поэтому
+  // отступ подписи пересчитывается под масштаб: иначе на узком экране имя
+  // ложилось бы на сам кружок.
+  const label = placeSeatLabel(table, seat.index, labelFit, 15 / scale + (role === "GUEST" ? 0 : MARK_LABEL_SHIFT));
 
   const draggable = useDraggable({
     id: `seated:${seat.id}`,
@@ -135,7 +152,7 @@ function SeatDot({
       <span
         aria-hidden
         className={`absolute block -translate-x-1/2 -translate-y-1/2 rounded-full border ${
-          seat.guest ? "border-stone-400 bg-stone-300" : "border-stone-300 bg-white"
+          seat.guest ? "border-stone-400 bg-stone-300" : "border-stone-300 bg-card"
         }`}
         style={{ left: pct(pos.x, hall.width), top: pct(pos.y, hall.height), width: 7, height: 7 }}
       />
@@ -196,8 +213,8 @@ function SeatDot({
                 : seat.guest
                   ? "border-stone-400 bg-stone-300"
                   : selected
-                    ? "border-stone-500 bg-white"
-                    : "border-stone-300 bg-white"
+                    ? "border-stone-500 bg-card"
+                    : "border-stone-300 bg-card"
             }`}
             style={{ width: 22, height: 22 }}
           />
@@ -206,12 +223,20 @@ function SeatDot({
 
       {seat.guest && (
         <span
-          className={`pointer-events-none absolute z-10 -translate-x-1/2 select-none whitespace-nowrap text-[10px] ${
-            role !== "GUEST" && label.y < pos.y ? "-translate-y-full" : ""
+          className={`pointer-events-none absolute z-10 select-none whitespace-nowrap leading-[1.15] ${
+            label.align === "start" ? "text-left" : label.align === "end" ? "text-right" : "text-center"
           } ${isSelected ? "font-semibold text-stone-900" : "text-stone-600"}`}
-          style={{ left: pct(label.x, hall.width), top: pct(label.y, hall.height) }}
+          style={{
+            left: pct(label.x, hall.width),
+            top: pct(label.y, hall.height),
+            fontSize: labelFit.fontSize,
+            transformOrigin: `${label.align === "start" ? "0%" : label.align === "end" ? "100%" : "50%"} 50%`,
+            transform: `translate(${ALIGN_SHIFT[label.align]}, ${BASELINE_SHIFT[label.baseline]})${label.angle ? ` rotate(${label.angle}deg)` : ""}`,
+          }}
         >
-          {shortName(seat.guest.displayName)}
+          {labelLines(seat.guest.displayName, labelFit).map((line, i) => (
+            <span key={i} className="block">{line}</span>
+          ))}
         </span>
       )}
     </>
@@ -316,6 +341,13 @@ function TableShape({
 
   const round = isRound(table.shape) && !table.isCouple;
   const taken = table.seats.filter((seat) => seat.guest).length;
+  // Подписи подгоняются под шаг мест в пикселях: план сжимается под экран,
+  // и вместе с ним решается, в одну строку имя, в две или наклонно.
+  const labelFit = fitSeatLabels(
+    table,
+    table.seats.flatMap((seat) => (seat.guest ? [seat.guest.displayName] : [])),
+    { base: 11, min: 9, unit: scale },
+  );
 
   // Во время перетаскивания стол вместе с местами идёт за курсором каждый
   // кадр, упираясь в стены. Раньше он бледнел на месте и перескакивал
@@ -425,15 +457,15 @@ function TableShape({
           scale: dragging ? "1.04" : undefined,
           ...(table.isCouple
             ? {
-                background: COUPLE_TABLE.fill,
-                border: `3px solid ${COUPLE_TABLE.stroke}`,
+                background: `var(--couple-fill, ${COUPLE_TABLE.fill})`,
+                border: `3px solid var(--couple-stroke, ${COUPLE_TABLE.stroke})`,
                 boxShadow: dragging
                   ? "0 22px 40px -14px rgba(176, 141, 87, 0.7)"
                   : "0 6px 18px -8px rgba(176, 141, 87, 0.55)",
               }
             : {
-                background: "#f5f5f4",
-                border: "1px solid #d6cec2",
+                background: "var(--color-stone-100)",
+                border: "1px solid var(--color-stone-300)",
                 boxShadow: dragging ? "0 22px 40px -16px rgba(41, 37, 36, 0.45)" : undefined,
               }),
         }}
@@ -442,13 +474,13 @@ function TableShape({
           <span
             aria-hidden
             className="pointer-events-none absolute inset-[5px] rounded-xl"
-            style={{ border: `1px solid ${COUPLE_TABLE.innerStroke}` }}
+            style={{ border: `1px solid var(--couple-inner, ${COUPLE_TABLE.innerStroke})` }}
           />
         )}
         {table.isCouple && !compact && <RingsIcon size={20} />}
         <span
           className={`select-none truncate px-1 font-semibold ${compact ? "text-[9px]" : "text-xs"}`}
-          style={{ color: table.isCouple ? COUPLE_TABLE.text : "#44403c", maxWidth: "100%" }}
+          style={{ color: table.isCouple ? `var(--couple-text, ${COUPLE_TABLE.text})` : "var(--color-stone-700)", maxWidth: "100%" }}
         >
           {table.label}
         </span>
@@ -465,6 +497,8 @@ function TableShape({
           table={table}
           seat={seat}
           hall={hall}
+          scale={scale}
+          labelFit={labelFit}
           compact={compact}
           selected={selected}
           onSelect={onSelect}
@@ -560,7 +594,7 @@ function GuestChip({
         type="button"
         onClick={() => onSelect(selected ? null : guest)}
         className={`w-full cursor-grab rounded-lg border px-3 py-2 text-left text-sm active:cursor-grabbing ${
-          selected ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white"
+          selected ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-card"
         }`}
         style={{ opacity: draggable.isDragging ? 0.3 : 1 }}
       >
@@ -695,17 +729,28 @@ export function SeatingEditor({
       : seating.tables;
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [viewportWidth, setViewportWidth] = useState(0);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   useEffect(() => {
     const node = scrollRef.current;
     if (!node) return;
-    const observer = new ResizeObserver(() => setViewportWidth(node.clientWidth));
+    const observer = new ResizeObserver(() =>
+      setViewport({ width: node.clientWidth, height: node.clientHeight }),
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
-  const fitScale = viewportWidth > 0 ? Math.min(SCALE, (viewportWidth - GUTTER * 2) / hall.width) : SCALE;
-  const scale = overview ? fitScale : SCALE;
+  /**
+   * Зал занимает всю ширину, которая есть: на широком экране план не должен
+   * жаться в колонку посередине, на узком — уезжать под горизонтальную
+   * прокрутку. «Весь зал» дополнительно вписывает план по высоте.
+   */
+  const fitWidth =
+    viewport.width > 0 ? (viewport.width - GUTTER * 2) / hall.width : SCALE;
+  const fitHeight =
+    viewport.height > 0 ? (viewport.height - GUTTER * 2) / hall.height : SCALE;
+  const normalScale = clamp(fitWidth, SCALE_MIN, SCALE_MAX);
+  const scale = overview ? Math.min(fitWidth, fitHeight) : normalScale;
 
   function autoLabel(): string {
     const used = new Set(seating.tables.map((t) => t.label));
@@ -934,7 +979,7 @@ export function SeatingEditor({
       disabled={Boolean(coupleTable) || openCoupleWhenReady}
       title={coupleTable ? "Стол молодожёнов уже есть — щёлкните по нему на плане" : "Добавить стол молодожёнов"}
       className="flex shrink-0 items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium disabled:opacity-45"
-      style={{ borderColor: COUPLE_TABLE.stroke, color: COUPLE_TABLE.text, background: COUPLE_TABLE.fill }}
+      style={{ borderColor: `var(--couple-stroke, ${COUPLE_TABLE.stroke})`, color: `var(--couple-text, ${COUPLE_TABLE.text})`, background: `var(--couple-fill, ${COUPLE_TABLE.fill})` }}
     >
       <RingsIcon /> {COUPLE_TABLE_LABEL}
     </button>
@@ -983,7 +1028,7 @@ export function SeatingEditor({
           </div>
 
           {newTableOpen && !isDesktop && (
-            <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-stone-200 bg-white p-3">
+            <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-stone-200 bg-card p-3">
               <div className="col-span-2 flex flex-wrap items-center gap-2">{draftFields}</div>
               <button
                 type="button"
@@ -1022,12 +1067,12 @@ export function SeatingEditor({
 
           <div
             ref={scrollRef}
-            className="relative max-h-[65vh] overflow-auto rounded-xl border border-stone-200 bg-stone-100/60 lg:max-h-[80vh]"
+            className="relative max-h-[70vh] overflow-auto rounded-xl border border-stone-200 bg-stone-100/60 lg:max-h-[85vh]"
           >
             <div style={{ width: planWidth + GUTTER * 2, height: planHeight + GUTTER * 2, padding: GUTTER }}>
               <div
                 id="seating-plan"
-                className={`relative bg-white shadow-sm ${resize ? "ring-2 ring-stone-400" : ""}`}
+                className={`relative bg-card shadow-sm ${resize ? "ring-2 ring-stone-400" : ""}`}
                 style={{ width: planWidth, height: planHeight }}
                 onClick={() => {
                   // Щелчок по пустому залу закрывает панели.
@@ -1071,8 +1116,8 @@ export function SeatingEditor({
                         const node = scrollRef.current;
                         if (!node) return;
                         node.scrollTo({
-                          left: fx * hall.width * SCALE + GUTTER - node.clientWidth / 2,
-                          top: fy * hall.height * SCALE + GUTTER - node.clientHeight / 2,
+                          left: fx * hall.width * normalScale + GUTTER - node.clientWidth / 2,
+                          top: fy * hall.height * normalScale + GUTTER - node.clientHeight / 2,
                         });
                       });
                     }}
@@ -1157,7 +1202,7 @@ export function SeatingEditor({
       )}
 
       {!isDesktop && !editingTable && !guestsOpen && !emptySeat && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.2)] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-card/95 px-4 py-3 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.2)] backdrop-blur">
           {selected ? (
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0 truncate">
@@ -1193,7 +1238,7 @@ export function SeatingEditor({
 
       <DragOverlay dropAnimation={null} modifiers={dragging?.type === "new-table" ? [snapCenterToCursor] : undefined}>
         {dragging?.type === "guest" && (
-          <div className="drag-lift rounded-lg border border-stone-400 bg-white px-3 py-1.5 text-sm shadow-lg">
+          <div className="drag-lift rounded-lg border border-stone-400 bg-card px-3 py-1.5 text-sm shadow-lg">
             {dragging.guest.displayName}
           </div>
         )}
@@ -1213,7 +1258,7 @@ function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose
         onClick={onClose}
         className="fixed inset-0 z-40 bg-stone-900/20"
       />
-      <div className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white px-4 pb-6 pt-3 shadow-2xl">
+      <div className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-card px-4 pb-6 pt-3 shadow-2xl">
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-stone-300" aria-hidden />
         {children}
       </div>
@@ -1285,7 +1330,7 @@ function EmptySeatPicker({
     <>
       <button type="button" aria-label="Закрыть" onClick={onClose} className="fixed inset-0 z-40 cursor-default" />
       <div
-        className="fixed z-50 rounded-xl border border-stone-200 bg-white p-3 shadow-xl"
+        className="fixed z-50 rounded-xl border border-stone-200 bg-card p-3 shadow-xl"
         style={{ left, top: Math.max(12, top), width }}
       >
         {body}

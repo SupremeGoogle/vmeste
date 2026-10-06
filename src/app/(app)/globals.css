@@ -16,6 +16,9 @@
  */
 @theme {
   --color-white: #fffdf9;
+  /* Фон карточек и шапок. Отдельно от `white`: `text-white` на кнопках
+     и поверх фотографий должен остаться белым и в тёмной теме. */
+  --color-card: #fffdf9;
 
   --color-stone-50: #faf7f2;
   --color-stone-100: #f3ede3;
@@ -43,15 +46,86 @@
 }
 
 /*
- * Панель намеренно светлая, без переключения на тёмную тему.
+ * ── Тёмная тема ─────────────────────────────────────────────────────
  *
- * Причина: у панели один главный выход — бумага. План рассадки, список
- * гостей и QR-табличка печатаются, и держать вторую тему ради экрана значит
- * дважды проверять контрасты там, где итог всё равно чёрным по белому.
+ * Тем же приёмом, что и палитра выше: переопределены токены, а не классы.
+ * Шкала stone перевёрнута (50 — самый тёмный фон, 800 — самый светлый
+ * текст), золото кнопок стало светлее, бледные «плашки» статусов стали
+ * тёмными со светлым текстом. В разметке одна замена: фон карточек —
+ * `bg-card` вместо `bg-white`, потому что `white` нужен и белому тексту.
+ *
+ * Условие одно — `data-theme="dark"` на <html>. Его ставит скрипт в
+ * `<head>` (`src/lib/theme.ts`) до первой отрисовки: по выбору в шапке
+ * панели из localStorage, а без выбора — по настройке системы. Только для
+ * экрана: печать остаётся чёрным по белому — план рассадки и QR-табличка
+ * уходят на бумагу, и тёмная тема там съела бы картридж.
  */
+/* Логотип: винный на светлом фоне, светлый — в тёмной теме (components/brand.tsx). */
+.brand-on-dark { display: none; }
+
+@media screen {
+  :root[data-theme="dark"] .brand-on-light { display: none; }
+  :root[data-theme="dark"] .brand-on-dark { display: inline-block; }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-card: #231f1c;
+    --color-stone-50: #171412;
+    --color-stone-100: #2a2521;
+    --color-stone-200: #3a332e;
+    --color-stone-300: #4d443d;
+    --color-stone-400: #6f655b;
+    --color-stone-500: #9b9083;
+    --color-stone-600: #b3a89b;
+    --color-stone-700: #cdc3b6;
+    --color-stone-800: #e2d9cc;
+    --color-stone-900: #c9a36a;
+    --color-stone-950: #f4eee5;
+
+    --color-red-50: #3b2121;
+    --color-red-400: #b35a5a;
+    --color-red-700: #f0a3a3;
+    --color-red-800: #f5b8b8;
+    --color-amber-50: #36301f;
+    --color-amber-100: #463a20;
+    --color-amber-900: #eccb86;
+    --color-emerald-50: #1d3128;
+    --color-emerald-100: #234033;
+    --color-emerald-200: #2f5543;
+    --color-emerald-300: #3d6b56;
+    --color-emerald-700: #8fd3b0;
+    --color-emerald-800: #a6dcc0;
+    --color-emerald-900: #bfe6d1;
+    --color-rose-50: #3a2025;
+    --color-rose-100: #4a2830;
+    --color-rose-200: #5c3039;
+    --color-rose-700: #f2a7b5;
+    --color-rose-800: #f5bac5;
+    --color-rose-900: #f8ccd4;
+    --color-sky-100: #1f3340;
+    --color-sky-900: #b5dcf2;
+    --color-violet-100: #2e2640;
+    --color-violet-900: #d6c8f5;
+
+    --couple-fill: #3a2f1f;
+    --couple-stroke: #c9a36a;
+    --couple-inner: #7a6440;
+    --couple-text: #eccb86;
+    --skeleton-shine: rgba(255, 255, 255, 0.06);
+  }
+}
+
+/* Кнопки с золотой заливкой: в тёмной теме золото светлое, и белая
+   надпись на нём не читается — надпись становится тёмной. */
+@media screen {
+  :root[data-theme="dark"] :is(a, button, label, span).bg-stone-900.text-white {
+    color: #1b1714;
+  }
+}
+
 body {
   background: var(--color-stone-50);
-  color: #2b2622;
+  color: var(--color-stone-950);
   font-family: var(--font-sans);
 }
 
@@ -100,15 +174,18 @@ h2 {
   }
 }
 
+/* backwards, а не both: после появления анимация отпускает transform,
+   иначе застывший «transform: none» перебивал бы подъём карточки под
+   курсором. */
 .rise {
-  animation: rise 0.32s var(--ease-soft) both;
+  animation: rise 0.32s var(--ease-soft) backwards;
 }
 
 /* Лесенка для списков: каждая следующая карточка стартует чуть позже.
    Переменную --i проставляет разметка. Больше шести шагов задержку
    не копим — иначе низ списка появляется заметно позже верха. */
 .rise-stagger > * {
-  animation: rise 0.32s var(--ease-soft) both;
+  animation: rise 0.32s var(--ease-soft) backwards;
   animation-delay: calc(min(var(--i, 0), 6) * 45ms);
 }
 
@@ -149,7 +226,7 @@ h2 {
   background-image: linear-gradient(
     100deg,
     transparent 30%,
-    rgba(255, 255, 255, 0.6) 50%,
+    var(--skeleton-shine, rgba(255, 255, 255, 0.6)) 50%,
     transparent 70%
   );
   background-size: 60vw 100%;
@@ -167,6 +244,30 @@ h2 {
 
 .loading-in {
   animation: loading-in 0.3s ease-out 0.15s both;
+}
+
+/* Заставка «открываем мероприятие»: появляется сразу по нажатию, но с
+   короткой задержкой — быстрый переход не успевает её показать. */
+.opening-overlay {
+  animation: loading-in 0.25s ease-out 0.12s both;
+}
+
+@keyframes opening-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(330%); }
+}
+
+.opening-progress {
+  animation: opening-progress 1.1s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes opening-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+.opening-mark {
+  animation: opening-breathe 1.6s ease-in-out infinite;
 }
 
 /*
@@ -233,5 +334,78 @@ h2 {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/*
+ * ── Живость ─────────────────────────────────────────────────────────
+ *
+ * Свадебный продукт — «мягкий интерфейс с сиянием»: тёплая бумага, золото,
+ * румянец и шалфей. Фон панели — три размытых пятна, закреплённых за окном:
+ * они не отвлекают от таблиц, но экран перестаёт быть плоским листом.
+ */
+@media screen {
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(42rem 28rem at 8% -6%, rgba(236, 196, 186, 0.28), transparent 70%),
+      radial-gradient(36rem 26rem at 96% 8%, rgba(201, 163, 106, 0.2), transparent 70%),
+      radial-gradient(44rem 30rem at 60% 110%, rgba(170, 190, 160, 0.2), transparent 70%);
+  }
+
+  :root[data-theme="dark"] body::before {
+    background:
+      radial-gradient(42rem 28rem at 8% -6%, rgba(180, 110, 100, 0.12), transparent 70%),
+      radial-gradient(36rem 26rem at 96% 8%, rgba(201, 163, 106, 0.1), transparent 70%),
+      radial-gradient(44rem 30rem at 60% 110%, rgba(110, 140, 110, 0.1), transparent 70%);
+  }
+
+  /* Главные кнопки — золото с бликом, а не плоская заливка: при наведении
+     по ним проходит отсвет, при нажатии кнопка проседает. */
+  :where(button, a, [role="button"]).bg-stone-900 {
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.08));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 6px 18px -8px color-mix(in srgb, var(--color-stone-900) 70%, transparent);
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform 0.25s var(--ease-out-back),
+      box-shadow 0.25s var(--ease-soft),
+      opacity 0.2s var(--ease-soft);
+  }
+
+  :where(button, a, [role="button"]).bg-stone-900::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.7s var(--ease-soft);
+  }
+
+  @media (hover: hover) {
+    :where(button, a, [role="button"]).bg-stone-900:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 10px 24px -10px color-mix(in srgb, var(--color-stone-900) 85%, transparent);
+    }
+
+    :where(button, a, [role="button"]).bg-stone-900:not(:disabled):hover::after {
+      transform: translateX(120%);
+    }
+  }
+
+  /* Не внутри SVG: там transform — это координаты места на плане. */
+  :where(button, a, [role="button"]):not(:disabled, svg *):active {
+    transform: scale(0.97);
+  }
+
+  /* Карточки мягко всплывают тенью, а не только меняют рамку. */
+  .bg-card.rounded-2xl,
+  .bg-card.rounded-xl {
+    box-shadow: 0 1px 2px rgba(64, 56, 51, 0.04), 0 8px 28px -18px rgba(64, 56, 51, 0.18);
   }
 }

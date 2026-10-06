@@ -201,16 +201,16 @@ describe("пожелания", () => {
     guestId: world.guestIds[index],
   });
 
-  it("принимаются и ждут модерации", async () => {
+  it("чистое пожелание публикуется сразу", async () => {
     const result = await createWish(guest(a), {
       authorName: "Аня",
       text: "Совет да любовь!",
     });
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({ ok: true, pending: false });
 
     const wishes = await listWishes(a.eventId);
     expect(wishes).toHaveLength(1);
-    expect(wishes[0].status).toBe("PENDING");
+    expect(wishes[0].status).toBe("APPROVED");
   });
 
   it("пустое и слишком короткое не принимаются", async () => {
@@ -220,6 +220,17 @@ describe("пожелания", () => {
     expect(await createWish(guest(a), { authorName: "Аня", text: "ок" })).toMatchObject({
       ok: false, reason: "invalid",
     });
+  });
+
+  it("оскорбление и злое пожелание не публикуются сами, а ждут организатора", async () => {
+    for (const text of ["Вы идиоты", "Желаю вам развода", "Чтоб вы сдохли"]) {
+      expect(await createWish(guest(a), { authorName: "Гость", text })).toMatchObject({
+        ok: true, pending: true,
+      });
+    }
+    const wishes = await listWishes(a.eventId);
+    expect(wishes).toHaveLength(3);
+    expect(wishes.every((wish) => wish.status === "PENDING")).toBe(true);
   });
 
   it("больше трёх от одного гостя не принимаем", async () => {
@@ -256,11 +267,12 @@ describe("пожелания", () => {
     if (!foreign.ok) throw new Error("не создалось");
 
     expect(
-      await moderateWish({ orgId: a.orgId, eventId: a.eventId, userId: "u1" }, foreign.wishId, "APPROVED"),
+      await moderateWish({ orgId: a.orgId, eventId: a.eventId, userId: "u1" }, foreign.wishId, "REJECTED"),
     ).toBe(false);
 
+    // Чистое пожелание опубликовано автоматически — и чужой «отклонить» его не снял.
     const counts = await countWishes(b.eventId);
-    expect(counts.pending).toBe(1);
-    expect(counts.approved).toBe(0);
+    expect(counts.approved).toBe(1);
+    expect(counts.rejected).toBe(0);
   });
 });

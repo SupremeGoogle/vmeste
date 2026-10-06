@@ -1,10 +1,10 @@
 /**
  * Пожелания молодожёнам.
  *
- * Проходят ту же модерацию, что и фотографии, и по той же причине: текст
- * попадает на стену зала, где его читают все, включая бабушку. Разница
- * одна — пожелание короткое, поэтому очередь листается не по одному,
- * а списком: модератор читает десяток строк одним взглядом.
+ * Модерация автоматическая, как у фотографий: чистый текст сразу уходит
+ * на стену зала, а пожелание, в котором фильтр нашёл оскорбление или
+ * злое «пожелание», ждёт решения организатора. Его читают все, включая
+ * бабушку, поэтому сомнительное не публикуется само.
  *
  * Имя автора берётся из его карточки гостя, но остаётся редактируемым
  * полем: подписывают пожелания по-разному — «Аня и Серёжа», «твоя сестра».
@@ -12,6 +12,7 @@
 import { z } from "zod";
 import { db } from "@/server/db";
 import { bus } from "@/server/events/bus";
+import { isBlockedWish } from "@/lib/wish-moderation";
 
 export const wishInputSchema = z.object({
   authorName: z.string().trim().min(1, "нужно имя").max(80),
@@ -23,7 +24,7 @@ export const wishInputSchema = z.object({
 export type WishInput = z.infer<typeof wishInputSchema>;
 
 export type WishResult =
-  | { ok: true; wishId: string }
+  | { ok: true; wishId: string; pending: boolean }
   | { ok: false; reason: "disabled" | "invalid" | "limit"; message: string };
 
 /** Сколько пожеланий принимаем от одного гостя: три — уже щедро. */
@@ -37,6 +38,8 @@ export async function createWish(
   if (!parsed.success) {
     return { ok: false, reason: "invalid", message: parsed.error.issues[0].message };
   }
+
+  const flagged = isBlockedWish(parsed.data.authorName, parsed.data.text);
 
   const event = await db.event.findFirst({
     where: { id: guest.eventId, orgId: guest.orgId },
@@ -64,12 +67,13 @@ export async function createWish(
       guestId: guest.guestId,
       authorName: parsed.data.authorName,
       text: parsed.data.text,
-      status: "PENDING",
+      status: flagged ? "PENDING" : "APPROVED",
     },
     select: { id: true },
   });
 
-  return { ok: true, wishId: wish.id };
+  if (!flagged) await bus.publish(guest.eventId, "wish", wish.id);
+  return { ok: true, wishId: wish.id, pending: flagged };
 }
 
 export async function listGuestWishes(guest: { eventId: string; guestId: string }) {

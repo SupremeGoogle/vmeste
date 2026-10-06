@@ -33,13 +33,3 @@
 Промпт `dance.webp`:
 
 > Create a portrait 4:5 fine watercolor and gouache illustration for a sophisticated romantic wedding invitation gallery. Entirely fictional adult bride with brunette loose low bun, flowing ivory wedding dress, and groom with wavy dark brown hair and beige linen wedding suit. They dance together in a villa garden at dusk, smiling into each other's eyes, three-quarter or full-body view, graceful natural pose, delicate charming storybook cartoon faces with believable proportions. Cream roses and sage olive branches, soft blush flowers, elegant strings of warm lights above, glimpse of hazy sea. Premium hand-painted illustrated book aesthetic and subtle paper grain, not childish, soft painterly brushstrokes. Muted dusty rose, ivory, sage green, warm brown palette matching fine botanical wedding stationery. Clear focus on couple, breathing room around heads, no crowds. No text, lettering, logos, watermark, frame, collage or phone mockup. Actual website illustration asset.
-
-## PNG для отдельной вставки
-
-Оригиналы ImageGen сохранены без изменений рядом с оптимизированными WebP:
-
-- `garden.png` — вертикальный цветочный фон без людей и текста, 1024 × 1536.
-- `couple.png` — портрет вымышленных молодожёнов с фоном, 1122 × 1402.
-- `dance.png` — танец пары с фоном, 1122 × 1402.
-
-На сайте используются лёгкие WebP, PNG доступны как отдельные исходники. Промпты и способ генерации приведены выше.

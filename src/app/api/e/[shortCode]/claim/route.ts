@@ -72,5 +72,12 @@ export async function POST(
     })
     .catch(() => {});
 
-  redirect(`/i/${full.slug}/${String(form.get("next") ?? "photos")}`);
+  // Только известные адреса: `next` приходит из формы, и подставлять
+  // его в путь как есть значило бы уводить гостя куда угодно.
+  const next = String(form.get("next") ?? "photos");
+  if (next === "hub") {
+    // 303: после POST страница гостя открывается обычным GET.
+    return new Response(null, { status: 303, headers: { location: `/g/${event.shortCode}` } });
+  }
+  redirect(`/i/${full.slug}/${next === "wish" ? "wish" : "photos"}`);
 }

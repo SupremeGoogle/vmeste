@@ -2,6 +2,7 @@ import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import { notFound } from "next/navigation";
 import { EventTabs } from "./event-tabs";
+import { RouteTransition } from "@/components/motion/motion";
 
 export default async function EventLayout({
   children,
@@ -20,7 +21,7 @@ export default async function EventLayout({
       {/* Липкая шапка: в списке гостей на 40 человек переключиться на
           «Рассадку» иначе можно только домотав до самого верха. На печать
           она не идёт — position:sticky повторил бы её на каждом листе. */}
-      <div className="no-print sticky top-0 z-20 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
+      <div className="no-print sticky top-0 z-20 border-b border-stone-200 bg-card/95 backdrop-blur-sm">
         <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6 sm:pt-5">
           <div className="flex items-baseline justify-between gap-3">
             <h1 className="truncate text-xl sm:text-2xl">{event.title}</h1>
@@ -31,7 +32,7 @@ export default async function EventLayout({
           <EventTabs eventId={eventId} />
         </div>
       </div>
-      {children}
+      <RouteTransition>{children}</RouteTransition>
     </div>
   );
 }

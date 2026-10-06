@@ -46,6 +46,7 @@ export function SeatingList({
     <section className="mt-10 border-t border-stone-200 pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-medium text-stone-900">Списком</h2>
+        <a href={`/app/e/${eventId}/seating/print`} className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">Печатные макеты</a>
         <a
           href={`/api/app/events/${eventId}/seating/pdf`}
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm"
@@ -65,15 +66,15 @@ export function SeatingList({
         {seating.tables.map((table) => (
           <div
             key={table.id}
-            className="rounded-xl border bg-white p-4"
+            className="rounded-xl border bg-card p-4"
             style={
               table.isCouple
-                ? { borderColor: COUPLE_TABLE.stroke, background: COUPLE_TABLE.fill, borderWidth: 2 }
+                ? { borderColor: `var(--couple-stroke, ${COUPLE_TABLE.stroke})`, background: `var(--couple-fill, ${COUPLE_TABLE.fill})`, borderWidth: 2 }
                 : { borderColor: "#e7e5e4" }
             }
           >
             <div className="flex items-center gap-2">
-              <p className="min-w-0 flex-1 truncate font-medium" style={table.isCouple ? { color: COUPLE_TABLE.text } : undefined}>
+              <p className="min-w-0 flex-1 truncate font-medium" style={table.isCouple ? { color: `var(--couple-text, ${COUPLE_TABLE.text})` } : undefined}>
                 {table.isCouple ? <RingsIcon size={16} /> : null}{" "}
                 {table.label}
               </p>
@@ -236,7 +237,7 @@ export function SeatingList({
           >
             <button
               className="rounded-lg border-2 px-4 py-1.5 text-sm font-medium"
-              style={{ borderColor: COUPLE_TABLE.stroke, color: COUPLE_TABLE.text, background: COUPLE_TABLE.fill }}
+              style={{ borderColor: `var(--couple-stroke, ${COUPLE_TABLE.stroke})`, color: `var(--couple-text, ${COUPLE_TABLE.text})`, background: `var(--couple-fill, ${COUPLE_TABLE.fill})` }}
             >
               <RingsIcon size={16} /> Стол молодожёнов
             </button>

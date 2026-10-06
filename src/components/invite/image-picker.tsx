@@ -13,20 +13,23 @@
  * нажав только одно.
  */
 import { useRef, useState } from "react";
+import { PhotoControls } from "@/components/invite/photo-controls";
+import { defaultPhotoAdjustment, type PhotoAdjustment } from "@/lib/invite-personalization";
+import { PRISM_SAMPLE_IMAGES } from "@/lib/invite-templates/prism-assets";
 import { CONSTELLATION_SAMPLE_IMAGES } from "@/lib/invite-templates/constellation-assets";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
-import { PROMISE_SAMPLE_IMAGES } from "@/lib/invite-templates/promise-assets";
 import { RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
+import { uploadType } from "@/lib/upload-type";
 import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
 
 export type PickerAsset = { id: string; url: string; alt: string };
 
 const TEMPLATE_IMAGES = [
+  ...PRISM_SAMPLE_IMAGES,
   ...CONSTELLATION_SAMPLE_IMAGES,
-  ...PROMISE_SAMPLE_IMAGES,
   ...EVERGREEN_SAMPLE_IMAGES,
   ...PEARL_SAMPLE_IMAGES,
   ...RUBY_SAMPLE_IMAGES,
@@ -36,13 +39,16 @@ const TEMPLATE_IMAGES = [
 ] as const;
 
 export function ImagePicker({
-  eventId, name, value, assets,
+  eventId, name, value, assets, adjustment, adjustable = true,
 }: {
   eventId: string;
   /** Имя поля формы, куда ляжет адрес выбранной картинки. */
   name: string;
   value: string;
   assets: PickerAsset[];
+  adjustment?: PhotoAdjustment;
+  /** Показывать «Настроить кадр и цвет». Виш-листу это не нужно. */
+  adjustable?: boolean;
 }) {
   const [items, setItems] = useState<PickerAsset[]>(() =>
     value && !assets.some((asset) => asset.url === value)
@@ -50,6 +56,7 @@ export function ImagePicker({
       : assets,
   );
   const [chosen, setChosen] = useState(value);
+  const [settings, setSettings] = useState(adjustment ?? defaultPhotoAdjustment());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -61,7 +68,7 @@ export function ImagePicker({
       const presign = await fetch(`/api/app/events/${eventId}/assets/presign`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contentType: file.type, bytes: file.size }),
+        body: JSON.stringify({ contentType: uploadType(file), bytes: file.size }),
       }).then((r) => r.json());
 
       if (!presign.ok) throw new Error(presign.message);
@@ -69,7 +76,7 @@ export function ImagePicker({
       // Файл идёт мимо нашего сервера — прямо в хранилище.
       const put = await fetch(presign.uploadUrl, {
         method: "PUT",
-        headers: { "content-type": file.type },
+        headers: { "content-type": uploadType(file) },
         body: file,
       });
       if (!put.ok) throw new Error("Хранилище не приняло файл. Попробуйте ещё раз.");
@@ -95,6 +102,7 @@ export function ImagePicker({
   return (
     <div>
       <input type="hidden" name={name} value={chosen} />
+      <input type="hidden" name={`${name}Settings`} value={JSON.stringify(settings)} />
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -131,7 +139,7 @@ export function ImagePicker({
           <input
             ref={input}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            accept="image/*,.heic,.heif"
             className="sr-only"
             disabled={busy}
             onChange={(event) => {
@@ -143,9 +151,7 @@ export function ImagePicker({
       </div>
 
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-      {chosen !== "" && (
-        <p className="mt-2 truncate font-mono text-[11px] text-stone-400">{chosen}</p>
-      )}
+      {adjustable && chosen && <details className="mt-3 rounded-lg border border-stone-200 p-3"><summary className="cursor-pointer text-sm">Настроить кадр и цвет</summary><div className="mt-3"><PhotoControls src={chosen} value={settings} onChange={setSettings} /></div></details>}
     </div>
   );
 }

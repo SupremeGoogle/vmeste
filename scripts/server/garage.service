@@ -1,0 +1,15 @@
+[Unit]
+Description=Garage S3 storage (vmeste photos)
+After=network.target
+
+[Service]
+User=garage
+Group=garage
+ExecStart=/usr/local/bin/garage -c /etc/garage.toml server
+Environment=RUST_LOG=garage=warn
+Restart=always
+MemoryMax=200M
+LimitNOFILE=42000
+
+[Install]
+WantedBy=multi-user.target

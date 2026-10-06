@@ -4,7 +4,7 @@
  * но геометрию оба берут из одного модуля.
  */
 import {
-  DEFAULT_HALL, isRound, type Hall, MARK_LABEL_SHIFT, labelPosition, seatPosition, shortName,
+  DEFAULT_HALL, isRound, type Hall, MARK_LABEL_SHIFT, fitSeatLabels, labelLines, placeSeatLabel, seatPosition, svgLineOffsets,
 } from "@/lib/seating-geometry";
 import { MARK_RADIUS, markFor } from "@/lib/couple-marks";
 import type { GuestRole } from "@/generated/prisma/enums";
@@ -65,12 +65,13 @@ export function FloorPlan({
   return (
     <svg
       viewBox={`0 0 ${hall.width} ${hall.height}`}
-      className="w-full rounded-xl border border-stone-200 bg-white"
+      className="w-full rounded-xl border border-stone-200 bg-card"
       role="img"
       aria-label="План зала"
     >
       {tables.map((table) => {
         const round = isRound(table.shape);
+        const fit = fitSeatLabels(table, table.seats.flatMap((seat) => (seat.guest ? [seat.guest.displayName] : [])), { base: 10, min: 7 });
         return (
           <g key={table.id}>
             {round ? (
@@ -96,11 +97,7 @@ export function FloorPlan({
             {table.seats.map((seat) => {
               const { x, y } = seatPosition(table, seat.index);
               const role = seat.guest?.role ?? "GUEST";
-              const label = labelPosition(
-                table,
-                { x, y },
-                role === "GUEST" ? 0 : MARK_LABEL_SHIFT,
-              );
+              const label = placeSeatLabel(table, seat.index, fit, 13 + (role === "GUEST" ? 0 : MARK_LABEL_SHIFT));
               const taken = Boolean(seat.guest);
               const highlighted = seat.guest?.id === highlightGuestId;
               return (
@@ -120,12 +117,16 @@ export function FloorPlan({
                   )}
                   {seat.guest && (
                     <text
-                      x={label.x} y={label.y}
-                      textAnchor="middle" fontSize={10}
+                      transform={`translate(${label.x} ${label.y})${label.angle ? ` rotate(${label.angle})` : ""}`}
+                      textAnchor={label.align} fontSize={fit.fontSize}
                       fill={highlighted ? "#3a2f22" : "#7a7068"}
                       fontWeight={highlighted ? 700 : 400}
                     >
-                      {shortName(seat.guest.displayName)}
+                      {(() => {
+                        const lines = labelLines(seat.guest.displayName, fit);
+                        const dys = svgLineOffsets(lines.length, fit.fontSize, label.baseline);
+                        return lines.map((line, i) => <tspan key={i} x={0} y={dys[i]}>{line}</tspan>);
+                      })()}
                     </text>
                   )}
                 </g>

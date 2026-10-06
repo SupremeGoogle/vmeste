@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "ждёт",
-  APPROVED: "на экране",
+  APPROVED: "опубликовано",
   REJECTED: "отклонено",
 };
 
@@ -46,10 +46,10 @@ export default async function WishesPage({
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           { label: "Ждут проверки", value: counts.pending },
-          { label: "На экране", value: counts.approved },
+          { label: "Опубликовано", value: counts.approved },
           { label: "Отклонено", value: counts.rejected },
         ].map((tile) => (
-          <div key={tile.label} className="rounded-xl border border-stone-200 bg-white p-4">
+          <div key={tile.label} className="rounded-xl border border-stone-200 bg-card p-4">
             <p className="tile-value text-2xl">{tile.value}</p>
             <p className="text-sm text-stone-500">{tile.label}</p>
           </div>
@@ -58,7 +58,7 @@ export default async function WishesPage({
 
       <ul className="mt-6 space-y-3">
         {wishes.map((wish) => (
-          <li key={wish.id} className="rounded-xl border border-stone-200 bg-white p-4">
+          <li key={wish.id} className="rounded-xl border border-stone-200 bg-card p-4">
             <p className="whitespace-pre-line">{wish.text}</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
               <span className="text-stone-500">
@@ -74,7 +74,7 @@ export default async function WishesPage({
                     <input type="hidden" name="wishId" value={wish.id} />
                     <input type="hidden" name="status" value="APPROVED" />
                     <button className="rounded-lg bg-stone-900 px-4 py-2 text-xs text-white">
-                      На экран
+                      Опубликовать
                     </button>
                   </form>
                 ) : null}

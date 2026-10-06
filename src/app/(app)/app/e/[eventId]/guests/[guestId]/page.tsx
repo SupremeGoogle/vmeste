@@ -85,8 +85,8 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
     revalidatePath(`/app/e/${eventId}/guests/${guestId}`);
   }
 
-  /** Кто это на свадьбе. Роль видна на плане зала: место молодожёнов
-   *  помечается значком — «а где сидят молодые» спрашивают все. */
+  /** Кто это на свадьбе. Жених и невеста уходят из списка гостей, но
+   *  рассадка сажает их за стол молодожёнов и отмечает значком. */
   async function changeRole(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
@@ -136,7 +136,7 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
         <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}
 
-      <form action={save} className="mt-6 space-y-3 rounded-xl border border-stone-200 bg-white p-4">
+      <form action={save} className="mt-6 space-y-3 rounded-xl border border-stone-200 bg-card p-4">
         <label className="block">
           <span className="text-xs text-stone-500">Имя в списке</span>
           <input
@@ -174,7 +174,7 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
         <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">Сохранить</button>
       </form>
 
-      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+      <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4">
         <h2 className="text-sm font-medium">Кто это на свадьбе</h2>
         <form action={changeRole} className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           <select
@@ -189,13 +189,13 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
             Сохранить
           </button>
           <span className="text-xs text-stone-400">
-            Невеста и жених отмечаются значком на плане зала — и в панели,
-            и у гостя, и в распечатке.
+            Невеста и жених уходят из списка гостей и садятся за стол
+            молодожёнов — на плане зала их место отмечено значком.
           </span>
         </form>
       </section>
 
-      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+      <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4">
         <h2 className="text-sm font-medium">Как его могут искать на входе</h2>
         <p className="mt-1 text-xs text-stone-500">
           Поиск и так знает уменьшительные имена. Сюда добавляют то, чего он
@@ -231,7 +231,7 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
         ) : null}
       </section>
 
-      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm">
+      <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4 text-sm">
         <h2 className="font-medium">Именная ссылка</h2>
         <p className="mt-2 font-mono text-xs break-all text-stone-600">
           /i/{event.slug}/{guest.linkToken}
@@ -259,7 +259,7 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
         </div>
       </section>
 
-      <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm">
+      <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4 text-sm">
         <h2 className="font-medium">Спутник</h2>
         <p className="mt-2 text-stone-600">
           {guest.plusOneAllowed ? "Может прийти с парой" : "Приглашён один"}
@@ -274,7 +274,7 @@ export default async function GuestCardPage({ params, searchParams }: Props) {
       </section>
 
       {photos.length > 0 || wishes.length > 0 ? (
-        <section className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm">
+        <section className="mt-4 rounded-xl border border-stone-200 bg-card p-4 text-sm">
           <h2 className="font-medium">Что прислал</h2>
           <p className="mt-2 text-stone-600">
             Фотографий: {photos.length} · пожеланий: {wishes.length}

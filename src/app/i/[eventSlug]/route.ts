@@ -1,20 +1,30 @@
 /**
- * Публичное приглашение — ссылка для соцсетей и общего чата.
+ * Публичное приглашение — общая ссылка для соцсетей и общего чата.
  *
  * Отдаётся строкой HTML: интерактивности здесь нет вовсе, а рантайм React
- * стоил 174 КБ при 5 КБ собственной разметки. Форма ответа сюда не входит
- * намеренно — отвечать может только гость с именной ссылкой, иначе в
- * списке появятся ответы неизвестно от кого.
+ * стоил 174 КБ при 5 КБ собственной разметки.
+ *
+ * Ответить можно и отсюда: гость пишет своё имя в анкете и появляется в
+ * списке гостей отдельной строкой (`/i/{slug}/join`). `?name=` — имя,
+ * заранее вписанное организатором в ссылку «для конкретного человека»:
+ * оно уже стоит в поле, но гость может его исправить.
  */
 import { getInviteBySlug } from "@/server/repositories/invites";
 import { formatEventDateTime } from "@/lib/format-datetime";
-import { html } from "@/server/guest-html/layout";
+import { esc, html } from "@/server/guest-html/layout";
 import { coupleNames, invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
+import { guestFeatureLinks } from "@/server/guest-html/guest-feature-links";
+import { loadWishlist } from "@/server/guest-html/wishlist";
+import { buildInlineRsvp, hasInlineRsvp } from "@/server/guest-html/inline-rsvp";
+import { fallbackRsvpSection, withInlineRsvp } from "@/server/guest-html/inline-rsvp-form";
+import { RSVP_FIELDS_CSS } from "@/server/guest-html/rsvp-fields";
+import { readFlash } from "@/server/guest-html/flash";
+import { db } from "@/server/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ eventSlug: string }> },
 ) {
   const { eventSlug } = await params;
@@ -26,18 +36,56 @@ export async function GET(
     });
   }
 
+  const url = new URL(request.url);
+  const name = (url.searchParams.get("name") ?? "").trim().slice(0, 120);
+  const joinHref = `/i/${eventSlug}/join${name ? `?name=${encodeURIComponent(name)}` : ""}`;
   const when = formatEventDateTime(invite.event.eventDate, invite.event.timezone);
+  const [links, wishlist] = await Promise.all([
+    guestFeatureLinks(invite.event.id),
+    loadWishlist(invite.event.id, { pageHref: `/i/${eventSlug}/wishlist` }),
+  ]);
+
+  const rsvp = hasInlineRsvp(invite.theme.template)
+    ? await buildInlineRsvp(invite.event.id, invite.theme.template, {
+        name,
+        status: "PENDING",
+        mealOptionId: null,
+        drinkIds: [],
+        answers: [],
+        musicWish: "",
+        plusOneAllowed: invite.event.allowPlusOne,
+        comment: "",
+        plusOneName: "",
+        plusOneMealOptionId: null,
+        plusOneDrinkOptionIds: [],
+      }, {
+        action: `/i/${eventSlug}/join`,
+        saved: false,
+        closed: Boolean(invite.event.rsvpDeadline && Date.now() > invite.event.rsvpDeadline.getTime()),
+        // Точный текст ошибки — только подписанный (guest-html/flash.ts).
+        flash: readFlash(url.searchParams, url.searchParams.has("msg")
+          ? (await db.event.findUnique({ where: { id: invite.event.id }, select: { guestLinkSecret: true } }))?.guestLinkSecret ?? null
+          : null),
+      })
+    : null;
+
+  // Имя в ссылке — значит, приглашение адресовано человеку: обращаемся к нему.
+  const greeting = name ? `<p class="who">${esc(name)}</p>` : "";
 
   return html(
     invitePage({
       title: invite.event.title,
       theme: invite.theme,
-      body: `${renderBlocks(invite.blocks, null, null, invite.event.eventDate, invite.theme, invite.event.timezone)}<p class="foot">${when}</p>`,
+      extraCss: rsvp ? RSVP_FIELDS_CSS : undefined,
+      body: `${rsvp ? "" : greeting}${renderBlocks(invite.blocks, joinHref, null, invite.event.eventDate, invite.theme, invite.event.timezone, { rsvp, wishlist })}${rsvp ? withInlineRsvp(rsvp, false, () => fallbackRsvpSection(invite.blocks)) : ""}${links.length ? `<div class="links">${links.join("")}</div>` : ""}<p class="foot">${when}</p>`,
       script: inviteScript(invite.blocks, invite.theme, coupleNames(invite.blocks, invite.event.title)),
     }),
     {
       headers: {
-        "cache-control": "public, max-age=60, stale-while-revalidate=86400",
+        // С именем в адресе страница личная — в общий кеш её не кладём.
+        "cache-control": name || rsvp?.error
+          ? "private, no-store"
+          : "public, max-age=60, stale-while-revalidate=86400",
       },
     },
   );

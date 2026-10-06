@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "printDesign" JSONB NOT NULL DEFAULT '{}';

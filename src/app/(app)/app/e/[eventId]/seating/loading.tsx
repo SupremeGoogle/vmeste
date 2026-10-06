@@ -29,7 +29,7 @@ export default function SeatingLoading() {
             <Bone className="h-6 w-40 rounded-lg" />
           </div>
           <div className="rounded-xl border border-stone-200 bg-stone-100/60 p-6">
-            <div className="relative aspect-[10/7] w-full rounded-sm bg-white shadow-sm">
+            <div className="relative aspect-[10/7] w-full rounded-sm bg-card shadow-sm">
               {TABLES.map((table, i) => (
                 <div
                   key={i}
@@ -46,7 +46,7 @@ export default function SeatingLoading() {
           </div>
         </div>
         <div className="hidden lg:block lg:w-72">
-          <div className="rounded-xl border border-stone-200 bg-white p-4">
+          <div className="rounded-xl border border-stone-200 bg-card p-4">
             <Bone className="h-4 w-32" />
             <Bone className="mt-4 h-9 w-full rounded-lg" />
             {Array.from({ length: 7 }, (_, i) => (

@@ -31,7 +31,10 @@ export const DECOR_CSS = `
 .sheet>section,.sheet>form,.sheet>p,.sheet>div{position:relative;z-index:1}
 .sheet{padding-top:3.25rem;padding-bottom:3.25rem}
 .cover{padding-top:1rem}
-@media(max-width:26rem){.decor{width:58vw}.sheet{padding-top:2.5rem;padding-bottom:2.5rem}}
+/* На телефоне букет уже и ниже по высоте, а лист начинается под ним:
+   иначе стебли перечёркивают заголовок и имена, а нижний угол ложится
+   на подпись внизу. */
+@media(max-width:26rem){.decor{width:40vw}.sheet{padding-top:8.5rem;padding-bottom:8.5rem}}
 `;
 
 /**

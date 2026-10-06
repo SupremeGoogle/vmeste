@@ -1,0 +1,49 @@
+.timing-workspace { --timing-accent: #804a61; }
+.timing-workspace > .timing-heading { margin-bottom: 24px; }
+.timing-heading h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.2; }
+.timing-heading p { margin-top: 8px; font-size: 13px; color: var(--muted, #8a7c73); }
+.timing-templates { margin-bottom: 28px; }
+.timing-templates > summary { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--foreground); }
+.timing-templates > summary::after { content: "+"; margin-left: auto; font-size: 22px; font-weight: 400; }
+.timing-templates[open] > summary::after { content: "−"; }
+.timing-templates > summary > span { padding: 4px 9px; border: 1px solid #d9c7cf; border-radius: 999px; color: var(--timing-accent); font-size: 10px; font-weight: 400; }
+.timing-templates-intro { margin: 22px 0; }
+.timing-templates-intro h3 { font-size: 27px; }
+.timing-templates-intro p { max-width: 560px; margin-top: 6px; color: var(--muted, #8a7c73); font-size: 13px; line-height: 1.7; }
+.timing-template-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.timing-template { --ink: #7c4058; --wash: #f7ebed; --edge: #e8d3db; display: flex; flex-direction: column; min-width: 0; padding: 23px 20px 18px; border: 1px solid var(--edge); border-radius: 24px; background: linear-gradient(150deg, #fffdf9, var(--wash)); box-shadow: 0 9px 25px #7154490b, inset 0 1px 0 #fff; color: #46383b; }
+.timing-template--lavender { --ink: #746085; --wash: #f1edf7; --edge: #dfd6ea; }
+.timing-template--sage { --ink: #5e7661; --wash: #edf2e8; --edge: #d7e0cf; }
+.timing-template-top { display: flex; align-items: center; justify-content: space-between; color: var(--ink); }
+.timing-template-top > span:first-child { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+.timing-template-top > span:last-child { font-size: 29px; line-height: 1; }
+.timing-template-mood { margin-top: 22px; font-size: 10px; color: var(--ink); }
+.timing-template h4 { margin-top: 9px; font-family: var(--font-serif), Georgia, serif; font-size: 29px; line-height: 1.1; font-weight: 400; letter-spacing: -.035em; }
+.timing-template-subtitle { min-height: 38px; margin-top: 12px; color: #887a7d; font-size: 11px; line-height: 1.6; }
+.timing-template-stages { display: grid; gap: 0; margin: 20px 0 18px; list-style: none; padding: 0; }
+.timing-template-stages li { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 11px; padding: 10px 0; border-top: 1px solid var(--edge); font-size: 12px; line-height: 1.5; }
+.timing-template-stages time { color: var(--ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.timing-template-notes { margin-top: auto; margin-bottom: 18px; font-size: 11px; color: var(--ink); }
+.timing-template-notes summary { cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.timing-template-notes > div { margin-top: 14px; }
+.timing-template-notes p { margin-top: 5px; color: #81757a; line-height: 1.7; }
+.timing-template form button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 43px; padding: 11px 14px; border: 1px solid var(--edge); border-radius: 12px; background: #fffdfbcc; color: var(--ink); font-size: 11px; font-weight: 600; cursor: pointer; transition: background .2s, box-shadow .2s; }
+.timing-template form button:hover { background: #fff; box-shadow: 0 3px 10px #71544914; }
+.timing-template form button:disabled { opacity: .6; cursor: wait; }
+.timing-template form button span { font-size: 17px; }
+.timing-template-hint { margin-top: 14px; font-size: 11px; line-height: 1.7; color: var(--muted, #8a7c73); }
+.timing-workspace .day-plan-list { position: relative; padding-left: 14px; border-left: 1px solid #decad2; }
+.timing-workspace .day-plan-step { position: relative; border-radius: 18px; padding: 18px; box-shadow: 0 3px 12px #71544906; }
+.timing-workspace .day-plan-step::before { content: ""; position: absolute; left: -20px; top: 27px; width: 10px; height: 10px; border: 2px solid var(--card, #fffdf9); border-radius: 50%; background: #b38599; }
+.timing-workspace .day-plan-time { color: var(--timing-accent); font-size: 20px; }
+.timing-add-step { margin-top: 22px; padding: 16px 18px; border: 1px dashed #d3bdc7; border-radius: 18px; }
+.timing-add-step > summary { cursor: pointer; font-size: 13px; color: var(--timing-accent); font-weight: 600; }
+.timing-add-step form { margin-top: 18px; }
+@media (max-width: 760px) {
+  .timing-template-grid { display: flex; align-items: stretch; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 0 12px; }
+  .timing-template { flex: 0 0 min(280px, 82vw); scroll-snap-align: start; padding: 21px 18px 16px; }
+  .timing-templates-intro h3 { font-size: 24px; }
+  .timing-templates-intro p { font-size: 12px; }
+  .timing-workspace .day-plan-step { padding: 14px; }
+  .timing-workspace .day-plan-time { font-size: 18px; }
+}

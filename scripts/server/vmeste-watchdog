@@ -1,0 +1,27 @@
+#!/bin/bash
+# Сторож «Вместе»: /api/health не отвечает два раза подряд — перезапуск
+# через pm2 и сообщение владельцу в Telegram (если бот настроен).
+set -uo pipefail
+STATE=/var/lib/vmeste-watchdog; mkdir -p "$STATE"
+ENV=/var/www/vmeste/shared/.env
+get() { grep -E "^$1=" "$ENV" | head -1 | cut -d= -f2- | tr -d '"'; }
+tg() {
+  local token chat base; token=$(get TELEGRAM_BOT_TOKEN); chat=$(get TELEGRAM_CHAT_ID); base=$(get TELEGRAM_API_BASE)
+  [ -z "$token" ] || [ -z "$chat" ] && return 0
+  curl -s -m 10 -o /dev/null "${base:-https://api.telegram.org}/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1"
+}
+# Диск: заполненный диск роняет базу и все три сайта. Предупреждение — раз в 6 часов.
+free_mb=$(df -m --output=avail / | tail -1 | tr -d " ")
+if [ "$free_mb" -lt 1536 ]; then
+  last=$(cat "$STATE/disk" 2>/dev/null || echo 0)
+  if [ $(( $(date +%s) - last )) -gt 21600 ]; then date +%s > "$STATE/disk"; tg "💾 На сервере осталось ${free_mb} МБ диска — пора чистить (старые выпуски, логи, бэкапы)"; fi
+fi
+if curl -fsS -m 10 http://127.0.0.1:3010/api/health >/dev/null 2>&1; then
+  [ -f "$STATE/down" ] && { rm -f "$STATE/down" "$STATE/fails"; tg "✅ Вместе снова работает"; }
+  rm -f "$STATE/fails"; exit 0
+fi
+fails=$(( $(cat "$STATE/fails" 2>/dev/null || echo 0) + 1 )); echo $fails > "$STATE/fails"
+[ "$fails" -lt 2 ] && exit 0
+echo "$(date -Is) health failed $fails times — restarting"
+sudo -u vmeste HOME=/home/vmeste pm2 restart vmeste >/dev/null 2>&1
+if [ ! -f "$STATE/down" ]; then touch "$STATE/down"; tg "🔴 Вместе не отвечает — перезапускаю. Свободно памяти: $(free -m | awk '/Mem/{print $7}') МБ"; fi

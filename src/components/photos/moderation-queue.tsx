@@ -14,6 +14,10 @@
  *   — следующее фото подгружается заранее, иначе каждое решение упирается
  *     в ожидание картинки.
  *
+ * Фото, которое фильтр счёл откровенным (`nsfw`), приходит размытым:
+ * модерацию нередко открывают прямо в зале, при гостях. Размытие снимается
+ * кнопкой или клавишей V — решение всё равно за человеком.
+ *
  * Клавиши читаются по `event.code`, а не по `event.key`. У организатора
  * в русской раскладке `KeyA` даёт «ф», и привязка к букве развалилась бы
  * ровно в тот момент, когда человек печатает имена гостей по-русски.
@@ -23,6 +27,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type QueuePhoto = {
   id: string;
   previewOk: boolean;
+  /** Фильтр 18+ счёл кадр откровенным — показываем размытым. */
+  nsfw: boolean;
   guestName: string | null;
   createdAt: string;
 };
@@ -50,6 +56,10 @@ export function ModerationQueue({
   // Модератор верит цифре, которая крупнее.
   const [counts, setCounts] = useState(initialCounts);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Какие размытые кадры модератор решил открыть. По id, а не флагом:
+  // иначе «открыть» перешло бы на следующее фото в очереди.
+  const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
+  const reveal = useCallback((id: string) => setRevealed((prev) => new Set(prev).add(id)), []);
 
   // Указатель приводится к границам прямо в рендере, а не эффектом:
   // очередь укорачивается на каждом решении, и «поправить состояние
@@ -122,6 +132,12 @@ export function ModerationQueue({
           event.preventDefault();
           undo();
           break;
+        case "KeyV":
+          if (queue[cursor]) {
+            event.preventDefault();
+            reveal(queue[cursor].id);
+          }
+          break;
         case "ArrowRight":
           event.preventDefault();
           setIndex((prev) => Math.min(prev + 1, Math.max(0, queue.length - 1)));
@@ -134,7 +150,7 @@ export function ModerationQueue({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [decide, undo, queue.length]);
+  }, [decide, undo, reveal, queue, cursor]);
 
   const tiles = (
     <div className="grid gap-3 sm:grid-cols-3">
@@ -143,7 +159,7 @@ export function ModerationQueue({
         { label: "Опубликовано", value: counts.approved },
         { label: "Отклонено", value: counts.rejected },
       ].map((tile) => (
-        <div key={tile.label} className="rounded-xl border border-stone-200 bg-white p-4">
+        <div key={tile.label} className="rounded-xl border border-stone-200 bg-card p-4">
           <p className="tile-value text-2xl">{tile.value}</p>
           <p className="text-sm text-stone-500">{tile.label}</p>
         </div>
@@ -155,7 +171,7 @@ export function ModerationQueue({
     return (
       <div>
         {tiles}
-        <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-10 text-center">
+        <div className="mt-6 rounded-2xl border border-stone-200 bg-card p-10 text-center">
         <p className="text-lg">Очередь разобрана</p>
         <p className="mt-1 text-sm text-stone-500">
           Разобрано за этот заход: {done}
@@ -175,18 +191,31 @@ export function ModerationQueue({
           Осталось {queue.length} · разобрано {done}
         </span>
         <span className="hidden sm:block">
-          пробел — одобрить · X — отклонить · Z — отменить · ← → листать
+          пробел — одобрить · X — отклонить · Z — отменить · V — показать · ← → листать
         </span>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-stone-900">
+      <div className="relative mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-stone-900">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={current.id}
           src={`/api/media/${eventId}/${current.id}?size=full`}
           alt=""
-          className="mx-auto max-h-[60vh] w-auto object-contain"
+          className={`mx-auto max-h-[60vh] w-auto object-contain ${
+            current.nsfw && !revealed.has(current.id) ? "scale-110 blur-3xl" : ""
+          }`}
         />
+        {current.nsfw && !revealed.has(current.id) ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center text-white">
+            <p className="text-sm">Возможно, откровенный кадр</p>
+            <button
+              onClick={() => reveal(current.id)}
+              className="rounded-lg border border-white/60 px-4 py-2 text-sm"
+            >
+              Показать (V)
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* Следующее фото грузится заранее и не показывается. */}
@@ -198,6 +227,11 @@ export function ModerationQueue({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-stone-600">
           {current.guestName ?? "Гость не определён"}
+          {current.nsfw ? (
+            <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs text-red-900">
+              возможно 18+
+            </span>
+          ) : null}
           {!current.previewOk ? (
             <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
               превью не получилось

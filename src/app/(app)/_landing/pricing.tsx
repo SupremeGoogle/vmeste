@@ -22,18 +22,6 @@ type Plan = {
 
 const PLANS: Plan[] = [
   {
-    name: "Своя свадьба",
-    note: "Паре, которая всё делает сама",
-    price: { event: "0 ₽", year: "0 ₽" },
-    unit: { event: "первая свадьба целиком", year: "первая свадьба целиком" },
-    features: [
-      "До 40 гостей",
-      "Приглашение и ответы гостей",
-      "Рассадка и план зала",
-      "Печать плана и табличек",
-    ],
-  },
-  {
     name: "Свадьба целиком",
     note: "Всё, что есть в сервисе",
     price: { event: "4 900 ₽", year: "39 000 ₽" },
@@ -41,7 +29,7 @@ const PLANS: Plan[] = [
     features: [
       "Гостей без ограничения",
       "Вход по QR и поиск по имени",
-      "Экран в зале и фотографии гостей",
+      "Фотографии гостей и альбом после свадьбы",
       "Розыгрыш среди пришедших",
       "Выгрузка в CSV и PDF",
     ],
@@ -85,14 +73,11 @@ export function Pricing() {
         ))}
       </div>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5">
         {PLANS.map((plan) => (
           <div
             key={plan.name}
-            // На планшете карточек в ряду две, и третья осталась бы одна
-            // в половину ширины. `sm:last:col-span-2` растягивает её на
-            // всю строку; на широком экране столбцов снова три.
-            className={`card-lift relative flex flex-col rounded-2xl border p-5 sm:last:col-span-2 sm:p-6 lg:last:col-span-1 ${
+            className={`card-lift relative flex flex-col rounded-2xl border p-5 sm:p-6 ${
               plan.accent
                 ? "border-stone-900/25 bg-white shadow-[0_20px_50px_-30px_rgba(64,56,51,0.6)]"
                 : "border-stone-200 bg-white/70"
@@ -126,15 +111,14 @@ export function Pricing() {
                   : "border border-stone-300 text-stone-800"
               }`}
             >
-              Начать бесплатно
+              Создать кабинет
             </Link>
           </div>
         ))}
       </div>
 
       <p className="mt-6 text-center text-xs text-stone-500">
-        Цены — ориентир для демонстрации: сервис пока работает в тестовом режиме,
-        и первая свадьба в любом случае бесплатная.
+        Цены — ориентир для демонстрации: сервис пока работает в тестовом режиме.
       </p>
     </div>
   );

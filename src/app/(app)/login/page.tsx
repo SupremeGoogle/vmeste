@@ -1,5 +1,7 @@
+import { BrandLogo } from "@/components/brand";
 /**
- * Вход организатора. Регистрации нет: пользователи заводятся сидом или вручную.
+ * Вход организатора: Google или почта с паролем. Пароль работает только
+ * после подтверждения почты (services/email-auth.ts).
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,6 +10,7 @@ import { verifyPassword } from "@/server/auth/password";
 import { createSession, getSessionUser } from "@/server/auth/session";
 import { rateLimit } from "@/server/rate-limit";
 import { googleEnabled } from "@/server/auth/google";
+import { emailConfigured } from "@/server/email/send";
 import { GoogleButton, OrRule } from "../_auth/google-button";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +41,11 @@ async function login(formData: FormData) {
   if (user && !user.passwordHash) redirect("/login?error=google_only");
 
   if (!user || !ok) redirect("/login?error=1");
+  // Пароль верный, но почту не подтвердили: кабинет ещё не открыт. Сообщаем
+  // только после верного пароля — так это не выдаёт, чьи адреса у нас есть.
+  if (!user.emailVerified) redirect(`/register/check?email=${encodeURIComponent(email)}&unverified=1`);
+  // Заблокирован в панели суперадмина — пароль верный, но входа нет.
+  if (user.blockedAt) redirect("/login?error=blocked");
 
   await createSession(user.id);
   redirect("/app");
@@ -45,11 +53,13 @@ async function login(formData: FormData) {
 
 const LOGIN_ERRORS: Record<string, string> = {
   rate: "Слишком много попыток, подождите.",
+  blocked: "Доступ к кабинету закрыт. Напишите в поддержку.",
   google_only: "У этого адреса вход через Google — нажмите кнопку выше.",
   google_off: "Вход через Google пока не настроен.",
   google_cancel: "Вход через Google отменён.",
   google_state: "Ссылка входа устарела, начните заново.",
   google_fail: "Google не подтвердил вход. Попробуйте ещё раз.",
+  link: "Ссылка из письма устарела или уже использована. Войдите или запросите новое письмо.",
   default: "Неверная почта или пароль.",
 };
 
@@ -64,7 +74,7 @@ export default async function LoginPage({
   return (
     <main className="mx-auto max-w-sm px-5 py-16 sm:px-6 sm:py-24">
       <p className="text-center">
-        <Link href="/" className="font-serif text-2xl tracking-wide">Вместе</Link>
+        <Link href="/" className="font-serif text-2xl tracking-wide"><BrandLogo size={64} /></Link>
       </p>
       <h1 className="mt-8 text-center text-3xl">Вход</h1>
       <p className="mt-2 text-center text-sm text-stone-600">Панель организатора</p>
@@ -82,14 +92,14 @@ export default async function LoginPage({
           <label className="block text-sm text-stone-600" htmlFor="email">Почта</label>
           <input
             id="email" name="email" type="email" required autoComplete="username"
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
           />
         </div>
         <div>
           <label className="block text-sm text-stone-600" htmlFor="password">Пароль</label>
           <input
             id="password" name="password" type="password" required autoComplete="current-password"
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
           />
         </div>
 
@@ -98,6 +108,7 @@ export default async function LoginPage({
         <button type="submit" className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-white">
           Войти
         </button>
+        {emailConfigured() && <p className="text-center text-sm"><Link href="/forgot" className="text-stone-600 underline">Забыли пароль?</Link></p>}
       </form>
 
       <p className="mt-6 text-center text-sm text-stone-600">

@@ -4,6 +4,8 @@ import type { InviteBlockView } from "@/server/repositories/invites";
 import { RUBY_DECOR_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
+import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
+import { L } from "@/server/guest-html/template-labels";
 
 function rose(className = "", variant: "rose" | "cluster" = "rose"): string {
   return `<img class="ruby-rose ${className}" src="${RUBY_DECOR_IMAGES[variant]}" alt="" loading="lazy" decoding="async" aria-hidden="true">`;
@@ -15,7 +17,7 @@ function seal(label = "E · J"): string {
 
 function names(value: string): string {
   const parts = value.trim().split(/\s+(?:и|&|and)\s+/i);
-  return parts.length === 2 ? `<span>${esc(parts[0])}</span><i>&amp;</i><span>${esc(parts[1])}</span>` : esc(value);
+  return parts.length === 2 ? `<span>${esc(parts[0])}</span><i>&amp;<wbr></i><span>${esc(parts[1])}</span>` : esc(value);
 }
 
 function wrap(block: InviteBlockView, className: string, body: string, editable: boolean): string {
@@ -29,13 +31,13 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
       const photo = c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high" data-ruby-parallax${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : "";
-      return wrap(block, "ruby-cover", `${rose("ruby-cover-rose")}<div class="ruby-monogram" aria-hidden="true">Together<br>always</div><div class="ruby-portrait">${photo}</div><div class="ruby-cover-copy"><p class="ruby-tag"${e.text("title")}>${esc(c.title)}</p><h1 class="ruby-names"${e.text("names", { join: " и " })}>${names(c.names)}</h1><span class="ruby-rule"></span><p class="ruby-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="ruby-copy"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div><a class="ruby-open" href="#ruby-story"><b>Открыть приглашение</b><span>→</span></a><p class="ruby-cover-foot">Different people · same love</p>`, editable);
+      return wrap(block, "ruby-cover", `${rose("ruby-cover-rose")}<div class="ruby-monogram" aria-hidden="true">${L("ruby.t1", "Вместе")}<br>${L("ruby.t10", "навсегда")}</div><div class="ruby-portrait">${photo}</div><div class="ruby-cover-copy"><p class="ruby-tag"${e.text("title")}>${esc(c.title)}</p><h1 class="ruby-names"${e.text("names", { join: " и " })}>${names(c.names)}</h1><span class="ruby-rule"></span><p class="ruby-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="ruby-copy"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div><a class="ruby-open" href="#ruby-story"><b>${L("ruby.t6", "Открыть приглашение")}</b><span>→</span></a><p class="ruby-cover-foot">${L("ruby.t8", "Разные люди · одна любовь")}</p>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
       const closing = /с любовью|до скорой|до встречи/i.test(`${c.tag} ${c.title}`);
       if (closing) return wrap(block, "ruby-closing", `${rose("ruby-closing-rose", "cluster")}<p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${seal("♥")}`, editable);
-      return wrap(block, "ruby-story", `${rose("ruby-story-rose", "cluster")}<div id="ruby-story"></div><p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="ruby-handnote" aria-hidden="true">Love looks<br>good here</div>`, editable);
+      return wrap(block, "ruby-story", `${rose("ruby-story-rose", "cluster")}<div id="ruby-story"></div><p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="ruby-rule"></span><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${(c as { wishlist?: boolean }).wishlist ? "" : `<div class="ruby-handnote" aria-hidden="true">${L("ruby.t3", "Здесь живёт")}<br>${L("ruby.t9", "любовь")}</div>`}`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];
@@ -52,9 +54,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
     }
     case "RSVP_FORM": {
       const c = block.content as BlockContentMap["RSVP_FORM"];
-      const result = answered === "yes" ? "Спасибо, мы будем вас ждать!" : answered === "no" ? "Спасибо, что сообщили нам." : "";
-      const action = result ? `<p class="ruby-answer">${result}</p>` : rsvpHref ? `<a class="ruby-cta" href="${esc(rsvpHref)}"${editable ? " data-editor-ui" : ""}><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b><span>→</span></a>` : `<span class="ruby-cta"><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b><span>→</span></span>`;
-      return wrap(block, "ruby-rsvp", `<div class="ruby-steps" aria-hidden="true"><b>1</b><i></i><span>2</span><i></i><span>3</span></div><p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="ruby-options" aria-hidden="true"><span class="active">Да, буду</span><span>К сожалению, нет</span></div><div class="ruby-form-lines" aria-hidden="true"><span>Количество гостей</span><b>− &nbsp;&nbsp; 2 &nbsp;&nbsp; +</b><span>Пожелания молодожёнам</span><i></i></div>${action}`, editable);
+      return wrap(block, "ruby-rsvp", `<p class="ruby-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="ruby-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${inlineRsvpForm(block)}`, editable);
     }
     default:
       return "";

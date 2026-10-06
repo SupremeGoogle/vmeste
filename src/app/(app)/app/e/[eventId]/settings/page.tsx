@@ -2,19 +2,21 @@
  * Настройки мероприятия.
  *
  * Здесь собрано всё, что иначе пришлось бы править в базе руками: дата и
- * площадка, часовой пояс, что включено для гостей, меню на ужин.
+ * площадка, часовой пояс, что включено для гостей. Меню и бар — в анкете гостя (конструктор).
  * Проверка этапа 8 — «прогон без вмешательства в БД» — по сути про эту
  * страницу: пока чего-то из неё нет, репетиция не проходится.
  */
 import { revalidatePath, updateTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { requireEventContext } from "@/server/context";
+import Link from "next/link";
 import {
-  addDrinkOption, addMealOption, getEvent, listDrinkOptions, listMealOptions,
-  rotateGuestSecret, setEventStatus, toggleDrinkOption, toggleMealOption, updateEventSettings,
+  getEvent, rotateGuestSecret, setEventStatus, updateEventSettings,
 } from "@/server/repositories/events";
 import { formatEventDateTime } from "@/lib/format-datetime";
 import { allEventTags } from "@/lib/cache-tags";
+import { archiveAt, purgeAt, retentionDayLabel, retentionStage } from "@/lib/retention";
+import { isRetentionExempt } from "@/server/services/retention";
 
 export const dynamic = "force-dynamic";
 
@@ -80,10 +82,6 @@ export default async function SettingsPage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
-  const [meals, drinks] = await Promise.all([
-    listMealOptions(ctx, eventId),
-    listDrinkOptions(ctx, eventId),
-  ]);
 
   async function save(formData: FormData) {
     "use server";
@@ -110,39 +108,16 @@ export default async function SettingsPage({ params, searchParams }: Props) {
     revalidatePath(`/app/e/${eventId}/settings`);
   }
 
-  async function addMeal(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    await addMealOption(ctx, eventId, String(formData.get("title") ?? ""));
-    revalidatePath(`/app/e/${eventId}/settings`);
-  }
-
-  async function toggleMeal(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    await toggleMealOption(ctx, eventId, String(formData.get("mealId")));
-    revalidatePath(`/app/e/${eventId}/settings`);
-  }
-
-  async function addDrink(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    await addDrinkOption(ctx, eventId, String(formData.get("title") ?? ""));
-    revalidatePath(`/app/e/${eventId}/settings`);
-  }
-
-  async function toggleDrink(formData: FormData) {
-    "use server";
-    const ctx = await requireEventContext(eventId);
-    await toggleDrinkOption(ctx, eventId, String(formData.get("drinkId")));
-    revalidatePath(`/app/e/${eventId}/settings`);
-  }
-
   async function setStatus(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
     const status = String(formData.get("status"));
     if (status !== "DRAFT" && status !== "PUBLISHED" && status !== "ARCHIVED") return;
+    // Через 10 дней после свадьбы мероприятие в архиве насовсем: фоновая
+    // задача всё равно вернула бы его туда через час.
+    const current = await getEvent(ctx, eventId);
+    if (!current) return;
+    if (status !== "ARCHIVED" && retentionStage(current.eventDate) !== "active" && !(await isRetentionExempt(ctx.orgId))) return;
     await setEventStatus(ctx, eventId, status);
     revalidatePath(`/app/e/${eventId}/settings`);
   }
@@ -173,6 +148,9 @@ export default async function SettingsPage({ params, searchParams }: Props) {
     revalidatePath(`/app/e/${eventId}/settings`);
   }
 
+  // Свадьбы суперадмина под сроки хранения не попадают (retentionExemptEmails).
+  const stage = (await isRetentionExempt(event.orgId)) ? "exempt" : retentionStage(event.eventDate);
+
   const toggles = [
     { name: "allowPlusOne", label: "Разрешить +1", checked: event.allowPlusOne },
     { name: "photosEnabled", label: "Приём фотографий", checked: event.photosEnabled },
@@ -189,7 +167,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}
 
-      <form action={save} className="space-y-4 rounded-xl border border-stone-200 bg-white p-5">
+      <form action={save} className="space-y-4 rounded-xl border border-stone-200 bg-card p-5">
         <label className="block">
           <span className="text-sm text-stone-500">Название</span>
           <input
@@ -259,72 +237,35 @@ export default async function SettingsPage({ params, searchParams }: Props) {
         <button className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white">Сохранить</button>
       </form>
 
-      <section className="mt-6 rounded-xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-medium">Меню на ужин</h2>
-        <p className="mt-1 text-xs text-stone-500">
-          Из этого списка гость выбирает в форме ответа. Выключенное блюдо
-          пропадает из формы, но остаётся в сводке для кухни — у тех, кто уже выбрал.
-        </p>
-        <ul className="mt-3 space-y-2">
-          {meals.map((meal) => (
-            <li key={meal.id} className="flex items-center justify-between gap-3 text-sm">
-              <span className={meal.active ? "" : "text-stone-400 line-through"}>
-                {meal.title}
-                <span className="ml-2 text-xs text-stone-400">выбрали: {meal._count.guests}</span>
-              </span>
-              <form action={toggleMeal}>
-                <input type="hidden" name="mealId" value={meal.id} />
-                <button className="text-xs text-stone-500 underline">
-                  {meal.active ? "выключить" : "включить"}
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
-        <form action={addMeal} className="mt-3 flex gap-2">
-          <input
-            name="title" placeholder="Например, «Рыба»"
-            className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
-          />
-          <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Добавить</button>
-        </form>
+      <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-card p-5">
+        <div>
+          <h2 className="text-sm font-medium">Меню и бар</h2>
+          <p className="mt-1 text-xs text-stone-500">Блюда, напитки и другие вопросы гостям теперь настраиваются в анкете гостя.</p>
+        </div>
+        <Link href={`/app/e/${eventId}/invite/form`} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
+          Открыть анкету гостя
+        </Link>
       </section>
 
-      <section className="mt-6 rounded-xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-medium">Бар</h2>
-        <p className="mt-1 text-xs text-stone-500">
-          Гость отмечает в форме ответа, что будет пить, — можно несколько
-          напитков. Выключенный напиток пропадает из формы, но остаётся
-          в сводке для бара у тех, кто его уже выбрал.
-        </p>
-        <ul className="mt-3 space-y-2">
-          {drinks.map((drink) => (
-            <li key={drink.id} className="flex items-center justify-between gap-3 text-sm">
-              <span className={drink.active ? "" : "text-stone-400 line-through"}>
-                {drink.title}
-                <span className="ml-2 text-xs text-stone-400">выбрали: {drink._count.choices}</span>
-              </span>
-              <form action={toggleDrink}>
-                <input type="hidden" name="drinkId" value={drink.id} />
-                <button className="text-xs text-stone-500 underline">
-                  {drink.active ? "выключить" : "включить"}
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
-        <form action={addDrink} className="mt-3 flex gap-2">
-          <input
-            name="title" placeholder="Например, «Красное вино»"
-            className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
-          />
-          <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Добавить</button>
-        </form>
-      </section>
-
-      <section className="mt-6 rounded-xl border border-stone-200 bg-white p-5">
+      <section className="mt-6 rounded-xl border border-stone-200 bg-card p-5">
         <h2 className="text-sm font-medium">Публикация и доступ</h2>
+        {stage === "exempt" ? (
+          <p className="mt-3 text-xs text-stone-500">Свадьба администратора: сроки хранения не действуют — в архив сама не уйдёт, фото не удалятся.</p>
+        ) : stage !== "active" ? (
+          <p className="mt-3 rounded-lg bg-stone-100 px-4 py-3 text-sm text-stone-600">
+            Свадьба прошла больше 10 дней назад — мероприятие в архиве. Гостевые ссылки не работают.
+            {stage === "archived"
+              ? ` Фотографии удалятся ${retentionDayLabel(purgeAt(event.eventDate), event.timezone)} — скачайте их в разделе «Фото».`
+              : " Фотографии удалены по сроку хранения."}
+            {" "}Если дата свадьбы указана неверно — исправьте её выше, и сроки сдвинутся.
+          </p>
+        ) : (
+          <p className="mt-3 text-xs text-stone-500">
+            {retentionDayLabel(archiveAt(event.eventDate), event.timezone)} мероприятие само уйдёт в архив, ещё через 5 дней фотографии удалятся.
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+          {stage === "active" || stage === "exempt" ? <>
           <form action={setStatus}>
             <input
               type="hidden" name="status"
@@ -349,6 +290,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
               </button>
             </form>
           )}
+          </> : null}
           <form action={rotate}>
             <button className="rounded-lg border border-stone-300 px-4 py-2">
               Сбросить гостевые сессии

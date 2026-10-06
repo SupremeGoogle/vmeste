@@ -1,13 +1,21 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
+  // Локальный просмотр по IP должен загружать те же скрипты, что localhost.
+  allowedDevOrigins: ["127.0.0.1"],
   // Иначе Turbopack поднимается вверх по дереву и подхватывает чужой
   // package-lock.json из домашнего каталога.
   turbopack: { root: path.resolve(".") },
 
   // Своя страница «не найдено» вместо стандартной английской (Next 16).
   experimental: { globalNotFound: true },
+
+  // libheif в WASM ищет свой .wasm рядом с модулем — пусть Node грузит его
+  // сам, а не бандлер. `sharp` Next и так держит снаружи. Фильтр 18+
+  // (TensorFlow) живёт в отдельном процессе workers/nsfw.mjs и в сборку не попадает.
+  serverExternalPackages: ["heic-decode", "libheif-js"],
 
   async headers() {
     return [
@@ -50,4 +58,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry: ошибки сервера и браузера. Отчёты браузера идут через наш адрес
+// /monitoring — их не режут блокировщики и сетевые фильтры. Карты кода
+// загружаются, только если задан SENTRY_AUTH_TOKEN (на сборке в CI/сервере).
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  sentryUrl: process.env.SENTRY_URL,
+  tunnelRoute: "/monitoring",
+  silent: !process.env.CI,
+  telemetry: false,
+  widenClientFileUpload: true,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

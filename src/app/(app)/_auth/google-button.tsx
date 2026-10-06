@@ -1,23 +1,24 @@
 /**
  * Кнопка «Продолжить с Google».
  *
- * Обычная ссылка, а не форма с обработчиком: вход через Google — это
- * переход браузера, и он обязан работать до того, как доедет JavaScript.
+ * Обычная ссылка <a>, а не <Link> из Next: роутер Next пытался открыть
+ * /api/auth/google/start фоновым запросом, упирался в переадресацию на
+ * accounts.google.com и ничего не показывал — человек жал кнопку снова и
+ * снова (6 октября — 15 нажатий за 5 секунд), каждое нажатие перезаписывало
+ * cookie входа, и Google-вход отвергался как устаревший.
  * Значок нарисован путями, а не картинкой: это 400 байт вместо запроса
  * к чужому домену со страницы входа.
  */
-import Link from "next/link";
-
 export function GoogleButton({ label }: { label: string }) {
   return (
-    <Link
+    <a
       href="/api/auth/google/start"
-      prefetch={false}
-      className="flex w-full items-center justify-center gap-3 rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 transition-colors hover:border-stone-400"
+      data-rybbit-event="google_auth"
+      className="flex w-full items-center justify-center gap-3 rounded-lg border border-stone-300 bg-card px-4 py-2.5 text-stone-800 transition-colors hover:border-stone-400"
     >
       <GoogleGlyph />
       {label}
-    </Link>
+    </a>
   );
 }
 

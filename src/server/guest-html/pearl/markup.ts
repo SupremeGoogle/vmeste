@@ -3,6 +3,8 @@ import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
+import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
+import { L } from "@/server/guest-html/template-labels";
 
 function branch(className = ""): string {
   return `<svg class="pearl-branch ${className}" viewBox="0 0 180 260" fill="none" aria-hidden="true"><path class="pearl-branch-line" pathLength="1" d="M20 248C44 202 42 154 81 119C112 91 126 55 137 13M55 177C31 166 19 146 20 123M74 132C104 124 122 105 129 80M102 88C82 69 78 48 84 28"/><g class="pearl-leaves"><path d="M54 179C21 170 9 145 15 122C44 131 59 151 54 179Z"/><path d="M75 134C105 129 124 108 129 85C100 88 80 106 75 134Z"/><path d="M104 90C77 77 73 52 82 32C107 43 116 66 104 90Z"/><path d="M120 55C143 51 158 37 164 20C142 20 125 34 120 55Z"/></g><g class="pearl-buds"><circle cx="137" cy="13" r="7"/><circle cx="20" cy="123" r="5"/><circle cx="129" cy="80" r="4"/></g></svg>`;
@@ -11,7 +13,7 @@ function branch(className = ""): string {
 function namesMarkup(value: string): string {
   const parts = value.trim().split(/\s+(?:и|&|and)\s+/i);
   if (parts.length !== 2) return esc(value);
-  return `<span>${esc(parts[0])}</span><i>&amp;</i><span>${esc(parts[1])}</span>`;
+  return `<span>${esc(parts[0])}</span><i>&amp;<wbr></i><span>${esc(parts[1])}</span>`;
 }
 
 function dayIcon(index: number): string {
@@ -39,7 +41,7 @@ function renderBlock(
   switch (block.type) {
     case "COVER": {
       const c = block.content as BlockContentMap["COVER"];
-      return wrap(block, "pearl-cover", `<div class="pearl-cover-caption"><span>A love story</span><span>Together always</span></div>${branch("pearl-cover-branch pearl-branch-left")}${branch("pearl-cover-branch pearl-branch-right")}<div class="pearl-portrait-wrap"><div class="pearl-portrait">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high" data-pearl-parallax${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}</div><i class="pearl-orbit pearl-orbit-one"></i><i class="pearl-orbit pearl-orbit-two"></i><i class="pearl-orbit pearl-orbit-three"></i></div><div class="pearl-cover-copy"><p class="pearl-eyebrow"${e.text("title")}>${esc(c.title)}</p><h1 class="pearl-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><span class="pearl-diamond" aria-hidden="true"></span><p class="pearl-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="pearl-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div><div class="pearl-scroll" aria-hidden="true"><span></span><small>Листайте</small></div>`, editable);
+      return wrap(block, "pearl-cover", `<div class="pearl-cover-caption">${L("pearl.caption.left", "Наша история", { tag: "span" })}${L("pearl.caption.right", "Вместе навсегда", { tag: "span" })}</div>${branch("pearl-cover-branch pearl-branch-left")}${branch("pearl-cover-branch pearl-branch-right")}<div class="pearl-portrait-wrap"><div class="pearl-portrait">${c.imageUrl ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high" data-pearl-parallax${e.image("imageUrl")}>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Добавить фотографию пары</span>` : ""}</div><i class="pearl-orbit pearl-orbit-one"></i><i class="pearl-orbit pearl-orbit-two"></i><i class="pearl-orbit pearl-orbit-three"></i></div><div class="pearl-cover-copy"><p class="pearl-eyebrow"${e.text("title")}>${esc(c.title)}</p><h1 class="pearl-names"${e.text("names", { join: " и " })}>${namesMarkup(c.names)}</h1><span class="pearl-diamond" aria-hidden="true"></span><p class="pearl-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="pearl-cover-note"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div><div class="pearl-scroll" aria-hidden="true"><span></span><small>${L("pearl.t3", "Листайте")}</small></div>`, editable);
     }
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
@@ -47,7 +49,7 @@ function renderBlock(
       if (closing) {
         return wrap(block, "pearl-closing", `${branch("pearl-closing-branch pearl-branch-left")}${branch("pearl-closing-branch pearl-branch-right")}<div class="pearl-closing-rings" aria-hidden="true"><i></i><i></i></div><p class="pearl-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="pearl-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><span class="pearl-heart">♡</span>`, editable);
       }
-      return wrap(block, "pearl-story", `${branch("pearl-story-branch")}<p class="pearl-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="pearl-rule"></span><p class="pearl-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><blockquote aria-hidden="true">“<span>Love lives in the details</span>”</blockquote>`, editable);
+      return wrap(block, "pearl-story", `${branch("pearl-story-branch")}<p class="pearl-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><span class="pearl-rule"></span><p class="pearl-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${(c as { wishlist?: boolean }).wishlist ? "" : `<blockquote aria-hidden="true">“<span>${L("pearl.t4", "Любовь живёт в деталях")}</span>”</blockquote>`}`, editable);
     }
     case "VENUE": {
       const c = block.content as BlockContentMap["VENUE"];
@@ -65,8 +67,7 @@ function renderBlock(
     }
     case "RSVP_FORM": {
       const c = block.content as BlockContentMap["RSVP_FORM"];
-      const result = answered === "yes" ? "Спасибо, мы будем вас ждать!" : answered === "no" ? "Спасибо, что сообщили нам." : "";
-      return wrap(block, "pearl-rsvp", `<div class="pearl-steps" aria-hidden="true"><b>1</b><i></i><span>2</span><i></i><span>3</span></div><p class="pearl-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="pearl-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="pearl-choice-row" aria-hidden="true"><div><span>✓</span><strong>Да</strong><small>Буду с вами</small></div><div><span>○</span><strong>Нет</strong><small>Не смогу прийти</small></div></div>${result ? `<p class="pearl-answer">${result}</p>` : rsvpHref ? `<a class="pearl-cta" href="${esc(rsvpHref)}"${editable ? " data-editor-ui" : ""}><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b><span>→</span></a>` : `<span class="pearl-cta"><b${e.text("buttonLabel")}>${esc(c.buttonLabel)}</b><span>→</span></span>`}`, editable);
+      return wrap(block, "pearl-rsvp", `<p class="pearl-tag"${e.text("tag")}>${esc(c.tag)}</p><h2${e.text("title")}>${esc(c.title)}</h2><p class="pearl-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>${inlineRsvpForm(block)}`, editable);
     }
     default:
       return "";

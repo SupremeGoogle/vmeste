@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 
-export function HeroVideo({ src, poster }: { src: string; poster: string | null }) {
+export function HeroVideo({ src, poster, className = "" }: { src: string; poster: string | null; className?: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -53,7 +53,7 @@ export function HeroVideo({ src, poster }: { src: string; poster: string | null 
       aria-hidden="true"
       className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
         playing ? "opacity-100" : "opacity-0"
-      }`}
+      } ${className}`}
     />
   );
 }

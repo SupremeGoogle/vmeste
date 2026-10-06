@@ -46,6 +46,14 @@ describe("план зала для гостя", () => {
     expect(svg).toContain("&lt;script&gt;");
   });
 
+  it("на телефоне не ужимается мельче читаемого и помнит, куда листать", () => {
+    // Зал 1580 в ширину → не уже 980 px: подпись стола тогда ~12 px.
+    const svg = floorPlanSvg([table(), table({ id: "t2", x: 790 })], "t2", { width: 1580, height: 960 });
+    expect(svg).toContain('<div class="plan-scroll" data-focus="0.5">');
+    expect(svg).toContain('style="min-width:980px"');
+    expect(floorPlanSvg([table()])).not.toContain("data-focus");
+  });
+
   it("на пустом зале возвращает пустоту, а не сломанный svg", () => {
     expect(floorPlanSvg([])).toBe("");
   });

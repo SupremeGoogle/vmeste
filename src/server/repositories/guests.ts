@@ -23,13 +23,20 @@ export type GuestInput = {
   plusOneName?: string | null;
 };
 
+/**
+ * Жених и невеста живут в той же таблице — рассадка сажает их за стол
+ * молодожёнов, — но гостями не считаются: в списке гостей, счётчиках,
+ * RSVP, экспорте и розыгрыше их нет.
+ */
+export const ONLY_GUESTS = { role: "GUEST" } as const;
+
 export async function listGuests(ctx: EventContext) {
   return db.guest.findMany({
-    where: { eventId: ctx.eventId, archivedAt: null },
+    where: { eventId: ctx.eventId, archivedAt: null, ...ONLY_GUESTS },
     orderBy: { searchKey: "asc" },
     select: {
       id: true, displayName: true, phone: true, email: true, note: true, rsvpStatus: true, role: true,
-      plusOneAllowed: true, plusOneName: true, parentGuestId: true, linkToken: true, linkOpenedAt: true,
+      plusOneAllowed: true, plusOneName: true, parentGuestId: true, linkToken: true, linkOpenedAt: true, selfRegistered: true, searchKey: true,
       seat: { select: { index: true, table: { select: { label: true } } } },
     },
   });
@@ -46,10 +53,10 @@ export async function existingGuestNames(ctx: EventContext): Promise<Map<string,
 
 export async function countGuests(ctx: EventContext) {
   const [total, accepted, declined, seated] = await Promise.all([
-    db.guest.count({ where: { eventId: ctx.eventId, archivedAt: null } }),
-    db.guest.count({ where: { eventId: ctx.eventId, archivedAt: null, rsvpStatus: "ACCEPTED" } }),
-    db.guest.count({ where: { eventId: ctx.eventId, archivedAt: null, rsvpStatus: "DECLINED" } }),
-    db.seat.count({ where: { eventId: ctx.eventId, guestId: { not: null } } }),
+    db.guest.count({ where: { eventId: ctx.eventId, archivedAt: null, ...ONLY_GUESTS } }),
+    db.guest.count({ where: { eventId: ctx.eventId, archivedAt: null, ...ONLY_GUESTS, rsvpStatus: "ACCEPTED" } }),
+    db.guest.count({ where: { eventId: ctx.eventId, archivedAt: null, ...ONLY_GUESTS, rsvpStatus: "DECLINED" } }),
+    db.seat.count({ where: { eventId: ctx.eventId, guest: { archivedAt: null, ...ONLY_GUESTS } } }),
   ]);
   return { total, accepted, declined, seated };
 }
@@ -286,6 +293,7 @@ export async function addAlias(ctx: EventContext, guestId: string, alias: string
  */
 export async function archiveGuest(ctx: EventContext, guestId: string) {
   return db.$transaction(async (tx) => {
+    await tx.giftReservation.deleteMany({ where: { eventId: ctx.eventId, guestId } });
     await tx.seat.updateMany({
       where: { eventId: ctx.eventId, guestId },
       data: { guestId: null },

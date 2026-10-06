@@ -12,21 +12,27 @@
  * объект действительно на месте и нужного размера (`HeadObject`).
  * Файл без строки в БД — мусор, который никто не увидит; строка без файла
  * была бы дырой в галерее.
+ *
+ * При подтверждении сервер один раз читает исходник и кладёт на его место
+ * WebP до 2560 px плюс превью (`server/images/convert.ts`). Так любой
+ * формат — HEIC, AVIF, TIFF, PNG — открывается в любом браузере, кадр
+ * весит меньше мегабайта, а координаты из EXIF не уходят в галерею.
  */
 import { db } from "@/server/db";
 import { bus } from "@/server/events/bus";
+import { GUEST_PHOTO, convertImage } from "@/server/images/convert";
+import { NSFW_FLAG, nsfwScore } from "@/server/images/nsfw";
 import {
-  ALLOWED_TYPES, MAX_THUMB_BYTES, MAX_UPLOAD_BYTES,
-  deleteObjects, headObject, keyBelongsToEvent, photoKeys, presignUpload,
+  ALLOWED_TYPES, MAX_UPLOAD_BYTES,
+  deleteObjects, headObject, keyBelongsToEvent, photoKeys, presignUpload, putObject, readObject,
+  thumbKeyFor,
 } from "@/server/storage/s3";
 
 export type GuestRef = { orgId: string; eventId: string; guestId: string };
 
 export type UploadTicket = {
   storageKey: string;
-  thumbKey: string;
   uploadUrl: string;
-  thumbUploadUrl: string;
 };
 
 export type StartResult =
@@ -82,30 +88,17 @@ export async function startUpload(
     };
   }
 
-  const keys = photoKeys(guest.eventId);
-  const [uploadUrl, thumbUploadUrl] = await Promise.all([
-    presignUpload(keys.storageKey, input.contentType),
-    presignUpload(keys.thumbKey, "image/webp"),
-  ]);
+  const { storageKey } = photoKeys(guest.eventId);
+  const uploadUrl = await presignUpload(storageKey, input.contentType);
 
-  return {
-    ok: true,
-    left: quota.left,
-    ticket: { ...keys, uploadUrl, thumbUploadUrl },
-  };
+  return { ok: true, left: quota.left, ticket: { storageKey, uploadUrl } };
 }
 
-export type CompleteInput = {
-  storageKey: string;
-  thumbKey: string;
-  width: number;
-  height: number;
-  previewOk: boolean;
-};
+export type CompleteInput = { storageKey: string };
 
 export type CompleteResult =
   | { ok: true; photoId: string; left: number }
-  | { ok: false; reason: "limit" | "missing" | "size" | "foreign"; message: string };
+  | { ok: false; reason: "limit" | "missing" | "size" | "foreign" | "unreadable" | "duplicate"; message: string };
 
 /**
  * Подтверждение загрузки: строка в БД появляется здесь.
@@ -120,18 +113,26 @@ export async function completeUpload(
   guest: GuestRef,
   input: CompleteInput,
 ): Promise<CompleteResult> {
-  if (
-    !keyBelongsToEvent(input.storageKey, guest.eventId) ||
-    !keyBelongsToEvent(input.thumbKey, guest.eventId)
-  ) {
+  const thumbKey = thumbKeyFor(input.storageKey);
+  if (!thumbKey || !keyBelongsToEvent(input.storageKey, guest.eventId)) {
     return { ok: false, reason: "foreign", message: "Файл не от этого мероприятия" };
   }
 
+  // Повторное подтверждение того же файла (двойной клик, повтор запроса
+  // после обрыва) не должно завести вторую строку на один объект.
+  const already = await db.photo.findFirst({
+    where: { eventId: guest.eventId, storageKey: input.storageKey },
+    select: { id: true },
+  });
+  if (already) return { ok: false, reason: "duplicate", message: "Это фото уже отправлено" };
+
+  // Ранняя проверка — чтобы не перекодировать файл, который всё равно не
+  // примем. Окончательная — ниже, в транзакции.
   const quota = await guestQuota(guest);
   if (quota.left <= 0) {
     // Файл уже лежит в бакете, но принять его нельзя — убираем за собой,
     // иначе за вечер накопится мусор, за который платит организатор.
-    await deleteObjects([input.storageKey, input.thumbKey]).catch(() => {});
+    await deleteObjects([input.storageKey]).catch(() => {});
     return { ok: false, reason: "limit", message: "Лимит фотографий исчерпан" };
   }
 
@@ -142,38 +143,81 @@ export async function completeUpload(
     return { ok: false, reason: "missing", message: "Файл не долетел — попробуйте ещё раз" };
   }
   if (head.bytes <= 0 || head.bytes > MAX_UPLOAD_BYTES) {
-    await deleteObjects([input.storageKey, input.thumbKey]).catch(() => {});
+    await deleteObjects([input.storageKey]).catch(() => {});
     return { ok: false, reason: "size", message: "Файл слишком большой" };
   }
 
-  // Превью необязательно: если браузер не смог его сделать, фото всё равно
-  // принимаем (PLAN.md §5.5), просто помечаем.
-  let previewOk = input.previewOk;
-  if (previewOk) {
-    try {
-      const thumb = await headObject(input.thumbKey);
-      if (thumb.bytes <= 0 || thumb.bytes > MAX_THUMB_BYTES) previewOk = false;
-    } catch {
-      previewOk = false;
-    }
+  // Исходник заменяется перекодированным файлом по тому же ключу: второй
+  // копии «на всякий случай» не держим — она весила бы в пять раз больше
+  // и хранила бы GPS из EXIF.
+  let converted;
+  try {
+    converted = await convertImage(await readObject(input.storageKey), GUEST_PHOTO);
+  } catch {
+    await deleteObjects([input.storageKey]).catch(() => {});
+    return {
+      ok: false,
+      reason: "unreadable",
+      message: "Не получилось открыть файл — пришлите фото в JPEG или сделайте снимок экрана",
+    };
   }
+  const [, , nsfw] = await Promise.all([
+    putObject(input.storageKey, converted.body, converted.contentType),
+    putObject(thumbKey, converted.thumb!, converted.contentType),
+    nsfwScore(converted.thumb!),
+  ]);
 
-  const photo = await db.photo.create({
-    data: {
-      orgId: guest.orgId,
-      eventId: guest.eventId,
-      guestId: guest.guestId,
-      storageKey: input.storageKey,
-      thumbKey: input.thumbKey,
-      width: Math.max(0, Math.trunc(input.width)),
-      height: Math.max(0, Math.trunc(input.height)),
-      bytes: head.bytes,
-      previewOk,
-      status: "PENDING",
-    },
+  // Автомодерация: кадр, в котором фильтр не нашёл 18+, публикуется сразу.
+  // Подозрительный — и тот, что фильтр не смог оценить, — ждёт организатора:
+  // пропустить непроверенный кадр на экран в зале хуже, чем попросить
+  // человека взглянуть на него.
+  const autoApproved = nsfw !== null && nsfw < NSFW_FLAG;
+
+  // Лимит и повтор проверяются ещё раз — под блокировкой на гостя.
+  // Перекодирование идёт секунду, и за эту секунду гость с двумя
+  // вкладками (или скриптом) успевал бы подтвердить десять файлов при
+  // лимите в пять: каждый видел «осталось 5» до того, как записался
+  // соседний. Блокировка транзакционная и снимается сама.
+  const saved = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${guest.guestId}))::text`;
+    const [used, duplicate] = await Promise.all([
+      tx.photo.count({
+        where: { eventId: guest.eventId, guestId: guest.guestId, status: { not: "REJECTED" } },
+      }),
+      tx.photo.count({ where: { eventId: guest.eventId, storageKey: input.storageKey } }),
+    ]);
+    if (duplicate > 0) return { error: "duplicate" as const };
+    if (used >= quota.limit) return { error: "limit" as const };
+
+    const photo = await tx.photo.create({
+      data: {
+        orgId: guest.orgId,
+        eventId: guest.eventId,
+        guestId: guest.guestId,
+        storageKey: input.storageKey,
+        thumbKey,
+        width: converted.width,
+        height: converted.height,
+        bytes: converted.body.byteLength,
+        previewOk: true,
+        nsfwScore: nsfw,
+        status: autoApproved ? "APPROVED" : "PENDING",
+        moderatedAt: autoApproved ? new Date() : null,
+      },
+    });
+    return { photo, left: quota.limit - used - 1 };
   });
 
-  return { ok: true, photoId: photo.id, left: quota.left - 1 };
+  if ("error" in saved) {
+    if (saved.error === "duplicate") {
+      return { ok: false, reason: "duplicate", message: "Это фото уже отправлено" };
+    }
+    await deleteObjects([input.storageKey, thumbKey]).catch(() => {});
+    return { ok: false, reason: "limit", message: "Лимит фотографий исчерпан" };
+  }
+  // Экран в зале узнаёт о новом снимке так же, как о ручном одобрении.
+  if (autoApproved) await bus.publish(guest.eventId, "photo", saved.photo.id);
+  return { ok: true, photoId: saved.photo.id, left: saved.left };
 }
 
 /** Фото гостя — он видит свои в любом статусе, включая ожидающие. */
@@ -205,6 +249,7 @@ export async function listPendingPhotos(eventId: string, limit = 100) {
     take: limit,
     select: {
       id: true, previewOk: true, width: true, height: true, bytes: true, createdAt: true,
+      nsfwScore: true,
       guest: { select: { displayName: true } },
     },
   });

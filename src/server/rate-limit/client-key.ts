@@ -19,6 +19,7 @@
  * Компромисс сознательный: утечка здесь — имена гостей и номера столов,
  * а цена ложного срабатывания — человек, застрявший в дверях зала.
  */
+import { rateLimit } from "@/server/rate-limit";
 export const PER_CLIENT_LIMIT = 300;
 export const PER_EVENT_LIMIT = 1200;
 export const WINDOW_MS = 60_000;
@@ -37,4 +38,18 @@ export function lookupKeys(req: Request, eventId: string) {
     client: { key: `lookup:${eventId}:${clientAddress(req)}`, limit: PER_CLIENT_LIMIT },
     event: { key: `lookup:${eventId}:all`, limit: PER_EVENT_LIMIT },
   };
+}
+
+/**
+ * Общий предохранитель для публичных POST: не больше `limit` запросов в
+ * минуту с одного адреса. Лимиты щедрые — на площадке сотня гостей сидит
+ * за одним Wi-Fi и одним адресом, — но цикл скрипта он остановит.
+ */
+export function tooManyFromClient(req: Request, scope: string, limit: number): Response | null {
+  const result = rateLimit(`${scope}:${clientAddress(req)}`, limit, WINDOW_MS);
+  if (result.ok) return null;
+  return new Response("Слишком много запросов — подождите минуту", {
+    status: 429,
+    headers: { "retry-after": String(result.retryAfterSec), "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+  });
 }

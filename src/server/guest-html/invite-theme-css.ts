@@ -14,11 +14,23 @@
 import { CORNER_RADIUS, FONT_STACKS, type InviteTheme } from "@/lib/invite-theme";
 import { INTRO_CSS } from "@/server/guest-html/invite-intro";
 import { CONSTELLATION_CSS } from "@/server/guest-html/constellation/style";
-import { PROMISE_CSS } from "@/server/guest-html/promise/style";
-import { STORY_CSS } from "@/server/guest-html/story/style";
 import { EVERGREEN_CSS } from "@/server/guest-html/evergreen/style";
 import { SILK_CSS } from "@/server/guest-html/silk/style";
 import { PEARL_CSS } from "@/server/guest-html/pearl/style";
+import { PRISM_CSS } from "@/server/guest-html/prism/style";
+import { VINYL_CSS } from "@/server/guest-html/vinyl/style";
+import { AQUARELLE_CSS } from "@/server/guest-html/aquarelle/style";
+import { LILY_CSS } from "@/server/guest-html/lily/style";
+import { BOHEMA_CSS } from "@/server/guest-html/bohema/style";
+import { KRASKI_CSS } from "@/server/guest-html/kraski/style";
+import { SERDCE_CSS } from "@/server/guest-html/serdce/style";
+import { ANTIC_CSS } from "@/server/guest-html/antic/style";
+import { SKVOZ_VREMYA_CSS } from "@/server/guest-html/skvoz-vremya/style";
+import { ZEFIR_CSS, CRAYON_CSS } from "@/server/guest-html/scrapbook/style";
+import { BURGUNDY_CSS } from "@/server/guest-html/burgundy/style";
+import { ROSERAIE_CSS } from "@/server/guest-html/roseraie/style";
+import { FLORAL_GARDEN_CSS } from "@/server/guest-html/floral-garden/style";
+import { ISKRA_CSS } from "@/server/guest-html/iskra/style";
 import { RUBY_CSS } from "@/server/guest-html/ruby/style";
 import { TUSCANY_CSS } from "@/server/guest-html/tuscany/style";
 import {
@@ -160,14 +172,27 @@ pointer-events:none;z-index:0}`
     // Вензель бессмыслен без рамки: он её угол и есть.
     theme.frame && theme.frameOrnament ? ORNAMENT_CSS + ornamentBackground(theme) : "",
     theme.timelineIcons ? TIMELINE_ICON_CSS : "",
-    theme.template === "promise" ? PROMISE_CSS : "",
     theme.template === "constellation" ? CONSTELLATION_CSS : "",
-    theme.template === "story" ? STORY_CSS : "",
     theme.template === "evergreen" ? EVERGREEN_CSS : "",
     theme.template === "silk" ? SILK_CSS : "",
     theme.template === "pearl" ? PEARL_CSS : "",
+    theme.template === "prism" ? PRISM_CSS : "",
     theme.template === "ruby" ? RUBY_CSS : "",
     theme.template === "tuscany" ? TUSCANY_CSS : "",
+    theme.template === "vinyl" ? VINYL_CSS : "",
+    theme.template === "aquarelle" ? AQUARELLE_CSS : "",
+    theme.template === "lily" ? LILY_CSS : "",
+    theme.template === "bohema" ? BOHEMA_CSS : "",
+    theme.template === "kraski" ? KRASKI_CSS : "",
+    theme.template === "serdce" ? SERDCE_CSS : "",
+    theme.template === "antic" ? ANTIC_CSS : "",
+    theme.template === "skvoz-vremya" ? SKVOZ_VREMYA_CSS : "",
+    theme.template === "zefir" ? ZEFIR_CSS : "",
+    theme.template === "crayon" ? CRAYON_CSS : "",
+    theme.template === "burgundy" ? BURGUNDY_CSS : "",
+    theme.template === "roseraie" ? ROSERAIE_CSS : "",
+    theme.template === "floral-garden" ? FLORAL_GARDEN_CSS : "",
+    theme.template === "iskra" ? ISKRA_CSS : "",
   ];
 
   return rules.filter(Boolean).join("").replace(/\n/g, "");

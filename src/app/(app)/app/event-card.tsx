@@ -13,6 +13,9 @@
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
+import { SPRING } from "@/components/motion/motion";
+import { OpeningLink } from "@/components/loading/opening-link";
 
 export type EventCardData = {
   id: string;
@@ -67,12 +70,16 @@ export function EventCard({
   }
 
   return (
-    <li
+    // Появление — CSS-лесенкой (.rise-stagger у списка): она идёт и до
+    // гидратации, и первый экран после входа не бывает пустым. Motion
+    // отвечает только на курсор.
+    <motion.li
+      whileHover={{ y: -3, transition: SPRING }}
       style={{ "--i": index } as React.CSSProperties}
       className={`rounded-2xl border p-5 shadow-sm transition-[box-shadow,border-color] duration-200 ease-[var(--ease-soft)] hover:border-stone-300 hover:shadow-md sm:p-7 ${
         event.status === "ARCHIVED"
           ? "border-stone-200 bg-stone-100/60 opacity-70"
-          : "border-stone-200 bg-white"
+          : "border-stone-200 bg-card"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -120,12 +127,13 @@ export function EventCard({
                 пустовала половина карточки. Двух строк хватает любому
                 разумному названию, а всё сверх того обрезается честно.
               */}
-              <Link
+              <OpeningLink
                 href={`/app/e/${event.id}`}
+                title={event.title}
                 className="line-clamp-2 text-lg leading-snug font-medium underline-offset-4 hover:underline sm:text-xl"
               >
                 {event.title}
-              </Link>
+              </OpeningLink>
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -208,7 +216,7 @@ export function EventCard({
                   await onDelete(event.id);
                 })
               }
-              className="min-h-11 rounded-lg bg-red-700 px-3 text-sm font-medium text-white transition-opacity duration-200 disabled:opacity-50"
+              className="min-h-11 rounded-lg bg-[#8a2b2b] px-3 text-sm font-medium text-white transition-opacity duration-200 disabled:opacity-50"
             >
               {isPending ? "Удаляю…" : "Да, удалить"}
             </button>
@@ -230,6 +238,6 @@ export function EventCard({
           </button>
         )}
       </div>
-    </li>
+    </motion.li>
   );
 }

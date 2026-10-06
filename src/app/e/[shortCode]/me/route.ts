@@ -47,16 +47,16 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catc
  * Обычные формы — на этой странице JavaScript по-прежнему не нужен.
  */
 function claimForms(code: string, guestId: string, photos: boolean, wishes: boolean) {
-  if (!photos && !wishes) return "";
 
-  const button = (next: string, label: string) => `
+  const button = (next: string, label: string, primary = false) => `
 <form method="post" action="/api/e/${code}/claim" style="display:inline">
   <input type="hidden" name="guestId" value="${esc(guestId)}"/>
   <input type="hidden" name="next" value="${next}"/>
-  <button class="claim">${label}</button>
+  <button class="claim"${primary ? ' style="font-weight:600"' : ""}>${label}</button>
 </form>`;
 
   return `<div class="claims">
+${button("hub", "Моя страница: стол, фото и рассадка", true)}
 ${photos ? button("photos", "Загрузить фото") : ""}
 ${wishes ? button("wish", "Написать пожелание") : ""}
 </div>`;
@@ -192,7 +192,7 @@ export async function GET(
 
   if (result.matches.length === 1) {
     const m = result.matches[0];
-    return html(seatPage(code, event.title, m.displayName, m.tableLabel), {
+    return html(seatPage(code, event.title, m.displayName, m.tableLabel, claimForms(code, m.guestId, event.photosEnabled, event.wishesEnabled)), {
       headers: { "cache-control": "private, max-age=300" },
     });
   }

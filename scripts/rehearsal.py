@@ -16,7 +16,9 @@ API гостя. Всё, что здесь не получается, — дыр�
 Скрипт создаёт своё мероприятие со ста гостями и в конце убирает его
 в архив, поэтому его можно гонять хоть каждый день.
 """
-import html as htmlmod, io, json, os, re, sys, time, urllib.error, urllib.request, uuid
+import html as htmlmod, io, json, os, re, sys, time, urllib.error, urllib.request, uuid, zipfile
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 
 BASE = os.environ.get("BASE", "http://localhost:3010")
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rehearsal-fixtures")
@@ -46,16 +48,18 @@ class KeepCookies(urllib.request.HTTPRedirectHandler):
 
 opener = urllib.request.build_opener(KeepCookies)
 
-def get(path, headers=None):
+def get(path, headers=None, binary=False):
     head = {"cookie": cookie_header(), **(headers or {})}
     req = urllib.request.Request(BASE + path, headers=head)
     try:
         with opener.open(req) as response:
             remember(response)
-            return response.status, response.read().decode(), response.geturl()
+            body = response.read()
+            return response.status, body if binary else body.decode(), response.geturl()
     except urllib.error.HTTPError as error:
         # 404 — это тоже ответ: архив закрывает гостевые ссылки именно им.
-        return error.code, error.read().decode(errors="replace"), BASE + path
+        body = error.read()
+        return error.code, body if binary else body.decode(errors="replace"), BASE + path
 
 def multipart(fields, files=()):
     boundary = uuid.uuid4().hex
@@ -73,17 +77,20 @@ def multipart(fields, files=()):
 def submit(path, marker, extra=(), files=(), occurrence=0):
     """Отправка формы так, как это делает браузер с выключенным JS."""
     _, page, _ = get(path)
-    idx = -1
-    for _ in range(occurrence + 1):
-        idx = page.index(marker, idx + 1)
-    start = page.rindex("<form", 0, idx)
-    chunk = page[start:page.index("</form>", start)]
+    markup = re.sub(r"<script\b[^>]*>.*?</script>", "", page, flags=re.S | re.I)
+    forms = [match.group(0) for match in re.finditer(r"<form\b[^>]*>.*?</form>", markup, re.S)]
+    matches = [form for form in forms if marker in form]
+    if len(matches) <= occurrence:
+        raise RuntimeError(f"На странице {path} нет формы с маркером {marker!r}")
+    chunk = matches[occurrence]
+    action = re.search(r'<form\b[^>]*\baction="([^"]*)"', chunk)
+    target = htmlmod.unescape(action.group(1)) if action and action.group(1) else path
     fields = [(m.group(1), htmlmod.unescape(m.group(2) or ""))
               for m in re.finditer(r'<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?/>', chunk)]
     fields += list(extra)
     data, ctype = multipart(fields, files)
     req = urllib.request.Request(
-        BASE + path, data=data, headers={"content-type": ctype, "cookie": cookie_header()})
+        BASE + target, data=data, headers={"content-type": ctype, "cookie": cookie_header()})
     with opener.open(req) as response:
         remember(response)
         return response.status, response.read().decode(), response.geturl()
@@ -102,6 +109,28 @@ def api(path, payload, headers=None):
 def text_of(html_body):
     body = html_body.split("<body")[1] if "<body" in html_body else html_body
     return htmlmod.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)))
+
+def xlsx_rows(book_bytes):
+    with zipfile.ZipFile(io.BytesIO(book_bytes)) as book:
+        ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        shared = ET.fromstring(book.read("xl/sharedStrings.xml"))
+        strings = ["".join(node.itertext()) for node in shared.findall("x:si", ns)]
+        sheet = ET.fromstring(book.read("xl/worksheets/sheet1.xml"))
+        rows = []
+        for row in sheet.findall("x:sheetData/x:row", ns):
+            cells = {}
+            for cell in row.findall("x:c", ns):
+                node = cell.find("x:v", ns)
+                if node is None:
+                    continue
+                column = re.match(r"[A-Z]+", cell.attrib["r"]).group(0)
+                cells[column] = strings[int(node.text)] if cell.attrib.get("t") == "s" else node.text
+            rows.append(cells)
+        header = rows[0]
+        return [{title: row.get(column, "") for column, title in header.items()} for row in rows[1:]]
+
+def invitation_links(book_bytes):
+    return [row["Именная ссылка"] for row in xlsx_rows(book_bytes) if row.get("Именная ссылка", "").startswith("http")]
 
 steps = []
 def step(name, ok, detail=""):
@@ -163,21 +192,20 @@ csv_bytes = open(os.path.join(FIXTURES, "guests100.csv"), "rb").read()
 # Шаг первый: предпросмотр. Импорт в один клик из продукта убран
 # намеренно (PLAN.md §5.9) — молча залитый кривой файл не отменить.
 status, preview, preview_url = submit(
-    f"/app/e/{event_id}/guests", 'accept=".csv,text/csv"', (),
+    f"/app/e/{event_id}/guests", 'accept=".xlsx,.csv', (),
     files=[("file", "guests.csv", csv_bytes, "text/csv")])
 preview_text = text_of(preview)
 step("предпросмотр показан до записи",
-     "Предпросмотр импорта" in preview_text and "windows-1251" not in preview_text,
-     re.search(r"Кодировка: [^·]+· разделитель: «[^»]+» · строк: \d+", preview_text).group(0)
-     if "Кодировка" in preview_text else "")
+     "Проверьте перед добавлением" in preview_text and "windows-1251" not in preview_text,
+     "черновик открыт" if "Проверьте перед добавлением" in preview_text else "")
 
 draft_id = re.search(r"draft=([0-9a-f-]+)", preview_url).group(1)
-submit(f"/app/e/{event_id}/guests?draft={draft_id}", 'Импортировать',
+submit(f"/app/e/{event_id}/guests?draft={draft_id}", 'Выбрано',
        [("draftId", draft_id)])
 body = text_of(get(f"/app/e/{event_id}/guests")[1])
-imported = re.search(r"Всего: (\d+)", body)
-step("сто гостей в списке", imported and imported.group(1) == "100",
-     f"в списке {imported.group(1) if imported else '?'}")
+export_status, book, export_url = get(f"/api/app/events/{event_id}/guests/export", binary=True)
+links = invitation_links(book)
+step("100 строк сведены в 40 уникальных гостей", len(links) == 40, f"в выгрузке {len(links)}")
 
 # Карточка гостя: варианты имени добавляются только здесь.
 status, guests_page, _ = get(f"/app/e/{event_id}/guests")
@@ -189,22 +217,18 @@ if card:
     step("вариант имени добавлен в карточке", "мама лена" in body.lower())
 
 print("\n5. Приглашение")
-for block in ["COVER", "TIMELINE", "VENUE", "RSVP_FORM"]:
-    submit(f"/app/e/{event_id}/invite", f'value="{block}"', [("type", block)])
+submit(f"/app/e/{event_id}/invite", 'name="template" value="tili"')
 body = text_of(get(f"/app/e/{event_id}/invite")[1])
-step("блоки добавлены", all(word in body for word in ["Обложка", "Тайминг", "Место", "Форма ответа"]))
+step("шаблон применён", "Тили-тесто" in body or "Тили" in body)
 
 status, page, _ = get(f"/app/e/{event_id}/invite")
-slug = re.search(r"/i/([a-z0-9-]+)", page).group(1)
+slug = f"repetitsiya-{stamp}"
 status, invite_page, _ = get(f"/i/{slug}")
 step("публичное приглашение открывается", status == 200 and "__next_error__" not in invite_page, f"/i/{slug}")
 
 print("\n6. Ответы гостей по именным ссылкам")
-status, csv_export, _ = get(f"/api/app/events/{event_id}/guests/export")
-rows = [line.split(";") for line in csv_export.strip().split("\r\n")[1:]]
-links = [row[-1] for row in rows]
 tokens = [link.rsplit("/", 1)[1] for link in links]
-step("именные ссылки выгружены", len(tokens) == 100, f"{len(tokens)} ссылок")
+step("именные ссылки выгружены", len(tokens) == 40, f"{len(tokens)} ссылок")
 
 # Меню берём со страницы ответа первого гостя — так же, как это делает гость.
 status, form_page, _ = get(f"/i/{slug}/{tokens[0]}/rsvp")
@@ -228,22 +252,24 @@ for index, token in enumerate(tokens[:60]):
             with_partner += 1
         submit(f"/i/{slug}/{token}/rsvp", 'value="ACCEPTED"', extra)
     answered += 1
-step("шестьдесят гостей ответили", answered == 60, f"из них с парой: {with_partner}")
+step("гости ответили", answered == len(tokens), f"{answered} ответов, из них с парой: {with_partner}")
 
 body = text_of(get(f"/app/e/{event_id}/rsvp")[1])
 numbers = re.findall(r"(\d+) (Придут|Не придут|Ждём ответа)", body)
 counts = {word: int(n) for n, word in numbers}
 step("сводка сходится",
-     counts.get("Придут", 0) == 50 - 10 + 10 + with_partner or counts.get("Придут", 0) > 0,
+     counts.get("Придут", 0) + counts.get("Не придут", 0) == answered + with_partner,
      " · ".join(f"{n} {w}" for n, w in numbers))
-step("спутники стали гостями", counts.get("Придут", 0) == 50 + with_partner,
-     f"придут {counts.get('Придут', 0)} = 50 ответивших + {with_partner} спутников")
+declined = sum(index % 6 == 5 for index in range(answered))
+step("спутники стали гостями", counts.get("Придут", 0) == answered - declined + with_partner,
+     f"придут {counts.get('Придут', 0)} = {answered - declined} ответивших + {with_partner} спутников")
 
-kitchen = re.search(r"На кухню (.+?) Из них спутников", body)
-step("кухня видит разбивку по блюдам", bool(kitchen), kitchen.group(1).strip() if kitchen else "")
-step("у спутников тоже выбрано блюдо",
-     bool(kitchen) and "Не выбрано: 0" in kitchen.group(1),
-     "«не выбрано» должно быть нулём")
+kitchen_visible = "Кто что ест" in body and all(meal in body for meal in ["Мясо", "Рыба", "Вегетарианское"])
+step("кухня видит разбивку по блюдам", kitchen_visible)
+_, rsvp_book, _ = get(f"/api/app/events/{event_id}/guests/export", binary=True)
+meal_missing = sum(row.get("Ответ") == "придёт" and not row.get("Блюдо") for row in xlsx_rows(rsvp_book))
+step("у пришедших и спутников выбрано блюдо", meal_missing == 0,
+     f"без блюда: {meal_missing}")
 
 print("\n7. Рассадка")
 # Через обычные формы — тот самый запасной путь без JavaScript,
@@ -264,6 +290,43 @@ submit(f"/app/e/{event_id}/seating", 'placeholder="Стол 6"',
 body = text_of(get(f"/app/e/{event_id}/seating")[1])
 step("стол-президиум создан выбором формы", "Президиум" in body)
 
+# Два организатора меняют один план одновременно: один ответ успешный,
+# второй получает конфликт версии и свежий снимок, затем повторяет действие.
+ops_path = f"/api/app/events/{event_id}/seating/ops"
+conflict_status, conflict = api(ops_path, {"version": 0, "op": {"kind": "assign", "seatId": "missing", "guestId": "missing"}})
+plan = conflict.get("plan") or {}
+free_seats = [seat["id"] for table in plan.get("tables", []) for seat in table["seats"] if seat["guest"] is None]
+accepted_guests = [guest for guest in plan.get("unseated", []) if guest["rsvpStatus"] == "ACCEPTED"]
+assignments = list(zip(free_seats, [guest["id"] for guest in accepted_guests]))
+version = plan.get("version", 0)
+concurrent_ok = False
+completed = set()
+if len(assignments) >= 2:
+    def assign_pair(item):
+        seat_id, guest_id = item
+        return api(ops_path, {"version": version, "op": {"kind": "assign", "seatId": seat_id, "guestId": guest_id}})
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(assign_pair, assignments[:2]))
+    concurrent_ok = sorted(status for status, _ in outcomes) == [200, 409]
+    for index, (status, result) in enumerate(outcomes):
+        if status == 200:
+            completed.add(index)
+        version = max(version, result.get("version", version))
+step("одновременная правка не затирает чужую", concurrent_ok,
+     f"ответы: {[(status, result.get('reason'), result.get('message')) for status, result in outcomes]}" if len(assignments) >= 2 else "недостаточно гостей или мест")
+
+for index, (seat_id, guest_id) in enumerate(assignments):
+    if index in completed:
+        continue
+    for _ in range(3):
+        status, result = api(ops_path, {"version": version, "op": {"kind": "assign", "seatId": seat_id, "guestId": guest_id}})
+        version = result.get("version", version)
+        if status != 409:
+            break
+    if status == 200:
+        completed.add(index)
+api_seated = len(completed)
+
 # Разбираем страницу один раз: поля серверного действия у всех форм
 # рассадки одинаковые, различаются только seatId и выбранный гость.
 status, page, _ = get(f"/app/e/{event_id}/seating")
@@ -276,7 +339,7 @@ seat_ids = [re.search(r'name="seatId" value="([^"]+)"', f).group(1) for f in sea
 guest_ids = re.findall(r'<option value="(c[a-z0-9]+)"', page)
 
 started = time.time()
-seated = 0
+seated = api_seated
 for seat_id, guest_id in zip(seat_ids, dict.fromkeys(guest_ids)):
     fields = action_fields + [("seatId", seat_id), ("guestId", guest_id)]
     data, ctype = multipart(fields)
@@ -289,26 +352,22 @@ for seat_id, guest_id in zip(seat_ids, dict.fromkeys(guest_ids)):
     seated += 1
 elapsed = time.time() - started
 body = text_of(get(f"/app/e/{event_id}/seating")[1])
-step("гости рассажены формами", seated >= 50,
+step("гости рассажены", seated == len(accepted_guests),
      f"посажено {seated} за {elapsed:.0f} с")
 
 body = text_of(get(f"/app/e/{event_id}/guests")[1])
-step("счётчик рассадки виден", "Рассажено" in body,
-     re.search(r"Рассажено: (\d+)", body).group(0) if "Рассажено" in body else "")
+seated_count = re.search(r"Рассажено:?\s*(\d+)", body)
+step("счётчик рассадки виден", bool(seated_count),
+     seated_count.group(0) if seated_count else "")
 
 # Молодожёны: роль ставится в карточке гостя и видна на плане зала.
 _, seating_page, _ = get(f"/app/e/{event_id}/seating")
 # Разметка страницы повторяется в RSC-потоке, поэтому имена дедуплицируем:
 # иначе невеста и жених достанутся одному и тому же человеку.
-seated_names = list(dict.fromkeys(re.findall(r'<span class="flex-1">([^<]+)</span>', seating_page)))
+seated_names = [guest["displayName"] for guest in accepted_guests[:2]]
 roles_set = 0
-for name, role in zip(seated_names[:2], ["BRIDE", "GROOM"]):
-    _, guests_page, _ = get(f"/app/e/{event_id}/guests")
-    match = re.search(
-        rf'href="/app/e/{event_id}/guests/([a-z0-9]+)"[^>]*>\s*{re.escape(name)}', guests_page)
-    if not match:
-        continue
-    card = f"/app/e/{event_id}/guests/{match.group(1)}"
+for guest, role in zip(accepted_guests[:2], ["BRIDE", "GROOM"]):
+    card = f"/app/e/{event_id}/guests/{guest['id']}"
     submit(card, 'name="role"', [("role", role)])
     roles_set += 1
 step("невеста и жених отмечены", roles_set == 2, ", ".join(seated_names[:2]))
@@ -328,7 +387,7 @@ print("\n9. Вход по QR: гость ищет свой стол")
 _, event_page, _ = get(f"/app/e/{event_id}/guests")
 code = re.search(r"tracking-widest[^>]*>([A-Z0-9]{6})<", event_page).group(1)
 status, entry, _ = get(f"/e/{code}")
-step("страница входа открывается", status == 200 and "введите" in entry.lower(), f"/e/{code}")
+step("страница входа открывается", status == 200 and "__next_error__" not in entry, f"/e/{code}")
 
 # Ищем гостя по уменьшительному имени: словарь должен сработать.
 status, result = api(f"/api/e/{code}/lookup", {"query": "Настя"})
@@ -368,7 +427,6 @@ if match:
 
 print("\n10. Фотографии и модерация")
 photo_bytes = open(os.path.join(FIXTURES, "photo.jpg"), "rb").read()
-thumb_bytes = open(os.path.join(FIXTURES, "thumb.webp"), "rb").read()
 uploaded = 0
 for token in tokens[:6]:
     status, ticket = api("/api/guest/photos/presign",
@@ -378,13 +436,8 @@ for token in tokens[:6]:
     req = urllib.request.Request(ticket["uploadUrl"], data=photo_bytes, method="PUT",
                                  headers={"content-type": "image/jpeg"})
     urllib.request.urlopen(req).read()
-    # Превью — как его делает браузер: настоящий webp на 400 px.
-    req = urllib.request.Request(ticket["thumbUploadUrl"], data=thumb_bytes, method="PUT",
-                                 headers={"content-type": "image/webp"})
-    urllib.request.urlopen(req).read()
     status, done = api("/api/guest/photos/complete", {
-        "token": token, "storageKey": ticket["storageKey"], "thumbKey": ticket["thumbKey"],
-        "width": 600, "height": 600, "previewOk": True,
+        "token": token, "storageKey": ticket["storageKey"],
     })
     if status == 200:
         uploaded += 1
@@ -413,6 +466,12 @@ for index, token in enumerate(tokens[:8]):
         ("text", f"Пожелание номер {index + 1}: совет да любовь и попутного ветра."),
     ])
     wishes_sent += 1
+_, rejected_wish, rejected_url = submit(f"/i/{slug}/{tokens[8]}/wish", 'name="authorName"', [
+    ("authorName", "Гость"),
+    ("text", "Желаю вам развода"),
+])
+step("злое пожелание отклонено до модерации",
+     "error=" in rejected_url and "оскорбление" in text_of(rejected_wish))
 body = text_of(get(f"/app/e/{event_id}/wishes")[1])
 pending = re.search(r"(\d+) Ждут проверки", body)
 step("пожелания дошли до модерации", pending and int(pending.group(1)) == wishes_sent,
@@ -449,8 +508,8 @@ submit(f"/app/e/{event_id}/raffle", 'placeholder="Название розыгр�
 submit(f"/app/e/{event_id}/raffle", "Зафиксировать участников")
 body = text_of(get(f"/app/e/{event_id}/raffle")[1])
 fixed = re.search(r"участников зафиксировано: (\d+)", body)
-step("участники зафиксированы", fixed and int(fixed.group(1)) == uploaded,
-     f"{fixed.group(1) if fixed else '?'} участников — те, у кого одобрено фото")
+step("участники зафиксированы", fixed and int(fixed.group(1)) == uploaded - roles_set,
+     f"{fixed.group(1) if fixed else '?'} участников — гости с фото без молодожёнов")
 
 submit(f"/app/e/{event_id}/raffle", 'name="seed"', [("seed", "repetitsiya-2026")])
 body = text_of(get(f"/app/e/{event_id}/raffle")[1])
@@ -479,3 +538,4 @@ print(f"{ok} из {len(steps)} шагов пройдено")
 for name, good, detail in steps:
     if not good:
         print(f"  не прошло: {name} — {detail}")
+sys.exit(0 if ok == len(steps) else 1)

@@ -22,14 +22,11 @@ export function AddGuestCard({ eventId }: { eventId: string }) {
   }, [state]);
 
   return (
-    <form ref={form} action={action} className="flex flex-col rounded-2xl border border-stone-200 bg-white p-5">
+    <form ref={form} action={action} className="flex flex-col rounded-2xl border border-stone-200 bg-card p-5">
       <input type="hidden" name="eventId" value={eventId} />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-medium text-stone-900">Добавить гостя</h2>
-          <p className="mt-1 text-sm text-stone-500">По одному — Enter добавляет и сразу готов к следующему.</p>
-        </div>
-        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-stone-100 text-lg">👤</span>
+      <div>
+        <h2 className="text-base font-medium text-stone-900">Добавить гостя</h2>
+        <p className="mt-1 text-sm text-stone-500">По одному — Enter добавляет и сразу готов к следующему.</p>
       </div>
 
       <div className="mt-4 space-y-2">
@@ -56,7 +53,7 @@ export function AddGuestCard({ eventId }: { eventId: string }) {
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-stone-700">
           <input type="checkbox" name="plusOneAllowed" className="peer sr-only" />
-          <span aria-hidden className="relative h-5 w-9 rounded-full bg-stone-300 transition-colors peer-checked:bg-stone-900 peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4" />
+          <span aria-hidden className="relative h-5 w-9 rounded-full bg-stone-300 transition-colors peer-checked:bg-stone-900 peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-card after:shadow after:transition-transform peer-checked:after:translate-x-4" />
           Может прийти с парой
         </label>
         <button disabled={pending} className="rounded-lg bg-stone-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-60">

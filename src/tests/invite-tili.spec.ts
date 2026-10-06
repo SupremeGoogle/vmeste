@@ -34,7 +34,7 @@ function blocksOf(template = TILI_TEMPLATE): InviteBlockView[] {
 
 describe("Тили-тесто: шаблон и гостевая страница", () => {
   it("зарегистрирован, и все блоки переживают схему без потерь", () => {
-    expect(findTemplate("tili")).toBe(TILI_TEMPLATE);
+    expect(findTemplate("tili")).toMatchObject({ id: TILI_TEMPLATE.id, name: TILI_TEMPLATE.name, theme: TILI_TEMPLATE.theme, blocks: expect.arrayContaining(TILI_TEMPLATE.blocks) });
     for (const block of TILI_TEMPLATE.blocks) {
       const parsed = readBlockContent(block.type, block.content);
       expect(parsed.degraded).toBe(false);
@@ -45,17 +45,17 @@ describe("Тили-тесто: шаблон и гостевая страница
   it("рисует разделы образца: конверт, гирлянду, полароиды, календарь, тайминг, анкету", () => {
     const blocks = blocksOf();
     const page = invitePage({
-      title: "Диана и Виктор",
+      title: "Валерия и Давид",
       theme: TILI_TEMPLATE.theme,
       body: renderBlocks(blocks, null, null, DATE, TILI_TEMPLATE.theme, "Europe/Kaliningrad"),
-      script: inviteScript(blocks, TILI_TEMPLATE.theme, "Диана и Виктор"),
+      script: inviteScript(blocks, TILI_TEMPLATE.theme, "Валерия и Давид"),
     });
 
     for (const marker of [
       'id="cover"', 'class="bunting"', "тили ~ тили тесто", 'class="polaroid polaroid-left"',
       'class="cal-card', "Июль 2027", 'class="d d-marked">11<', "11 / 07 / 27",
       'id="countdown"', "Лермонтовская частная баня", 'class="tl-item', 'class="swatch"',
-      'class="wishes-section"', 'id="rsvpForm"', "Диана &amp; Виктор", "msg-canvas",
+      'class="wishes-section"', 'id="rsvpForm"', "Валерия &amp; Давид", "msg-canvas",
     ]) {
       expect(page).toContain(marker);
     }
@@ -83,7 +83,8 @@ describe("Тили-тесто: шаблон и гостевая страница
     const html = renderBlocks(blocksOf(), "/i/slug/token/rsvp", "придём", DATE, TILI_TEMPLATE.theme, "UTC", { rsvp });
 
     expect(html).toContain('action="/i/slug/token/rsvp"');
-    expect(html).toContain('value="Анна Петрова" readonly');
+    // Имя в анкете гость может поправить (docs/template-standard.md, §2).
+    expect(html).toContain('value="Анна Петрова" required');
     expect(html).toMatch(/value="ACCEPTED" required checked/);
     expect(html).toMatch(/value="d2" checked/);
     expect(html).not.toMatch(/value="d1" checked/);

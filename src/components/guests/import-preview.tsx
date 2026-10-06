@@ -88,7 +88,7 @@ export function ImportPreview({ eventId, draftId, data }: { eventId: string; dra
   const allOn = data.guests.every((g) => include[g.key]);
 
   return (
-    <section className="rise mt-6 overflow-hidden rounded-2xl border border-stone-300 bg-white shadow-sm">
+    <section className="rise mt-6 overflow-hidden rounded-2xl border border-stone-300 bg-card shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-stone-500">Проверьте перед добавлением</p>
@@ -111,7 +111,7 @@ export function ImportPreview({ eventId, draftId, data }: { eventId: string; dra
           { label: "Могут с парой", value: stats.plusOne },
           { label: "Проверить", value: stats.review, warn: stats.review > 0 },
         ].map((tile) => (
-          <div key={tile.label} className="bg-white px-5 py-3">
+          <div key={tile.label} className="bg-card px-5 py-3">
             <p className={`text-2xl tabular-nums ${tile.warn ? "text-amber-700" : "text-stone-900"} ${tile.strong ? "font-semibold" : ""}`}>{tile.value}</p>
             <p className="text-xs text-stone-500">{tile.label}</p>
           </div>
@@ -175,7 +175,7 @@ export function ImportPreview({ eventId, draftId, data }: { eventId: string; dra
                     }
                     e.currentTarget.form?.requestSubmit();
                   }}
-                  className="mt-1 w-full rounded-md border border-stone-300 bg-white px-2 py-1 text-sm text-stone-900"
+                  className="mt-1 w-full rounded-md border border-stone-300 bg-card px-2 py-1 text-sm text-stone-900"
                 >
                   {data.roleOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
@@ -210,7 +210,7 @@ export function ImportPreview({ eventId, draftId, data }: { eventId: string; dra
                 role="tab"
                 aria-selected={filter === value}
                 onClick={() => setFilter(value)}
-                className={`rounded-md px-3 py-1 transition-colors ${filter === value ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+                className={`rounded-md px-3 py-1 transition-colors ${filter === value ? "bg-card text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
               >
                 {label}
               </button>
@@ -256,7 +256,7 @@ export function ImportPreview({ eventId, draftId, data }: { eventId: string; dra
                     minLength={2}
                     maxLength={120}
                     aria-label="Имя"
-                    className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm font-medium text-stone-900 hover:border-stone-200 focus:border-stone-400 focus:bg-white"
+                    className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm font-medium text-stone-900 hover:border-stone-200 focus:border-stone-400 focus:bg-card"
                   />
                   <div className="mt-1 flex flex-wrap gap-1 px-2">
                     {guest.flags.existing && <Badge tone="blue">Уже в списке</Badge>}
@@ -296,7 +296,7 @@ export function ImportPreview({ eventId, draftId, data }: { eventId: string; dra
           })}
         </ul>
 
-        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 bg-white/95 px-5 py-3 backdrop-blur">
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 bg-card/95 px-5 py-3 backdrop-blur">
           <p className="text-sm text-stone-600">
             Выбрано <b className="text-stone-900">{stats.chosen}</b> из {data.guests.length}
           </p>

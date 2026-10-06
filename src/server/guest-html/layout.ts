@@ -51,8 +51,14 @@ input[type=text]:focus{border-color:var(--accent)}
 button{width:100%;margin-top:.75rem;padding:.9rem 1rem;font-size:1.0625rem;font-family:var(--sans);
 font-weight:500;color:#fff;background:var(--accent);border:0;border-radius:999px;cursor:pointer}
 button:active{background:var(--accent-deep)}
-.plan{display:block;width:100%;height:auto;margin:1.5rem 0 0;background:var(--card);
+.plan-scroll{margin:1.5rem 0 0;overflow-x:auto;overscroll-behavior-x:contain;background:var(--card);
 border:1px solid var(--line);border-radius:1rem}
+/* На широком экране план выходит из узкой колонки текста: ему нужно
+   около 62rem, чтобы уместиться целиком без прокрутки. */
+@media(min-width:48rem){.plan-scroll{--w:min(64rem,calc(100vw - 3rem));width:var(--w);
+margin-left:calc((100% - var(--w))/2)}}
+.plan{display:block;width:100%;height:auto}
+.plan-swipe{margin:.5rem 0 0;font-size:.8125rem;color:var(--muted);text-align:center}
 .legend{display:flex;gap:1.25rem;justify-content:center;align-items:center;margin:.75rem 0 0;
 font-size:.875rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:.4rem}

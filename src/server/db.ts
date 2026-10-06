@@ -28,6 +28,9 @@ const EVENT_SCOPED = new Set([
   "RaffleEntry",
   "ScreenToken",
   "GuestActionLog",
+  "Gift",
+  "GiftReservation",
+  "DayStep",
 ]);
 
 /** Операции, у которых обязан быть фильтр. create/createMany проверяются

@@ -104,6 +104,18 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
   const stageIndex = STAGES.findIndex((s) => s.id === stage);
 
   return (
+    // Загрузка файла — дело одного раза в жизни мероприятия, а место на
+    // экране занимала постоянно. Свёрнутая строка: открыли, загрузили,
+    // забыли. Без JS <details> раскрывается сам, форма внутри та же.
+    <details className="group overflow-hidden rounded-2xl border border-stone-200 bg-card open:shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-stone-50">
+        <span className="min-w-0">
+          <span className="font-medium text-stone-900">Загрузить список</span>
+          <span className="ml-2 text-stone-500">Excel или CSV</span>
+        </span>
+        <span aria-hidden className="shrink-0 text-stone-400 transition-transform group-open:rotate-180">▾</span>
+      </summary>
+
     <form
       action={action}
       method="post"
@@ -113,15 +125,9 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
         const file = input.current?.files?.[0];
         if (file) void upload(file);
       }}
-      className="relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white p-5"
+      className="relative flex flex-col border-t border-stone-200 px-4 pb-4 pt-3"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-medium text-stone-900">Загрузить список</h2>
-          <p className="mt-1 text-sm text-stone-500">Excel или CSV — столбцы в любом порядке и с любыми названиями.</p>
-        </div>
-        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-stone-100 text-lg">📋</span>
-      </div>
+      <p className="text-sm text-stone-500">Столбцы в любом порядке и с любыми названиями.</p>
 
       <label
         onDragOver={(event) => {
@@ -135,7 +141,7 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
           const file = event.dataTransfer.files?.[0];
           if (file && !busy) void upload(file);
         }}
-        className={`mt-4 flex min-h-36 flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
+        className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
           dragOver ? "border-stone-900 bg-stone-100" : "border-stone-300 bg-stone-50 hover:border-stone-500 hover:bg-stone-100/70"
         }`}
       >
@@ -176,8 +182,8 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
               onChange={(event) => setSmart(event.target.checked)}
               className="peer sr-only"
             />
-            <span aria-hidden className="relative h-5 w-9 rounded-full bg-stone-300 transition-colors peer-checked:bg-stone-900 peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4" />
-            <span>✨ Умный разбор</span>
+            <span aria-hidden className="relative h-5 w-9 rounded-full bg-stone-300 transition-colors peer-checked:bg-stone-900 peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-card after:shadow after:transition-transform peer-checked:after:translate-x-4" />
+            <span>Умный разбор</span>
           </label>
         ) : (
           <input type="hidden" name="smart" value="off" />
@@ -195,7 +201,7 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
       )}
 
       {busy && (
-        <div className="loading-in absolute inset-0 z-10 flex flex-col justify-center bg-white/95 px-6 backdrop-blur-sm" role="status" aria-live="polite">
+        <div className="loading-in absolute inset-0 z-10 flex flex-col justify-center bg-card/95 px-6 backdrop-blur-sm" role="status" aria-live="polite">
           <p className="truncate text-sm font-medium text-stone-900">{fileName}</p>
           <ol className="mt-4 space-y-2.5">
             {STAGES.map((item, index) => {
@@ -221,5 +227,6 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
         </div>
       )}
     </form>
+    </details>
   );
 }

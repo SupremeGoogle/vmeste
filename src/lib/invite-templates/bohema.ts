@@ -1,0 +1,57 @@
+import { defaultTheme } from "@/lib/invite-theme";
+import type { InviteTemplate } from "@/lib/invite-templates";
+import { BOHEMA_SAMPLE_IMAGES } from "@/lib/invite-templates/bohema-assets";
+
+export const BOHEMA_TEMPLATE: InviteTemplate = {
+  id: "bohema",
+  name: "Богема",
+  mood: "Тёплый бежевый пейзаж, арочная обложка, золотая ботаника и элегантная типографика. Богемное приглашение с программой, деталями и анкетой гостя.",
+  theme: {
+    ...defaultTheme(),
+    template: "bohema",
+    bg: "#fbf8ea",
+    card: "#fbf8ea",
+    ink: "#293222",
+    muted: "#6b6e61",
+    accent: "#a57a34",
+    line: "#cfc4a8",
+    leaf: "#39462e",
+    headingFont: "didona",
+    bodyFont: "grotesk",
+    corner: "round",
+    divider: "none",
+    cover: "plain",
+    timeline: "stack",
+    sections: "flat",
+    dateStyle: "line",
+    intro: "none",
+    decor: "none",
+    paper: false,
+    frame: false,
+    timelineIcons: false,
+    capsHeadings: false,
+    align: "center",
+  },
+  blocks: [
+    { type: "COVER", content: { v: 1, title: "Приглашают вас на свою свадьбу", names: "Валерия и Давид", dateText: "20 ноября 2027", subtitle: "В этот особенный день нам хочется быть рядом с самыми дорогими людьми.", imageUrl: "" } },
+    { type: "TIMELINE", content: { v: 1, title: "Программа дня", items: [
+      { time: "16:00", title: "Сбор гостей", note: "Встретимся за бокалом игристого и успеем обняться до начала праздника" },
+      { time: "16:30", title: "Церемония", note: "Самый трогательный момент дня мы хотим прожить вместе с вами" },
+      { time: "17:00", title: "Банкет", note: "Ужин, поздравления, танцы и разговоры до позднего вечера" },
+      { time: "22:00", title: "Завершение", note: "Обнимемся на прощание и увезём домой тёплые воспоминания" },
+    ] } },
+    { type: "COUNTDOWN", content: { v: 1, title: "До торжества осталось:", doneText: "Сегодня наш праздник!" } },
+    { type: "VENUE", content: { v: 1, title: "Место торжества", name: "Солнечная веранда", address: "г. Солнечногорск, Тимоновское ш., 36", note: "Сохраните адрес и загляните в карту перед выездом, чтобы легко нас найти.", imageUrl: BOHEMA_SAMPLE_IMAGES[2], mapUrl: "https://yandex.ru/maps/org/the_sun_lake/40246030321/", mapLabel: "Открыть карту" } },
+    { type: "TEXT", content: { v: 1, tag: "Важные детали", title: "Подарки", text: "Лучший подарок для нас — ваше присутствие. Если захочется добавить что-то ещё, открытка с пожеланием и конверт будут очень кстати." } },
+    { type: "TEXT", content: { v: 1, tag: "Важные детали", title: "Цветы", text: "Пожалуйста, не беспокойтесь о букете. Вместо цветов можно принести любимое вино: мы откроем его на одном из наших семейных вечеров." } },
+    { type: "TEXT", content: { v: 1, tag: "Важные детали", title: "Небольшая просьба", text: "Мы мечтаем о спокойной и душевной атмосфере. Давайте оставим поцелуи спонтанными и обойдёмся без традиционного «Горько»." } },
+    { type: "DRESSCODE", content: { v: 1, tag: "Рекомендации", title: "Дресс-код", text: "Для фотографий и общей атмосферы будем рады вечерним нарядам в мягких природных оттенках нашей палитры.", palette: ["#ded0be", "#d5bcc1", "#afbbb0", "#becad3", "#292f25"] } },
+    { type: "PHOTOS", content: { v: 1, title: "Образы для гостей", items: [
+      { imageUrl: BOHEMA_SAMPLE_IMAGES[3], caption: "Девушки" },
+      { imageUrl: BOHEMA_SAMPLE_IMAGES[4], caption: "Мужчины" },
+    ] } },
+    { type: "RSVP_FORM", content: { v: 1, title: "Присутствие гостя", text: "Пожалуйста, расскажите о своих планах до 15.10.2027 г. Это поможет нам подготовить праздник для каждого.", buttonLabel: "Отправить", attendanceLabel: "Сможете ли вы присутствовать на торжестве?", yesLabel: "Я приду / Мы придём", noLabel: "Прийти не получится", nameLabel: "Введите имя и фамилию", drinksLabel: "Предпочтения по напиткам", successText: "Спасибо! Ваш ответ получен." } },
+    { type: "TEXT", content: { v: 1, tag: "Организация торжества", title: "Наш организатор", text: "В день свадьбы с организационными вопросами поможет Екатерина.\n+7 (123) 425-11-96" } },
+    { type: "TEXT", content: { v: 1, title: "До встречи!", text: "Будем рады разделить этот день с вами." } },
+  ],
+};

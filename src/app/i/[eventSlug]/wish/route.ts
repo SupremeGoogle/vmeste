@@ -2,6 +2,7 @@
  * Пожелание от гостя, вошедшего по QR: он опознан гостевой cookie,
  * именной ссылки у него может не быть вовсе (PLAN.md §1.3).
  */
+import { tooManyFromClient } from "@/server/rate-limit/client-key";
 import { identifyBySlugSession } from "@/server/guest-access/identify";
 import { createWish, listGuestWishes } from "@/server/services/wishes";
 import { html } from "@/server/guest-html/layout";
@@ -54,6 +55,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ eventSlug: string }> },
 ) {
+  const limited = tooManyFromClient(request, "wish", 150);
+  if (limited) return limited;
   const { eventSlug } = await params;
   const guest = await identifyBySlugSession(eventSlug);
   if (!guest) return missing();

@@ -16,8 +16,12 @@ import {
   completeUpload, deletePhoto, guestQuota, listApprovedPhotos, listGuestPhotos,
   listPendingPhotos, moderatePhoto, startUpload,
 } from "@/server/services/photos";
-import { deletePrefix, getObject, keyBelongsToEvent, photoKeys } from "@/server/storage/s3";
+import sharp from "sharp";
+import {
+  deletePrefix, getObject, headObject, keyBelongsToEvent, photoKeys, readObject, thumbKeyFor,
+} from "@/server/storage/s3";
 import { normalizeName } from "@/lib/name-normalize";
+import { NSFW_FLAG } from "@/server/images/nsfw";
 
 /** Однопиксельный PNG — минимальный файл, который хранилище примет. */
 const PNG = Buffer.from(
@@ -48,24 +52,18 @@ async function makeWorld(slug: string, code: string): Promise<World> {
 }
 
 /** Загрузка целиком: подписанная ссылка → PUT в хранилище → подтверждение. */
-async function upload(ref: GuestRefLike, body: Buffer = PNG) {
-  const started = await startUpload(ref, { contentType: "image/png", bytes: body.byteLength });
+async function upload(ref: GuestRefLike, body: Buffer = PNG, contentType = "image/png") {
+  const started = await startUpload(ref, { contentType, bytes: body.byteLength });
   if (!started.ok) throw new Error(`не выдалась ссылка: ${started.message}`);
 
   const put = await fetch(started.ticket.uploadUrl, {
     method: "PUT",
-    headers: { "content-type": "image/png" },
+    headers: { "content-type": contentType },
     body: new Uint8Array(body),
   });
   expect(put.ok).toBe(true);
 
-  return completeUpload(ref, {
-    storageKey: started.ticket.storageKey,
-    thumbKey: started.ticket.thumbKey,
-    width: 1,
-    height: 1,
-    previewOk: false,
-  });
+  return completeUpload(ref, { storageKey: started.ticket.storageKey });
 }
 
 beforeAll(async () => {
@@ -130,10 +128,10 @@ describe("выдача ссылки на загрузку", () => {
     expect(result).toMatchObject({ ok: false, reason: "type" });
   });
 
-  it("не принимает файл больше 12 МБ", async () => {
+  it("не принимает файл больше 40 МБ", async () => {
     const result = await startUpload(a.ref, {
       contentType: "image/jpeg",
-      bytes: 13 * 1024 * 1024,
+      bytes: 41 * 1024 * 1024,
     });
     expect(result).toMatchObject({ ok: false, reason: "size" });
   });
@@ -146,14 +144,75 @@ describe("загрузка целиком", () => {
     if (!result.ok) return;
 
     const photo = await testDb.photo.findUniqueOrThrow({ where: { id: result.photoId } });
-    expect(photo.status).toBe("PENDING");
-    // Размер берётся у хранилища, а не со слов клиента.
-    expect(photo.bytes).toBe(PNG.byteLength);
-    expect(photo.previewOk).toBe(false);
+    // Автомодерация: кадр без подозрений публикуется сам, иначе ждёт организатора.
+    const clean = photo.nsfwScore !== null && photo.nsfwScore < NSFW_FLAG;
+    expect(photo.status).toBe(clean ? "APPROVED" : "PENDING");
+    expect(photo.moderatedBy).toBeNull();
+    // Размер — у того, что лежит в хранилище, а не со слов клиента.
+    expect(photo.bytes).toBe((await headObject(photo.storageKey)).bytes);
+    expect(photo.previewOk).toBe(true);
+    // Фильтр 18+ отработал: оценка есть, и обычный кадр не помечен.
+    expect(photo.nsfwScore).not.toBeNull();
+    expect(photo.nsfwScore!).toBeLessThan(0.6);
 
     const object = await getObject(photo.storageKey);
-    expect(object).not.toBeNull();
+    expect(object?.contentType).toBe("image/webp");
+    expect(await getObject(photo.thumbKey)).not.toBeNull();
   });
+});
+
+describe("перекодирование", () => {
+  it("большой кадр ужимается до 2560 px, теряет EXIF и становится WebP", async () => {
+    const big = await sharp({
+      create: { width: 4000, height: 3000, channels: 3, background: { r: 200, g: 120, b: 90 } },
+    })
+      .jpeg()
+      .withExif({ IFD3: { GPSLatitudeRef: "N", GPSLatitude: "55/1 45/1 0/1" } })
+      .toBuffer();
+    expect((await sharp(big).metadata()).exif).toBeDefined();
+
+    const result = await upload(a.ref, big, "image/jpeg");
+    if (!result.ok) throw new Error(result.message);
+
+    const photo = await testDb.photo.findUniqueOrThrow({ where: { id: result.photoId } });
+    expect([photo.width, photo.height]).toEqual([2560, 1920]);
+
+    const stored = await sharp(await readObject(photo.storageKey)).metadata();
+    expect(stored.format).toBe("webp");
+    expect(stored.exif).toBeUndefined();
+
+    const thumb = await sharp(await readObject(photo.thumbKey)).metadata();
+    expect(Math.max(thumb.width!, thumb.height!)).toBe(480);
+  });
+
+  it("файл без типа принимается — формат определяется по содержимому", async () => {
+    const result = await upload(a.ref, PNG, "application/octet-stream");
+    expect(result.ok).toBe(true);
+  });
+
+  it("не картинку отвергает и убирает из хранилища", async () => {
+    const started = await startUpload(a.ref, { contentType: "image/jpeg", bytes: 100 });
+    if (!started.ok) throw new Error("не выдалась ссылка");
+    await fetch(started.ticket.uploadUrl, {
+      method: "PUT",
+      headers: { "content-type": "image/jpeg" },
+      body: new Uint8Array(randomBytes(100)),
+    });
+
+    const result = await completeUpload(a.ref, { storageKey: started.ticket.storageKey });
+    expect(result).toMatchObject({ ok: false, reason: "unreadable" });
+    expect(await getObject(started.ticket.storageKey)).toBeNull();
+    expect(await testDb.photo.count({ where: { eventId: a.eventId } })).toBe(0);
+  });
+
+  it("превью лежит рядом с фото под тем же id", () => {
+    const keys = photoKeys("evt123");
+    expect(thumbKeyFor(keys.storageKey)).toBe(keys.thumbKey);
+    expect(thumbKeyFor("events/evt123/assets/x")).toBeNull();
+  });
+});
+
+describe("лимит и отказы", () => {
 
   it("шестое фото не принимается", async () => {
     for (let i = 0; i < 5; i++) expect((await upload(a.ref)).ok).toBe(true);
@@ -177,21 +236,13 @@ describe("загрузка целиком", () => {
 
   it("не даёт приписать себе файл чужого мероприятия", async () => {
     const foreign = photoKeys(b.eventId);
-    const result = await completeUpload(a.ref, {
-      storageKey: foreign.storageKey,
-      thumbKey: foreign.thumbKey,
-      width: 1, height: 1, previewOk: false,
-    });
+    const result = await completeUpload(a.ref, { storageKey: foreign.storageKey });
     expect(result).toMatchObject({ ok: false, reason: "foreign" });
   });
 
   it("не создаёт строку, если файл до хранилища не долетел", async () => {
     const keys = photoKeys(a.eventId);
-    const result = await completeUpload(a.ref, {
-      storageKey: keys.storageKey,
-      thumbKey: keys.thumbKey,
-      width: 1, height: 1, previewOk: false,
-    });
+    const result = await completeUpload(a.ref, { storageKey: keys.storageKey });
     expect(result).toMatchObject({ ok: false, reason: "missing" });
     expect(await testDb.photo.count({ where: { eventId: a.eventId } })).toBe(0);
   });
@@ -211,11 +262,7 @@ describe("загрузка целиком", () => {
     });
     for (let i = 0; i < 5; i++) await upload(a.ref);
 
-    const result = await completeUpload(a.ref, {
-      storageKey: started.ticket.storageKey,
-      thumbKey: started.ticket.thumbKey,
-      width: 1, height: 1, previewOk: false,
-    });
+    const result = await completeUpload(a.ref, { storageKey: started.ticket.storageKey });
     expect(result).toMatchObject({ ok: false, reason: "limit" });
     expect(await getObject(started.ticket.storageKey)).toBeNull();
   });
@@ -224,9 +271,13 @@ describe("загрузка целиком", () => {
 describe("модерация", () => {
   it("одобренное попадает в галерею, ожидающее — нет", async () => {
     const first = await upload(a.ref);
-    await upload(a.ref);
-    if (!first.ok) throw new Error("не загрузилось");
+    const second = await upload(a.ref);
+    if (!first.ok || !second.ok) throw new Error("не загрузилось");
 
+    // Чистые кадры автомодерация публикует сразу; здесь оба возвращаем
+    // в очередь, чтобы проверить ручное решение.
+    await moderatePhoto({ ...a.ref, userId: "u1" }, first.photoId, "PENDING");
+    await moderatePhoto({ ...a.ref, userId: "u1" }, second.photoId, "PENDING");
     expect(await listApprovedPhotos(a.eventId)).toHaveLength(0);
     await moderatePhoto({ ...a.ref, userId: "u1" }, first.photoId, "APPROVED");
 
@@ -240,11 +291,12 @@ describe("модерация", () => {
     const foreign = await upload(b.ref);
     if (!foreign.ok) throw new Error("не загрузилось");
 
-    const ok = await moderatePhoto({ ...a.ref, userId: "u1" }, foreign.photoId, "APPROVED");
+    const before = await testDb.photo.findUniqueOrThrow({ where: { id: foreign.photoId } });
+    const ok = await moderatePhoto({ ...a.ref, userId: "u1" }, foreign.photoId, "REJECTED");
     expect(ok).toBe(false);
 
     const photo = await testDb.photo.findUniqueOrThrow({ where: { id: foreign.photoId } });
-    expect(photo.status).toBe("PENDING");
+    expect(photo.status).toBe(before.status);
   });
 
   it("удаление убирает и строку, и оба объекта", async () => {

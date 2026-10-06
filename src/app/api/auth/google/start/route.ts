@@ -22,7 +22,10 @@ export async function GET() {
   const { url, state, verifier } = beginAuth();
 
   const jar = await cookies();
-  jar.set(HANDSHAKE_COOKIE, `${state}.${verifier}`, {
+  // Несколько незавершённых входов разом (две вкладки, повторное нажатие):
+  // помним три последних, иначе новое нажатие ломало бы вход по прежнему окну Google.
+  const previous = (jar.get(HANDSHAKE_COOKIE)?.value ?? "").split("|").filter(Boolean).slice(-2);
+  jar.set(HANDSHAKE_COOKIE, [...previous, `${state}.${verifier}`].join("|"), {
     httpOnly: true,
     sameSite: "lax",
     secure: cookieSecure(),

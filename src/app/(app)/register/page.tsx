@@ -1,82 +1,124 @@
+import { BrandLogo } from "@/components/brand";
 /**
- * Создание кабинета — только через Google.
+ * Создание кабинета: через Google или по почте с паролем.
  *
- * Форма с паролем отсюда убрана намеренно. Пароль, который организатор
- * придумает за минуту до первой свадьбы, — это будущий звонок «я не могу
- * войти, а гости уже едут»: его теряют, повторяют с других сервисов и
- * никогда не меняют. Google снимает с нас и восстановление доступа, и
- * подтверждение почты, и двухфакторную защиту, которую мы бы иначе делали
- * сами и хуже.
- *
- * Вход по паролю при этом остался (`/login`): у заведённых раньше
- * пользователей он работает, и им же пользуются сид и скрипты проверки.
- * Убрать регистрацию и убрать вход — разные вещи.
- *
- * Кабинет заводит не эта страница, а возврат от Google
- * (`api/auth/google/callback`) через общий `services/signup.ts`.
+ * Google по-прежнему первым: не нужно придумывать пароль, почта уже
+ * подтверждена, восстановление доступа — забота Google. Но не у всех
+ * есть Google-аккаунт (Яндекс, Mail.ru), поэтому есть и форма: кабинет
+ * заводится сразу, а открывается только после ссылки из письма
+ * (services/email-auth.ts). Без подтверждения войти нельзя — иначе любой
+ * занял бы чужой адрес.
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/server/auth/session";
 import { googleEnabled } from "@/server/auth/google";
-import { GoogleButton } from "../_auth/google-button";
+import { rateLimit } from "@/server/rate-limit";
+import { getSessionUser, requestOrigin } from "@/server/auth/session";
+import { AUTH_MESSAGES, PASSWORD_MIN, normalizeEmail, registerWithEmail, type AuthCode } from "@/server/services/email-auth";
+import { emailConfigured } from "@/server/email/send";
+import { GoogleButton, OrRule } from "../_auth/google-button";
 
 export const dynamic = "force-dynamic";
 
-const ERRORS: Record<string, string> = {
+const GOOGLE_ERRORS: Record<string, string> = {
   google_off: "Вход через Google пока не настроен.",
   google_cancel: "Вход через Google отменён — попробуйте ещё раз.",
   google_state: "Ссылка входа устарела, начните заново.",
   google_fail: "Google не подтвердил вход. Попробуйте ещё раз.",
+  blocked: "Доступ к кабинету закрыт. Напишите в поддержку.",
 };
+
+async function register(formData: FormData) {
+  "use server";
+  // Письма не настроены — кабинет без ссылки подтверждения не открыть.
+  if (!emailConfigured()) redirect("/register");
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
+  const { ip } = await requestOrigin();
+  // Против рассылки писем по чужим адресам: 5 регистраций в час на адрес
+  // почты и 20 — с одного IP (площадка с общим Wi-Fi остаётся в запасе).
+  if (!rateLimit(`register:${email}`, 5, 3_600_000).ok || !rateLimit(`register-ip:${ip ?? "?"}`, 20, 3_600_000).ok) {
+    redirect("/register?error=rate");
+  }
+  const result = await registerWithEmail({
+    name: String(formData.get("name") ?? ""),
+    email,
+    password: String(formData.get("password") ?? ""),
+  });
+  if (!result.ok) redirect(`/register?error=${result.code}&name=${encodeURIComponent(String(formData.get("name") ?? "").slice(0, 80))}&email=${encodeURIComponent(email)}`);
+  redirect(`/register/check?email=${encodeURIComponent(email)}`);
+}
 
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; name?: string; email?: string }>;
 }) {
   if (await getSessionUser()) redirect("/app");
-  const { error } = await searchParams;
+  const { error, name, email } = await searchParams;
   const enabled = googleEnabled();
+  const emailOn = emailConfigured();
+  const message = error ? (AUTH_MESSAGES[error as AuthCode] ?? GOOGLE_ERRORS[error] ?? "Не получилось, попробуйте ещё раз.") : null;
 
   return (
     <main className="mx-auto max-w-sm px-5 py-16 sm:px-6 sm:py-20">
       <p className="text-center">
-        <Link href="/" className="font-serif text-2xl tracking-wide">Вместе</Link>
+        <Link href="/" className="font-serif text-2xl tracking-wide"><BrandLogo size={64} /></Link>
       </p>
       <h1 className="mt-8 text-center text-3xl">Создать кабинет</h1>
       <p className="mt-2 text-center text-sm text-stone-600">
-        Бесплатно, первая свадьба целиком
+        Приглашения, гости и рассадка — в одном месте
       </p>
       <div className="mx-auto my-7 h-px w-12 bg-stone-200" />
 
-      {enabled ? (
+      {enabled && (
         <>
           <GoogleButton label="Продолжить с Google" />
-          <p className="mt-4 text-center text-xs leading-relaxed text-stone-500">
-            Пароль придумывать не нужно: кабинет открывается вашей почтой в
-            Google. Мы получаем только имя, адрес почты и фотографию профиля.
-          </p>
+          {emailOn && <OrRule />}
         </>
-      ) : (
+      )}
+
+      {!enabled && !emailOn && (
         <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Вход через Google пока не настроен на этом сервере. Напишите нам —
-          заведём кабинет руками.
+          Регистрация временно недоступна. Напишите нам — заведём кабинет руками.
         </p>
       )}
 
-      {error && <p className="mt-5 text-center text-sm text-red-700">{ERRORS[error] ?? "Не получилось, попробуйте ещё раз."}</p>}
+      {emailOn && <form action={register} className="space-y-4">
+        <div>
+          <label className="block text-sm text-stone-600" htmlFor="name">Как к вам обращаться</label>
+          <input
+            id="name" name="name" required minLength={2} maxLength={80} autoComplete="name" defaultValue={name ?? ""}
+            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-stone-600" htmlFor="email">Почта</label>
+          <input
+            id="email" name="email" type="email" required maxLength={200} autoComplete="email" defaultValue={email ?? ""}
+            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-stone-600" htmlFor="password">Пароль</label>
+          <input
+            id="password" name="password" type="password" required minLength={PASSWORD_MIN} maxLength={200} autoComplete="new-password"
+            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+          />
+          <p className="mt-1 text-xs text-stone-500">Не короче {PASSWORD_MIN} символов</p>
+        </div>
 
-      <div className="mt-10 rounded-xl border border-stone-200 bg-white/60 p-5">
-        <p className="text-sm text-stone-900">Что будет дальше</p>
-        <ol className="mt-3 space-y-2 text-sm text-stone-600">
-          <li>1. Google спросит, каким аккаунтом войти.</li>
-          <li>2. Мы заведём кабинет и вашу студию в нём.</li>
-          <li>3. Вы окажетесь на списке мероприятий — пустом.</li>
-        </ol>
-      </div>
+        {message && <p className="text-sm text-red-700">{message}</p>}
 
-      <p className="mt-6 text-center text-sm text-stone-600">
+        <button type="submit" className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-white" data-rybbit-event="email_register">
+          Создать кабинет
+        </button>
+        <p className="text-center text-xs leading-relaxed text-stone-500">
+          Пришлём письмо со ссылкой — кабинет откроется, когда вы подтвердите почту.
+        </p>
+      </form>}
+      {!emailOn && message && <p className="mt-5 text-center text-sm text-red-700">{message}</p>}
+
+      <p className="mt-8 text-center text-sm text-stone-600">
         Уже есть кабинет? <Link href="/login" className="underline">Войти</Link>
       </p>
     </main>

@@ -2,8 +2,9 @@
  * Ссылки на загрузку фото. Гость удостоверяется токеном именной ссылки.
  *
  * Отдельный endpoint, а не Server Action: загрузка идёт из клиентского
- * кода, который сам режет превью в canvas и кладёт оба файла в хранилище.
+ * кода, который сам ужимает кадр и кладёт его в хранилище.
  */
+import { tooManyFromClient } from "@/server/rate-limit/client-key";
 import { z } from "zod";
 import { identifyByToken, identifyByEventSession } from "@/server/guest-access/identify";
 import { startUpload } from "@/server/services/photos";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 /**
  * Схема проверяет только форму запроса. Тип файла и размер намеренно
  * пропускаются дальше «как есть»: их отвергает `startUpload`, и он же
- * объясняет причину по-человечески («Файл больше 12 МБ»), а не общим
+ * объясняет причину по-человечески («Файл больше 40 МБ»), а не общим
  * «некорректный запрос», которое гость увидел бы от zod.
  */
 const bodySchema = z.object({
@@ -25,6 +26,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const limited = tooManyFromClient(request, "photo-presign", 240);
+  if (limited) return limited;
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: "Некорректный запрос" }, { status: 400 });

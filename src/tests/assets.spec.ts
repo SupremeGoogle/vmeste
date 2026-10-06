@@ -6,11 +6,12 @@
  * а имитирует.
  */
 import { beforeEach, afterAll, describe, expect, it } from "vitest";
+import sharp from "sharp";
 import { testDb, resetDb } from "./helpers/db";
 import {
   completeAssetUpload, deleteAsset, listAssets, startAssetUpload, assetUrl,
 } from "@/server/services/assets";
-import { assetKey, headObject } from "@/server/storage/s3";
+import { assetKey, headObject, readObject } from "@/server/storage/s3";
 import type { EventContext } from "@/server/context";
 
 let a: EventContext;
@@ -58,16 +59,21 @@ beforeEach(async () => {
 });
 afterAll(resetDb);
 
+/** Небольшая настоящая картинка: пустые байты сервер уже не примет. */
+const jpeg = (width = 64, height = 48) =>
+  sharp({ create: { width, height, channels: 3, background: "#b88" } }).jpeg().toBuffer();
+
 /** Кладёт настоящий файл в хранилище по подписанной ссылке. */
-async function upload(ctx: EventContext, bytes = 2048) {
-  const started = await startAssetUpload(ctx, "image/jpeg", bytes);
+async function upload(ctx: EventContext, body?: Buffer, contentType = "image/jpeg") {
+  const file = body ?? (await jpeg());
+  const started = await startAssetUpload(ctx, contentType, file.byteLength);
   expect(started.ok).toBe(true);
   if (!started.ok) throw new Error(started.message);
 
   const put = await fetch(started.uploadUrl, {
     method: "PUT",
-    headers: { "content-type": "image/jpeg" },
-    body: new Uint8Array(bytes),
+    headers: { "content-type": contentType },
+    body: new Uint8Array(file),
   });
   expect(put.ok, "хранилище не поднято? см. CLAUDE.md про MinIO").toBe(true);
 
@@ -85,12 +91,32 @@ describe("загрузка картинки организатором", () => {
   });
 
   it("размер берётся у хранилища, а не со слов браузера", async () => {
-    const key = await upload(a, 4096);
+    const key = await upload(a);
     const done = await completeAssetUpload(a, key, "");
-    expect(done.ok && done.asset.bytes).toBe(4096);
-
     const head = await headObject(key);
-    expect(head.bytes).toBe(4096);
+    expect(done.ok && done.asset.bytes).toBe(head.bytes);
+    expect(head.contentType).toBe("image/webp");
+  });
+
+  it("большая картинка ужимается мягко — до 3200 px", async () => {
+    const png = await sharp({
+      create: { width: 5000, height: 2500, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0.5 } },
+    }).png().toBuffer();
+    const key = await upload(a, png, "image/png");
+    expect((await completeAssetUpload(a, key, "")).ok).toBe(true);
+
+    const stored = await sharp(await readObject(key)).metadata();
+    expect([stored.format, stored.width, stored.height, stored.hasAlpha]).toEqual(["webp", 3200, 1600, true]);
+  });
+
+  it("живая обложка остаётся живой", async () => {
+    const frames = await Promise.all(["#f00", "#0f0", "#00f"].map((background) =>
+      sharp({ create: { width: 40, height: 30, channels: 3, background } }).png().toBuffer()));
+    const animated = await sharp(frames, { join: { animated: true } }).gif({ loop: 0 }).toBuffer();
+
+    const key = await upload(a, animated, "image/gif");
+    expect((await completeAssetUpload(a, key, "")).ok).toBe(true);
+    expect((await sharp(await readObject(key)).metadata()).pages).toBe(3);
   });
 
   it("не изображение не принимается", async () => {

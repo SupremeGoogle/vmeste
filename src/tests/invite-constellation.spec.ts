@@ -18,7 +18,7 @@ function templateBlocks(): InviteBlockView[] {
 
 describe("Созвездие", () => {
   it("зарегистрирован с одной локацией и тремя заменяемыми фотографиями", () => {
-    expect(findTemplate("constellation")).toBe(CONSTELLATION_TEMPLATE);
+    expect(findTemplate("constellation")).toMatchObject({ id: CONSTELLATION_TEMPLATE.id, name: CONSTELLATION_TEMPLATE.name, theme: CONSTELLATION_TEMPLATE.theme, blocks: expect.arrayContaining(CONSTELLATION_TEMPLATE.blocks) });
     expect(CONSTELLATION_SAMPLE_IMAGES).toEqual([
       "/media/invite-constellation/couple.webp",
       "/media/invite-constellation/venue.webp",

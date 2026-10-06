@@ -15,7 +15,10 @@
     "db:test:setup": "DATABASE_URL=$TEST_DATABASE_URL prisma migrate deploy",
     "db:seed:photos": "tsx prisma/seed-photos.ts",
     "rehearsal": "python3 scripts/rehearsal.py",
-    "access-check": "python3 scripts/access-check.py"
+    "access-check": "python3 scripts/access-check.py",
+    "admin:reset-2fa": "tsx scripts/admin-reset-2fa.ts",
+    "retention": "tsx scripts/retention.ts",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1115.0",
@@ -25,15 +28,22 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@react-pdf/renderer": "^4.6.1",
+    "@sentry/nextjs": "^11.4.0",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "dotenv": "^17.4.2",
     "fflate": "^0.8.3",
+    "heic-decode": "^2.1.0",
+    "motion": "^13.4.4",
     "next": "16.3.1",
+    "nsfwjs": "^4.3.0",
     "papaparse": "^5.6.0",
     "pg": "^8.23.0",
     "prisma": "^7.9.1",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "^0.35.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {

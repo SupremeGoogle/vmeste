@@ -1,42 +1,20 @@
 /**
- * Форма ответа гостя: GET рисует, POST принимает.
- *
- * Ни строчки клиентского кода. Гость открывает форму с телефона в дороге,
- * и она обязана работать до того, как догрузится любой скрипт, — а раньше
- * ради неё на страницу приезжал весь рантайм React.
- *
- * Отсюда же отказ прятать выбор блюда при «не сможем»: без JS этого не
- * сделать, поэтому блок подписан «если придёте», а сервер эти поля при
- * отказе игнорирует.
+ * Форма ответа гостя по именной ссылке: GET рисует, POST принимает.
+ * Сама форма — `guest-html/rsvp-page.ts`, общая с ответом по общей ссылке.
  *
  * Токен в адресе — это и есть удостоверение личности гостя (PLAN.md §1.3).
  */
-import {
-  findGuestByLinkToken, listDrinkOptions, listMealOptions,
-} from "@/server/repositories/guests";
+import { tooManyFromClient } from "@/server/rate-limit/client-key";
+import { findGuestByLinkToken } from "@/server/repositories/guests";
 import { submitRsvp } from "@/server/services/rsvp";
 import { setGuestSession } from "@/server/guest-access/session";
-import { formatDeadline } from "@/lib/format-datetime";
-import { esc, html } from "@/server/guest-html/layout";
+import { html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
-import { getInviteTheme } from "@/server/repositories/invites";
+import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
+import { readRsvpDraft, renderRsvpPage, rsvpSessionExpiry } from "@/server/guest-html/rsvp-page";
+import { flashQuery, readFlash } from "@/server/guest-html/flash";
 
 export const dynamic = "force-dynamic";
-
-const ERRORS: Record<string, string> = {
-  deadline: "Срок ответа истёк. Напишите организатору — он отметит вас вручную.",
-  invalid: "Проверьте заполнение формы.",
-  gone: "Приглашение больше не действует.",
-};
-
-/** Докуда живёт гостевая сессия: месяц после свадьбы. Ответ может прийти
- *  и за полгода до неё, поэтому берём более поздний из двух сроков. */
-function sessionExpiry(eventDate: Date): Date {
-  const afterEvent = new Date(eventDate);
-  afterEvent.setDate(afterEvent.getDate() + 30);
-  const month = new Date(Date.now() + 30 * 24 * 3600 * 1000);
-  return afterEvent > month ? afterEvent : month;
-}
 
 const notFound = () =>
   html(
@@ -57,111 +35,25 @@ export async function GET(
   if (!guest || guest.event.slug !== eventSlug || guest.event.status === "ARCHIVED") {
     return notFound();
   }
-
-  const theme = await getInviteTheme(guest.eventId);
-  const [meals, drinks] = await Promise.all([
-    listMealOptions(guest.eventId),
-    listDrinkOptions(guest.eventId),
-  ]);
-  const plusOne = guest.plusOnes[0] ?? null;
-  const plusOneAllowed =
-    guest.event.allowPlusOne && guest.plusOneAllowed && guest.parentGuestId === null;
-  const error = new URL(request.url).searchParams.get("error");
-  const answered = guest.rsvpStatus !== "PENDING";
-  const deadline = guest.event.rsvpDeadline;
-
-  const choice = (
-    name: string,
-    value: string,
-    label: string,
-    checked: boolean,
-    required = false,
-  ) =>
-    `<label class="choice"><input type="radio" name="${name}" value="${esc(value)}"${
-      checked ? " checked" : ""
-    }${required ? " required" : ""}><span>${esc(label)}</span></label>`;
-
-  const mealFieldset = (name: string, legend: string, selected: string | null) =>
-    meals.length === 0
-      ? ""
-      : `<fieldset><legend>${esc(legend)}</legend>
-${meals.map((meal) => choice(name, meal.id, meal.title, selected === meal.id)).join("")}
-</fieldset>`;
-
-  // Напитков можно отметить несколько, поэтому флажки, а не переключатель.
-  const drinkFieldset = (name: string, legend: string, selected: { drinkOptionId: string }[]) =>
-    drinks.length === 0
-      ? ""
-      : `<fieldset><legend>${esc(legend)}</legend>
-${drinks
-  .map(
-    (drink) =>
-      `<label class="choice"><input type="checkbox" name="${name}" value="${esc(drink.id)}"${
-        selected.some((row) => row.drinkOptionId === drink.id) ? " checked" : ""
-      }><span>${esc(drink.title)}</span></label>`,
-  )
-  .join("")}
-</fieldset>`;
-
-  const body = `<p class="who">${esc(guest.displayName)}</p>
-<section style="padding-bottom:0">
-<h1 class="center" style="font-size:1.5rem">${answered ? "Можно изменить ответ" : "Подтвердите присутствие"}</h1>
-${deadline ? `<p class="center small muted">до ${esc(formatDeadline(deadline, guest.event.timezone))}</p>` : ""}
-</section>
-${error ? `<p class="error">${esc(ERRORS[error] ?? ERRORS.invalid)}</p>` : ""}
-<form method="post" action="/i/${eventSlug}/${token}/rsvp">
-  <fieldset>
-    <legend>Придёте?</legend>
-    ${choice("status", "ACCEPTED", "Да, будем", guest.rsvpStatus === "ACCEPTED", true)}
-    ${choice("status", "DECLINED", "К сожалению, не сможем", guest.rsvpStatus === "DECLINED")}
-  </fieldset>
-
-  ${
-    plusOneAllowed
-      ? `<label class="field"><span>Имя спутника, если придёте вдвоём</span>
-<input name="plusOneName" maxlength="120" value="${esc(guest.plusOneName ?? "")}" placeholder="Имя и фамилия">
-</label>`
-      : ""
-  }
-
-  ${mealFieldset("mealOptionId", "Если придёте — что подать на ужин", guest.mealOptionId)}
-  ${
-    plusOneAllowed
-      ? mealFieldset(
-          "plusOneMealOptionId",
-          "Что подать спутнику — если придёте вдвоём",
-          plusOne?.mealOptionId ?? null,
-        )
-      : ""
-  }
-
-  ${drinkFieldset("drinkOptionIds", "Что будете пить — можно отметить несколько", guest.drinks)}
-  ${
-    plusOneAllowed
-      ? drinkFieldset(
-          "plusOneDrinkOptionIds",
-          "Что будет пить спутник — если придёте вдвоём",
-          plusOne?.drinks ?? [],
-        )
-      : ""
-  }
-
-  <label class="field"><span>Что-то ещё для организатора</span>
-  <textarea name="comment" maxlength="500" rows="3">${esc(guest.comment ?? "")}</textarea></label>
-
-  <button class="submit" type="submit">${answered ? "Сохранить ответ" : "Отправить"}</button>
-</form>
-<p class="foot"><a href="/i/${eventSlug}/${token}">Вернуться к приглашению</a></p>`;
-
-  return html(invitePage({ title: guest.displayName, theme, body, noindex: true }), {
-    headers: { "cache-control": "private, no-store" },
+  const url = new URL(request.url);
+  const questions = await effectiveRsvpQuestions(guest.eventId);
+  const flash = readFlash(url.searchParams, guest.event.guestLinkSecret);
+  const page = await renderRsvpPage(guest, questions, {
+    action: `/i/${eventSlug}/${token}/rsvp`,
+    back: `/i/${eventSlug}/${token}`,
+    pageTitle: guest.displayName,
+    error: flash.error,
+    message: flash.message,
   });
+  return html(page, { headers: { "cache-control": "private, no-store" } });
 }
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ eventSlug: string; token: string }> },
 ) {
+  const limited = tooManyFromClient(request, "rsvp", 120);
+  if (limited) return limited;
   const { eventSlug, token } = await params;
   const guest = await findGuestByLinkToken(token);
   if (!guest || guest.event.slug !== eventSlug || guest.event.status === "ARCHIVED") {
@@ -169,18 +61,12 @@ export async function POST(
   }
 
   const form = await request.formData();
-  const result = await submitRsvp(token, {
-    status: String(form.get("status") ?? ""),
-    mealOptionId: String(form.get("mealOptionId") ?? "") || null,
-    comment: String(form.get("comment") ?? ""),
-    plusOneName: String(form.get("plusOneName") ?? ""),
-    plusOneMealOptionId: String(form.get("plusOneMealOptionId") ?? "") || null,
-    drinkOptionIds: form.getAll("drinkOptionIds").map(String),
-    plusOneDrinkOptionIds: form.getAll("plusOneDrinkOptionIds").map(String),
-    // Вопрос о музыке есть только в анкете на странице приглашения: если
-    // поля в форме нет, прежний ответ остаётся как был.
-    musicWish: form.has("musicWish") ? String(form.get("musicWish")) : undefined,
-  });
+  const questions = await effectiveRsvpQuestions(guest.eventId);
+  const draft = readRsvpDraft(form, questions);
+  // Стёртое имя не сохраняем: без имени организатор не поймёт, кто ответил.
+  const result = draft.guestName === ""
+    ? { ok: false as const, reason: "name" as const, message: "" }
+    : await submitRsvp(token, draft, questions);
 
   // Анкета, встроенная в само приглашение, возвращает гостя к ней же,
   // а не на отдельную страницу ответа.
@@ -195,7 +81,19 @@ export async function POST(
     });
 
   if (!result.ok) {
-    return back(inline ? `?error=${result.reason}#rsvp` : `/rsvp?error=${result.reason}`);
+    if (!inline) {
+      // Форму рисуем сразу с тем, что гость ввёл, — после редиректа все
+      // отмеченные ответы пришлось бы выбирать заново.
+      const page = await renderRsvpPage(guest, questions, {
+        action: `/i/${eventSlug}/${token}/rsvp`,
+        back: `/i/${eventSlug}/${token}`,
+        pageTitle: guest.displayName,
+        error: result.reason, message: result.message, draft,
+      });
+      return html(page, { status: 422, headers: { "cache-control": "private, no-store" } });
+    }
+    // Текст ошибки — чтобы гость видел, на какой вопрос не ответил.
+    return back(`?${flashQuery(guest.event.guestLinkSecret, result.reason, result.message)}#rsvp`);
   }
 
   // Гость ответил — значит, ссылка у него. Ставим гостевую сессию: на
@@ -203,7 +101,7 @@ export async function POST(
   await setGuestSession(
     { eventId: guest.eventId, guestId: guest.id },
     guest.event.guestLinkSecret,
-    sessionExpiry(guest.event.eventDate),
+    rsvpSessionExpiry(guest.event.eventDate),
   );
 
   return back(inline ? "?ok=1#rsvp" : "?ok=1");

@@ -8,30 +8,18 @@
  * положение десятка блоков на каждый пиксель прокрутки — гарантированные
  * подтормаживания на телефоне.
  */
+import { BrandLogo } from "@/components/brand";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-/**
- * Разделы шапки. `wide` — то, что показывается только на широком экране:
- * на планшете семь ссылок в ряд уже наезжают на кнопку кабинета, а
- * выбрасывать их из меню телефона незачем — там они помещаются все.
- */
+/** Разделы шапки — те же, что в меню телефона. */
 const LINKS = [
-  // Раздел с видео появляется только когда файл загружен, поэтому ссылка
-  // на него условная: пункт меню, ведущий в никуда, — это обещание,
-  // которого страница не выполняет.
-  { href: "#rolik", label: "Видео", wide: true, needsVideo: true },
   { href: "#vozmozhnosti", label: "Возможности" },
-  { href: "#kak", label: "Как это работает", wide: true },
-  { href: "#demo", label: "Демо" },
-  { href: "#galereya", label: "Галерея", wide: true },
-  { href: "#ceny", label: "Цены" },
+  { href: "#demo", label: "Рассадка" },
   { href: "#voprosy", label: "Вопросы" },
 ];
 
-export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo: boolean }) {
-  const links = LINKS.filter((link) => !link.needsVideo || hasVideo);
-
+export function Nav({ userName }: { userName: string | null }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string>("");
@@ -44,7 +32,7 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
   }, []);
 
   useEffect(() => {
-    const sections = links.map((link) => document.getElementById(link.href.slice(1))).filter(
+    const sections = LINKS.map((link) => document.getElementById(link.href.slice(1))).filter(
       (node): node is HTMLElement => node !== null,
     );
 
@@ -62,17 +50,15 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
 
     sections.forEach((node) => io.observe(node));
     return () => io.disconnect();
-  }, [links]);
+  }, []);
 
-  // Ссылка вида «/#ceny» приходит из переписки и из подвала другой
+  // Ссылка вида «/#voprosy» приходит из переписки и из подвала другой
   // страницы. Браузер прыгает к якорю до того, как разделы заняли свою
-  // высоту, и промахивается тем сильнее, чем ниже раздел: до «Ролика»
-  // он доезжал, до «Галереи» — уже нет.
+  // высоту, и промахивается тем сильнее, чем ниже раздел.
   //
-  // Поэтому доводим сами и не «три раза наугад», а пока страница
-  // перестанет расти: следим за высотой документа и повторяем прицел,
-  // но не дольше двух секунд — дальше это уже борьба с человеком,
-  // который начал листать сам.
+  // Поэтому доводим сами: следим за высотой документа и повторяем прицел,
+  // пока страница не перестанет расти, но не дольше двух секунд — дальше
+  // это уже борьба с человеком, который начал листать сам.
   useEffect(() => {
     const hash = window.location.hash.slice(1);
     if (!hash) return;
@@ -99,15 +85,13 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
       window.setTimeout(aim, 120);
     };
 
-    // Человек тронул колесо или экран — прекращаем немедленно: спорить
-    // с рукой пользователя худшее, что может делать страница.
+    // Человек тронул колесо, экран или клавиатуру — прекращаем немедленно:
+    // спорить с рукой пользователя худшее, что может делать страница.
     const surrender = () => {
       stop = true;
     };
     window.addEventListener("wheel", surrender, { passive: true, once: true });
     window.addEventListener("touchstart", surrender, { passive: true, once: true });
-    // Клавиатура — тоже рука пользователя: Page Down и стрелки должны
-    // уводить со страницы так же беспрекословно, как колесо мыши.
     window.addEventListener("keydown", surrender, { passive: true, once: true });
 
     aim();
@@ -130,57 +114,31 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
   }, [open]);
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled || open
-          ? "border-b border-stone-200/70 bg-[#fffdf9]/85 backdrop-blur-md"
-          : "border-b border-transparent"
-      }`}
-    >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5">
-        <Link href="/" className="flex items-center gap-2.5">
-          <img src="/media/vmeste-mark.svg" alt="" className="h-7 w-10" />
-          <span className="font-serif text-lg tracking-wide sm:text-xl">Вместе</span>
+    <header className="home-nav home-nav--clay" data-solid={scrolled || open}>
+      <div className="home-container home-nav-bar">
+        <Link href="/" className="home-brand" aria-label="Вместе — на главную">
+          <BrandLogo adaptive={false} />
         </Link>
 
-        <nav className="hidden items-center gap-5 text-sm text-stone-600 md:flex lg:gap-7">
-          {links.map((link) => (
+        <nav className="home-nav-links" aria-label="Разделы">
+          {LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className={`relative py-1 transition-colors hover:text-stone-950 ${
-                link.wide ? "hidden lg:inline-block" : ""
-              } ${active === link.href ? "text-stone-950" : ""}`}
+              aria-current={active === link.href ? "true" : undefined}
             >
               {link.label}
-              <span
-                className={`absolute -bottom-0.5 left-0 h-px bg-stone-900 transition-all duration-300 ${
-                  active === link.href ? "w-full" : "w-0"
-                }`}
-              />
             </a>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="home-nav-actions">
           {userName ? (
-            <Link
-              href="/app"
-              className="rounded-full bg-stone-900 px-5 py-2 text-sm text-white transition-transform hover:scale-[1.03]"
-            >
-              Личный кабинет
-            </Link>
+            <Link href="/app" className="home-button">Личный кабинет</Link>
           ) : (
             <>
-              <Link href="/login" className="px-2 py-2 text-sm text-stone-600 hover:text-stone-950">
-                Войти
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-full bg-stone-900 px-5 py-2 text-sm text-white transition-transform hover:scale-[1.03]"
-              >
-                Создать кабинет
-              </Link>
+              <Link href="/login" className="home-nav-login">Войти</Link>
+              <Link href="/register" className="home-button">Создать свадьбу</Link>
             </>
           )}
         </div>
@@ -190,53 +148,33 @@ export function Nav({ userName, hasVideo }: { userName: string | null; hasVideo:
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           aria-label={open ? "Закрыть меню" : "Открыть меню"}
-          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 md:hidden"
+          className="home-burger"
         >
-          <span
-            className={`h-px w-6 bg-stone-800 transition-transform duration-300 ${
-              open ? "translate-y-[3.5px] rotate-45" : ""
-            }`}
-          />
-          <span
-            className={`h-px w-6 bg-stone-800 transition-transform duration-300 ${
-              open ? "-translate-y-[3.5px] -rotate-45" : ""
-            }`}
-          />
+          <span />
+          <span />
         </button>
       </div>
 
       {open && (
-        <div className="max-h-[calc(100dvh-56px)] overflow-y-auto border-t border-stone-200/70 bg-[#fffdf9] px-4 pb-8 md:hidden">
-          <nav className="flex flex-col">
-            {links.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="border-b border-stone-200/70 py-3.5 text-stone-700"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-          <div className="mt-5 flex flex-col gap-3">
-            {userName ? (
-              <Link href="/app" className="rounded-full bg-stone-900 px-5 py-3 text-center text-white">
-                Личный кабинет
-              </Link>
-            ) : (
-              <>
-                <Link href="/register" className="rounded-full bg-stone-900 px-5 py-3 text-center text-white">
-                  Создать кабинет
-                </Link>
-                <Link
-                  href="/login"
-                  className="rounded-full border border-stone-300 px-5 py-3 text-center text-stone-700"
-                >
-                  Войти
-                </Link>
-              </>
-            )}
+        <div className="home-menu">
+          <div className="home-container">
+            <nav aria-label="Разделы">
+              {LINKS.map((link) => (
+                <a key={link.href} href={link.href} onClick={() => setOpen(false)}>
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+            <div className="home-menu-actions">
+              {userName ? (
+                <Link href="/app" className="home-button">Личный кабинет</Link>
+              ) : (
+                <>
+                  <Link href="/register" className="home-button">Создать свадьбу</Link>
+                  <Link href="/login" className="home-button home-button--outline">Войти</Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

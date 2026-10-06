@@ -9,23 +9,39 @@
  * Наружу отсюда торчат ровно две операции:
  *   — presigned PUT: гость грузит файл напрямую в хранилище, минуя наш сервер
  *     (иначе 12-мегапиксельный кадр с телефона пойдёт через Node дважды);
+ *     после загрузки сервер один раз читает исходник и кладёт на его место
+ *     перекодированный WebP (`putObject` / `readObject`);
  *   — чтение объекта потоком: отдаёт его `/api/media/[eventId]/[photoId]` после
  *     проверки прав. Presigned GET сознательно не используется — ссылка,
  *     живущая шесть часов, переживает и отзыв фото, и его отклонение.
  */
 import { randomUUID } from "node:crypto";
 import {
-  DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command,
+  CopyObjectCommand, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command,
   PutObjectCommand, S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-/** Что принимаем от гостя. HEIC — с айфонов, он приходит чаще, чем кажется. */
-export const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-/** 12 МБ: больше — это уже не «фото с телефона», а промах или атака. */
-export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
-/** Превью делает браузер, поэтому его размер известен и мал. */
-export const MAX_THUMB_BYTES = 1024 * 1024;
+/**
+ * Что принимаем на загрузку. Список широкий намеренно: всё пришедшее
+ * сервер перекодирует в WebP (`server/images/convert.ts`), а настоящий
+ * формат определяет по содержимому, а не по этому заголовку.
+ *
+ * `application/octet-stream` — не лазейка, а частый случай: Chrome на
+ * Windows и часть Android отдают HEIC с пустым `file.type`. Отказать
+ * такому гостю значило бы потерять кадр с айфона из-за чужого браузера.
+ */
+export const ALLOWED_TYPES = [
+  "image/jpeg", "image/pjpeg", "image/png", "image/webp", "image/gif", "image/avif",
+  "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence",
+  "image/tiff", "image/bmp", "image/x-ms-bmp", "application/octet-stream",
+];
+/**
+ * Предел для исходника гостя. Он выше, чем вес итогового файла: сервер
+ * ужимает кадр до 2560 px, а до того в хранилище лежит то, что прислал
+ * телефон, — у 48-мегапиксельного HEIC это 15–25 МБ.
+ */
+export const MAX_UPLOAD_BYTES = 40 * 1024 * 1024;
 
 export type StorageConfig = {
   endpoint: string;
@@ -50,20 +66,55 @@ function config(): StorageConfig {
 }
 
 let client: S3Client | null = null;
+let publicClient: S3Client | null = null;
 
 function s3(): S3Client {
   if (client) return client;
+  client = makeClient(config().endpoint);
+  return client;
+}
+
+/**
+ * Клиент для подписанных ссылок, по которым браузер гостя кладёт фото
+ * прямо в хранилище. Сервер ходит в MinIO по 127.0.0.1, а телефону нужен
+ * внешний адрес — S3_PUBLIC_ENDPOINT (nginx передаёт Host как есть, так что
+ * подпись сходится). Не задан — тот же адрес, что у сервера (локально).
+ */
+function s3Public(): S3Client {
+  const endpoint = process.env.S3_PUBLIC_ENDPOINT;
+  if (!endpoint) return s3();
+  publicClient ??= makeClient(endpoint);
+  return publicClient;
+}
+
+function makeClient(endpoint: string): S3Client {
   const cfg = config();
-  client = new S3Client({
-    endpoint: cfg.endpoint,
+  return new S3Client({
+    endpoint,
     region: cfg.region,
     credentials: { accessKeyId: cfg.accessKey, secretAccessKey: cfg.secretKey },
     // MinIO живёт по пути (`host/bucket/key`), а не по поддомену.
     // На проде (S3/R2) это тоже работает, поэтому включено всегда:
     // одна настройка вместо двух разных поведений.
     forcePathStyle: true,
+    // Новый SDK по умолчанию кладёт в подписанную ссылку CRC32 — посчитанный
+    // по пустому телу, ведь файла при подписи ещё нет. MinIO это пропускает,
+    // Garage на сервере честно сверяет и отвечает InvalidDigest. Контрольные
+    // суммы — только там, где их требует сам S3 (DeleteObjects).
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
-  return client;
+}
+
+/** Хранилище отвечает — для /api/health и панели суперадмина. */
+export async function storageReachable(timeoutMs = 3000): Promise<boolean> {
+  try {
+    const { HeadBucketCommand } = await import("@aws-sdk/client-s3");
+    await s3().send(new HeadBucketCommand({ Bucket: bucketName() }), { abortSignal: AbortSignal.timeout(timeoutMs) });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function bucketName(): string {
@@ -84,6 +135,12 @@ export function photoKeys(eventId: string): { storageKey: string; thumbKey: stri
     storageKey: `events/${eventId}/photos/${id}`,
     thumbKey: `events/${eventId}/thumbs/${id}.webp`,
   };
+}
+
+/** Ключ превью по ключу фото: оба выдаёт `photoKeys` из одного id. */
+export function thumbKeyFor(storageKey: string): string | null {
+  const match = /^events\/([^/]+)\/photos\/([^/.]+)$/.exec(storageKey);
+  return match ? `events/${match[1]}/thumbs/${match[2]}.webp` : null;
 }
 
 /**
@@ -127,7 +184,13 @@ export async function presignUpload(
     Key: key,
     ContentType: contentType,
   });
-  return getSignedUrl(s3(), command, { expiresIn: expiresInSeconds });
+  // `signableHeaders` обязателен: без него презайнер кладёт тип в запрос,
+  // но не в подпись, и хранилище принимает PUT с любым `Content-Type`
+  // (проверено тестом в `photos-hard.spec.ts`).
+  return getSignedUrl(s3Public(), command, {
+    expiresIn: expiresInSeconds,
+    signableHeaders: new Set(["content-type"]),
+  });
 }
 
 /** Размер и тип объекта в хранилище — то, что там на самом деле лежит. */
@@ -136,26 +199,58 @@ export async function headObject(key: string) {
   return { bytes: result.ContentLength ?? 0, contentType: result.ContentType ?? "" };
 }
 
+/** Запись объекта сервером — сюда кладётся перекодированный файл. */
+export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+  await s3().send(
+    new PutObjectCommand({ Bucket: bucketName(), Key: key, Body: body, ContentType: contentType }),
+  );
+}
+
+/** Объект целиком в память — только для перекодирования, размер уже сверен. */
+export async function readObject(key: string): Promise<Buffer> {
+  const result = await s3().send(new GetObjectCommand({ Bucket: bucketName(), Key: key }));
+  if (!result.Body) throw new Error(`Пустой объект: ${key}`);
+  return Buffer.from(await result.Body.transformToByteArray());
+}
+
 export type StoredObject = {
   body: ReadableStream<Uint8Array>;
   contentType: string;
   bytes: number;
+  /** Есть, только если запрашивали диапазон: `bytes 0-1023/52428800`. */
+  contentRange?: string;
 };
 
-/** Объект потоком — для `/api/media/[eventId]/[photoId]`. */
-export async function getObject(key: string): Promise<StoredObject | null> {
+/**
+ * Объект потоком — для `/api/media/[eventId]/[photoId]`.
+ *
+ * `range` — заголовок `Range` браузера как есть. Нужен видео: Safari без
+ * ответа 206 не проигрывает ролик вовсе, а перемотка в любом браузере
+ * иначе качает файл с начала.
+ */
+export async function getObject(key: string, range?: string): Promise<StoredObject | null> {
   try {
-    const result = await s3().send(new GetObjectCommand({ Bucket: bucketName(), Key: key }));
+    const result = await s3().send(
+      new GetObjectCommand({ Bucket: bucketName(), Key: key, Range: range }),
+    );
     if (!result.Body) return null;
     return {
       body: result.Body.transformToWebStream(),
       contentType: result.ContentType ?? "application/octet-stream",
       bytes: result.ContentLength ?? 0,
+      contentRange: result.ContentRange,
     };
   } catch (error) {
     if (isNotFound(error)) return null;
     throw error;
   }
+}
+
+/** Копия внутри бакета — без прохода файла через наш сервер. */
+export async function copyObject(fromKey: string, toKey: string): Promise<void> {
+  await s3().send(
+    new CopyObjectCommand({ Bucket: bucketName(), CopySource: `${bucketName()}/${fromKey}`, Key: toKey }),
+  );
 }
 
 export async function deleteObjects(keys: string[]): Promise<void> {

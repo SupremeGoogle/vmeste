@@ -53,9 +53,14 @@ export async function GET(
     headers: {
       "content-type": object.contentType,
       "content-length": String(object.bytes),
+      ...(new URL(request.url).searchParams.get("download") === "1" ? {
+        "content-disposition": `attachment; filename="photo-${photo.id}.${object.contentType === "image/jpeg" ? "jpg" : object.contentType === "image/png" ? "png" : "webp"}"`,
+      } : {}),
       // Приватный кеш: у одобренного фото ссылка стабильна, но общим
       // кешам и CDN раздавать его нельзя — статус может измениться.
       "cache-control": photo.status === "APPROVED" ? "private, max-age=3600" : "private, no-store",
+      // Отдаём ровно тот тип, что записали при перекодировании, — без догадок браузера.
+      "x-content-type-options": "nosniff",
       "x-robots-tag": "noindex, nofollow",
     },
   });

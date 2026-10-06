@@ -152,19 +152,146 @@ export function seatPosition(table: TableGeometry, index: number): Point {
   };
 }
 
+/** Расстояние между соседними местами стола, в единицах плана. */
+export function seatSpacing(table: TableGeometry): number {
+  const count = Math.max(table.capacity, 1);
+  if (table.isCouple) return table.width / (count + 1);
+  if (isRound(table.shape)) return (2 * Math.PI * (Math.max(table.width, table.height) / 2 + 26)) / count;
+  return table.width / (Math.ceil(count / 2) + 1);
+}
+
 /**
- * Куда отнести подпись места: наружу от центра стола.
- * Если ставить подпись всегда вниз, имена верхних мест ложатся на стол.
+ * ── Подписи мест ────────────────────────────────────────────────────
+ *
+ * Имя стоит строго снаружи своего места: над верхним рядом, под нижним,
+ * по лучу от центра у круглого стола. Раньше подписи длинного стола шли
+ * «шахматкой» на двух высотах, и понять, чьё имя у какого места, было
+ * нельзя.
+ *
+ * Размер подписи подбирается под то, сколько места ей досталось в
+ * реальных единицах экрана или листа (`unit` — сколько единиц вывода
+ * в одной единице плана). Поэтому план адаптивен: на широком мониторе
+ * имя стоит в одну строку, на узком фамилия уходит на вторую строку и
+ * шрифт мельчает, а когда и так не влезает (стол на 14 гостей на
+ * телефоне), подписи наклоняются по диагонали — наклонённые соседи
+ * не задевают друг друга при любом шаге.
  */
-export function labelPosition(table: TableGeometry, seat: Point, extraOut = 0): Point {
+
+/** Средняя ширина буквы в долях кегля — с запасом для кириллицы. */
+const CHAR_EM = 0.58;
+/** Межстрочный интервал подписи в долях кегля. */
+export const LABEL_LINE = 1.15;
+/** Наклон подписей на тесном столе, в градусах. */
+export const LABEL_TILT = 40;
+
+export type LabelFit = {
+  /** Кегль в единицах вывода (px на экране, pt в PDF). */
+  fontSize: number;
+  /** Инициал и фамилия — на двух строках. */
+  twoLines: boolean;
+  /** Подписи наклонены по диагонали. */
+  tilted: boolean;
+};
+
+export type LabelPlacement = {
+  /** Точка привязки в единицах плана. */
+  x: number;
+  y: number;
+  /** Поворот подписи в градусах вокруг точки привязки. */
+  angle: number;
+  /** Какой край подписи лежит в точке привязки. */
+  align: "start" | "middle" | "end";
+  baseline: "top" | "middle" | "bottom";
+};
+
+/**
+ * Один кегль на весь стол: подписи соседних мест разного размера
+ * выглядят как ошибка вёрстки.
+ */
+export function fitSeatLabels(
+  table: TableGeometry,
+  names: string[],
+  { base, min, unit = 1 }: { base: number; min: number; unit?: number },
+): LabelFit {
+  const room = seatSpacing(table) * unit * 0.9;
+  const short = names.map(shortName).filter(Boolean);
+  if (short.length === 0) return { fontSize: base, twoLines: false, tilted: false };
+  const longestLine = Math.max(...short.map((name) => name.length));
+  const longestWord = Math.max(...short.flatMap((name) => name.split(" ").map((word) => word.length)));
+
+  if (longestLine * CHAR_EM * base <= room) return { fontSize: base, twoLines: false, tilted: false };
+
+  const stacked = Math.min(base, room / (longestWord * CHAR_EM));
+  if (stacked >= min) return { fontSize: stacked, twoLines: true, tilted: false };
+
+  // Наклонённые соседние подписи отстоят друг от друга на шаг × sin(наклона);
+  // этого должно хватать на высоту строки.
+  const across = seatSpacing(table) * unit * Math.sin((LABEL_TILT * Math.PI) / 180);
+  return { fontSize: Math.max(min, Math.min(base, across / (LABEL_LINE * 1.1))), twoLines: false, tilted: true };
+}
+
+/** Строки подписи: «В. Суворова» или «В.» / «Суворова». */
+export function labelLines(name: string, fit: LabelFit): string[] {
+  const short = shortName(name);
+  if (!fit.twoLines) return [short];
+  const [initial, ...rest] = short.split(" ");
+  return rest.length ? [initial, rest.join(" ")] : [initial];
+}
+
+/**
+ * Где и как поставить подпись места. `gap` — отступ от центра места до
+ * подписи в единицах плана: на экране кружок места рисуется в пикселях,
+ * и редактор пересчитывает отступ под свой масштаб.
+ */
+export function placeSeatLabel(table: TableGeometry, index: number, fit: LabelFit, gap = SEAT_RADIUS + 4): LabelPlacement {
+  const seat = seatPosition(table, index);
+
+  if (table.isCouple || !isRound(table.shape)) {
+    const side = seat.y < table.y ? -1 : 1;
+    if (fit.tilted) {
+      return { x: seat.x + 3, y: seat.y + side * (gap - 2), angle: side * LABEL_TILT, align: "start", baseline: "middle" };
+    }
+    return { x: seat.x, y: seat.y + side * gap, angle: 0, align: "middle", baseline: side < 0 ? "bottom" : "top" };
+  }
+
   const dx = seat.x - table.x;
   const dy = seat.y - table.y;
   const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const x = seat.x + ux * gap;
+  const y = seat.y + uy * gap;
+  if (fit.tilted) {
+    // По лучу от центра стола; на левой половине текст разворачиваем,
+    // чтобы он не читался вверх ногами.
+    const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
+    return ux < 0
+      ? { x, y, angle: angle + 180, align: "end", baseline: "middle" }
+      : { x, y, angle, align: "start", baseline: "middle" };
+  }
   return {
-    x: seat.x + (dx / len) * (6 + extraOut),
-    y: seat.y + (dy / len) * (22 + extraOut) + 5,
+    x,
+    y,
+    angle: 0,
+    align: ux > 0.4 ? "start" : ux < -0.4 ? "end" : "middle",
+    baseline: uy < -0.4 ? "bottom" : uy > 0.4 ? "top" : "middle",
   };
 }
+
+/**
+ * Для SVG: сдвиг каждой строки по вертикали от точки привязки (в единицах
+ * кегля `fontSize`) — у SVG нет «прижать блок строк к низу».
+ */
+export function svgLineOffsets(lines: number, fontSize: number, baseline: LabelPlacement["baseline"]): number[] {
+  const lh = fontSize * LABEL_LINE;
+  const block = lh * (lines - 1);
+  // 0,78 кегля — высота строчных над базовой линией, 0,32 — половина
+  // x-высоты: так строка садится на нужный край, а не на базовую линию.
+  const first = baseline === "top" ? fontSize * 0.78 : baseline === "bottom" ? -block - fontSize * 0.22 : -block / 2 + fontSize * 0.32;
+  return Array.from({ length: lines }, (_, i) => first + i * lh);
+}
+
+export const SVG_ANCHOR = { start: "start", middle: "middle", end: "end" } as const;
 
 /**
  * Насколько отодвинуть подпись, если на месте стоит значок молодожёнов.

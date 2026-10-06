@@ -9,6 +9,7 @@
  * попадает в публичную ссылку приглашения, и «svadba-1» там никому
  * не нужен.
  */
+import { notifyEventCreated } from "@/server/notify/events";
 import { redirect } from "next/navigation";
 import { getOrgContext } from "@/server/context";
 import { createEvent } from "@/server/repositories/events";
@@ -57,6 +58,7 @@ export default async function NewEventPage({ searchParams }: Props) {
       );
     }
 
+    notifyEventCreated(event.title, event.eventDate);
     redirect(`/app/e/${event.id}/settings`);
   }
 
@@ -113,7 +115,7 @@ export default async function NewEventPage({ searchParams }: Props) {
           </span>
         </label>
 
-        <button className="rounded-lg bg-stone-900 px-5 py-2.5 text-white">Создать</button>
+        <button className="rounded-lg bg-stone-900 px-5 py-2.5 text-white" data-rybbit-event="event_create">Создать</button>
       </form>
     </main>
   );

@@ -23,10 +23,18 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { normalizeName } from "@/lib/name-normalize";
 import { expandGuestName } from "@/server/services/diminutives";
-import { generateLinkToken } from "@/server/repositories/guests";
+import { generateLinkToken, ONLY_GUESTS } from "@/server/repositories/guests";
+import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
+import { checkAnswers, parseStoredAnswers, type RsvpQuestion } from "@/lib/rsvp-form";
 
 export const rsvpInputSchema = z.object({
-  status: z.enum(["ACCEPTED", "DECLINED"]),
+  /**
+   * Имя, как его написал сам гость. В именной ссылке поле уже заполнено
+   * организатором, но гость может поправить опечатку или дописать фамилию.
+   * `undefined` — формы без поля имени: имя не трогаем.
+   */
+  guestName: z.string().trim().max(120).optional(),
+  status: z.enum(["PENDING", "ACCEPTED", "DECLINED"]),
   mealOptionId: z.string().trim().max(40).nullable().default(null),
   comment: z.string().trim().max(500).default(""),
   plusOneName: z.string().trim().max(120).default(""),
@@ -41,18 +49,28 @@ export const rsvpInputSchema = z.object({
    * нет: там прежний ответ не трогаем, а не стираем молча.
    */
   musicWish: z.string().trim().max(200).optional(),
+  /**
+   * Ответы на поля конструктора анкеты: id вопроса → значения. `undefined`
+   * — форма без этих полей: прежние ответы не трогаем.
+   */
+  answers: z.record(z.string().max(60), z.array(z.string().max(1000)).max(40)).optional(),
 });
 
 export type RsvpInput = z.infer<typeof rsvpInputSchema>;
 
 export type RsvpResult =
-  | { ok: true; status: "ACCEPTED" | "DECLINED"; plusOneName: string | null }
+  | { ok: true; status: "PENDING" | "ACCEPTED" | "DECLINED"; plusOneName: string | null }
   | { ok: false; reason: "gone" | "deadline" | "invalid"; message: string };
 
 /**
  * @param linkToken токен именной ссылки — он же удостоверяет личность гостя.
  */
-export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpResult> {
+export async function submitRsvp(
+  linkToken: string,
+  raw: unknown,
+  /** Поля анкеты, если вызывающий их уже загрузил. */
+  preloaded?: RsvpQuestion[],
+): Promise<RsvpResult> {
   const parsed = rsvpInputSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, reason: "invalid", message: "Проверьте заполнение формы" };
@@ -62,8 +80,14 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
   const guest = await db.guest.findUnique({
     where: { linkToken },
     select: {
-      id: true, orgId: true, eventId: true, archivedAt: true,
-      plusOneAllowed: true, parentGuestId: true,
+      id: true, orgId: true, eventId: true, archivedAt: true, displayName: true,
+      plusOneAllowed: true, parentGuestId: true, rsvpAnswers: true, mealOptionId: true,
+      drinks: { select: { drinkOptionId: true } },
+      // Нынешний выбор спутника — чтобы его прежнее блюдо тоже можно было сохранить.
+      plusOnes: {
+        where: { archivedAt: null }, orderBy: { createdAt: "asc" }, take: 1,
+        select: { mealOptionId: true, drinks: { select: { drinkOptionId: true } } },
+      },
       event: { select: { allowPlusOne: true, rsvpDeadline: true } },
     },
   });
@@ -81,8 +105,12 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
   }
 
   // Блюдо: только из списка мероприятия и только у тех, кто придёт.
-  const pickMeal = async (id: string | null): Promise<string | null | "invalid"> => {
+  // Прежний выбор гостя принимается и тогда, когда блюдо уже выключено:
+  // иначе анкета, которая возвращает его скрытым полем, навсегда застревала
+  // на «такого блюда нет в меню».
+  const pickMeal = async (id: string | null, kept: string | null): Promise<string | null | "invalid"> => {
     if (input.status !== "ACCEPTED" || !id) return null;
+    if (id === kept) return id;
     const meal = await db.mealOption.findFirst({
       where: { id, eventId: guest.eventId, active: true },
       select: { id: true },
@@ -90,31 +118,61 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
     return meal ? meal.id : "invalid";
   };
 
-  const mealOptionId = await pickMeal(input.mealOptionId);
+  const plusOneNow = guest.plusOnes[0] ?? null;
+  const mealOptionId = await pickMeal(input.mealOptionId, guest.mealOptionId);
   if (mealOptionId === "invalid") {
     return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
   }
 
-  const plusOneMealOptionId = await pickMeal(input.plusOneMealOptionId);
+  const plusOneMealOptionId = await pickMeal(input.plusOneMealOptionId, plusOneNow?.mealOptionId ?? null);
   if (plusOneMealOptionId === "invalid") {
     return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
   }
 
   // Напитки проверяются так же, как блюдо: только включённые и только своего бара.
-  const pickDrinks = async (ids: string[]): Promise<string[] | "invalid"> => {
+  // Уже выбранные гостем напитки, как и блюдо, проходят и после выключения.
+  const pickDrinks = async (ids: string[], kept: string[]): Promise<string[] | "invalid"> => {
     const unique = [...new Set(ids.filter(Boolean))];
     if (input.status !== "ACCEPTED" || unique.length === 0) return [];
+    const fresh = unique.filter((id) => !kept.includes(id));
+    if (fresh.length === 0) return unique;
     const found = await db.drinkOption.findMany({
-      where: { id: { in: unique }, eventId: guest.eventId, active: true },
+      where: { id: { in: fresh }, eventId: guest.eventId, active: true },
       select: { id: true },
     });
-    return found.length === unique.length ? unique : "invalid";
+    return found.length === fresh.length ? unique : "invalid";
   };
 
-  const drinkOptionIds = await pickDrinks(input.drinkOptionIds);
-  const plusOneDrinkOptionIds = await pickDrinks(input.plusOneDrinkOptionIds);
+  const drinkOptionIds = await pickDrinks(input.drinkOptionIds, guest.drinks.map((row) => row.drinkOptionId));
+  const plusOneDrinkOptionIds = await pickDrinks(
+    input.plusOneDrinkOptionIds,
+    plusOneNow?.drinks.map((row) => row.drinkOptionId) ?? [],
+  );
   if (drinkOptionIds === "invalid" || plusOneDrinkOptionIds === "invalid") {
     return { ok: false, reason: "invalid", message: "Такого напитка нет в баре" };
+  }
+
+  // Поля конструктора анкеты. Обязательность — только для тех, кто придёт.
+  const questions = preloaded ?? (await effectiveRsvpQuestions(guest.eventId));
+  let rsvpAnswers: ReturnType<typeof parseStoredAnswers> | undefined;
+  if (input.answers !== undefined) {
+    const checked = checkAnswers(questions, input.answers, input.status, parseStoredAnswers(guest.rsvpAnswers));
+    if (!checked.ok) return { ok: false, reason: "invalid", message: checked.message };
+    rsvpAnswers = checked.answers;
+  }
+  if (input.status === "ACCEPTED") {
+    const needMeal = questions.some((question) => question.type === "MEAL" && question.required);
+    const needDrinks = questions.some((question) => question.type === "DRINKS" && question.required);
+    const needMusic = questions.some((question) => question.type === "MUSIC" && question.required);
+    if (needMusic && input.musicWish !== undefined && !input.musicWish.trim()) {
+      return { ok: false, reason: "invalid", message: "Предложите песню для диджея" };
+    }
+    if (needMeal && !mealOptionId && (await db.mealOption.count({ where: { eventId: guest.eventId, active: true } })) > 0) {
+      return { ok: false, reason: "invalid", message: "Выберите блюдо" };
+    }
+    if (needDrinks && drinkOptionIds.length === 0 && (await db.drinkOption.count({ where: { eventId: guest.eventId, active: true } })) > 0) {
+      return { ok: false, reason: "invalid", message: "Отметьте, что будете пить" };
+    }
   }
 
   // Спутника приводит только приглашённый и только с разрешения обеих сторон.
@@ -136,15 +194,28 @@ export async function submitRsvp(linkToken: string, raw: unknown): Promise<RsvpR
       });
     };
 
+    // Гость поправил своё имя — переписываем и ключ поиска с алиасами,
+    // иначе на входе по QR он найдётся только под прежним написанием.
+    const rename = input.guestName && input.guestName !== guest.displayName ? input.guestName : null;
+    if (rename) {
+      await tx.guestAlias.deleteMany({ where: { eventId: guest.eventId, guestId: guest.id } });
+    }
+
     await tx.guest.update({
       where: { eventId_id: { eventId: guest.eventId, id: guest.id } },
       data: {
+        ...(rename ? {
+          displayName: rename,
+          searchKey: normalizeName(rename),
+          aliases: { create: expandGuestName(rename).map((alias) => ({ orgId: guest.orgId, alias })) },
+        } : {}),
         rsvpStatus: input.status,
-        rsvpAt: new Date(),
+        rsvpAt: input.status === "PENDING" ? null : new Date(),
         mealOptionId,
         comment: input.comment || null,
         plusOneName: plusOneName || null,
         ...(input.musicWish !== undefined ? { musicWish: input.musicWish || null } : {}),
+        ...(rsvpAnswers !== undefined ? { rsvpAnswers } : {}),
       },
     });
     await setDrinks(guest.id, drinkOptionIds);
@@ -236,23 +307,23 @@ export async function rsvpSummary(eventId: string) {
   const [byStatus, meals, drinks, plusOnes, notOpened] = await Promise.all([
     db.guest.groupBy({
       by: ["rsvpStatus"],
-      where: { eventId, archivedAt: null },
+      where: { eventId, archivedAt: null, ...ONLY_GUESTS },
       _count: { _all: true },
     }),
     db.guest.groupBy({
       by: ["mealOptionId"],
-      where: { eventId, archivedAt: null, rsvpStatus: "ACCEPTED" },
+      where: { eventId, archivedAt: null, ...ONLY_GUESTS, rsvpStatus: "ACCEPTED" },
       _count: { _all: true },
     }),
     // Для бара считаются только те, кто придёт: отказавшийся гость
     // мог выбрать вино ещё до того, как передумал.
     db.guestDrink.groupBy({
       by: ["drinkOptionId"],
-      where: { eventId, guest: { archivedAt: null, rsvpStatus: "ACCEPTED" } },
+      where: { eventId, guest: { archivedAt: null, ...ONLY_GUESTS, rsvpStatus: "ACCEPTED" } },
       _count: { _all: true },
     }),
-    db.guest.count({ where: { eventId, archivedAt: null, parentGuestId: { not: null } } }),
-    db.guest.count({ where: { eventId, archivedAt: null, linkOpenedAt: null } }),
+    db.guest.count({ where: { eventId, archivedAt: null, ...ONLY_GUESTS, parentGuestId: { not: null } } }),
+    db.guest.count({ where: { eventId, archivedAt: null, ...ONLY_GUESTS, linkOpenedAt: null } }),
   ]);
 
   const count = (status: string) =>
@@ -335,12 +406,12 @@ export async function setRsvpManually(
 /** Список гостей с ответами — для сводки организатора. */
 export async function listRsvp(eventId: string) {
   return db.guest.findMany({
-    where: { eventId, archivedAt: null },
+    where: { eventId, archivedAt: null, ...ONLY_GUESTS },
     orderBy: [{ rsvpStatus: "asc" }, { searchKey: "asc" }],
     select: {
       id: true, displayName: true, rsvpStatus: true, rsvpAt: true,
       comment: true, linkToken: true, linkOpenedAt: true,
-      parentGuestId: true, plusOneName: true, musicWish: true,
+      parentGuestId: true, plusOneName: true, musicWish: true, rsvpAnswers: true,
       mealOption: { select: { title: true } },
       drinks: {
         select: { drink: { select: { title: true } } },

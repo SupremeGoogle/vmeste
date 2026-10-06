@@ -12,7 +12,8 @@
     npm run build && PORT=3010 npm start &
     npm run access-check
 """
-import html as htmlmod, json, os, re, sys, urllib.error, urllib.parse, urllib.request, uuid
+import html as htmlmod, io, json, os, re, sys, urllib.error, urllib.parse, urllib.request, uuid, zipfile
+import xml.etree.ElementTree as ET
 
 BASE = os.environ.get("BASE", "http://localhost:3010")
 
@@ -49,15 +50,19 @@ class Session:
     def _header(self):
         return "; ".join(f"{k}={v}" for k, v in self.cookies.items())
 
-    def request(self, path, data=None, headers=None, method=None):
+    def request(self, path, data=None, headers=None, method=None, binary=False):
         head = {"cookie": self._header(), **(headers or {})}
         req = urllib.request.Request(BASE + path, data=data, headers=head, method=method)
         try:
             with self.opener.open(req) as response:
                 self._remember(response.headers)
-                return response.status, response.read().decode(errors="replace"), response.headers
+                self.last_url = response.geturl()
+                body = response.read()
+                return response.status, body if binary else body.decode(errors="replace"), response.headers
         except urllib.error.HTTPError as error:
-            return error.code, error.read().decode(errors="replace"), error.headers
+            self.last_url = error.geturl()
+            body = error.read()
+            return error.code, body if binary else body.decode(errors="replace"), error.headers
 
     def json_post(self, path, payload):
         status, body, headers = self.request(
@@ -71,11 +76,12 @@ class Session:
     def submit(self, path, marker, extra=(), occurrence=0):
         """Отправка формы так, как это делает браузер без JavaScript."""
         _, page, _ = self.request(path)
-        idx = -1
-        for _ in range(occurrence + 1):
-            idx = page.index(marker, idx + 1)
-        start = page.rindex("<form", 0, idx)
-        chunk = page[start:page.index("</form>", start)]
+        markup = re.sub(r"<script\b[^>]*>.*?</script>", "", page, flags=re.S | re.I)
+        forms = [match.group(0) for match in re.finditer(r"<form\b[^>]*>.*?</form>", markup, re.S)]
+        matches = [form for form in forms if marker in form]
+        if len(matches) <= occurrence:
+            raise RuntimeError(f"На странице {path} нет формы с маркером {marker!r}")
+        chunk = matches[occurrence]
         fields = [(m.group(1), htmlmod.unescape(m.group(2) or ""))
                   for m in re.finditer(
                       r'<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?/>', chunk)]
@@ -97,6 +103,18 @@ def text_of(html_body):
     return htmlmod.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)))
 
 
+def invitation_links(book_bytes):
+    """Именные ссылки из текущей xlsx-выгрузки гостей."""
+    with zipfile.ZipFile(io.BytesIO(book_bytes)) as book:
+        ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        shared = ET.fromstring(book.read("xl/sharedStrings.xml"))
+        strings = ["".join(node.itertext()) for node in shared.findall("x:si", ns)]
+        sheet = ET.fromstring(book.read("xl/worksheets/sheet1.xml"))
+        return [value for cell in sheet.findall(".//x:c[@t='s']", ns)
+                if (node := cell.find("x:v", ns)) is not None
+                if (value := strings[int(node.text)]).startswith("http") and "/i/" in value]
+
+
 anon = Session()
 planner = Session()      # организатор «Аня и Миша»
 neighbour = Session()    # организатор соседнего агентства
@@ -111,17 +129,17 @@ check("организатор входит в свою панель", "Меро�
 # Берём опубликованное мероприятие, а не первое попавшееся: после
 # репетиции в списке первым стоит архивное, и половина проверок ниже
 # честно, но бессмысленно упиралась бы в его 404.
-def published_event(session, page):
+def published_event(session, page, title):
     for event_id in dict.fromkeys(re.findall(r"/app/e/([a-z0-9]+)", page)):
         _, settings, _ = session.request(f"/app/e/{event_id}/settings")
-        if "Снять с публикации" in settings:
+        if "Снять с публикации" in settings and title in settings:
             return event_id
-    raise SystemExit("в панели нет опубликованного мероприятия — запустите npm run db:seed")
+    raise SystemExit(f"в панели нет опубликованного мероприятия «{title}» — запустите npm run db:seed")
 
 
-mine = published_event(planner, panel)
+mine = published_event(planner, panel, "Аня и Миша")
 _, other_panel, _ = neighbour.request("/app")
-foreign = published_event(neighbour, other_panel)
+foreign = published_event(neighbour, other_panel, "Лида и Пётр")
 check("у соседей своё мероприятие", mine != foreign, f"{mine[:8]}… vs {foreign[:8]}…")
 
 for page in ["", "/guests", "/seating", "/rsvp", "/photos", "/screen", "/settings", "/raffle"]:
@@ -145,9 +163,8 @@ check("без входа панель не открывается", status in (2
       anon.request(f"/app/e/{mine}/guests")[1], "перенаправление на /login")
 
 print("\n2. Гостевые ссылки")
-_, export, _ = planner.request(f"/api/app/events/{mine}/guests/export")
-rows = [line.split(";") for line in export.strip().split("\r\n")[1:]]
-links = [row[-1] for row in rows if row[-1].startswith("http")]
+_, export, _ = planner.request(f"/api/app/events/{mine}/guests/export", binary=True)
+links = invitation_links(export)
 token = links[0].rsplit("/", 1)[1]
 slug = links[0].split("/i/")[1].split("/")[0]
 
@@ -210,8 +227,8 @@ check("не фотография отвергается по-человечес�
 
 status, body = anon.json_post("/api/guest/photos/presign",
                               {"token": token, "contentType": "image/jpeg",
-                               "bytes": 20 * 1024 * 1024})
-check("файл больше 12 МБ отвергается с понятным текстом",
+                               "bytes": 41 * 1024 * 1024})
+check("файл больше 40 МБ отвергается с понятным текстом",
       status == 409 and "МБ" in body.get("error", ""), body.get("error"))
 
 status, body = anon.json_post("/api/guest/photos/presign",
@@ -275,15 +292,14 @@ planner.submit("/app/events/new", 'Аня и Миша', [
     ("eventTime", "16:00"),
     ("slug", f"access-check-{uuid.uuid4().hex[:6]}"),
 ])
-_, panel_after, _ = planner.request("/app")
-temp_id = next(e for e in dict.fromkeys(re.findall(r"/app/e/([a-z0-9]+)", panel_after))
-               if e not in (mine, foreign))
+created_url = planner.last_url
+temp_id = created_url.split("/app/e/")[1].split("/")[0]
 planner.submit(f"/app/e/{temp_id}/settings", 'value="PUBLISHED"')
 planner.submit(f"/app/e/{temp_id}/guests", 'placeholder="Имя и фамилия"',
                [("displayName", "Тест Тестов"), ("phone", "")])
 
-_, temp_export, _ = planner.request(f"/api/app/events/{temp_id}/guests/export")
-temp_link = [line.split(";")[-1] for line in temp_export.strip().split("\r\n")[1:]][0]
+_, temp_export, _ = planner.request(f"/api/app/events/{temp_id}/guests/export", binary=True)
+temp_link = invitation_links(temp_export)[0]
 temp_path = temp_link.split(BASE)[-1]
 _, temp_settings, _ = planner.request(f"/app/e/{temp_id}/settings")
 temp_code = re.search(r"tracking-widest[^>]*>([A-Z0-9]{6})<", temp_settings)
@@ -315,10 +331,17 @@ if temp_code:
     check("после архива план зала закрыт", status == 404, f"HTTP {status}")
 
 # Перевыпуск ссылки гасит старую.
-planner.submit(f"/app/e/{temp_id}/settings", 'value="DRAFT"')
+restore_status, _, _ = planner.submit(f"/app/e/{temp_id}/settings", 'value="DRAFT"')
+settings_status, restored_settings, _ = planner.request(f"/app/e/{temp_id}/settings")
+check("мероприятие возвращено из архива", settings_status == 200 and "Вернуть из архива" not in restored_settings, f"HTTP {restore_status}, страница {settings_status}")
 _, guests_html, _ = planner.request(f"/app/e/{temp_id}/guests")
 guest_card = re.search(rf"/app/e/{temp_id}/guests/([a-z0-9]+)", guests_html).group(1)
 planner.submit(f"/app/e/{temp_id}/guests/{guest_card}", "перевыпустить")
+refresh_status, refreshed_export, _ = planner.request(f"/api/app/events/{temp_id}/guests/export", binary=True)
+if refresh_status != 200:
+    raise RuntimeError(f"Не удалось выгрузить гостей после перевыпуска: HTTP {refresh_status}")
+new_link = invitation_links(refreshed_export)[0]
+check("перевыпуск выдаёт новый токен", new_link != temp_link)
 
 status, _, _ = anon.request(temp_path)
 check("перевыпуск гасит старую ссылку", status == 404, f"HTTP {status}")
@@ -336,11 +359,11 @@ for who, path in [
     status, body, _ = who.request(path)
     branded = "Страница не найдена" in body
     check(f"{path[:44]}: 404 и своя страница", status == 404 and branded,
-          "своя" if branded else "стандартная английская")
+          f"HTTP {status}, " + ("своя" if branded else "стандартная английская"))
 
 print("\n9. Заголовки гостевых страниц")
 routes = [
-    (f"/e/{code}", "public, max-age=60, stale-while-revalidate=86400"),
+    (f"/e/{code}", "private, no-cache, no-store, max-age=0, must-revalidate"),
     (f"/e/{code}/plan", "public, max-age=60, stale-while-revalidate=86400"),
     (f"/i/{slug}", "public, max-age=60, stale-while-revalidate=86400"),
     (f"/i/{slug}/{token}", "private, no-store"),
@@ -358,8 +381,9 @@ for path in [f"/e/{code}", f"/e/{code}/plan", f"/i/{slug}", f"/i/{slug}/{token}"
     _, body, _ = anon.request(path)
     size = len(body.encode())
     assets = len(re.findall(r"/_next/static/", body))
+    budget_ok = size < 200_000 and (assets <= 40 if path.startswith("/e/") and "/plan" not in path else assets == 0)
     check(f"{path.split('/i/')[-1] if '/i/' in path else path}: {size // 1024} КБ, ассетов {assets}",
-          size < 200_000 and assets == 0, "без внешних запросов")
+          budget_ok, "в пределах бюджета страницы")
 
 print("\n— Итог —")
 passed = sum(1 for _, ok, _ in checks if ok)

@@ -89,9 +89,10 @@ describe("разметка приглашения", () => {
     expect(html).not.toContain('"onload="');
   });
 
-  it("на неименной странице не зовёт отвечать", () => {
+  it("без данных гостя анкета — образец прямо в приглашении, без ухода на отдельную страницу", () => {
     const html = renderBlocks([block("RSVP_FORM")], null, null);
-    expect(html).toContain("по именной ссылке");
+    expect(html).toContain('class="vm-rsvp"');
+    expect(html).toContain('data-demo="true"');
     expect(html).not.toContain("<a class=\"cta\"");
   });
 

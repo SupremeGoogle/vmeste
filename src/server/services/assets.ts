@@ -11,12 +11,19 @@
  * Отличий от гостевого пути два, и оба намеренные:
  *   — нет модерации: организатор сам себе модератор;
  *   — нет лимита на количество: за свои картинки он отвечает сам, а
- *     общий тормоз — размер файла, он тот же.
+ *     общий тормоз — размер файла.
+ *
+ * Картинка при подтверждении перекодируется в WebP, но мягче, чем фото
+ * гостей (`INVITE_ASSET`: до 3200 px, качество 88, анимация сохраняется):
+ * обложку разглядывают на весь экран. Без этого PNG-обложку на 10 МБ
+ * качал бы каждый гость, открывший приглашение с телефона.
  */
 import { db } from "@/server/db";
 import type { EventContext } from "@/server/context";
+import { INVITE_ASSET, convertImage } from "@/server/images/convert";
+import { NSFW_BLOCK, nsfwScore } from "@/server/images/nsfw";
 import {
-  ALLOWED_TYPES, MAX_UPLOAD_BYTES, assetKey, deleteObjects, headObject, presignUpload,
+  ALLOWED_TYPES, assetKey, deleteObjects, headObject, presignUpload, putObject, readObject,
 } from "@/server/storage/s3";
 
 export type AssetView = {
@@ -34,8 +41,15 @@ export type AssetView = {
 export const AUDIO_TYPES = ["audio/mpeg", "audio/mp4", "audio/x-m4a"];
 export const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
 
+/**
+ * Предел для исходной картинки. После перекодирования обложка весит
+ * 0,3–1,5 МБ, а 25 МБ хватает и на PNG из фотошопа, и на полноразмерный
+ * кадр с зеркалки.
+ */
+export const MAX_ASSET_BYTES = 25 * 1024 * 1024;
+
 const limitFor = (contentType: string) =>
-  AUDIO_TYPES.includes(contentType) ? MAX_AUDIO_BYTES : MAX_UPLOAD_BYTES;
+  AUDIO_TYPES.includes(contentType) ? MAX_AUDIO_BYTES : MAX_ASSET_BYTES;
 
 /** Адрес, по которому картинку отдаёт приложение. Бакет закрыт целиком. */
 export function assetUrl(eventId: string, assetId: string): string {
@@ -53,7 +67,7 @@ export async function startAssetUpload(
   declaredBytes: number,
 ): Promise<StartUpload> {
   if (!ALLOWED_TYPES.includes(contentType) && !AUDIO_TYPES.includes(contentType)) {
-    return { ok: false, message: "Принимаем изображения (JPEG, PNG, WebP, HEIC) и музыку (MP3, M4A)." };
+    return { ok: false, message: "Принимаем изображения (JPEG, PNG, WebP, HEIC, GIF и др.) и музыку (MP3, M4A)." };
   }
   const limit = limitFor(contentType);
   if (declaredBytes > limit) {
@@ -96,13 +110,34 @@ export async function completeAssetUpload(
     return { ok: false, message: "Файл больше допустимого." };
   }
 
+  // Песня остаётся как есть, картинка заменяется WebP по тому же ключу.
+  let stored = { contentType: head.contentType, bytes: head.bytes };
+  if (!AUDIO_TYPES.includes(head.contentType)) {
+    let converted;
+    try {
+      converted = await convertImage(await readObject(key), INVITE_ASSET);
+    } catch {
+      await deleteObjects([key]).catch(() => {});
+      return { ok: false, message: "Не получилось открыть картинку. Попробуйте JPEG или PNG." };
+    }
+    // Обложку никто не модерирует, а видит её каждый гость, — поэтому
+    // здесь фильтр отказывает, а не просто помечает. Порог высокий.
+    const nsfw = await nsfwScore(converted.body);
+    if (nsfw !== null && nsfw >= NSFW_BLOCK) {
+      await deleteObjects([key]).catch(() => {});
+      return { ok: false, message: "Эта картинка похожа на откровенную. Выберите другую." };
+    }
+    await putObject(key, converted.body, converted.contentType);
+    stored = { contentType: converted.contentType, bytes: converted.body.byteLength };
+  }
+
   const asset = await db.eventAsset.create({
     data: {
       orgId: ctx.orgId,
       eventId: ctx.eventId,
       storageKey: key,
-      contentType: head.contentType,
-      bytes: head.bytes,
+      contentType: stored.contentType,
+      bytes: stored.bytes,
       alt: alt.trim().slice(0, 200),
     },
   });

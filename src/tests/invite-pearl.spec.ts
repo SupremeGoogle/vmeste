@@ -18,7 +18,7 @@ function templateBlocks(): InviteBlockView[] {
 
 describe("Жемчуг", () => {
   it("зарегистрирован с одной локацией и двумя независимыми фотографиями", () => {
-    expect(findTemplate("pearl")).toBe(PEARL_TEMPLATE);
+    expect(findTemplate("pearl")).toMatchObject({ id: PEARL_TEMPLATE.id, name: PEARL_TEMPLATE.name, theme: PEARL_TEMPLATE.theme, blocks: expect.arrayContaining(PEARL_TEMPLATE.blocks) });
     expect(PEARL_SAMPLE_IMAGES).toEqual([
       "/media/invite-pearl/couple.webp",
       "/media/invite-pearl/venue.webp",

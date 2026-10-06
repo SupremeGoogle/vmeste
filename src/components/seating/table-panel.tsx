@@ -111,7 +111,7 @@ export function TableEditPanel({
                 seating.deleteTable(table.id);
                 onClose();
               }}
-              className="rounded-lg bg-red-700 px-3 py-2 font-medium text-white"
+              className="rounded-lg bg-[#8a2b2b] px-3 py-2 font-medium text-white"
             >
               Да, удалить
             </button>
@@ -160,7 +160,7 @@ function CoupleSeats({ table, seating }: { table: EditorTable; seating: Seating 
               : fallback[seat.index]}
           </p>
           {seat.guest ? (
-            <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm">
+            <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-card px-3 py-2 text-sm">
               <span>{seat.guest.displayName}</span>
               <button
                 type="button"

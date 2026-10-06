@@ -8,7 +8,10 @@
  * «скрипт + стили» делает их редактируемыми.
  *
  * Разметка, которую понимает скрипт:
- *   data-inline-edit data-block-id data-path   — текст;
+ *   data-inline-edit data-block-id data-path   — текст; поле dateText
+ *                                                 (дата и город на обложке)
+ *                                                 открывает панель «Имена,
+ *                                                 дата и место» с календарём;
  *     data-multiline="true"                     — Enter переносит строку;
  *     data-join=" и "                           — строки склеиваются этим
  *                                                 (имена, разнесённые на две);
@@ -47,7 +50,8 @@ const NONE: EditAttrs = {
 };
 
 export function editAttrs(blockId: string, editable: boolean): EditAttrs {
-  if (!editable) return NONE;
+  const media = (path: string) => ` data-media-block="${esc(blockId)}" data-media-path="${esc(path)}"`;
+  if (!editable) return { ...NONE, image: media, section: () => ` data-content-block="${esc(blockId)}"` };
   const id = esc(blockId);
   const target = (kind: string, path: string) =>
     ` data-${kind} data-block-id="${id}" data-path="${esc(path)}"`;
@@ -56,15 +60,15 @@ export function editAttrs(blockId: string, editable: boolean): EditAttrs {
       `${target("inline-edit", path)}${opts.multiline ? ' data-multiline="true"' : ""}${
         opts.join ? ` data-join="${esc(opts.join)}"` : ""
       }`,
-    image: (path) => target("image-edit", path),
+    image: (path) => target("image-edit", path) + media(path),
     link: (path, current) =>
       `<button type="button" class="ie-link" data-editor-ui${target("link-edit", path)} data-current="${esc(current)}">${current ? "изменить ссылку" : "добавить ссылку"}</button>`,
     color: (path) => target("color-edit", path),
     tools: () =>
-      `<div class="ie-tools" data-editor-ui aria-label="Действия с разделом"><button type="button" data-block-action="up" title="Поднять раздел">↑</button><button type="button" data-block-action="down" title="Опустить раздел">↓</button><button type="button" data-block-action="hide" title="Скрыть раздел">Скрыть</button></div>`,
+      `<div class="ie-tools" data-editor-ui aria-label="Действия с разделом"><button type="button" data-block-action="up" title="Поднять раздел">↑</button><button type="button" data-block-action="down" title="Опустить раздел">↓</button><button type="button" data-block-action="hide" title="Скрыть раздел">Скрыть</button><button type="button" data-block-action="duplicate" title="Сделать копию раздела">Копия</button><button type="button" data-block-action="delete" title="Удалить раздел">Удалить</button></div><button type="button" class="ie-insert" data-editor-ui data-block-action="insert-after" title="Добавить раздел ниже">+ Раздел</button>`,
     // Отдельный признак раздела: `data-block-id` есть и у самих полей, и
     // стили раздела не должны задевать картинку с абсолютным положением.
-    section: () => ` data-block-id="${id}" data-block-section`,
+    section: () => ` data-content-block="${id}" data-block-id="${id}" data-block-section`,
     enabled: true,
   };
 }
@@ -86,9 +90,12 @@ d.addEventListener('click',function(e){
  var color=e.target.closest('[data-color-edit]');
  if(color){e.preventDefault();e.stopPropagation();send({kind:'color-edit',blockId:color.dataset.blockId,path:color.dataset.path,current:color.dataset.color||''});return}
  var image=e.target.closest('[data-image-edit]');
- if(image){e.preventDefault();e.stopPropagation();send({kind:'image-edit',blockId:image.dataset.blockId,path:image.dataset.path,current:image.getAttribute('src')||''});return}
+ if(image){e.preventDefault();e.stopPropagation();send({kind:'image-edit',blockId:image.dataset.blockId,path:image.dataset.path,current:image.getAttribute('src')||'',settings:image.dataset.photoSettings||'',ratio:image.clientWidth/Math.max(1,image.clientHeight)});return}
+ var nav=e.target.closest('[data-editor-nav]');
+ if(nav){e.preventDefault();e.stopPropagation();top.location.href=nav.getAttribute('href');return}
  var field=e.target.closest('[data-inline-edit]');
  if(!field){if(e.target.closest('a,button,input,label,form')){e.preventDefault()}return}
+ if(field.dataset.path==='dateText'){e.preventDefault();e.stopPropagation();send({kind:'wedding-edit',focus:'eventDate'});return}
  e.preventDefault();e.stopPropagation();
  if(active===field)return;
  if(active)active.blur();
@@ -110,7 +117,8 @@ window.addEventListener('message',function(e){var m=e.data||{};if(m.source!=='in
  if(m.kind==='image-saved'){var i=d.querySelector('[data-image-edit]'+q);if(i)i.src=m.value}
  if(m.kind==='link-saved'){var a=d.querySelector('[data-link-edit]'+q);if(a)a.dataset.current=m.value}
  if(m.kind==='color-saved'){var c=d.querySelector('[data-color-edit]'+q);if(c){c.style.background=m.value;c.dataset.color=m.value}}
- if(m.kind==='scroll'){window.scrollTo(0,m.y||0)}});
+ if(m.kind==='scroll'){window.scrollTo(0,m.y||0)}
+ if(m.kind==='scroll-to'){var sec=d.querySelector('[data-block-section][data-block-id="'+CSS.escape(m.blockId||'')+'"]');if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});sec.classList.add('ie-flash');setTimeout(function(){sec.classList.remove('ie-flash')},1400)}}});
 window.addEventListener('scroll',function(){send({kind:'scroll',y:window.scrollY})},{passive:true});
 })()`;
 
@@ -128,5 +136,8 @@ export const INLINE_EDITOR_CSS = `
 .ie-link{display:inline-block;margin:.5rem auto 0;padding:.35rem .7rem;border:1px dashed #c79a55;border-radius:.4rem;background:#fff8ee;color:#8b6914;font:500 12px/1.2 system-ui,sans-serif;width:auto}
 .ie-remove-detail{position:absolute;right:.25rem;top:.25rem;z-index:5;border:0!important;background:#2a1d0dcc!important;color:#fff!important;border-radius:999px!important;width:1.7rem!important;height:1.7rem!important;padding:0!important;font:700 14px/1 system-ui,sans-serif!important;cursor:pointer}
 .ie-editing a,.ie-editing button:not([data-block-action]),.ie-editing input,.ie-editing label{cursor:pointer}
-@media(hover:none){.ie-tools{opacity:1;transform:none}}
+.ie-insert{position:absolute;z-index:61;left:50%;bottom:-.9rem;transform:translateX(-50%);opacity:0;border:1px solid #c79a55!important;background:#fff8ee!important;color:#8b6914!important;border-radius:999px!important;padding:.35rem .9rem!important;font:600 12px/1 system-ui,sans-serif!important;cursor:pointer;box-shadow:0 4px 14px #0002;width:auto!important;margin:0!important;transition:opacity .15s}
+[data-block-section]:hover>.ie-insert{opacity:1}
+[data-block-section].ie-flash{outline:3px solid #c79a55;outline-offset:-3px;transition:outline-color .6s}
+@media(hover:none){.ie-tools,.ie-insert{opacity:1;transform:none}.ie-insert{transform:translateX(-50%)}}
 `.replace(/\n/g, "");

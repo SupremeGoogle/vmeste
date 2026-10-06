@@ -3,10 +3,16 @@
  * отдаёт площадке: кто придёт, что ест, где сидит.
  *
  * Route handler, а не Server Action: результат — файл, а не переход.
+ *
+ * Формат — xlsx, а не CSV: файл открывают в Excel, и с настоящей книгой
+ * не нужно ни угадывать разделитель, ни лечить кириллицу через BOM.
  */
 import { requireEventContext } from "@/server/context";
 import { db } from "@/server/db";
-import { csvHeaders, toCsv } from "@/server/services/csv-export";
+import { ONLY_GUESTS } from "@/server/repositories/guests";
+import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
+import { SINGLETON, formatAnswer, parseStoredAnswers } from "@/lib/rsvp-form";
+import { buildXlsx, toBuffer, xlsxHeaders } from "@/lib/xlsx-write";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +31,12 @@ export async function GET(
   const ctx = await requireEventContext(eventId);
 
   const guests = await db.guest.findMany({
-    where: { eventId: ctx.eventId, archivedAt: null },
+    where: { eventId: ctx.eventId, archivedAt: null, ...ONLY_GUESTS },
     orderBy: { searchKey: "asc" },
     select: {
       displayName: true, phone: true, email: true, rsvpStatus: true, rsvpAt: true,
       comment: true, note: true, linkToken: true, linkOpenedAt: true, musicWish: true,
-      parentGuestId: true,
+      parentGuestId: true, rsvpAnswers: true,
       mealOption: { select: { title: true } },
       drinks: {
         select: { drink: { select: { title: true } } },
@@ -47,13 +53,24 @@ export async function GET(
     select: { slug: true },
   });
 
-  const csv = toCsv(
+  // Вопросы анкеты — по колонке на каждый, в порядке конструктора.
+  const questions = (await effectiveRsvpQuestions(ctx.eventId)).filter((question) => !SINGLETON.has(question.type));
+  const answerCells = (raw: unknown) => {
+    const answers = parseStoredAnswers(raw);
+    return questions.map((question) => {
+      const answer = answers.find((item) => item.questionId === question.id);
+      return answer ? formatAnswer(answer) : "";
+    });
+  };
+
+  const rows: (string | number | null)[][] = [
     [
       "Гость", "Ответ", "Когда ответил", "Блюдо", "Напитки",
       "Комментарий", "Музыка", "Спутник кого", "Стол", "Место", "Телефон", "Почта",
       "Заметка", "Ссылка открыта", "Именная ссылка",
+      ...questions.map((question) => question.title),
     ],
-    guests.map((guest) => [
+    ...guests.map((guest) => [
       guest.displayName,
       RSVP[guest.rsvpStatus],
       guest.rsvpAt ? guest.rsvpAt.toISOString().slice(0, 16).replace("T", " ") : "",
@@ -69,8 +86,10 @@ export async function GET(
       guest.note ?? "",
       guest.linkOpenedAt ? "да" : "нет",
       event ? `${origin}/i/${event.slug}/${guest.linkToken}` : "",
+      ...answerCells(guest.rsvpAnswers),
     ]),
-  );
+  ];
 
-  return new Response(csv, { headers: csvHeaders("guests") });
+  const book = buildXlsx([{ name: "Гости", rows }]);
+  return new Response(toBuffer(book), { headers: xlsxHeaders("guests", "гости") });
 }

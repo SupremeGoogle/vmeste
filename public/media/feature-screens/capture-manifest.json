@@ -1,0 +1,69 @@
+{
+  "capturedAt": "2026-10-05T11:40:19.117Z",
+  "source": "Browser screenshots of the locally running project at http://127.0.0.1:3000",
+  "processing": "Top crop and WebP compression only; no generated or redrawn interface",
+  "screens": [
+    {
+      "name": "invite",
+      "route": "/templates/priznanie",
+      "height": 720,
+      "width": 1280
+    },
+    {
+      "name": "rsvp",
+      "route": "/app/e/cmtp3g66s0006fweshwyr0n74/rsvp",
+      "height": 1100,
+      "width": 1264
+    },
+    {
+      "name": "seating-filled",
+      "route": "/app/e/cmuv6e3rc0000moww7i7uxq4x/seating",
+      "height": 1080,
+      "width": 1264
+    },
+    {
+      "name": "qr",
+      "route": "/app/e/cmtp3g66s0006fweshwyr0n74/print",
+      "height": 1280,
+      "width": 1264
+    },
+    {
+      "name": "raffle-demo",
+      "route": "/app/e/cmuv6e3rc0000moww7i7uxq4x/raffle",
+      "height": 730,
+      "width": 1264
+    },
+    {
+      "name": "guest-entry-phone",
+      "route": "/g/487SRP",
+      "height": 780,
+      "width": 390
+    },
+    {
+      "name": "invite-phone",
+      "route": "/templates/priznanie",
+      "height": 844,
+      "width": 390
+    }
+  ],
+  "hdCapture": {
+    "capturedAt": "2026-10-05T16:43:41.967Z",
+    "method": "Real pages in a same-origin iframe rendered with CSS zoom:2 through a development-only localhost capture canvas. Browser full-page screenshots; top crop and lossless WebP conversion. No generated UI or enlargement of earlier screenshots.",
+    "screens": [
+      {
+        "name": "guest-entry-phone-hd",
+        "route": "/g/487SRP",
+        "width": 780,
+        "height": 1560,
+        "cssWidth": 390
+      },
+      {
+        "name": "seating-filled-hd",
+        "route": "/app/e/cmuv6e3rc0000moww7i7uxq4x/seating",
+        "width": 2560,
+        "height": 2080,
+        "cssWidth": 1280
+      }
+    ]
+  }
+}

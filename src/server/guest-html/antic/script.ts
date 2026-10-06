@@ -1,0 +1,5 @@
+export const ANTIC_SCRIPT = `(function(){
+var clock=document.querySelector('.ac-clock');if(clock){var tick=function(){var ms=Math.max(0,Number(clock.dataset.until)-Date.now());if(!ms){clock.textContent=clock.dataset.done||'Сегодня наша свадьба!';return}var s=Math.floor(ms/1000),v={days:Math.floor(s/86400),hours:Math.floor(s/3600)%24,minutes:Math.floor(s/60)%60,seconds:s%60};Object.keys(v).forEach(function(k){var el=clock.querySelector('[data-unit='+k+']');if(el)el.textContent=String(v[k]).padStart(2,'0')})};tick();setInterval(tick,1000)}
+var demo=document.querySelector('.ac-form[data-demo]');if(demo)demo.addEventListener('submit',function(e){e.preventDefault();var note=demo.querySelector('.ac-demo-note');if(note)note.hidden=false});
+var plus=document.querySelector('.ac-form input[name=acPlusOne]'),plusName=document.querySelector('.ac-form input[name=plusOneName]');if(plus&&plusName){var sync=function(){plusName.required=plus.checked;if(!plus.checked)plusName.value=''};plus.addEventListener('change',sync);sync()}
+})()`;

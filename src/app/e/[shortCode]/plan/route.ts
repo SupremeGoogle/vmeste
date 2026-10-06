@@ -13,7 +13,7 @@
 import { findEventByShortCode } from "@/server/repositories/events";
 import { getPublicPlan } from "@/server/repositories/seating";
 import { esc, html, page } from "@/server/guest-html/layout";
-import { floorPlanSvg } from "@/server/guest-html/floor-plan-svg";
+import { floorPlanSvg, PLAN_SCROLL_SCRIPT } from "@/server/guest-html/floor-plan-svg";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,7 @@ export async function GET(
 ${highlighted ? `<p class="sub">Ваш стол — <b>${esc(highlighted.label)}</b>, он закрашен на плане.</p>` : `<p class="sub">Найдите свой стол по названию.</p>`}
 ${svg}
 <p class="hint"><a href="/e/${shortCode}">Искать себя по имени</a></p>`,
+      script: PLAN_SCROLL_SCRIPT,
     }),
     {
       headers: {

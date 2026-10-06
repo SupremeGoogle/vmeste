@@ -2,6 +2,7 @@
  * Пожелание молодожёнам по именной ссылке.
  * GET рисует форму, POST принимает — без клиентского кода.
  */
+import { tooManyFromClient } from "@/server/rate-limit/client-key";
 import { findGuestByLinkToken } from "@/server/repositories/guests";
 import { createWish, listGuestWishes } from "@/server/services/wishes";
 import { html } from "@/server/guest-html/layout";
@@ -56,6 +57,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ eventSlug: string; token: string }> },
 ) {
+  const limited = tooManyFromClient(request, "wish", 150);
+  if (limited) return limited;
   const { eventSlug, token } = await params;
   const guest = await findGuestByLinkToken(token);
   if (!guest || guest.event.slug !== eventSlug || guest.event.status === "ARCHIVED") {

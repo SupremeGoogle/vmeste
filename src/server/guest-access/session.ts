@@ -40,6 +40,12 @@ export async function setGuestSession(
   });
 }
 
+/** «Это не я»: снять гостевую сессию мероприятия с этого телефона. */
+export async function clearGuestSession(eventId: string): Promise<void> {
+  const jar = await cookies();
+  jar.delete(cookieName(eventId));
+}
+
 export async function readGuestSession(
   eventId: string,
   secret: string,

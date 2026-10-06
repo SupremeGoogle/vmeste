@@ -11,10 +11,13 @@
  * перерисовывает страницу или переходит на неё с нужным параметром.
  */
 import { randomUUID } from "node:crypto";
+import { normalizeName } from "@/lib/name-normalize";
+import { db } from "@/server/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireEventContext } from "@/server/context";
+import { getEvent } from "@/server/repositories/events";
 import {
   archiveGuest, createGuest, createGuests, existingGuestNames, restoreGuest, setPlusOneAllowed, undoImport,
 } from "@/server/repositories/guests";
@@ -173,4 +176,35 @@ export async function undoImportAction(form: FormData) {
       ? `Убрали ${result.archived}. ${result.kept} оставили — они уже открыли ссылку, ответили или сидят за столом.`
       : `Импорт отменён: убрали ${result.archived}.`;
   redirect(`${guestsPath(eventId)}?notice=${encodeURIComponent(message)}`);
+}
+
+// ─── Рассылка ───────────────────────────────────────────────────
+
+/**
+ * «Приглашение для человека»: заводим гостя и отдаём путь его именной
+ * ссылки — клиент сразу кладёт её в буфер обмена. Вызывается из карточки
+ * рассылки напрямую, без формы, поэтому возвращает результат, а не
+ * перерисовывает страницу переходом.
+ */
+export async function inviteByNameAction(
+  eventId: string,
+  name: string,
+): Promise<{ ok: true; path: string; existing: boolean; name: string } | { ok: false; message: string }> {
+  const ctx = await requireEventContext(eventId);
+  const displayName = String(name ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (displayName.length < 2) return { ok: false, message: "Имя — хотя бы две буквы" };
+  const event = await getEvent(ctx, eventId);
+  if (!event) return { ok: false, message: "Мероприятие не найдено" };
+  // Такой гость уже в списке — даём его ссылку, а не заводим двойника:
+  // ссылку «для Маши» часто делают дважды, второй раз — забыв про первый.
+  const existing = await db.guest.findFirst({
+    where: { eventId: ctx.eventId, orgId: ctx.orgId, archivedAt: null, parentGuestId: null, searchKey: normalizeName(displayName) },
+    orderBy: { createdAt: "asc" },
+    select: { linkToken: true, displayName: true },
+  });
+  if (existing) return { ok: true, path: `/i/${event.slug}/${existing.linkToken}`, existing: true, name: existing.displayName };
+  const guest = await createGuest(ctx, { displayName });
+  revalidatePath(guestsPath(eventId));
+  revalidatePath(`/app/e/${eventId}`);
+  return { ok: true, path: `/i/${event.slug}/${guest.linkToken}`, existing: false, name: displayName };
 }

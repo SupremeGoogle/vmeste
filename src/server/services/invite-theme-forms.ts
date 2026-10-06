@@ -31,6 +31,7 @@ export function themeFromForm(form: FormLike, current: InviteTheme): { ok: true;
     form.get(`${name}__sent`) === null ? fallback : form.get(name) !== null;
 
   return parseTheme({
+    ...current,
     v: inviteThemeSchema.shape.v.parse(undefined),
     template: current.template,
 

@@ -6,7 +6,14 @@
  * Слаг здесь только для читаемости — если он не совпал с тем, что у
  * мероприятия гостя, это 404, а не «покажем другое».
  */
-import { findGuestByLinkToken, listDrinkOptions, markLinkOpened } from "@/server/repositories/guests";
+import { findGuestByLinkToken, markLinkOpened } from "@/server/repositories/guests";
+import { RSVP_FIELDS_CSS } from "@/server/guest-html/rsvp-fields";
+import { readFlash } from "@/server/guest-html/flash";
+import { parseStoredAnswers } from "@/lib/rsvp-form";
+import { guestFeatureLinks } from "@/server/guest-html/guest-feature-links";
+import { loadWishlist } from "@/server/guest-html/wishlist";
+import { buildInlineRsvp, hasInlineRsvp } from "@/server/guest-html/inline-rsvp";
+import { fallbackRsvpSection, withInlineRsvp } from "@/server/guest-html/inline-rsvp-form";
 import { getInviteBlocks, getInviteTheme } from "@/server/repositories/invites";
 import { formatDeadline, formatEventDateTime } from "@/lib/format-datetime";
 import { esc, html } from "@/server/guest-html/layout";
@@ -44,31 +51,37 @@ export async function GET(
   const url = new URL(request.url);
   const saved = url.searchParams.get("ok");
   const deadline = guest.event.rsvpDeadline;
+  const guestEntry = `/i/${eventSlug}/${token}/guest`;
+  const [featureLinks, wishlist] = await Promise.all([
+    guestFeatureLinks(guest.eventId, guestEntry),
+    loadWishlist(guest.eventId, { guestId: guest.id, pageHref: `/i/${eventSlug}/${token}/wishlist` }),
+  ]);
 
   // «Тили-тесто» — анкета прямо на странице, как в образце. Всё, чего в
   // ней нет (блюдо, спутник, комментарий), уходит скрытыми полями как было:
   // иначе ответ из этой анкеты молча стёр бы выбор, сделанный раньше.
-  if (theme.template === "tili") {
+  if (hasInlineRsvp(theme.template)) {
     const plusOne = guest.plusOnes[0] ?? null;
-    const drinks = await listDrinkOptions(guest.eventId);
-    const rsvp = {
-      action: rsvpHref,
-      guestName: guest.displayName,
+    const rsvp = await buildInlineRsvp(guest.eventId, theme.template, {
+      name: guest.displayName,
       status: guest.rsvpStatus,
-      drinks,
-      chosenDrinks: guest.drinks.map((row) => row.drinkOptionId),
+      mealOptionId: guest.mealOptionId,
+      drinkIds: guest.drinks.map((row) => row.drinkOptionId),
+      answers: parseStoredAnswers(guest.rsvpAnswers),
       musicWish: guest.musicWish ?? "",
-      keep: {
-        mealOptionId: guest.mealOptionId,
-        comment: guest.comment ?? "",
-        plusOneName: guest.plusOneName ?? "",
-        plusOneMealOptionId: plusOne?.mealOptionId ?? null,
-        plusOneDrinkOptionIds: plusOne?.drinks.map((row) => row.drinkOptionId) ?? [],
-      },
+      plusOneAllowed: guest.event.allowPlusOne && guest.plusOneAllowed && guest.parentGuestId === null,
+      comment: guest.comment ?? "",
+      plusOneName: guest.plusOneName ?? "",
+      plusOneMealOptionId: plusOne?.mealOptionId ?? null,
+      plusOneDrinkOptionIds: plusOne?.drinks.map((row) => row.drinkOptionId) ?? [],
+    }, {
+      action: rsvpHref,
       saved: Boolean(saved),
-      error: url.searchParams.get("error"),
-    };
+      closed: Boolean(deadline && Date.now() > deadline.getTime()),
+      flash: readFlash(url.searchParams, guest.event.guestLinkSecret),
+    });
     const links = [
+      ...featureLinks,
       guest.event.photosEnabled ? `<a href="/i/${eventSlug}/${token}/photos">Фотографии со свадьбы</a>` : "",
       guest.event.wishesEnabled ? `<a href="/i/${eventSlug}/${token}/wish">Написать пожелание</a>` : "",
     ].filter(Boolean);
@@ -76,7 +89,8 @@ export async function GET(
       title: guest.event.title,
       theme,
       noindex: true,
-      body: `${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate, theme, guest.event.timezone, { rsvp })}${
+      extraCss: RSVP_FIELDS_CSS,
+      body: `${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate, theme, guest.event.timezone, { rsvp, wishlist })}${withInlineRsvp(rsvp, false, () => fallbackRsvpSection(blocks))}${
         links.length > 0 ? `<div class="links">${links.join("")}</div>` : ""
       }<p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone)}</p>`,
       script: inviteScript(blocks, theme, coupleNames(blocks, guest.event.title)),
@@ -90,6 +104,7 @@ export async function GET(
     : "";
 
   const extras = [
+    ...featureLinks,
     guest.event.photosEnabled
       ? `<a href="/i/${eventSlug}/${token}/photos">Фотографии со свадьбы</a>`
       : "",
@@ -100,7 +115,7 @@ export async function GET(
 
   const body = `${banner}
 <p class="who">${esc(guest.displayName)}</p>
-${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate, theme, guest.event.timezone)}
+${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate, theme, guest.event.timezone, { wishlist })}
 ${
   blocks.some((block) => block.type === "RSVP_FORM")
     ? ""
