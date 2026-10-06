@@ -15,6 +15,7 @@
  */
 import { z } from "zod";
 import { SCRAPBOOK_SAMPLE_IMAGES } from "@/lib/invite-templates/scrapbook-assets";
+import { EDITORIAL_SAMPLE_IMAGES } from "@/lib/invite-templates/editorial-assets";
 import { photoSettingsSchema } from "@/lib/invite-personalization";
 import type { BlockType } from "@/generated/prisma/enums";
 import { CONSTELLATION_SAMPLE_IMAGES } from "@/lib/invite-templates/constellation-assets";
@@ -73,6 +74,7 @@ const httpUrl = z
  * чужой домен. Здесь пройдут только идентификаторы, которые выдали мы.
  */
 const imageRef = httpUrl
+  .or(z.enum(EDITORIAL_SAMPLE_IMAGES))
   .or(z.enum(SCRAPBOOK_SAMPLE_IMAGES))
   .or(z.enum(CONSTELLATION_SAMPLE_IMAGES))
   .or(z.string().regex(/^\/api\/asset\/[a-z0-9]+\/[a-z0-9]+$/, "неизвестный адрес картинки"))

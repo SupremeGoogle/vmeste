@@ -86,6 +86,9 @@ describe("удалённые шаблоны", () => {
 describe("шаблоны", () => {
   it("все шаблоны доступны, и идентификаторы не повторяются", () => {
     expect(INVITE_TEMPLATES.map((template) => template.id)).toEqual([
+      "gazette",
+      "protokol",
+      "postcard",
       "zefir",
       "crayon",
       "evergreen",

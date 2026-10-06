@@ -2,6 +2,9 @@ import { RSVP_FIELDS_CSS } from "./rsvp-fields";
 
 /** Shared questions and gifts use the same materials as each invitation. */
 const MATERIALS: Record<string, string> = {
+  gazette: "--vm-accent:#45453b;--vm-button:#45453b;--vm-font:var(--ed-body);--vm-radius:0px",
+  protokol: "--vm-accent:#7c3438;--vm-button:#7c3438;--vm-font:var(--ed-mono);--vm-radius:0px",
+  postcard: "--vm-accent:#b7502f;--vm-button:#b7502f;--vm-font:var(--ed-sans);--vm-radius:8px",
   zefir: "--vm-accent:#b96583;--vm-button:#b96583;--vm-font:var(--sb-sans);--vm-radius:2px",
   crayon: "--vm-accent:#ad5578;--vm-button:#ad5578;--vm-font:var(--sb-sans);--vm-radius:6px",
   evergreen: "--vm-accent:#c4a264;--vm-button:#c4a264;--vm-button-text:#18221b;--vm-font:var(--sans);--vm-radius:.7rem",

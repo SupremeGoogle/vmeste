@@ -24,6 +24,7 @@
 import type { BlockType } from "@/generated/prisma/enums";
 import type { InviteTheme } from "@/lib/invite-theme";
 import { ZEFIR_TEMPLATE, CRAYON_TEMPLATE } from "@/lib/invite-templates/scrapbook";
+import { GAZETTE_TEMPLATE, PROTOKOL_TEMPLATE, POSTCARD_TEMPLATE } from "@/lib/invite-templates/editorial";
 import { CONSTELLATION_TEMPLATE } from "@/lib/invite-templates/constellation";
 import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
 import { PEARL_TEMPLATE } from "@/lib/invite-templates/pearl";
@@ -140,6 +141,9 @@ function withStandardSections(template: InviteTemplate): InviteTemplate {
 }
 
 const ALL_TEMPLATES: InviteTemplate[] = [
+  GAZETTE_TEMPLATE,
+  PROTOKOL_TEMPLATE,
+  POSTCARD_TEMPLATE,
   ZEFIR_TEMPLATE,
   CRAYON_TEMPLATE,
   EVERGREEN_TEMPLATE,

@@ -27,6 +27,7 @@ import { SERDCE_CSS } from "@/server/guest-html/serdce/style";
 import { ANTIC_CSS } from "@/server/guest-html/antic/style";
 import { SKVOZ_VREMYA_CSS } from "@/server/guest-html/skvoz-vremya/style";
 import { ZEFIR_CSS, CRAYON_CSS } from "@/server/guest-html/scrapbook/style";
+import { GAZETTE_CSS, PROTOKOL_CSS, POSTCARD_CSS } from "@/server/guest-html/editorial/style";
 import { BURGUNDY_CSS } from "@/server/guest-html/burgundy/style";
 import { ROSERAIE_CSS } from "@/server/guest-html/roseraie/style";
 import { FLORAL_GARDEN_CSS } from "@/server/guest-html/floral-garden/style";
@@ -188,6 +189,9 @@ pointer-events:none;z-index:0}`
     theme.template === "antic" ? ANTIC_CSS : "",
     theme.template === "skvoz-vremya" ? SKVOZ_VREMYA_CSS : "",
     theme.template === "zefir" ? ZEFIR_CSS : "",
+    theme.template === "gazette" ? GAZETTE_CSS : "",
+    theme.template === "protokol" ? PROTOKOL_CSS : "",
+    theme.template === "postcard" ? POSTCARD_CSS : "",
     theme.template === "crayon" ? CRAYON_CSS : "",
     theme.template === "burgundy" ? BURGUNDY_CSS : "",
     theme.template === "roseraie" ? ROSERAIE_CSS : "",

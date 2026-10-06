@@ -42,7 +42,7 @@ export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme,
     if (block.type === "COVER") {
       c.names = wedding.names;
       c.dateText = [date ? formatEventDate(date, timezone) : c.dateText, wedding.city].filter(Boolean).join(" · ");
-      if (!wedding.childhood) c.photos = [];
+      if (!wedding.childhood && theme.template !== "protokol") c.photos = [];
       if (theme.template === "serdce") c.footer = `С любовью, ${wedding.names}`;
     }
     if (block.type === "VENUE") Object.assign(c, { name: wedding.venueName, address: wedding.venueAddress, mapUrl: wedding.mapUrl });

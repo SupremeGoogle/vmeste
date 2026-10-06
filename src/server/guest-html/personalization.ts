@@ -6,7 +6,7 @@ import { editAttrs } from "@/server/guest-html/inline-editor";
 
 /** Шаблоны, у которых снимки обложки уже стоят в самой обложке: полоса
  *  «из детства» под ней повторила бы те же кадры второй раз. */
-const COVER_OWNS_PHOTOS = new Set(["iskra", "tili", "vinyl", "kraski", "odnazhdy", "little-happiness", "priznanie", "zefir", "crayon"]);
+const COVER_OWNS_PHOTOS = new Set(["iskra", "tili", "vinyl", "kraski", "odnazhdy", "little-happiness", "priznanie", "zefir", "crayon", "gazette", "protokol", "postcard"]);
 
 /** Шаблоны, которые сами рисуют карту в блоке «Как добраться»: вторая
  *  карта под адресом была бы повтором. */

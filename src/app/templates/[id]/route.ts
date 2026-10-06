@@ -16,6 +16,8 @@ import { invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invi
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { isWedwedTemplate } from "@/server/guest-html/wedwed/markup";
 import { SAMPLE_WISHLIST } from "@/server/guest-html/wishlist";
+import { isEditorialTemplate } from "@/lib/invite-templates/editorial";
+import type { BlockContentMap } from "@/lib/invite-blocks";
 
 /** Пример вместо плейсхолдера: пустая обложка не показывает оформление. */
 const SAMPLE_NAMES = "Валерия и Давид";
@@ -35,6 +37,26 @@ export async function GET(
   // ?cover=1 — сразу обложка, без заставки: так снимаются картинки витрины
   // (scripts/template-previews.mjs). Как у организатора, выключившего заставку.
   const cover = new URL(req.url).searchParams.get("cover") === "1";
+
+  if (isEditorialTemplate(id)) {
+    const blocks: InviteBlockView[] = template.blocks.map((block, order) => ({
+      id: `${id}-demo-${order}`, type: block.type, order, visible: true,
+      ...readBlockContent(block.type, block.content),
+    }));
+    const sampleCover = blocks.find(b => b.type === "COVER")!.content as BlockContentMap["COVER"];
+    const venue = blocks.find(b => b.type === "VENUE")!.content as BlockContentMap["VENUE"];
+    const date = new Date({ gazette: "2027-08-14T13:00:00Z", protokol: "2027-07-18T13:00:00Z", postcard: "2027-09-12T13:00:00Z" }[id]);
+    const theme = { ...template.theme, introOff: cover || template.theme.introOff, wedding: weddingSchema.parse({
+      names: sampleCover.names, city: { gazette: "Казань", protokol: "Санкт-Петербург", postcard: "Москва" }[id],
+      venueName: venue.name, venueAddress: venue.address, mapUrl: venue.mapUrl,
+      deadline: new Date(date.getTime() - 30 * 86400000).toISOString(),
+    }) };
+    return new Response(invitePage({
+      title: `${template.name} — образец приглашения`, theme, noindex: true,
+      body: `${renderBlocks(blocks, null, null, date, theme, "Europe/Moscow", { wishlist: SAMPLE_WISHLIST })}<p class="foot">Образец шаблона. Имена, фотографии, место и тексты меняются в редакторе.</p>`,
+      script: inviteScript(blocks, theme, sampleCover.names),
+    }), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+  }
 
   if (isWedwedTemplate(id)) {
     const blocks: InviteBlockView[] = template.blocks.map((block, order) => ({

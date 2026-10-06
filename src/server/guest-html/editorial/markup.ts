@@ -85,7 +85,7 @@ export function renderEditorialBlocks(blocks: InviteBlockView[], theme: InviteTh
       }
       case "TIMELINE": {
         const c = block.content as BlockContentMap["TIMELINE"];
-        return frame("ed-timing", `${heading(c.title, e)}<ol class="ed-program">${c.items.map((p, i) => `<li><time${e.text(`items.${i}.time`)}>${esc(p.time)}</time><div><h3${e.text(`items.${i}.title`)}>${esc(p.title)}</h3>${paragraph(p.note, `items.${i}.note`, e)}</div>${ctx.editable ? `<button type="button" data-editor-ui data-block-action="delete-item" data-item-index="${i}">Удалить пункт</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? '<button type="button" data-editor-ui data-block-action="add-item">+ Пункт программы</button>' : ""}`);
+        return frame("ed-timing", `${heading(c.title, e)}<ol class="ed-program">${c.items.map((p, i) => `<li><time${e.text(`items.${i}.time`)}>${esc(p.time)}</time><div><h3${e.text(`items.${i}.title`)}>${esc(p.title)}</h3>${paragraph(p.note, `items.${i}.note`, e)}</div>${ctx.editable ? `<button type="button" data-editor-ui data-block-action="remove-detail" data-item-index="${i}">Удалить пункт</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? '<button type="button" data-editor-ui data-block-action="add-detail">+ Пункт программы</button>' : ""}`);
       }
       case "VENUE": {
         const c = block.content as BlockContentMap["VENUE"];
@@ -93,7 +93,7 @@ export function renderEditorialBlocks(blocks: InviteBlockView[], theme: InviteTh
       }
       case "MAP": {
         const c = block.content as BlockContentMap["MAP"];
-        return frame("ed-map", `${heading(c.title, e)}${paragraph(c.text, "text", e)}${c.url ? `<a class="ed-button" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${L(`${design}.map-open`, "Открыть карту")} ↗</a>` : ""}${e.link("url", c.url)}`);
+        return frame("ed-map", `${heading(c.title, e)}${paragraph(c.note, "note", e)}${(["yandexUrl", "googleUrl"] as const).map(key => `${c[key] ? `<a class="ed-button" href="${esc(c[key])}" target="_blank" rel="noopener noreferrer">${L(`${design}.map-${key}`, key === "yandexUrl" ? "Яндекс Карты" : "Google Maps")} ↗</a>` : ""}${e.link(key, c[key])}`).join("")}`);
       }
       case "DRESSCODE": {
         const c = block.content as BlockContentMap["DRESSCODE"];

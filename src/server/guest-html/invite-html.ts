@@ -58,6 +58,10 @@ import { renderSkvozVremyaBlocks } from "@/server/guest-html/skvoz-vremya/markup
 import { renderScrapbookBlocks } from "@/server/guest-html/scrapbook/markup";
 import { SCRAPBOOK_SCRIPT } from "@/server/guest-html/scrapbook/script";
 import { SCRAPBOOK_FONTS_LINK } from "@/server/guest-html/scrapbook/style";
+import { isEditorialTemplate } from "@/lib/invite-templates/editorial";
+import { renderEditorialBlocks } from "@/server/guest-html/editorial/markup";
+import { EDITORIAL_SCRIPT } from "@/server/guest-html/editorial/script";
+import { EDITORIAL_FONTS_LINK } from "@/server/guest-html/editorial/style";
 import { SKVOZ_VREMYA_SCRIPT } from "@/server/guest-html/skvoz-vremya/script";
 import { SKVOZ_VREMYA_FONTS_LINK } from "@/server/guest-html/skvoz-vremya/style";
 import { renderBurgundyBlocks } from "@/server/guest-html/burgundy/markup";
@@ -201,6 +205,9 @@ border-radius:var(--radius)}
  * нажатия гостя.
  */
 export const TEMPLATE_INTROS: Record<string, { hide: string; open: string; extra?: string }> = {
+  gazette: { hide: ".ed-intro", open: ".ed-open" },
+  protokol: { hide: ".ed-intro", open: ".ed-open" },
+  postcard: { hide: ".ed-intro", open: ".ed-open" },
   zefir: { hide: ".sb-intro", open: ".sb-open" },
   crayon: { hide: ".sb-intro", open: ".sb-open" },
   iskra: { hide: ".ik-intro", open: ".ik-open" },
@@ -268,8 +275,9 @@ ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
 ${(opts.theme ?? defaultTheme()).template === "vinyl" ? VINYL_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? AQUARELLE_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? LILY_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? BOHEMA_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? KRASKI_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? SERDCE_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? ANTIC_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? SKVOZ_VREMYA_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? BURGUNDY_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? ROSERAIE_FONTS_LINK : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? FLORAL_GARDEN_FONTS_LINK : ""}
 ${opts.theme?.template === "zefir" || opts.theme?.template === "crayon" ? SCRAPBOOK_FONTS_LINK : ""}
+${isEditorialTemplate(opts.theme?.template ?? "") ? EDITORIAL_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${floorFontSizes(`${CSS}${PREMIUM_MOTION_CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${MOBILE_DENSITY_CSS}${TABLET_DENSITY_CSS}${MAP_LINK_TAP_CSS}${opts.extraCss ?? ""}`)}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "prism" ? " prism" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}${(opts.theme ?? defaultTheme()).template === "vinyl" ? " vinyl" : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? " aquarelle" : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? " lily" : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? " bohema" : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? " kraski" : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? " serdce" : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? " antic" : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? " skvoz-vremya" : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? " burgundy" : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? " roseraie" : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? " floral-garden" : ""}${(opts.theme ?? defaultTheme()).template === "iskra" ? " iskra" : ""}${opts.theme?.template === "zefir" ? " zefir" : opts.theme?.template === "crayon" ? " crayon" : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "prism" ? " prism" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}${(opts.theme ?? defaultTheme()).template === "vinyl" ? " vinyl" : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? " aquarelle" : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? " lily" : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? " bohema" : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? " kraski" : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? " serdce" : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? " antic" : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? " skvoz-vremya" : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? " burgundy" : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? " roseraie" : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? " floral-garden" : ""}${(opts.theme ?? defaultTheme()).template === "iskra" ? " iskra" : ""}${opts.theme?.template === "zefir" ? " zefir" : opts.theme?.template === "crayon" ? " crayon" : ""}${isEditorialTemplate(opts.theme?.template ?? "") ? ` ${opts.theme!.template}` : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -519,6 +527,7 @@ function templateScript(blocks: InviteBlockView[], theme: InviteTheme, names: st
   if (theme.template === "tili") return `${TILI_SCRIPT};${PREMIUM_MOTION_SCRIPT}`;
   // Таймер wedwed рисует общий рендер, и его скрипт нужен и здесь.
   if (isWedwedTemplate(theme.template)) return hasCountdown(blocks) ? `${WEDWED_SCRIPT};${COUNTDOWN_SCRIPT}` : WEDWED_SCRIPT;
+  if (isEditorialTemplate(theme.template)) return `${hasCountdown(blocks) ? COUNTDOWN_SCRIPT + ";" : ""}${EDITORIAL_SCRIPT}`;
   if (theme.template === "zefir" || theme.template === "crayon") return `${hasCountdown(blocks) ? COUNTDOWN_SCRIPT + ";" : ""}${SCRAPBOOK_SCRIPT}`;
   const parts = [
     hasCountdown(blocks) && theme.template !== "bohema" && theme.template !== "kraski" && theme.template !== "serdce" && theme.template !== "antic" && theme.template !== "skvoz-vremya" && theme.template !== "burgundy" && theme.template !== "floral-garden" ? COUNTDOWN_SCRIPT : "",
@@ -544,7 +553,7 @@ export function renderBlocks(
 ): string {
   // Виш-лист шаблон рисует как свой текстовый раздел, а сетку подарков
   // под ним вставляет общий рендер (см. guest-html/wishlist.ts).
-  if (theme.template === "zefir" || theme.template === "crayon") blocks = blocks.filter(block => block.visible);
+  if (isEditorialTemplate(theme.template) || theme.template === "zefir" || theme.template === "crayon") blocks = blocks.filter(block => block.visible);
   return withInlineRsvp(options.rsvp, options.editable === true, () => withTemplateLabels(theme, options.editable === true, () => renderWithWishlist(blocks, (list) => {
     if (!theme.template) return renderRawBlocks(list, rsvpHref, answered, eventDate, theme, timezone, options);
     const personalized = personalizeBlocks(list, theme, eventDate, timezone);
@@ -562,6 +571,9 @@ function renderRawBlocks(
   options: RenderOptions = {},
 ): string {
   const editable = options.editable === true;
+  if (isEditorialTemplate(theme.template)) {
+    return renderEditorialBlocks(blocks, theme, { eventDate, timezone, editable });
+  }
   if (theme.template === "zefir" || theme.template === "crayon") {
     return renderScrapbookBlocks(blocks, theme, { eventDate, timezone, editable });
   }
