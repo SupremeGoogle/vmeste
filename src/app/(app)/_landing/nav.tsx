@@ -10,16 +10,18 @@
  */
 import { BrandLogo } from "@/components/brand";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** Разделы шапки — те же, что в меню телефона. */
 const LINKS = [
   { href: "#vozmozhnosti", label: "Возможности" },
+  { href: "#priglasheniya", label: "Приглашения" },
   { href: "#demo", label: "Рассадка" },
   { href: "#voprosy", label: "Вопросы" },
 ];
 
 export function Nav({ userName }: { userName: string | null }) {
+  const header = useRef<HTMLElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string>("");
@@ -104,17 +106,23 @@ export function Nav({ userName }: { userName: string | null }) {
     };
   }, []);
 
-  // Меню на телефоне закрывает страницу целиком — прокрутку под ним
-  // надо остановить, иначе фон уезжает под пальцем.
+  // Компактное выпадающее меню закрывается снаружи и клавишей Escape.
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !header.current?.contains(event.target)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
     return () => {
-      document.body.style.overflow = "";
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
     };
   }, [open]);
 
   return (
-    <header className="home-nav home-nav--clay" data-solid={scrolled || open}>
+    <header ref={header} className="home-nav home-nav--clay" data-solid={scrolled || open}>
       <div className="home-container home-nav-bar">
         <Link href="/" className="home-brand" aria-label="Вместе — на главную">
           <BrandLogo adaptive={false} />
@@ -147,6 +155,7 @@ export function Nav({ userName }: { userName: string | null }) {
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
+          aria-controls="home-mobile-menu"
           aria-label={open ? "Закрыть меню" : "Открыть меню"}
           className="home-burger"
         >
@@ -156,7 +165,7 @@ export function Nav({ userName }: { userName: string | null }) {
       </div>
 
       {open && (
-        <div className="home-menu">
+        <div id="home-mobile-menu" className="home-menu">
           <div className="home-container">
             <nav aria-label="Разделы">
               {LINKS.map((link) => (

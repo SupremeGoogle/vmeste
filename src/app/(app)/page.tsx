@@ -12,6 +12,7 @@ import { BrandLogo } from "@/components/brand";
 import { ClayHero } from "./_landing/clay-hero";
 import { LandingIntro } from "./_landing/landing-intro";
 import { FeatureRibbons } from "./_landing/feature-ribbons";
+import { InviteShowcase } from "./_landing/invite-showcase";
 import "./_landing/landing.css";
 import "./_landing/home.css";
 import "./_landing/clay.css";
@@ -28,22 +29,6 @@ const PHOTO = {
   terrace: "/media/brand-hero.webp",
   evening: "/media/brand-evening.webp",
 };
-
-/** Шаблоны для витрины. Снимки — первый экран образца /templates/<id>
- *  на телефоне 390×844; суффикс в имени файла меняется вместе с образцом,
- *  иначе браузер и оптимизатор картинок отдают старый кадр из кэша. */
-const showcase = [
-  { id: "little-happiness", name: "Маленькое счастье" },
-  { id: "priznanie", name: "Признание" },
-  { id: "kraski", name: "Краски любви" },
-  { id: "serdce", name: "Сердце к сердцу" },
-  { id: "burgundy", name: "Винный конверт" },
-  { id: "tuscany", name: "Тоскана" },
-  { id: "aquarelle", name: "Акварель" },
-  { id: "lily", name: "Лилия" },
-  { id: "prism", name: "Призма" },
-  { id: "tili", name: "Тили-тесто" },
-];
 
 export default async function HomePage() {
   const user = await getSessionUser();
@@ -76,7 +61,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="home-section home-invite" aria-labelledby="home-invite-title">
+        <section id="priglasheniya" className="home-section home-invite" aria-labelledby="home-invite-title">
           <div className="home-container">
             <Reveal className="home-head">
               <div>
@@ -92,38 +77,7 @@ export default async function HomePage() {
             </Reveal>
           </div>
 
-          {/* Лента едет сама и бесконечно: список нарисован дважды, и сдвиг
-              ровно на половину возвращает её в начало без видимого стыка.
-              Вторая копия только для глаз — ни диктору, ни клавиатуре она
-              не нужна. Лента движется и при наведении мыши. */}
-          <Reveal delay={120} className="home-marquee">
-            <ul className="home-phones" aria-label="Примеры приглашений">
-              {[...showcase, ...showcase].map((item, index) => {
-                const copy = index >= showcase.length;
-                return (
-                  <li key={`${item.id}-${index}`} className="home-phone-item" aria-hidden={copy || undefined}>
-                    <a
-                      href={`/templates/${item.id}`}
-                      target="_blank"
-                      rel="noopener"
-                      className="home-phone"
-                      tabIndex={copy ? -1 : undefined}
-                    >
-                      <span className="home-phone-screen">
-                        <Image
-                          src={`/media/landing-invites/${item.id}-vd.webp`}
-                          alt={copy ? "" : `Приглашение в шаблоне «${item.name}»`}
-                          fill
-                          unoptimized
-                          sizes="270px"
-                        />
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </Reveal>
+          <InviteShowcase />
         </section>
 
         <section id="demo" className="home-section home-section--sand" aria-labelledby="home-seat-title">

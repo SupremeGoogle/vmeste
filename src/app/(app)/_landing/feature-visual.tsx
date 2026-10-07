@@ -9,11 +9,22 @@ const VISUALS = {
   rsvp: { title: "Ответы гостей", alt: "Скриншот кабинета: ответы гостей, меню и список приглашённых", width: 1264, height: 1100 },
   seating: { title: "Рассадка", alt: "Настоящий заполненный план: 32 гостя и молодожёны за столами разной формы", width: 2560, height: 2080 },
   qr: { title: "Вход по QR", alt: "Скриншот редактора печатной таблички с настоящим QR-кодом", width: 1264, height: 1280 },
+  photos: { title: "Фото и альбом", alt: "Галерея свадебных фотографий с интеллектуальным анализом", width: 1000, height: 900 },
   raffle: { title: "Розыгрыш", alt: "Настоящий пример розыгрыша: 12 участников, победитель Анастасия Петрова", width: 1264, height: 730 },
 };
 
 export function FeatureVisual({ kind, onOpen }: { kind: keyof typeof VISUALS; onOpen: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  if (kind === "photos") {
+    return <div className="feature-photo-gallery" aria-label="Пример галереи свадебных фотографий">
+      <div className="feature-photo-heading"><span>Фотографии свадьбы</span><span className="feature-photo-badge">Фото гостей</span></div>
+      <div className="feature-photo-grid">
+        <figure><Image src="/media/brand-hero.webp" alt="Свадебный ужин на открытой террасе" width={640} height={800} unoptimized sizes="(max-width: 560px) 40vw, 230px" /><figcaption>Моменты вашего дня</figcaption></figure>
+        <figure><Image src="/media/brand-evening.webp" alt="Вечерняя атмосфера свадебного праздника" width={640} height={800} unoptimized sizes="(max-width: 560px) 40vw, 230px" /><figcaption>Воспоминания гостей</figcaption></figure>
+      </div>
+      <div className="feature-photo-filter"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" stroke="currentColor" strokeWidth="1.5"/><path d="m8 12 3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg><div><strong>Интеллектуальный анализ</strong><p>Фильтр проверяет снимки перед публикацией. Подозрительные кадры отправляются на проверку организатору.</p></div></div>
+    </div>;
+  }
   if (kind === "invite") {
     return (
       <Link href="/templates/priznanie" onClick={onOpen} className="feature-invite-phone home-phone" aria-label="Открыть приглашение «Признание»">
