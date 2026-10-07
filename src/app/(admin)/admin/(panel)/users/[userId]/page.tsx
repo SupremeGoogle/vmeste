@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { atLeast, platformRole, requireAdmin } from "@/server/admin/access";
 import { isOwnerEmail } from "@/server/admin/config";
 import { listEvents } from "@/server/admin/stats";
-import { blockUser, deleteUser, impersonate, resetSecondFactor, revokeSessions, setPlatformRole, unblockUser, type OpResult } from "@/server/admin/operations";
+import { blockUser, deleteUser, impersonate, openEventAsOrganizer, resetSecondFactor, revokeSessions, setPlatformRole, unblockUser, type OpResult } from "@/server/admin/operations";
 import { UserActions } from "./user-actions";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +59,14 @@ export default async function AdminUser({ params }: { params: Promise<{ userId: 
     }
   }
 
+  async function open(form: FormData) {
+    "use server";
+    const current = await requireAdmin("ADMIN");
+    const result = await openEventAsOrganizer(current, String(form.get("eventId")));
+    if (result.ok && result.href) redirect(result.href);
+  }
+  const canOpen = atLeast(admin.role, "ADMIN") && !user.blockedAt;
+
   return (
     <div className="space-y-5">
       <Link href="/admin/users" className="text-sm text-stone-500 hover:text-stone-900">← Все пользователи</Link>
@@ -101,7 +109,15 @@ export default async function AdminUser({ params }: { params: Promise<{ userId: 
           {events.map((event) => (
             <li key={event.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span>{event.title} <span className="text-stone-500">· /i/{event.slug} · {event.status === "PUBLISHED" ? "опубликовано" : event.status === "DRAFT" ? "черновик" : "в архиве"}</span></span>
-              <span className="text-xs text-stone-500">{event.guests} гостей · {event.accepted} придут · {event.photos} фото</span>
+              <span className="flex items-center gap-3 text-xs text-stone-500">
+                {event.guests} гостей · {event.accepted} придут · {event.photos} фото
+                {canOpen ? (
+                  <form action={open}>
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <button className="rounded-lg bg-stone-900 px-2.5 py-1 text-white">Открыть</button>
+                  </form>
+                ) : null}
+              </span>
             </li>
           ))}
           {events.length === 0 && <li className="py-2 text-stone-500">Мероприятий нет</li>}

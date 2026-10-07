@@ -26,11 +26,11 @@ export function isOwnerEmail(email: string): boolean {
 /**
  * Чьи свадьбы не попадают под сроки хранения (архив через 10 дней, фото —
  * через 15): владельцы платформы и учётки из RETENTION_EXEMPT_EMAILS
- * (через запятую; пока это рабочая учётка суперадмина 1@1). Свадьба
+ * (через запятую, по умолчанию пусто). Свадьба
  * считается «его», если он владелец (OWNER) её организации.
  */
 export function retentionExemptEmails(): string[] {
-  const extra = (process.env.RETENTION_EXEMPT_EMAILS ?? "1@1").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
+  const extra = (process.env.RETENTION_EXEMPT_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
   return [...new Set([...ownerEmails(), ...extra])];
 }
 

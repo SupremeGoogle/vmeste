@@ -150,6 +150,27 @@ export async function impersonate(admin: AdminIdentity, userId: string): Promise
   return { ok: true };
 }
 
+/**
+ * Открыть мероприятие глазами его организатора: войти под владельцем
+ * (как «войти как пользователь») и сразу попасть на страницу свадьбы,
+ * включая черновики. Своя свадьба открывается без подмены сессии.
+ * Возвращает адрес, куда вести администратора.
+ */
+export async function openEventAsOrganizer(admin: AdminIdentity, eventId: string): Promise<OpResult & { href?: string }> {
+  if (!atLeast(admin.role, "ADMIN")) return { ok: false, message: "Недостаточно прав." };
+  const event = await db.event.findUnique({ where: { id: eventId }, select: { id: true, orgId: true } });
+  if (!event) return { ok: false, message: "Мероприятие не найдено." };
+  const href = `/app/e/${event.id}`;
+  const members = await db.membership.findMany({ where: { orgId: event.orgId }, select: { userId: true, role: true }, orderBy: { id: "asc" } });
+  if (members.some((member) => member.userId === admin.userId)) return { ok: true, href };
+  const owner = members.find((member) => member.role === "OWNER") ?? members[0];
+  if (!owner) return { ok: false, message: "У мероприятия нет организатора." };
+  const result = await impersonate(admin, owner.userId);
+  if (!result.ok) return result;
+  await audit({ actor: actor(admin), action: "event.open_as_organizer", targetType: "event", targetId: event.id });
+  return { ok: true, href };
+}
+
 /** Вернуться из «войти как» в свою сессию. */
 export async function endImpersonation(): Promise<boolean> {
   const jar = await cookies();

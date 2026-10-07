@@ -42,6 +42,7 @@ beforeAll(async () => {
 });
 beforeEach(() => resetDb());
 afterEach(async () => {
+  delete process.env.RETENTION_EXEMPT_EMAILS;
   await Promise.all(created.splice(0).map((id) => deletePrefix(`events/${id}/`)));
 });
 
@@ -96,7 +97,8 @@ describe("фоновая задача", () => {
     expect(await getObject(orphan)).toBeNull();
   });
 
-  it("свадьбы суперадмина (1@1 и владелец платформы) не архивируются и не теряют фото", async () => {
+  it("свадьбы суперадмина (владелец платформы и RETENTION_EXEMPT_EMAILS) не архивируются и не теряют фото", async () => {
+    process.env.RETENTION_EXEMPT_EMAILS = "helper@vmeste.test";
     const mine = await wedding("ret-admin", daysAgo(30), 2);
     const owner = await wedding("ret-owner", daysAgo(30), 1);
     const planner = await wedding("ret-planner", daysAgo(30), 1);
@@ -105,10 +107,10 @@ describe("фоновая задача", () => {
       const user = await testDb.user.upsert({ where: { email }, create: { email, name: email }, update: {} });
       await testDb.membership.create({ data: { orgId: event.orgId, userId: user.id, role } });
     };
-    await link(mine.id, "1@1", "OWNER");
+    await link(mine.id, "helper@vmeste.test", "OWNER");
     await link(owner.id, "AkbarChik0071@gmail.com", "OWNER");
     // Админ лишь помогает чужой паре — её сроки действуют как обычно.
-    await link(planner.id, "1@1", "PLANNER");
+    await link(planner.id, "helper@vmeste.test", "PLANNER");
 
     await runRetention(NOW);
 

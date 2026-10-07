@@ -2,7 +2,8 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { atLeast, requireAdmin } from "@/server/admin/access";
 import { listEvents } from "@/server/admin/stats";
-import { setEventStatusAsAdmin } from "@/server/admin/operations";
+import { openEventAsOrganizer, setEventStatusAsAdmin } from "@/server/admin/operations";
+import { redirect } from "next/navigation";
 import { findTemplate } from "@/lib/invite-templates";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,14 @@ export default async function AdminEvents({ searchParams }: { searchParams: Prom
     revalidatePath("/admin/events");
   }
 
+  // «Открыть» — свадьба глазами организатора, черновики тоже.
+  async function open(form: FormData) {
+    "use server";
+    const actor = await requireAdmin("ADMIN");
+    const result = await openEventAsOrganizer(actor, String(form.get("eventId")));
+    if (result.ok && result.href) redirect(result.href);
+  }
+
   const href = (target: number) => `?${new URLSearchParams({ ...(q ? { q } : {}), page: String(target) })}`;
 
   return (
@@ -33,7 +42,7 @@ export default async function AdminEvents({ searchParams }: { searchParams: Prom
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-serif text-3xl">Мероприятия</h1>
-          <p className="mt-1 text-sm text-stone-500">Все свадьбы платформы. Снять с публикации — если приглашение нарушает правила.</p>
+          <p className="mt-1 text-sm text-stone-500">Все свадьбы платформы. «Открыть как организатор» — свадьба его глазами, черновики тоже. Снять с публикации — если приглашение нарушает правила.</p>
         </div>
         <form className="flex gap-2">
           <input name="q" defaultValue={q} placeholder="Название, адрес или студия" className="w-64 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm" />
@@ -58,7 +67,15 @@ export default async function AdminEvents({ searchParams }: { searchParams: Prom
                 <td className="px-4 py-3">
                   <p className="font-medium">{event.title}</p>
                   <p className="text-xs text-stone-500">{event.orgName}{event.ownerEmail ? ` · ${event.ownerEmail}` : ""}</p>
-                  {event.status === "PUBLISHED" && <a href={`/i/${event.slug}`} target="_blank" rel="noreferrer" className="text-xs underline underline-offset-2">/i/{event.slug}</a>}
+                  <div className="mt-1 flex flex-wrap items-center gap-3">
+                    {canAct ? (
+                      <form action={open}>
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <button className="rounded-lg bg-stone-900 px-2.5 py-1 text-xs text-white">Открыть как организатор</button>
+                      </form>
+                    ) : null}
+                    {event.status === "PUBLISHED" && <a href={`/i/${event.slug}`} target="_blank" rel="noreferrer" className="text-xs underline underline-offset-2">/i/{event.slug}</a>}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-stone-600">{event.eventDate.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}</td>
                 <td className="px-4 py-3 text-xs text-stone-600">{event.template ? findTemplate(event.template)?.name ?? event.template : "—"}</td>
