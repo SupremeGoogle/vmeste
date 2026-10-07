@@ -20,7 +20,7 @@ export type GuestHub = {
   giftsEnabled: boolean;
   album: { enabled: boolean; open: boolean; opensOn: string };
   seat: HubSeat;
-  photos: { enabled: boolean; left: number; limit: number; mine: { id: string; status: string }[]; gallery: string[] };
+  photos: { enabled: boolean; left: number; limit: number; mine: { id: string; status: string }[]; gallery: { id: string; width: number; height: number }[] };
   wishes: { enabled: boolean; mine: { id: string; text: string; status: string }[] };
 };
 
@@ -70,8 +70,9 @@ export async function loadGuestHub(eventId: string): Promise<GuestHub | null> {
       left: quota.left,
       limit: quota.limit,
       mine: mine.map((photo) => ({ id: photo.id, status: photo.status })),
-      // Только идентификаторы: кто прислал снимок, другим гостям не видно.
-      gallery: gallery.map((photo) => photo.id),
+      // Только снимок и его размеры: кто прислал, другим гостям не видно.
+      // Размеры нужны раскладке, где каждое фото — в своих пропорциях.
+      gallery: gallery.map((photo) => ({ id: photo.id, width: photo.width, height: photo.height })),
     },
     wishes: {
       enabled: guest.wishesEnabled,

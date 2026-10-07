@@ -14,7 +14,8 @@ import { identifyByEventSession } from "@/server/guest-access/identify";
 import { findEventByShortCode } from "@/server/repositories/events";
 import { albumIsOpen, albumOpeningLabel } from "@/lib/wedding-day";
 import { albumFilter, albumScope, type AlbumScope } from "@/server/services/album";
-import { AlbumGallery, DownloadIcon } from "./album-gallery";
+import { PhotoWall } from "@/components/guest/photo-wall";
+import { DownloadIcon } from "./download-icon";
 
 export const dynamic = "force-dynamic";
 
@@ -126,7 +127,9 @@ export default async function AlbumPage({ params, searchParams }: Props) {
       ) : null}
 
       {photos.length > 0 ? (
-        <AlbumGallery key={`${scope}-${page}`} eventId={event.id} photos={photos} />
+        <div className="mt-6">
+          <PhotoWall key={`${scope}-${page}`} eventId={event.id} photos={photos} download />
+        </div>
       ) : (
         <p className="guest-card mt-6 p-6 text-center text-[15px] text-muted">{empty}</p>
       )}

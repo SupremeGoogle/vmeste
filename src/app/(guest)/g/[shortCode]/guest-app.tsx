@@ -10,10 +10,12 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import type { GuestHub } from "@/server/services/guest-hub";
 import { EASE_OUT } from "@/components/motion/motion";
 import { forgetMe, sendWish, type WishState } from "./actions";
 import { PhotoUploader } from "./photo-uploader";
+import { PhotoWall } from "@/components/guest/photo-wall";
 import { GuestHeader, GuestFinder as Finder, GuestSeatCard as SeatCard } from "@/components/guest/entry";
 
 type EventInfo = { title: string; dateLabel: string; venue: string | null };
@@ -25,7 +27,8 @@ const rise = {
 
 export function GuestApp({ code, eventId, event, hub, openEntry = false }: { code: string; eventId: string; event: EventInfo; hub: GuestHub | null; openEntry?: boolean }) {
   return (
-    <main className="guest-wedding-page mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pb-16">
+    <main className="guest-wedding-page relative mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pb-16">
+      {hub ? <LeaveButton code={code} /> : null}
       <GuestHeader event={event} />
 
       <AnimatePresence mode="wait" initial={false}>
@@ -43,9 +46,27 @@ export function GuestApp({ code, eventId, event, hub, openEntry = false }: { cod
   );
 }
 
+/** «Выйти» в углу шапки: снять гостевую сессию и вернуться к поиску себя. */
+function LeaveButton({ code }: { code: string }) {
+  const [leaving, startLeaving] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={leaving}
+      onClick={() => startLeaving(() => forgetMe(code))}
+      className="absolute top-4 right-4 z-40 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-card/80 px-3 text-[13px] text-muted backdrop-blur transition-colors hover:text-ink disabled:opacity-50"
+    >
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M8 4H5a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 5 16h3M12.5 13.5 16 10l-3.5-3.5M16 10H8" /></svg>
+      {leaving ? "Выходим…" : "Выйти"}
+    </button>
+  );
+}
+
 /* ── Страница опознанного гостя ─────────────────────────────────── */
 
-/** Строка-ссылка на раздел: подарки, альбом, музыка. */
+type Tab = "seat" | "photos" | "wish";
+
+/** Строка-ссылка на раздел: подарки, альбом. */
 function HubLink({ href, title, note }: { href: string; title: string; note: string }) {
   return (
     <li>
@@ -60,8 +81,31 @@ function HubLink({ href, title, note }: { href: string; title: string; note: str
   );
 }
 
+/**
+ * Три раздела — вкладками, а не якорями: раньше «Фото» прокручивало
+ * страницу вниз, и гость терял, где он. Теперь виден один раздел, панель
+ * вкладок стоит на месте (прилипает к верху при прокрутке), выбранная
+ * подсвечена. Вкладка живёт в адресе (`?tab=photos`): после загрузки фото
+ * или перезагрузки гость остаётся там же.
+ */
 function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: GuestHub }) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "seat", label: "Мой стол" },
+    ...(hub.photos.enabled ? [{ id: "photos" as const, label: "Фото" }] : []),
+    ...(hub.wishes.enabled ? [{ id: "wish" as const, label: "Пожелание" }] : []),
+  ];
+  const asked = useSearchParams().get("tab");
+  const [tab, setTab] = useState<Tab>(tabs.some((item) => item.id === asked) ? (asked as Tab) : "seat");
   const [leaving, startLeaving] = useTransition();
+
+  function choose(next: Tab) {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "seat") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    window.history.replaceState(null, "", url);
+  }
+
   return (
     <motion.div initial="hidden" animate="shown" variants={{ hidden: {}, shown: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } } }}>
       <motion.p variants={rise} className="mt-8 text-center font-serif text-xl text-muted">
@@ -71,64 +115,98 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
         {hub.displayName}
       </motion.h2>
 
-      <motion.nav variants={rise} aria-label="Разделы" className="mx-auto mt-5 flex w-fit gap-1 rounded-full border border-line bg-card/70 p-1 text-sm backdrop-blur">
-        {[
-          ["#seat", "Мой стол"],
-          ...(hub.photos.enabled ? [["#photos", "Фото"]] : []),
-          ...(hub.wishes.enabled ? [["#wish", "Пожелание"]] : []),
-        ].map(([href, label]) => (
-          <a key={href} href={href} className="inline-flex min-h-11 items-center rounded-full px-4 text-muted transition-colors hover:bg-paper hover:text-ink">
-            {label}
-          </a>
-        ))}
-      </motion.nav>
-
+      {tabs.length > 1 ? (
+        <motion.div variants={rise} className="sticky top-3 z-30 mt-5 flex justify-center">
+          <div role="tablist" aria-label="Разделы" className="flex w-fit gap-1 rounded-full border border-line bg-card/90 p-1 text-[15px] shadow-[0_10px_30px_-18px_rgba(64,56,51,0.45)] backdrop-blur">
+            {tabs.map((item) => {
+              const active = item.id === tab;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  id={`tab-${item.id}`}
+                  aria-selected={active}
+                  aria-controls={`panel-${item.id}`}
+                  onClick={() => choose(item.id)}
+                  className={`relative inline-flex min-h-11 items-center rounded-full px-4 transition-colors ${active ? "text-ink" : "text-muted hover:text-ink"}`}
+                >
+                  {active ? (
+                    <motion.span layoutId="guest-tab" className="absolute inset-0 rounded-full border border-gold-soft/60 bg-paper" transition={{ type: "spring", stiffness: 420, damping: 34 }} aria-hidden />
+                  ) : null}
+                  <span className="relative">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+      ) : null}
 
       <motion.div variants={rise}>
-        <SeatCard code={code} seat={hub.seat} />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            id={`panel-${tab}`}
+            role="tabpanel"
+            aria-labelledby={`tab-${tab}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
+          >
+            {tab === "seat" ? (
+              <>
+                <SeatCard code={code} seat={hub.seat} />
+                <Link
+                  href={`/g/${code}/seating`}
+                  className="guest-button mt-4 flex min-h-14 items-center justify-center gap-2.5 rounded-2xl px-5 text-[16px] font-medium transition-transform duration-200 active:scale-[0.98]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="2.5" y="3" width="6" height="6" rx="1.5" /><rect x="11.5" y="3" width="6" height="6" rx="1.5" /><rect x="2.5" y="11" width="6" height="6" rx="1.5" /><rect x="11.5" y="11" width="6" height="6" rx="1.5" /></svg>
+                  Рассадка всех гостей
+                </Link>
+                {hub.giftsEnabled ? (
+                  <ul className="mt-4 grid gap-3">
+                    <HubLink href={`/g/${code}/gifts`} title="Виш-лист" note="Что паре хотелось бы получить" />
+                  </ul>
+                ) : null}
+              </>
+            ) : tab === "photos" ? (
+              <section className="guest-card mt-6 p-5 sm:p-7">
+                <h3 className="font-serif text-[26px] leading-tight">Фотографии</h3>
+                <p className="mt-1 text-[15px] text-muted">
+                  До {hub.photos.limit} снимков — они сразу появятся в общей галерее.
+                </p>
+                <PhotoUploader eventId={eventId} left={hub.photos.left} limit={hub.photos.limit} mine={hub.photos.mine} />
+                <div className="mt-7">
+                  <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">Общая галерея</h4>
+                  {hub.photos.gallery.length === 0 ? (
+                    <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-6 text-center text-[15px] text-muted">
+                      Пока пусто — здесь появятся снимки гостей.
+                    </p>
+                  ) : (
+                    <div className="mt-3">
+                      <PhotoWall eventId={eventId} photos={hub.photos.gallery} />
+                    </div>
+                  )}
+                </div>
+                {hub.album.enabled ? (
+                  <ul className="mt-6 grid gap-3">
+                    <HubLink
+                      href={`/g/${code}/album`}
+                      title="Альбом"
+                      note={hub.album.open ? "Снимки гостей со свадьбы — смотреть и скачать" : `Откроется ${hub.album.opensOn}, на следующий день после свадьбы`}
+                    />
+                  </ul>
+                ) : null}
+              </section>
+            ) : (
+              <section className="guest-card mt-6 p-5 sm:p-7">
+                <WishForm code={code} name={hub.displayName} mine={hub.wishes.mine} />
+              </section>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </motion.div>
-
-      <motion.div variants={rise}>
-        <Link
-          href={`/g/${code}/seating`}
-          className="guest-button mt-4 flex min-h-14 items-center justify-center gap-2.5 rounded-2xl px-5 text-[16px] font-medium transition-transform duration-200 active:scale-[0.98]"
-        >
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="2.5" y="3" width="6" height="6" rx="1.5" /><rect x="11.5" y="3" width="6" height="6" rx="1.5" /><rect x="2.5" y="11" width="6" height="6" rx="1.5" /><rect x="11.5" y="11" width="6" height="6" rx="1.5" /></svg>
-          Рассадка всех гостей
-        </Link>
-      </motion.div>
-
-      {hub.giftsEnabled || hub.album.enabled ? (
-        <motion.ul variants={rise} className="mt-4 grid gap-3">
-          {hub.giftsEnabled ? (
-            <HubLink href={`/g/${code}/gifts`} title="Виш-лист" note="Что паре хотелось бы получить" />
-          ) : null}
-          {hub.album.enabled ? (
-            <HubLink
-              href={`/g/${code}/album`}
-              title="Альбом"
-              note={hub.album.open ? "Снимки гостей со свадьбы — смотреть и скачать" : `Откроется ${hub.album.opensOn}, на следующий день после свадьбы`}
-            />
-          ) : null}
-        </motion.ul>
-      ) : null}
-
-      {hub.photos.enabled ? (
-        <motion.section variants={rise} id="photos" className="guest-card mt-6 scroll-mt-6 p-5 sm:p-7">
-          <h3 className="font-serif text-[26px] leading-tight">Фотографии</h3>
-          <p className="mt-1 text-[15px] text-muted">
-            До {hub.photos.limit} снимков — они сразу появятся в общей галерее.
-          </p>
-          <PhotoUploader eventId={eventId} left={hub.photos.left} limit={hub.photos.limit} mine={hub.photos.mine} />
-          <Gallery eventId={eventId} ids={hub.photos.gallery} />
-        </motion.section>
-      ) : null}
-
-      {hub.wishes.enabled ? (
-        <motion.section variants={rise} id="wish" className="guest-card mt-6 scroll-mt-6 p-5 sm:p-7">
-          <WishForm code={code} name={hub.displayName} mine={hub.wishes.mine} />
-        </motion.section>
-      ) : null}
 
       <motion.p variants={rise} className="mt-8 text-center text-sm text-muted">
         Не {hub.displayName.split(" ")[0]}?{" "}
@@ -142,76 +220,6 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
         </button>
       </motion.p>
     </motion.div>
-  );
-}
-
-function Gallery({ eventId, ids }: { eventId: string; ids: string[] }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const media = (id: string, full = false) => `/api/media/${eventId}/${id}${full ? "?size=full" : ""}`;
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  return (
-    <div className="mt-7">
-      <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">Общая галерея</h4>
-      {ids.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-6 text-center text-[15px] text-muted">
-          Пока пусто — здесь появятся снимки гостей.
-        </p>
-      ) : (
-        <ul className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
-          {ids.map((id, i) => (
-            <motion.li
-              key={id}
-              initial={{ opacity: 0, scale: 0.94 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: "0px 0px -8% 0px" }}
-              transition={{ duration: 0.45, delay: (i % 9) * 0.03, ease: EASE_OUT }}
-            >
-              <motion.button
-                type="button"
-                layoutId={`photo-${id}`}
-                onClick={() => setOpen(id)}
-                whileTap={{ scale: 0.97 }}
-                className="block aspect-square w-full overflow-hidden rounded-xl bg-line/40"
-                aria-label={`Открыть фото ${i + 1}`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- снимки отдаёт своё API, next/image тут только лишний прокси */}
-                <img src={media(id)} alt="" loading="lazy" className="h-full w-full object-cover" />
-              </motion.button>
-            </motion.li>
-          ))}
-        </ul>
-      )}
-
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            key="lightbox"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/85 p-4 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(null)}
-            role="dialog"
-            aria-label="Фотография"
-          >
-            <motion.div layoutId={`photo-${open}`} className="max-h-full max-w-full overflow-hidden rounded-2xl">
-              {/* eslint-disable-next-line @next/next/no-img-element -- см. выше */}
-              <img src={media(open, true)} alt="" className="max-h-[85dvh] max-w-full object-contain" />
-            </motion.div>
-            <button type="button" className="absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-card/15 text-2xl text-card" aria-label="Закрыть">
-              ×
-            </button>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
   );
 }
 
