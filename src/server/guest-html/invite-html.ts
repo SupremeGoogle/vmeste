@@ -89,6 +89,7 @@ import { inviteControlsCss } from "@/server/guest-html/invite-controls-css";
 import { FIT_TEXT_SCRIPT } from "@/server/guest-html/fit-text";
 import { errorReporterScript } from "@/server/guest-html/error-reporter";
 import { rybbitScriptTag } from "@/server/analytics/rybbit";
+import { visitBeaconTag } from "@/lib/visit-beacon";
 import { inlineRsvpForm, withInlineRsvp } from "@/server/guest-html/inline-rsvp-form";
 import { countdownCells, COUNTDOWN_SCRIPT as SHARED_COUNTDOWN_SCRIPT } from "@/server/guest-html/countdown";
 import { isWedwedTemplate, renderWedwedBlocks, wedwedDocument } from "@/server/guest-html/wedwed/markup";
@@ -245,7 +246,7 @@ export function invitePage(opts: Parameters<typeof buildInvitePage>[0] & {
   // редактора ни то ни другое не нужно: там смотрит пара, а не гость.
   if (opts.styleMeta) return fitted;
   const head = fitted.indexOf("</head>");
-  const watch = `${errorReporterScript(opts.theme?.template ?? "")}${rybbitScriptTag()}`;
+  const watch = `${errorReporterScript(opts.theme?.template ?? "")}${rybbitScriptTag()}${visitBeaconTag()}`;
   return head < 0 || !watch ? fitted : `${fitted.slice(0, head)}${watch}${fitted.slice(head)}`;
 }
 

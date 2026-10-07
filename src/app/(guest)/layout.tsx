@@ -4,7 +4,9 @@
  */
 import type { Metadata, Viewport } from "next";
 import "./guest.css";
+import Script from "next/script";
 import { MotionRoot } from "@/components/motion/motion";
+import { VISIT_BEACON } from "@/lib/visit-beacon";
 
 export const metadata: Metadata = {
   title: "Свадьба",
@@ -23,6 +25,8 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
       <body className="min-h-dvh font-sans text-ink antialiased">
         <div className="guest-aurora" aria-hidden />
         <MotionRoot>{children}</MotionRoot>
+        {/* Новый посетитель — уведомление владельцу в Telegram (api/visit). */}
+        <Script id="visit-beacon" strategy="afterInteractive">{VISIT_BEACON}</Script>
       </body>
     </html>
   );
