@@ -11,7 +11,8 @@
  * и схемы блока. После действий, меняющих структуру, фрейм перезагружается
  * и возвращается к тому же месту прокрутки.
  */
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { DRAFT_CHANGED } from "@/components/invite/publish-controls";
 import { useRouter } from "next/navigation";
 import { WeddingSheet } from "@/components/invite/wedding-sheet";
 import { SectionsPanel, TypePicker, type BlockTypeOption, type SectionItem, type ComponentItem } from "@/components/invite/sections-panel";
@@ -53,7 +54,7 @@ const SAMPLES: Record<string, readonly string[]> = {
 
 /** Подсказка по умолчанию. На телефоне её не показываем: место над
  *  приглашением дорого, а сообщения о сохранении остаются видны. */
-const EDIT_HINT = "Нажмите на любой текст, фотографию или дату — изменения сохраняются сами";
+const EDIT_HINT = "Нажмите на любой текст, фотографию или дату — изменения сохраняются в черновик";
 
 export function VisualInviteEditor({
   eventId,
@@ -67,17 +68,19 @@ export function VisualInviteEditor({
   hidden,
   sections,
   blockTypes,
-  saveField,
-  blockAction,
-  saveMusic,
-  savePhoto,
+  saveField: saveFieldAction,
+  blockAction: blockActionAction,
+  saveMusic: saveMusicAction,
+  savePhoto: savePhotoAction,
   introAvailable,
   introOff,
-  saveIntro,
+  saveIntro: saveIntroAction,
   style,
-  saveStyle,
+  saveStyle: saveStyleAction,
   fontChoices,
   weddingForm,
+  rsvpBuilder,
+  rsvpOpen: rsvpOpenInitially = false,
   weddingReady,
   warnings,
 }: {
@@ -108,11 +111,30 @@ export function VisualInviteEditor({
   savePhoto: (input: { blockId: string; path: string; url: string; settings: PhotoAdjustment }) => Promise<SaveResult>;
   /** Форма «Имена, дата и место» — открывается в боковой панели. */
   weddingForm: ReactNode;
+  /** Конструктор вопросов анкеты — открывается на весь экран по щелчку по анкете. */
+  rsvpBuilder?: ReactNode;
+  /** Открыть конструктор анкеты сразу (старый адрес /invite/form ведёт сюда). */
+  rsvpOpen?: boolean;
   /** Данные свадьбы уже заполнены хотя бы раз. */
   weddingReady: boolean;
   /** Что поправить перед отправкой гостям. */
   warnings: string[];
 }) {
+  // Каждая удачная правка — сигнал плашке черновика (publish-controls.tsx):
+  // у опубликованного приглашения она копится и ждёт «Сохранить изменения».
+  const tracked = useMemo(() => {
+    const track = <I,>(action: (input: I) => Promise<SaveResult>) => async (input: I) => {
+      const result = await action(input);
+      if (result.ok) window.dispatchEvent(new Event(DRAFT_CHANGED));
+      return result;
+    };
+    return {
+      saveField: track(saveFieldAction), blockAction: track(blockActionAction), saveMusic: track(saveMusicAction),
+      savePhoto: track(savePhotoAction), saveIntro: track(saveIntroAction), saveStyle: track(saveStyleAction),
+    };
+  }, [saveFieldAction, blockActionAction, saveMusicAction, savePhotoAction, saveIntroAction, saveStyleAction]);
+  const { saveField, blockAction, saveMusic, savePhoto, saveIntro, saveStyle } = tracked;
+  const [rsvpOpen, setRsvpOpen] = useState(rsvpOpenInitially);
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const audioInput = useRef<HTMLInputElement>(null);
@@ -259,6 +281,11 @@ export function VisualInviteEditor({
       // Щелчок по дате на обложке: дата со временем выбирается в календаре панели.
       if (message.kind === "wedding-edit") openWedding(typeof message.focus === "string" ? message.focus : null);
       if (message.kind === "reload") reload();
+      // Анкета — внутри приглашения: щелчок по ней открывает конструктор вопросов.
+      if (rsvpBuilder && (message.kind === "rsvp-builder" || (message.kind === "form-click" && sections.some((item) => item.id === blockId && item.type === "RSVP_FORM")))) {
+        setRsvpOpen(true);
+        return;
+      }
       if (message.kind === "component-action" && blockId && path && (message.action === "remove" || message.action === "restore")) {
         changeComponent(blockId, path, message.action);
         return;
@@ -307,7 +334,7 @@ export function VisualInviteEditor({
     }
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas]);
+  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas, rsvpBuilder]);
 
   const choices = (() => {
     if (!target || target.kind !== "image") return items;
@@ -640,6 +667,26 @@ export function VisualInviteEditor({
       <WeddingSheet open={weddingOpen} focus={weddingFocus} onClose={closeWedding}>
         {weddingForm}
       </WeddingSheet>
+      {rsvpOpen && rsvpBuilder ? (
+        <div role="dialog" aria-modal="true" aria-label="Анкета гостя" className="fixed inset-0 z-50 overflow-y-auto bg-stone-50">
+          <div className="sticky top-0 z-10 border-b border-stone-200 bg-card/95 backdrop-blur-sm">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-stone-900">Анкета гостя</p>
+                <p className="truncate text-xs text-stone-500">Вопросы сохраняются сразу и сразу появляются у гостей в приглашении.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setRsvpOpen(false); reload(); }}
+                className="shrink-0 rounded-lg bg-stone-900 px-5 py-2 text-sm font-medium text-white"
+              >
+                Готово
+              </button>
+            </div>
+          </div>
+          <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">{rsvpBuilder}</div>
+        </div>
+      ) : null}
 
       {musicOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setMusicOpen(false); }}>

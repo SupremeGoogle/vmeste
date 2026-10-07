@@ -10,6 +10,7 @@ import { db } from "@/server/db";
 import type { EventContext } from "@/server/context";
 import type { GuestIdentity } from "@/server/guest-access/identify";
 import { envelopeInput, giftInput } from "@/lib/wedding-day";
+import { setSnapshotVisibility } from "@/server/repositories/invite-draft";
 
 export const GIFTS_PER_GUEST = 1;
 
@@ -25,6 +26,8 @@ export async function saveEnvelope(ctx: EventContext, input: unknown): Promise<R
   });
   // Флаг и раздел приглашения — одно и то же (см. setWishlistShown).
   await db.inviteBlock.updateMany({ where: { eventId: ctx.eventId, orgId: ctx.orgId, type: "WISHLIST" }, data: { visible: enabled } });
+  // Гости видят снимок приглашения — галочка должна действовать и там.
+  await setSnapshotVisibility(ctx, "WISHLIST", enabled);
   return { ok: true, message: "Сохранено" };
 }
 

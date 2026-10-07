@@ -34,7 +34,7 @@ export default async function NewEventPage({ searchParams }: Props) {
     const timeRaw = String(formData.get("eventTime") ?? "16:00").trim() || "16:00";
 
     if (title.length < 2 || !dateRaw) {
-      redirect("/app/events/new?error=" + encodeURIComponent("Нужны название и дата"));
+      redirect("/app/events/new?error=" + encodeURIComponent("Нужны имена пары и дата"));
     }
 
     const slug = slugify(String(formData.get("slug") ?? "") || title);
@@ -72,11 +72,14 @@ export default async function NewEventPage({ searchParams }: Props) {
 
       <form action={create} className="mt-6 space-y-4">
         <label className="block">
-          <span className="text-sm text-stone-500">Название</span>
+          <span className="text-sm text-stone-500">Имена пары</span>
           <input
             name="title" required minLength={2} placeholder="Аня и Миша"
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
           />
+          <span className="mt-1 block text-xs text-stone-400">
+            Сразу появятся во всех шаблонах приглашения, включая заставку.
+          </span>
         </label>
 
         <div className="flex gap-3">

@@ -18,6 +18,11 @@ const DAY_MS = 24 * 3600_000;
 const HOUR_MS = 3600_000;
 export const VISITS_PER_HOUR = 40;
 
+/** Вешать ли скрипт отметки на страницы: без бота он только лишний запрос. */
+export function visitNotifyEnabled(): boolean {
+  return process.env.VISIT_NOTIFY !== "0" && telegramConfigured();
+}
+
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|vkshare|telegram|whatsapp|skype|discord|headless|lighthouse|pagespeed|curl|wget|python|go-http|node-fetch|axios|monitor|uptime|pingdom|yandex(?!browser)|bingpreview/i;
 
 export function isBot(userAgent: string): boolean {

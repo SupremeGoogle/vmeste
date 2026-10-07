@@ -2,9 +2,14 @@
  * Конструктор анкеты RSVP — «как в Google Формах»: поля добавляются,
  * убираются, переставляются, у каждого свой тип. Анкета одна на
  * мероприятие и показывается в любом шаблоне приглашения — в его стиле.
+ *
+ * Когда приглашение уже собрано, анкета правится прямо в нём: этот адрес
+ * ведёт в редактор и сразу открывает конструктор на весь экран. Отдельной
+ * страницей она остаётся только до выбора шаблона.
  */
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { db } from "@/server/db";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import { loadBuilder } from "./actions";
@@ -17,6 +22,7 @@ export default async function RsvpFormPage({ params }: { params: Promise<{ event
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  if (await db.inviteBlock.count({ where: { eventId } })) redirect(`/app/e/${eventId}/invite?edit=1&rsvp=1`);
   const initial = await loadBuilder(eventId);
 
   return (

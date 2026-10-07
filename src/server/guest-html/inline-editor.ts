@@ -111,10 +111,12 @@ d.addEventListener('click',function(e){
  if(color){e.preventDefault();e.stopPropagation();send({kind:'color-edit',blockId:color.dataset.blockId,path:color.dataset.path,current:color.dataset.color||''});return}
  var image=e.target.closest('[data-image-edit]');
  if(image){e.preventDefault();e.stopPropagation();send({kind:'image-edit',blockId:image.dataset.blockId,path:image.dataset.path,current:image.getAttribute('src')||'',settings:image.dataset.photoSettings||'',ratio:image.clientWidth/Math.max(1,image.clientHeight)});return}
+ var rb=e.target.closest('[data-rsvp-builder]');
+ if(rb){e.preventDefault();e.stopPropagation();send({kind:'rsvp-builder'});return}
  var nav=e.target.closest('[data-editor-nav]');
  if(nav){e.preventDefault();e.stopPropagation();top.location.href=nav.getAttribute('href');return}
  var field=e.target.closest('[data-inline-edit]');
- if(!field){if(e.target.closest('a,button,input,label,form')){e.preventDefault()}return}
+ if(!field){var form=e.target.closest('form');if(form){e.preventDefault();send({kind:'form-click',blockId:owner(form)});return}if(e.target.closest('a,button,input,label')){e.preventDefault()}return}
  if(field.dataset.path==='dateText'){e.preventDefault();e.stopPropagation();send({kind:'wedding-edit',focus:'eventDate'});return}
  e.preventDefault();e.stopPropagation();
  if(active===field)return;

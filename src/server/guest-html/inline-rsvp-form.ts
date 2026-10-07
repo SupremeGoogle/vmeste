@@ -58,6 +58,7 @@ export const INLINE_RSVP_FORM_CSS = `
 .vm-rsvp-msg{margin:0 0 1.2rem;padding:.9rem 1rem;border:1px solid color-mix(in srgb,currentColor 25%,transparent);border-radius:.9rem;text-align:center}
 .vm-rsvp-error{border-style:dashed}
 .vm-rsvp-note{margin:.8rem 0 0;font-size:.82em;opacity:.65;text-align:center}
+.vm-rsvp-manage{display:block;width:fit-content;margin:1rem auto 0;padding:.5rem 1rem;border:1px dashed #c79a55;border-radius:.5rem;background:#fff8ee;color:#8b6914;font:500 13px/1.3 system-ui,sans-serif;cursor:pointer}
 `.replace(/\n/g, "");
 
 /**
@@ -105,7 +106,7 @@ ${plusOneAllowed ? `<label class="vm-rsvp-field">${L("rsvp.plus-one", "Если 
 ${drinkField}${r?.questionFields ?? r?.extraFields ?? ""}
 <button type="submit" class="vm-rsvp-submit"><span${answered ? "" : e.text("buttonLabel")}>${esc(answered ? "Изменить ответ" : c.buttonLabel || "Отправить ответ")}</span></button>
 ${!action && !current.editable ? `<p class="vm-rsvp-note">${L("rsvp.demo-note", "Это образец анкеты — гости ответят по ссылке из приглашения.")}</p>` : ""}
-</form>`;
+</form>${current.editable ? `<button type="button" class="vm-rsvp-manage" data-editor-ui data-rsvp-builder>Настроить вопросы анкеты</button>` : ""}`;
 }
 
 /**

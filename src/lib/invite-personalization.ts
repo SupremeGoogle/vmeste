@@ -33,11 +33,27 @@ export function initials(names: string) {
 }
 
 /** Work on copies: previews must never mutate stored blocks. */
-export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme, date?: Date, timezone = "UTC"): InviteBlockView[] {
+/** Заменить имена образца на имена пары в строках раздела (и в его пунктах). */
+function replaceSampleNames(content: Record<string, unknown>, sample: string, names: string): void {
+  if (!sample || sample === names) return;
+  const variants = [...new Set([sample, sample.replace(/\s+и\s+/, " & "), sample.replace(/\s+и\s+/, " и ")])];
+  const swap = (value: string) => variants.reduce((text, variant) => text.split(variant).join(names), value);
+  for (const [key, value] of Object.entries(content)) {
+    if (typeof value === "string") content[key] = swap(value);
+    else if (Array.isArray(value)) content[key] = value.map((item) => (typeof item === "string" ? swap(item) : item && typeof item === "object" ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, typeof v === "string" ? swap(v) : v])) : item));
+  }
+}
+
+/**
+ * `sampleNames` — имена из образца шаблона (`templateSampleNames`): где бы
+ * они ни стояли в текстах, их заменяют имена пары.
+ */
+export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme, date?: Date, timezone = "UTC", sampleNames = ""): InviteBlockView[] {
   const wedding = theme.wedding;
   if (!wedding) return blocks;
   return blocks.filter((block) => wedding.childhood || !(block.type === "PHOTOS" && /ребятиш|детств/i.test(String((block.content as {title?:string}).title)))).map((block) => {
     const c = { ...block.content } as Record<string, unknown>;
+    replaceSampleNames(c, sampleNames, wedding.names);
     if (date && typeof c.tag === "string" && /^\d{2}\s*[·./]\s*\d{2}\s*[·./]\s*\d{2,4}$/.test(c.tag)) c.tag = formatEventDate(date, timezone);
     if (block.type === "COVER") {
       c.names = wedding.names;

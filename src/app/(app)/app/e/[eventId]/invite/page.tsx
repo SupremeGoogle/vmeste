@@ -36,7 +36,7 @@ import {
   moveBlock, removeTimelineItem, setBlockVisible, updateInlineBlockField,
   duplicateBlock, insertBlockAfter, moveBlockTo, blockActionProblem, updateTheme,
 } from "@/server/repositories/invites";
-import { findTemplate } from "@/lib/invite-templates";
+import { findTemplate, templateSampleNames } from "@/lib/invite-templates";
 import { hasTemplateIntro } from "@/server/guest-html/invite-html";
 import { FONT_CHOICES, isFontChoice } from "@/server/guest-html/invite-style";
 import { inviteImageSlots } from "@/lib/invite-image-slots";
@@ -47,6 +47,10 @@ import { listAssets, listAudioAssets } from "@/server/services/assets";
 import { VisualInviteEditor, type BlockAction } from "@/components/invite/visual-invite-editor";
 import { WeddingPanel } from "@/components/invite/wedding-panel";
 import { saveWeddingProfile, savePhotoAdjustment } from "@/server/repositories/invites";
+import { discardDraft, getDraftState, saveSnapshot } from "@/server/repositories/invite-draft";
+import { PublishControls } from "@/components/invite/publish-controls";
+import { loadBuilder } from "./form/actions";
+import { RsvpFormBuilder } from "./form/rsvp-form-builder";
 import { weddingSchema, invitationWarnings, personalizeBlocks, fromLocalInput, toLocalInput, type PhotoAdjustment } from "@/lib/invite-personalization";
 
 export const dynamic = "force-dynamic";
@@ -60,12 +64,12 @@ function sectionHint(content: unknown): string {
 
 type Props = {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ error?: string; edit?: string }>;
+  searchParams: Promise<{ error?: string; edit?: string; rsvp?: string }>;
 };
 
 export default async function InvitePage({ params, searchParams }: Props) {
   const { eventId } = await params;
-  const { error, edit } = await searchParams;
+  const { error, edit, rsvp } = await searchParams;
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
@@ -76,7 +80,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
     listAssets(ctx),
     listAudioAssets(ctx),
   ]);
-  const blocks = personalizeBlocks(storedBlocks, theme, event.eventDate, event.timezone);
+  const blocks = personalizeBlocks(storedBlocks, theme, event.eventDate, event.timezone, templateSampleNames(theme.template));
 
   /** Сброс кеша приглашения по обоим тегам: именная страница помечена id,
    *  публичная — слагом (тег задаётся до того, как известен id). */
@@ -87,17 +91,42 @@ export default async function InvitePage({ params, searchParams }: Props) {
     revalidatePath(`/app/e/${eventId}/invite`);
   }
 
-  async function publish(formData: FormData) {
+  /** Публикация: снимок черновика уходит гостям, статус — «опубликовано». */
+  async function publish() {
     "use server";
     const ctx = await requireEventContext(eventId);
-    const status = formData.get("status") === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-    await setEventStatus(ctx, eventId, status);
-    const slug = String(formData.get("slug") ?? "");
-    if (status === "PUBLISHED") {
-      const published = await getEvent(ctx, eventId);
-      if (published) notifyPublished(published.title, `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/i/${published.slug}`);
-    }
-    await invalidate(slug);
+    if (!(await saveSnapshot(ctx))) return { ok: false, message: "Не получилось опубликовать — обновите страницу" } as const;
+    await setEventStatus(ctx, eventId, "PUBLISHED");
+    const published = await getEvent(ctx, eventId);
+    if (published) notifyPublished(published.title, `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/i/${published.slug}`);
+    await invalidate(eventSlug);
+    return { ok: true, path: `/i/${eventSlug}` } as const;
+  }
+
+  async function unpublish() {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    await setEventStatus(ctx, eventId, "DRAFT");
+    await invalidate(eventSlug);
+    return { ok: true, path: `/i/${eventSlug}` } as const;
+  }
+
+  /** «Сохранить изменения»: гости начинают видеть черновик. */
+  async function saveChanges() {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    if (!(await saveSnapshot(ctx))) return { ok: false, message: "Не получилось сохранить — обновите страницу" } as const;
+    await invalidate(eventSlug);
+    return { ok: true, path: `/i/${eventSlug}` } as const;
+  }
+
+  /** «Отменить изменения»: черновик возвращается к тому, что видят гости. */
+  async function discardChanges() {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    if (!(await discardDraft(ctx))) return { ok: false, message: "Нечего отменять" } as const;
+    await invalidate(eventSlug);
+    return { ok: true, path: `/i/${eventSlug}` } as const;
   }
 
   async function chooseTemplate(formData: FormData) {
@@ -211,7 +240,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return result;
   }
   const wedding = theme.wedding ?? weddingSchema.parse({ names: event.title || "Наша свадьба", city: "", venueName: event.venueName ?? "", venueAddress: event.venueAddr ?? "", mapUrl: "" });
-  const warnings = invitationWarnings(personalizeBlocks(blocks, theme, event.eventDate, event.timezone), theme);
+  const warnings = invitationWarnings(personalizeBlocks(blocks, theme, event.eventDate, event.timezone, templateSampleNames(theme.template)), theme);
   const hasInvite = blocks.length > 0;
 
   /*
@@ -225,6 +254,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
    * и кнопка «Продолжить редактирование» для уже начатого.
    */
   const showEditor = (edit === "1" || edit === "classic") && hasInvite;
+  const [draft, rsvpState] = showEditor ? await Promise.all([getDraftState(ctx), loadBuilder(eventId)]) : [null, null];
 
   if (!showEditor) {
     // Витрина — это выбор шаблона и ничего больше. Имена, дата и место
@@ -244,13 +274,6 @@ export default async function InvitePage({ params, searchParams }: Props) {
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M5 7V2.5h10V7M5 14.5H3.5A1.5 1.5 0 0 1 2 13V8.5A1.5 1.5 0 0 1 3.5 7h13A1.5 1.5 0 0 1 18 8.5V13a1.5 1.5 0 0 1-1.5 1.5H15M5 11.5h10v6H5z" strokeLinejoin="round" /></svg>
             Печатное приглашение
-          </a>
-          <a
-            href={`/app/e/${eventId}/invite/form`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-stone-300 bg-card px-4 text-sm font-medium text-stone-800 transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-50"
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="3.5" y="2.5" width="13" height="15" rx="2" /><path d="M7 7h6M7 10.5h6M7 14h3.5" strokeLinecap="round" /></svg>
-            Анкета гостя
           </a>
           </div>
         </div>
@@ -307,20 +330,16 @@ export default async function InvitePage({ params, searchParams }: Props) {
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M5 7V2.5h10V7M5 14.5H3.5A1.5 1.5 0 0 1 2 13V8.5A1.5 1.5 0 0 1 3.5 7h13A1.5 1.5 0 0 1 18 8.5V13a1.5 1.5 0 0 1-1.5 1.5H15M5 11.5h10v6H5z" strokeLinejoin="round" /></svg>
           <span className="sm:hidden">Печать</span><span className="hidden sm:inline">Печатное приглашение</span>
         </a>
-        <a
-          href={`/app/e/${eventId}/invite/form`}
-          className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-stone-300 bg-card px-3 text-sm font-medium sm:min-h-11 sm:px-4 text-stone-800 transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-50"
-        >
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="3.5" y="2.5" width="13" height="15" rx="2" /><path d="M7 7h6M7 10.5h6M7 14h3.5" strokeLinecap="round" /></svg>
-          Анкета<span className="hidden sm:inline"> гостя</span>
-        </a>
-        <form action={publish}>
-          <input type="hidden" name="slug" value={event.slug} />
-          <input type="hidden" name="status" value={event.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"} />
-          <button className="min-h-10 rounded-lg border border-stone-300 bg-card px-3 text-sm text-stone-800 sm:min-h-11 sm:px-4" data-rybbit-event={event.status === "PUBLISHED" ? "invite_unpublish" : "invite_publish"}>
-            {event.status === "PUBLISHED" ? "Снять с публикации" : "Опубликовать"}
-          </button>
-        </form>
+        <PublishControls
+          eventId={eventId}
+          published={draft?.published ?? false}
+          dirty={draft?.dirty ?? false}
+          publicPath={`/i/${event.slug}`}
+          publish={publish}
+          unpublish={unpublish}
+          saveChanges={saveChanges}
+          discardChanges={discardChanges}
+        />
         </div>
       </div>
       {error ? <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
@@ -341,6 +360,8 @@ export default async function InvitePage({ params, searchParams }: Props) {
         hidden={blocks.filter((block) => !block.visible).map((block) => ({ id: block.id, label: BLOCK_LABELS[block.type] }))}
         sections={blocks.map((block) => ({ id: block.id, type: block.type, label: BLOCK_LABELS[block.type], hint: sectionHint(block.content), visible: block.visible, single: SINGLE_BLOCKS.includes(block.type), permanent: PERMANENT_BLOCKS.includes(block.type) }))}
         blockTypes={BLOCK_ORDER.filter((type) => !(SINGLE_BLOCKS.includes(type) && blocks.some((block) => block.type === type))).map((type) => ({ type, label: BLOCK_LABELS[type] }))}
+        rsvpBuilder={rsvpState ? <RsvpFormBuilder eventId={eventId} initial={rsvpState} allowPlusOne={event.allowPlusOne} /> : null}
+        rsvpOpen={rsvp === "1"}
         weddingForm={<WeddingPanel variant="plain" value={wedding} date={toLocalInput(event.eventDate, event.timezone)} deadline={event.rsvpDeadline ? toLocalInput(event.rsvpDeadline, event.timezone).slice(0, 10) : ""} timezone={event.timezone} action={saveWedding} warnings={warnings} />}
         weddingReady={Boolean(theme.wedding)}
         warnings={warnings}

@@ -16,6 +16,7 @@
  */
 import type { BlockContentMap } from "@/lib/invite-blocks";
 import { personalizeBlocks } from "@/lib/invite-personalization";
+import { templateSampleNames } from "@/lib/invite-templates";
 import { personalizeMarkup } from "@/server/guest-html/personalization";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
@@ -90,6 +91,7 @@ import { FIT_TEXT_SCRIPT } from "@/server/guest-html/fit-text";
 import { errorReporterScript } from "@/server/guest-html/error-reporter";
 import { rybbitScriptTag } from "@/server/analytics/rybbit";
 import { visitBeaconTag } from "@/lib/visit-beacon";
+import { visitNotifyEnabled } from "@/server/notify/visits";
 import { inlineRsvpForm, withInlineRsvp } from "@/server/guest-html/inline-rsvp-form";
 import { countdownCells, COUNTDOWN_SCRIPT as SHARED_COUNTDOWN_SCRIPT } from "@/server/guest-html/countdown";
 import { isWedwedTemplate, renderWedwedBlocks, wedwedDocument } from "@/server/guest-html/wedwed/markup";
@@ -246,7 +248,7 @@ export function invitePage(opts: Parameters<typeof buildInvitePage>[0] & {
   // редактора ни то ни другое не нужно: там смотрит пара, а не гость.
   if (opts.styleMeta) return fitted;
   const head = fitted.indexOf("</head>");
-  const watch = `${errorReporterScript(opts.theme?.template ?? "")}${rybbitScriptTag()}${visitBeaconTag()}`;
+  const watch = `${errorReporterScript(opts.theme?.template ?? "")}${rybbitScriptTag()}${visitBeaconTag(visitNotifyEnabled())}`;
   return head < 0 || !watch ? fitted : `${fitted.slice(0, head)}${watch}${fitted.slice(head)}`;
 }
 
@@ -558,7 +560,7 @@ export function renderBlocks(
   if (isEditorialTemplate(theme.template) || theme.template === "zefir" || theme.template === "crayon") blocks = blocks.filter(block => block.visible);
   const html = withInlineRsvp(options.rsvp, options.editable === true, () => withTemplateLabels(theme, options.editable === true, () => renderWithWishlist(blocks, (list) => {
     if (!theme.template) return renderRawBlocks(list, rsvpHref, answered, eventDate, theme, timezone, options);
-    const personalized = personalizeBlocks(list, theme, eventDate, timezone);
+    const personalized = personalizeBlocks(list, theme, eventDate, timezone, templateSampleNames(theme.template));
     return personalizeMarkup(renderRawBlocks(personalized, rsvpHref, answered, eventDate, theme, timezone, options), personalized, theme, options.editable);
   }, options.wishlist, options.editable === true, options.wishlistPage ? "page" : "button")));
   return composeInviteComponents(html, blocks, theme, options.editable === true);

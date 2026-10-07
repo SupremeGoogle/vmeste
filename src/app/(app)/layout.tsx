@@ -27,6 +27,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
         <MotionRoot>{children}</MotionRoot>
         {/* Новый посетитель — уведомление владельцу в Telegram (api/visit). */}
+        {/* Без условия: страница может собираться заранее, без переменных бота;
+            без бота сервер отметку просто не пересылает. */}
         <Script id="visit-beacon" strategy="afterInteractive">{VISIT_BEACON}</Script>
         {rybbit && <Script src={rybbit.src} data-site-id={rybbit.siteId} data-mask-patterns={rybbit.mask} data-skip-patterns={rybbit.skip} strategy="afterInteractive" />}
       </body>

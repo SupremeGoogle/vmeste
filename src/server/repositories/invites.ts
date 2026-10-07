@@ -21,6 +21,19 @@ import { refreshBlocksFromTemplate } from "@/lib/invite-template-merge";
 import { photoAdjustmentSchema, weddingSchema, type WeddingProfile } from "@/lib/invite-personalization";
 import { resolveVenueMapUrl } from "@/server/geocode";
 import { TEMPLATE_LABEL_OWNER } from "@/server/guest-html/template-labels";
+import { readSnapshot } from "@/server/repositories/invite-draft";
+
+/**
+ * Что видят гости: снимок `publishedInvite` (см. invite-draft.ts), а без
+ * него — живые строки. Редактор этим не пользуется: он правит черновик.
+ */
+async function guestBlocks(eventId: string, snapshotRaw: unknown): Promise<InviteBlockView[]> {
+  const snapshot = readSnapshot(snapshotRaw);
+  if (snapshot) return snapshot.blocks.filter((block) => block.visible).map(toView);
+  const rows = await db.inviteBlock.findMany({ where: { eventId, visible: true }, orderBy: { order: "asc" } });
+  return rows.map(toView);
+}
+const guestThemeSource = (event: { inviteTheme: unknown; publishedInvite: unknown }) => readSnapshot(event.publishedInvite)?.theme ?? event.inviteTheme;
 
 function readEventTheme(event: { inviteTheme: unknown; venueName: string | null; venueAddr: string | null; rsvpDeadline: Date | null } | null): InviteTheme {
   const theme = liveTheme(readTheme(event?.inviteTheme));
@@ -465,18 +478,14 @@ async function loadInviteBySlug(slug: string): Promise<PublicInvite | null> {
     select: {
       id: true, title: true, slug: true, eventDate: true, timezone: true,
       venueName: true, venueAddr: true, rsvpDeadline: true, allowPlusOne: true,
-      inviteTheme: true,
+      inviteTheme: true, publishedInvite: true,
     },
   });
   if (!event) return null;
 
-  const blocks = await db.inviteBlock.findMany({
-    where: { eventId: event.id, visible: true },
-    orderBy: { order: "asc" },
-  });
-
-  const { inviteTheme, ...rest } = event;
-  return { event: rest, blocks: blocks.map(toView), theme: readEventTheme({ ...rest, inviteTheme }) };
+  const blocks = await guestBlocks(event.id, event.publishedInvite);
+  const { inviteTheme, publishedInvite, ...rest } = event;
+  return { event: rest, blocks, theme: readEventTheme({ ...rest, inviteTheme: guestThemeSource({ inviteTheme, publishedInvite }) }) };
 }
 
 /**
@@ -516,9 +525,9 @@ export function getInviteTheme(eventId: string): Promise<InviteTheme> {
     async () => {
       const event = await db.event.findFirst({
         where: { id: eventId },
-        select: { inviteTheme: true, venueName: true, venueAddr: true, rsvpDeadline: true },
+        select: { inviteTheme: true, publishedInvite: true, venueName: true, venueAddr: true, rsvpDeadline: true },
       });
-      return readEventTheme(event);
+      return readEventTheme(event ? { ...event, inviteTheme: guestThemeSource(event) } : null);
     },
     ["invite-theme", eventId],
     { tags: [eventCacheTag(eventId)], revalidate: 60 },
@@ -529,11 +538,8 @@ export function getInviteTheme(eventId: string): Promise<InviteTheme> {
 export function getInviteBlocks(eventId: string): Promise<InviteBlockView[]> {
   return unstable_cache(
     async () => {
-      const blocks = await db.inviteBlock.findMany({
-        where: { eventId, visible: true },
-        orderBy: { order: "asc" },
-      });
-      return blocks.map(toView);
+      const event = await db.event.findFirst({ where: { id: eventId }, select: { publishedInvite: true } });
+      return guestBlocks(eventId, event?.publishedInvite);
     },
     ["invite-blocks", eventId],
     { tags: [eventCacheTag(eventId)], revalidate: 60 },
@@ -595,15 +601,25 @@ export async function saveTheme(ctx: EventContext, theme: InviteTheme): Promise<
  * Всё одной транзакцией: половина применённого шаблона — это приглашение,
  * которое уже нельзя показать и ещё нельзя починить.
  */
+/** Данные свадьбы по умолчанию — из того, что ввели при её создании. */
+function seedWedding(event: { title?: string | null; venueName?: string | null; venueAddr?: string | null }): WeddingProfile | undefined {
+  const names = String(event.title ?? "").replace(/\s*[—–-]\s*свадьба\s*$/i, "").trim().slice(0, 120);
+  const parsed = weddingSchema.safeParse({ names, city: "", venueName: event.venueName ?? "", venueAddress: event.venueAddr ?? "", mapUrl: "" });
+  return parsed.success ? parsed.data : undefined;
+}
+
 export async function applyTemplate(ctx: EventContext, templateId: string, reset = false): Promise<boolean> {
   const template = findTemplate(templateId);
   if (!template) return false;
 
   await db.$transaction(async (tx) => {
-    const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true } });
+    const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true, title: true, venueName: true, venueAddr: true } });
     const current = readTheme(event?.inviteTheme);
     const count = await tx.inviteBlock.count({ where: { eventId: ctx.eventId } });
-    const nextTheme = { ...template.theme, templateVersion: template.version ?? 1, musicUrl: current.musicUrl, ...(current.wedding ? { wedding: current.wedding } : {}), ...(!reset && current.removedComponents ? { removedComponents: current.removedComponents } : {}), previousTemplate: current.template };
+    // Имена пары известны с создания свадьбы — с ними шаблон и открывается,
+    // везде, включая заставку. Уточнить их можно в «Имена, дата и место».
+    const wedding = current.wedding ?? (event ? seedWedding(event) : undefined);
+    const nextTheme = { ...template.theme, templateVersion: template.version ?? 1, musicUrl: current.musicUrl, ...(wedding ? { wedding } : {}), ...(!reset && current.removedComponents ? { removedComponents: current.removedComponents } : {}), previousTemplate: current.template };
     if (count && !reset) {
       // Блоки остаются, но места, где так и стоит пример прежнего шаблона,
       // получают пример нового — иначе выбранный дизайн открывается пустым

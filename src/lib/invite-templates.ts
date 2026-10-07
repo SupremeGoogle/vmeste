@@ -176,6 +176,17 @@ export const PICKABLE_TEMPLATES: InviteTemplate[] = INVITE_TEMPLATES.filter(
   (template) => !template.retired,
 );
 
+/**
+ * Имена пары из образца шаблона («Валерия и Давид»): их подстановка
+ * меняет на настоящие во всех текстах — подписи «С любовью, …»,
+ * заголовках, календаре, — а не только на обложке.
+ */
+export function templateSampleNames(id: string): string {
+  const cover = findTemplate(id)?.blocks.find((block) => block.type === "COVER");
+  const names = (cover?.content as { names?: unknown } | undefined)?.names;
+  return typeof names === "string" ? names.trim() : "";
+}
+
 export function findTemplate(id: string): InviteTemplate | null {
   return INVITE_TEMPLATES.find((template) => template.id === id) ?? null;
 }

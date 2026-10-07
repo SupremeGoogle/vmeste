@@ -9,4 +9,4 @@
  */
 export const VISIT_BEACON = `(function(){try{if(localStorage.getItem("vm_seen"))return;localStorage.setItem("vm_seen",String(Date.now()))}catch(e){return}try{var d=JSON.stringify({p:location.pathname,r:document.referrer,w:screen.width,l:navigator.language});if(!(navigator.sendBeacon&&navigator.sendBeacon("/api/visit",d)))fetch("/api/visit",{method:"POST",body:d,keepalive:true})}catch(e){}})()`;
 
-export const visitBeaconTag = () => `<script>${VISIT_BEACON}</script>`;
+export const visitBeaconTag = (enabled: boolean) => (enabled ? `<script>${VISIT_BEACON}</script>` : "");

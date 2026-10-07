@@ -3,6 +3,8 @@ import { getEvent } from "@/server/repositories/events";
 import { notFound } from "next/navigation";
 import { EventTabs } from "./event-tabs";
 import { RouteTransition } from "@/components/motion/motion";
+import { getDraftState } from "@/server/repositories/invite-draft";
+import { DraftReminder } from "./draft-reminder";
 
 export default async function EventLayout({
   children,
@@ -15,6 +17,7 @@ export default async function EventLayout({
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const draft = await getDraftState(ctx);
 
   return (
     <div>
@@ -31,6 +34,7 @@ export default async function EventLayout({
           </div>
           <EventTabs eventId={eventId} />
         </div>
+        <DraftReminder eventId={eventId} dirty={draft.dirty} />
       </div>
       <RouteTransition>{children}</RouteTransition>
     </div>

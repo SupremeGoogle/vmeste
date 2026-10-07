@@ -26,6 +26,8 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
         <div className="guest-aurora" aria-hidden />
         <MotionRoot>{children}</MotionRoot>
         {/* Новый посетитель — уведомление владельцу в Telegram (api/visit). */}
+        {/* Без условия: страница может собираться заранее, без переменных бота;
+            без бота сервер отметку просто не пересылает. */}
         <Script id="visit-beacon" strategy="afterInteractive">{VISIT_BEACON}</Script>
       </body>
     </html>
