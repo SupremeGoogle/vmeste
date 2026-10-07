@@ -115,7 +115,7 @@ async function saveTemplateLabel(ctx: EventContext, path: string, value: string)
 }
 
 const INLINE_FIELDS: Record<BlockType, RegExp> = {
-  COVER: /^(title|names|dateText|subtitle|imageUrl|footer|photos\.[01]\.(?:imageUrl|caption))$/,
+  COVER: /^(title|names|dateText|subtitle|imageUrl|footer|photos\.[0-3]\.(?:imageUrl|caption))$/,
   TEXT: /^(tag|title|text)$/,
   PHOTOS: /^(tag|title|items\.(?:0|1|2|3)\.(?:imageUrl|caption))$/,
   VENUE: /^(tag|title|name|address|note|imageUrl|mapUrl|mapLabel)$/,
@@ -135,6 +135,19 @@ export async function updateInlineBlockField(
   path: string,
   value: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (path.startsWith("component:")) {
+    const key = path.slice(10);
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,119}$/.test(key) || !["remove", "restore"].includes(value)) return { ok: false, message: "Элемент не найден" };
+    if (blockId !== TEMPLATE_LABEL_OWNER && !await getBlock(ctx, blockId)) return { ok: false, message: "Раздел не найден" };
+    const saved = await updateTheme(ctx, (theme) => {
+      const removedComponents = { ...theme.removedComponents };
+      const keys = new Set(removedComponents[blockId] ?? []);
+      if (value === "remove") keys.add(key); else keys.delete(key);
+      if (keys.size) removedComponents[blockId] = [...keys]; else delete removedComponents[blockId];
+      return { ...theme, removedComponents };
+    });
+    return saved ? { ok: true } : { ok: false, message: "Не удалось сохранить элемент" };
+  }
   // Надпись самого шаблона, а не раздела: хранится в теме мероприятия.
   if (blockId === TEMPLATE_LABEL_OWNER) return saveTemplateLabel(ctx, path, value);
   const row = await db.inviteBlock.findFirst({
@@ -211,24 +224,41 @@ export async function removeTimelineItem(
   if (!Number.isInteger(index) || index < 0 || index > 29) {
     return { ok: false, message: "Деталь дня не найдена" };
   }
-  const row = await db.inviteBlock.findFirst({
-    where: { id: blockId, eventId: ctx.eventId, type: "TIMELINE" },
-    select: { content: true },
-  });
-  if (!row) return { ok: false, message: "Блок тайминга не найден" };
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM events WHERE id = ${ctx.eventId} FOR UPDATE`;
+    const row = await tx.inviteBlock.findFirst({
+      where: { id: blockId, eventId: ctx.eventId, type: "TIMELINE" },
+      select: { content: true },
+    });
+    if (!row) return { ok: false, message: "Блок тайминга не найден" };
 
-  const current = readBlockContent("TIMELINE", row.content).content;
-  if (!current.items[index]) return { ok: false, message: "Деталь дня уже удалена" };
-  const checked = parseBlockContent("TIMELINE", {
-    ...current,
-    items: current.items.filter((_, itemIndex) => itemIndex !== index),
+    const current = readBlockContent("TIMELINE", row.content).content;
+    if (!current.items[index]) return { ok: false, message: "Деталь дня уже удалена" };
+    const checked = parseBlockContent("TIMELINE", {
+      ...current,
+      items: current.items.filter((_, itemIndex) => itemIndex !== index),
+    });
+    if (!checked.ok) return checked;
+    const updated = await tx.inviteBlock.updateMany({
+      where: { id: blockId, eventId: ctx.eventId },
+      data: { content: checked.content },
+    });
+    if (updated.count === 1) {
+      const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true } });
+      const theme = readTheme(event?.inviteTheme);
+      const removed = theme.removedComponents?.[blockId];
+      if (removed?.length) {
+        const shifted = removed.flatMap(key => {
+          const match = key.match(/^(field|decor|row):items\.(\d+)([.:].*)?$/);
+          if (!match) return [key];
+          const item = Number(match[2]);
+          return item === index ? [] : [`${match[1]}:items.${item > index ? item - 1 : item}${match[3] ?? ""}`];
+        });
+        await tx.event.updateMany({ where: { id: ctx.eventId, orgId: ctx.orgId }, data: { inviteTheme: { ...theme, removedComponents: { ...theme.removedComponents, [blockId]: shifted } } } });
+      }
+    }
+    return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось удалить деталь" };
   });
-  if (!checked.ok) return checked;
-  const updated = await db.inviteBlock.updateMany({
-    where: { id: blockId, eventId: ctx.eventId },
-    data: { content: checked.content },
-  });
-  return updated.count === 1 ? { ok: true } : { ok: false, message: "Не получилось удалить деталь" };
 }
 
 export async function setBlockVisible(ctx: EventContext, blockId: string, visible: boolean) {
@@ -342,6 +372,7 @@ export async function insertBlockAfter(ctx: EventContext, type: BlockType, after
 /** Копия раздела со всем содержимым — встаёт сразу под оригиналом. */
 export async function duplicateBlock(ctx: EventContext, blockId: string) {
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM events WHERE id = ${ctx.eventId} FOR UPDATE`;
     const source = await tx.inviteBlock.findFirst({
       where: { id: blockId, eventId: ctx.eventId },
       select: { type: true, content: true, visible: true },
@@ -359,6 +390,10 @@ export async function duplicateBlock(ctx: EventContext, blockId: string) {
     });
     ids.splice(ids.indexOf(blockId) + 1, 0, created.id);
     await renumber(tx, ctx.eventId, ids);
+    const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true } });
+    const theme = readTheme(event?.inviteTheme);
+    const removed = theme.removedComponents?.[blockId];
+    if (removed?.length) await tx.event.updateMany({ where: { id: ctx.eventId, orgId: ctx.orgId }, data: { inviteTheme: { ...theme, removedComponents: { ...theme.removedComponents, [created.id]: [...removed] } } } });
     return created.id;
   });
 }
@@ -568,7 +603,7 @@ export async function applyTemplate(ctx: EventContext, templateId: string, reset
     const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true } });
     const current = readTheme(event?.inviteTheme);
     const count = await tx.inviteBlock.count({ where: { eventId: ctx.eventId } });
-    const nextTheme = { ...template.theme, templateVersion: template.version ?? 1, musicUrl: current.musicUrl, ...(current.wedding ? { wedding: current.wedding } : {}), previousTemplate: current.template };
+    const nextTheme = { ...template.theme, templateVersion: template.version ?? 1, musicUrl: current.musicUrl, ...(current.wedding ? { wedding: current.wedding } : {}), ...(!reset && current.removedComponents ? { removedComponents: current.removedComponents } : {}), previousTemplate: current.template };
     if (count && !reset) {
       // Блоки остаются, но места, где так и стоит пример прежнего шаблона,
       // получают пример нового — иначе выбранный дизайн открывается пустым

@@ -46,8 +46,8 @@ export async function GET(
   const theme = template ? { ...template.theme, wedding: currentTheme.wedding, musicUrl: currentTheme.musicUrl } : currentTheme;
 
   const visible = blocks.filter((block) => block.visible);
-  // Подарки — настоящие; в редакторе раздел ведёт к их списку.
-  const wishlist = { ...(await loadWishlist(eventId)), manageHref: `/app/e/${eventId}/invite/wishlist` };
+  // Подарки — настоящие; управление доступно только в редакторе.
+  const wishlist = { ...(await loadWishlist(eventId)), ...(!preview ? { manageHref: `/app/e/${eventId}/invite/wishlist` } : {}) };
   const body = renderBlocks(visible, null, null, event.eventDate, theme, event.timezone, { editable: !preview, wishlist });
 
   // Скрипт редактора — первым: по его классу шаблоны выключают заставку,
@@ -61,7 +61,7 @@ export async function GET(
   ].filter(Boolean);
 
   return html(invitePage({
-    title: `${event.title} — визуальный редактор`,
+    title: preview ? event.title : `${event.title} — визуальный редактор`,
     styleMeta: true,
     theme,
     noindex: true,

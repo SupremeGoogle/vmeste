@@ -102,6 +102,11 @@ export const COVER_LABEL = {
 export const INVITE_THEME_VERSION = 1;
 
 export const inviteThemeSchema = z.object({
+  /** Удалённые элементы по владельцу-разделу. Данные сохраняются для восстановления. */
+  removedComponents: z.record(
+    z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),
+    z.array(z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9:._-]{0,119}$/)).max(500),
+  ).refine((value) => Object.keys(value).length <= 200, "Слишком много разделов").optional(),
   wedding: weddingSchema.optional(),
   /**
    * Свои слова для надписей самого шаблона: декоративные подписи, монограмма,

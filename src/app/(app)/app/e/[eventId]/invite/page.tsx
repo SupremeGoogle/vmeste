@@ -185,7 +185,9 @@ export default async function InvitePage({ params, searchParams }: Props) {
     return { ok: true } as const;
   }
 
-  const publicHref = `/i/${event.slug}`;
+  // Просмотр должен открывать это мероприятие, включая черновик. Общий
+  // слаг уникален лишь внутри организации и может вести к чужой публикации.
+  const previewHref = `/app/e/${eventId}/invite/canvas?preview=1`;
   async function saveWedding(form: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
@@ -331,7 +333,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
         eventId={eventId}
         template={theme.template}
         canvasSrc={`/app/e/${eventId}/invite/canvas`}
-        publicHref={publicHref}
+        previewHref={previewHref}
         assets={assets}
         audio={audio}
         musicUrl={theme.musicUrl}

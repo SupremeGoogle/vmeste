@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { WeddingSheet } from "@/components/invite/wedding-sheet";
-import { SectionsPanel, TypePicker, type BlockTypeOption, type SectionItem } from "@/components/invite/sections-panel";
+import { SectionsPanel, TypePicker, type BlockTypeOption, type SectionItem, type ComponentItem } from "@/components/invite/sections-panel";
 import { DesignPanel } from "@/components/invite/design-panel";
 import { PhotoControls } from "@/components/invite/photo-controls";
 import { defaultPhotoAdjustment, photoAdjustmentSchema, type PhotoAdjustment } from "@/lib/invite-personalization";
@@ -59,7 +59,7 @@ export function VisualInviteEditor({
   eventId,
   template,
   canvasSrc,
-  publicHref,
+  previewHref,
   assets,
   audio,
   musicUrl,
@@ -84,7 +84,7 @@ export function VisualInviteEditor({
   eventId: string;
   template: string;
   canvasSrc: string;
-  publicHref: string;
+  previewHref: string;
   assets: PickerAsset[];
   audio: PickerAsset[];
   musicUrl: string;
@@ -152,12 +152,32 @@ export function VisualInviteEditor({
   const [insertAfter, setInsertAfter] = useState<string | null | undefined>(undefined);
   const [toDelete, setToDelete] = useState<SectionItem | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState(false);
+  const [components, setComponents] = useState<ComponentItem[]>([]);
+  const [lastRemoved, setLastRemoved] = useState<{ blockId: string; key: string } | null>(null);
   const [intro, setIntro] = useState(!introOff);
   const [designOpen, setDesignOpen] = useState(false);
   /** Исходные цвет и шрифты шаблона — из `<meta name="vm-style">` страницы. */
   const [templateStyle, setTemplateStyle] = useState<{ accent: string | null; fonts: string[] } | null>(null);
   const [accent, setAccent] = useState<string | null>(style.accent);
   const [fonts, setFonts] = useState<Record<string, string>>(style.fonts);
+
+  const readCanvas = useCallback(() => {
+    const document = frame.current?.contentDocument;
+    if (!document) return;
+    const found = new Map<string, ComponentItem>();
+    document.querySelectorAll<HTMLElement>("[data-invite-component]").forEach(node => {
+      const blockId = node.dataset.componentOwner ?? "";
+      const key = node.dataset.inviteComponent ?? "";
+      if (!blockId || !key || node.parentElement?.closest("[data-component-removed]")) return;
+      found.set(`${blockId}/${key}`, { blockId, key, label: node.dataset.componentLabel ?? "Элемент", removed: node.dataset.componentRemoved === "true" });
+    });
+    setComponents([...found.values()]);
+    try {
+      const meta = document.querySelector('meta[name="vm-style"]')?.getAttribute("content");
+      if (meta) setTemplateStyle(JSON.parse(meta));
+    } catch { /* Панель остаётся доступна и без метаданных оформления. */ }
+    if (scrollY.current > 0) frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll", y: scrollY.current }, "*");
+  }, []);
 
   function saveDesign(next: { accent: string | null; fonts: Record<string, string> }, done: string) {
     setAccent(next.accent);
@@ -197,6 +217,20 @@ export function VisualInviteEditor({
     frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll-to", blockId: id }, "*");
   }
 
+  const changeComponent = useCallback((blockId: string, key: string, action: "remove" | "restore") => {
+    setNotice(action === "remove" ? "Удаляю элемент…" : "Возвращаю элемент…");
+    startSaving(async () => {
+      try {
+        const result = await saveField({ blockId, path: `component:${key}`, value: action });
+        setNotice(result.ok ? action === "remove" ? "Элемент удалён — его можно вернуть в списке разделов" : "Элемент возвращён" : result.message);
+        if (result.ok) {
+          setLastRemoved(action === "remove" ? { blockId, key } : null);
+          setRevision(value => value + 1);
+        }
+      } catch { setNotice("Не удалось сохранить элемент. Попробуйте ещё раз."); }
+    });
+  }, [saveField]);
+
   const reload = () => setRevision((value) => value + 1);
   const visiblePhotos = photos.filter((photo) => !hidden.some((block) => block.id === photo.blockId));
   const displayedPhotoUrl = (photo: InviteImageSlot) => photo.url;
@@ -216,6 +250,7 @@ export function VisualInviteEditor({
       if (event.source !== frame.current?.contentWindow) return;
       const message = event.data as Record<string, unknown> | null;
       if (!message || message.source !== "invite-canvas") return;
+      if (message.kind === "canvas-ready") { readCanvas(); return; }
       const blockId = typeof message.blockId === "string" ? message.blockId : "";
       const path = typeof message.path === "string" ? message.path : "";
       const current = typeof message.current === "string" ? message.current : "";
@@ -224,6 +259,10 @@ export function VisualInviteEditor({
       // Щелчок по дате на обложке: дата со временем выбирается в календаре панели.
       if (message.kind === "wedding-edit") openWedding(typeof message.focus === "string" ? message.focus : null);
       if (message.kind === "reload") reload();
+      if (message.kind === "component-action" && blockId && path && (message.action === "remove" || message.action === "restore")) {
+        changeComponent(blockId, path, message.action);
+        return;
+      }
 
       if (message.kind === "text-edit" && blockId && path && typeof message.value === "string") {
         const value = message.value;
@@ -268,7 +307,7 @@ export function VisualInviteEditor({
     }
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [blockAction, saveField, openWedding, runAction, sections, router]);
+  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas]);
 
   const choices = (() => {
     if (!target || target.kind !== "image") return items;
@@ -418,7 +457,7 @@ export function VisualInviteEditor({
             {music ? "♪ Музыка" : "♪ Добавить музыку"}
           </button>
           {visiblePhotos.length > 0 && <button type="button" onClick={() => setImagesOpen((open) => !open)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10">Все фотографии: {visiblePhotos.length}</button>}
-          <a href={publicHref} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-medium text-stone-900">Открыть как гость ↗</a>
+          <a href={previewHref} target="_blank" rel="noopener noreferrer" aria-disabled={saving || busy} onClick={(event) => { if (saving || busy) event.preventDefault(); }} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-medium text-stone-900 aria-disabled:opacity-50">Открыть как гость ↗</a>
           </div>
         </div>
       </div>
@@ -454,11 +493,15 @@ export function VisualInviteEditor({
         </div>
       )}
 
-      <div className="lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+      {lastRemoved && <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-stone-900 px-4 py-2 text-xs text-white/70"><span>Элемент удалён</span><button type="button" disabled={saving} onClick={() => changeComponent(lastRemoved.blockId, lastRemoved.key, "restore")} className="rounded-lg px-3 py-2 font-medium text-amber-200 hover:bg-white/5 disabled:opacity-40">Отменить удаление</button></div>}
+      <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
       <aside className={`${sectionsOpen ? "block max-h-[60vh]" : "hidden"} border-b border-white/10 bg-[#211c19] lg:block lg:max-h-none lg:border-r lg:border-b-0`} aria-label="Разделы приглашения">
         <div className="lg:sticky lg:top-0 lg:h-[calc(78vh+3rem)]">
           <SectionsPanel
             sections={sections}
+            components={components}
+            onComponentAction={changeComponent}
+            onScrollToComponent={(blockId, key) => frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll-component", blockId, path: key }, "*")}
             busy={saving || busy}
             onScrollTo={scrollToSection}
             onToggle={(id, visible) => runAction({ blockId: id, action: visible ? "show" : "hide" }, visible ? "Раздел снова на странице" : "Раздел скрыт — вернуть можно «глазом» в списке")}
@@ -474,18 +517,7 @@ export function VisualInviteEditor({
           key={revision}
           ref={frame}
           src={`${canvasSrc}?v=${revision}`}
-          onLoad={() => {
-            try {
-              const meta = frame.current?.contentDocument?.querySelector('meta[name="vm-style"]')?.getAttribute("content");
-              if (meta) setTemplateStyle(JSON.parse(meta));
-            } catch {
-              // Без исходных цветов панель покажет только готовые варианты.
-            }
-            // Перезагрузка после правки не должна уносить наверх длинной страницы.
-            if (scrollY.current > 0) {
-              frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll", y: scrollY.current }, "*");
-            }
-          }}
+          onLoad={readCanvas}
           title="Визуальный редактор приглашения"
           className="block h-[78vh] min-h-[560px] w-full rounded-xl bg-card shadow-2xl"
           sandbox="allow-same-origin allow-scripts allow-top-navigation-by-user-activation"

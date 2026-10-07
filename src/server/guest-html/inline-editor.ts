@@ -26,6 +26,8 @@
 import { esc } from "@/server/guest-html/layout";
 
 export type EditAttrs = {
+  /** Устойчивый ключ самостоятельного элемента, включая календарь и декор. */
+  component: (key: string) => string;
   /** Атрибуты текстового поля или пустая строка вне редактора. */
   text: (path: string, opts?: { multiline?: boolean; join?: string }) => string;
   image: (path: string) => string;
@@ -40,6 +42,7 @@ export type EditAttrs = {
 };
 
 const NONE: EditAttrs = {
+  component: () => "",
   text: () => "",
   image: () => "",
   link: () => "",
@@ -51,19 +54,21 @@ const NONE: EditAttrs = {
 
 export function editAttrs(blockId: string, editable: boolean): EditAttrs {
   const media = (path: string) => ` data-media-block="${esc(blockId)}" data-media-path="${esc(path)}"`;
-  if (!editable) return { ...NONE, image: media, section: () => ` data-content-block="${esc(blockId)}"` };
+  const component = (key: string) => ` data-component-key="${esc(key)}" data-component-owner="${esc(blockId)}"`;
+  if (!editable) return { ...NONE, component, text: (path) => component(`field:${path}`), color: (path) => component(`field:${path}`), image: (path) => media(path) + component(`field:${path}`), section: () => ` data-content-block="${esc(blockId)}"` };
   const id = esc(blockId);
   const target = (kind: string, path: string) =>
     ` data-${kind} data-block-id="${id}" data-path="${esc(path)}"`;
   return {
+    component,
     text: (path, opts = {}) =>
       `${target("inline-edit", path)}${opts.multiline ? ' data-multiline="true"' : ""}${
         opts.join ? ` data-join="${esc(opts.join)}"` : ""
-      }`,
-    image: (path) => target("image-edit", path) + media(path),
+      }${component(`field:${path}`)}`,
+    image: (path) => target("image-edit", path) + media(path) + component(`field:${path}`),
     link: (path, current) =>
       `<button type="button" class="ie-link" data-editor-ui${target("link-edit", path)} data-current="${esc(current)}">${current ? "изменить ссылку" : "добавить ссылку"}</button>`,
-    color: (path) => target("color-edit", path),
+    color: (path) => target("color-edit", path) + component(`field:${path}`),
     tools: () =>
       `<div class="ie-tools" data-editor-ui aria-label="Действия с разделом"><button type="button" data-block-action="up" title="Поднять раздел">↑</button><button type="button" data-block-action="down" title="Опустить раздел">↓</button><button type="button" data-block-action="hide" title="Скрыть раздел">Скрыть</button><button type="button" data-block-action="duplicate" title="Сделать копию раздела">Копия</button><button type="button" data-block-action="delete" title="Удалить раздел">Удалить</button></div><button type="button" class="ie-insert" data-editor-ui data-block-action="insert-after" title="Добавить раздел ниже">+ Раздел</button>`,
     // Отдельный признак раздела: `data-block-id` есть и у самих полей, и
@@ -76,13 +81,28 @@ export function editAttrs(blockId: string, editable: boolean): EditAttrs {
 export const INLINE_EDITOR_SCRIPT = `(function(){
 var d=document;d.documentElement.classList.add('ie-editing');
 var active=null,original='';
+var component=null,componentTimer=null;
 function send(p){parent.postMessage(Object.assign({source:'invite-canvas'},p),'*')}
+var componentTools=d.createElement('div');componentTools.className='ie-component-tools';componentTools.setAttribute('data-editor-ui','');
+componentTools.hidden=true;componentTools.innerHTML='<span></span><button type="button" aria-label="Удалить элемент">Удалить элемент ×</button>';d.body.appendChild(componentTools);
+function clearComponent(){if(component)component.classList.remove('ie-component-focus');component=null;componentTools.hidden=true}
+d.addEventListener('pointerover',function(e){
+ if(componentTimer)clearTimeout(componentTimer);
+ if(e.target.closest('.ie-component-tools'))return;
+ var el=e.target.closest('a[data-invite-component],button[data-invite-component]')||e.target.closest('[data-invite-component]');
+ if(!el||el.closest('[data-editor-ui]')||el.closest('[data-component-removed]')){clearComponent();return}
+ if(component&&component!==el)component.classList.remove('ie-component-focus');component=el;el.classList.add('ie-component-focus');
+ componentTools.querySelector('span').textContent=(el.dataset.componentLabel||'Элемент').split(' · ')[0];componentTools.hidden=false;
+ var r=el.getBoundingClientRect();var w=componentTools.offsetWidth;componentTools.style.left=Math.max(8,Math.min(innerWidth-w-8,r.right-w))+'px';componentTools.style.top=Math.max(8,Math.min(innerHeight-42,r.top-36))+'px';
+},true);
+d.addEventListener('pointerout',function(e){if(e.target.closest('[data-invite-component],.ie-component-tools'))componentTimer=setTimeout(clearComponent,300)},true);
 function owner(el){var s=el.closest('[data-block-section]')||el.closest('[data-block-id]');return s?s.getAttribute('data-block-id'):''}
 function valueOf(f){var v=f.innerText.replace(/\\u00a0/g,' ');
  if(f.dataset.join){return v.split(/\\n+/).map(function(x){return x.trim()}).filter(Boolean).join(f.dataset.join)}
  if(f.dataset.multiline!=='true'){return v.replace(/\\s*\\n\\s*/g,' ').trim()}
  return v.replace(/[ \\t]+\\n/g,'\\n').replace(/\\n{3,}/g,'\\n\\n').trim()}
 d.addEventListener('click',function(e){
+ if(e.target.closest('.ie-component-tools button')){e.preventDefault();e.stopPropagation();if(component){send({kind:'component-action',blockId:component.dataset.componentOwner,path:component.dataset.inviteComponent,action:'remove'});clearComponent()}return}
  var tool=e.target.closest('[data-block-action]');
  if(tool){e.preventDefault();e.stopPropagation();send({kind:'block-action',action:tool.dataset.blockAction,blockId:owner(tool),index:tool.dataset.itemIndex==null?undefined:Number(tool.dataset.itemIndex)});return}
  var link=e.target.closest('[data-link-edit]');
@@ -119,10 +139,18 @@ window.addEventListener('message',function(e){var m=e.data||{};if(m.source!=='in
  if(m.kind==='color-saved'){var c=d.querySelector('[data-color-edit]'+q);if(c){c.style.background=m.value;c.dataset.color=m.value}}
  if(m.kind==='scroll'){window.scrollTo(0,m.y||0)}
  if(m.kind==='scroll-to'){var sec=d.querySelector('[data-block-section][data-block-id="'+CSS.escape(m.blockId||'')+'"]');if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});sec.classList.add('ie-flash');setTimeout(function(){sec.classList.remove('ie-flash')},1400)}}});
-window.addEventListener('scroll',function(){send({kind:'scroll',y:window.scrollY})},{passive:true});
+window.addEventListener('message',function(e){if(e.source!==parent)return;var m=e.data||{};if(m.source!=='invite-editor'||m.kind!=='scroll-component')return;
+ var el=d.querySelector('[data-component-owner="'+CSS.escape(m.blockId||'')+'"][data-invite-component="'+CSS.escape(m.path||'')+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('ie-component-focus');setTimeout(function(){el.classList.remove('ie-component-focus')},1600)}});
+window.addEventListener('scroll',function(){send({kind:'scroll',y:window.scrollY});clearComponent()},{passive:true});
+send({kind:'canvas-ready'});
 })()`;
 
 export const INLINE_EDITOR_CSS = `
+[data-component-removed],[data-component-shell-removed]{display:none!important}
+.ie-component-focus{outline:2px solid #c79a55!important;outline-offset:4px}
+.ie-component-tools{position:fixed!important;z-index:2147483647!important;display:flex!important;align-items:center!important;gap:10px!important;padding:5px 6px 5px 10px!important;border:1px solid #ffffff30!important;border-radius:9px!important;background:#292521!important;color:#fff!important;box-shadow:0 5px 20px #0003!important;font:500 11px/1.3 system-ui,sans-serif!important;letter-spacing:normal!important;text-transform:none!important;width:max-content!important}
+.ie-component-tools[hidden]{display:none!important}
+.ie-component-tools button{display:block!important;position:static!important;border:0!important;border-radius:5px!important;background:#f7e5c8!important;color:#39291a!important;padding:7px 9px!important;margin:0!important;width:auto!important;height:auto!important;font:600 11px/1.3 system-ui,sans-serif!important;letter-spacing:normal!important;text-transform:none!important;cursor:pointer!important}
 [data-inline-edit],[data-image-edit],[data-link-edit],[data-color-edit]{cursor:pointer;outline:1px dashed transparent;outline-offset:4px;transition:outline-color .15s,background-color .15s}
 [data-inline-edit]:hover,[data-link-edit]:hover{outline-color:#c79a55;background-color:#fff5e633}
 [data-inline-edit][contenteditable=true]{outline:2px solid #c79a55;background-color:#fff8ee;cursor:text;color:inherit}

@@ -207,5 +207,6 @@ export function liveTheme(theme: InviteTheme): InviteTheme {
     ...(theme.musicUrl ? { musicUrl: theme.musicUrl } : {}),
     ...(theme.style ? { style: theme.style } : {}),
     ...(theme.introOff ? { introOff: theme.introOff } : {}),
+    ...(theme.removedComponents ? { removedComponents: theme.removedComponents } : {}),
   };
 }

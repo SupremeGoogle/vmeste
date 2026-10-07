@@ -96,6 +96,7 @@ import { WEDWED_SCRIPT } from "@/server/guest-html/wedwed/script";
 import { PREMIUM_MOTION_CSS, PREMIUM_MOTION_SCRIPT } from "@/server/guest-html/motion-enhancements";
 import { floorFontSizes, MAP_LINK_TAP_CSS, MOBILE_DENSITY_CSS } from "@/server/guest-html/mobile-density";
 import { TABLET_DENSITY_CSS } from "@/server/guest-html/tablet-density";
+import { composeInviteComponents } from "@/server/guest-html/invite-components";
 
 const NO_EDIT = editAttrs("", false);
 import { TILI_CSS, TILI_FONTS_LINK } from "@/server/guest-html/tili/style";
@@ -554,11 +555,12 @@ export function renderBlocks(
   // Виш-лист шаблон рисует как свой текстовый раздел, а сетку подарков
   // под ним вставляет общий рендер (см. guest-html/wishlist.ts).
   if (isEditorialTemplate(theme.template) || theme.template === "zefir" || theme.template === "crayon") blocks = blocks.filter(block => block.visible);
-  return withInlineRsvp(options.rsvp, options.editable === true, () => withTemplateLabels(theme, options.editable === true, () => renderWithWishlist(blocks, (list) => {
+  const html = withInlineRsvp(options.rsvp, options.editable === true, () => withTemplateLabels(theme, options.editable === true, () => renderWithWishlist(blocks, (list) => {
     if (!theme.template) return renderRawBlocks(list, rsvpHref, answered, eventDate, theme, timezone, options);
     const personalized = personalizeBlocks(list, theme, eventDate, timezone);
     return personalizeMarkup(renderRawBlocks(personalized, rsvpHref, answered, eventDate, theme, timezone, options), personalized, theme, options.editable);
   }, options.wishlist, options.editable === true, options.wishlistPage ? "page" : "button")));
+  return composeInviteComponents(html, blocks, theme, options.editable === true);
 }
 
 function renderRawBlocks(
@@ -578,7 +580,7 @@ function renderRawBlocks(
     return renderScrapbookBlocks(blocks, theme, { eventDate, timezone, editable });
   }
   if (isWedwedTemplate(theme.template)) {
-    return renderWedwedBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable }, (block) => `<div class="wv-plain">${renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options)}</div>`);
+    return renderWedwedBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable }, (block) => `<div class="wv-plain">${renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options)}</div>`);
   }
   if (theme.template === "tili") {
     return renderTiliBlocks(blocks, theme, { eventDate, timezone, rsvp: options.rsvp ?? null, editable });
@@ -612,61 +614,61 @@ function renderRawBlocks(
   }
   if (theme.template === "evergreen") {
     return renderEvergreenBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "silk") {
     return renderSilkBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "constellation") {
     return renderConstellationBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "pearl") {
     return renderPearlBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "prism") {
     return renderPrismBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "lily") {
     return renderLilyBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "aquarelle") {
     return renderAquarelleBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "vinyl") {
     return renderVinylBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "tuscany") {
     return renderTuscanyBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }
   if (theme.template === "ruby") {
     return renderRubyBlocks(blocks, theme, rsvpHref, answered, (block) =>
-      renderBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
+      renderRawBlocks([block], rsvpHref, answered, eventDate, { ...theme, template: "" }, timezone, options),
       { editable },
     );
   }

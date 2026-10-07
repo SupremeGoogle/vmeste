@@ -30,6 +30,12 @@ it("несуществующий шаблон ничего не меняет", a
   expect(mocks.inviteBlock.deleteMany).not.toHaveBeenCalled();
 });
 
+it("смена дизайна сохраняет удаления отдельных элементов", async () => {
+  mocks.event.findFirst.mockResolvedValue({ inviteTheme: { ...defaultTheme(), template: "gazette", removedComponents: { venue: ["link:mapUrl", "field:imageUrl"] } } });
+  expect(await applyTemplate(ctx, "prism")).toBe(true);
+  expect(mocks.event.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { inviteTheme: expect.objectContaining({ removedComponents: { venue: ["link:mapUrl", "field:imageUrl"] } }) } }));
+});
+
 it("смена дизайна дополняет примером только незаполненные места", async () => {
   mocks.inviteBlock.findMany.mockResolvedValue([
     { id: "cover", type: "COVER", content: { v: 1, names: "Аня и Миша", title: "тили ~ тили тесто", imageUrl: "", subtitle: "" } },

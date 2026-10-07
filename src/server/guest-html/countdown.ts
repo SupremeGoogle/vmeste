@@ -63,7 +63,7 @@ export function countdownCells(content: BlockContentMap["COUNTDOWN"], eventDate:
   const cells = UNITS.map(({ unit, words }) =>
     `<div class="vm-cd-cell"><b data-unit="${unit}">${String(value[unit]).padStart(unit === "days" ? 1 : 2, "0")}</b><span data-word="${unit}">${plural(value[unit], words)}</span></div>`,
   ).join("");
-  return `<style>${COUNTDOWN_CSS}</style><div class="vm-cd" data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div>`;
+  return `<style>${COUNTDOWN_CSS}</style><div class="vm-cd"${e?.component("widget:countdown") ?? ""} data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div>`;
 }
 
 /**

@@ -52,7 +52,7 @@ export function L(
     ? ` data-inline-edit data-block-id="${TEMPLATE_LABEL_OWNER}" data-path="label:${esc(key)}"${opts.multiline ? ' data-multiline="true"' : ""}`
     : "";
   const content = opts.multiline ? esc(text).replace(/\n/g, "<br>") : esc(text);
-  return `<${tag}${opts.className ? ` class="${opts.className}"` : ""}${opts.attrs ?? ""}${edit}>${content}</${tag}>`;
+  return `<${tag}${opts.className ? ` class="${opts.className}"` : ""}${opts.attrs ?? ""}${edit} data-component-key="label:${esc(key)}">${content}</${tag}>`;
 }
 
 /** Первые буквы имён пары: «Валерия и Давид» → ["В", "Д"]. */

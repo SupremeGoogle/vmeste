@@ -10,7 +10,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { testDb, resetDb } from "./helpers/db";
 import type { EventContext } from "@/server/context";
 import {
-  applyTemplate, blockActionProblem, deleteBlock, duplicateBlock, getTheme, insertBlockAfter, listBlocks,
+  applyTemplate, blockActionProblem, deleteBlock, duplicateBlock, getTheme, insertBlockAfter, listBlocks, removeTimelineItem,
   setBlockVisible, updateInlineBlockField, updateTheme,
 } from "@/server/repositories/invites";
 import { TEMPLATE_LABEL_OWNER } from "@/server/guest-html/template-labels";
@@ -103,6 +103,16 @@ describe("виш-лист и бронь подарков — одно целое
 });
 
 describe("тема меняется атомарно", () => {
+  it("удалённый элемент остаётся у своего пункта после удаления предыдущего пункта программы", async () => {
+    const ctx = await makeCtx("rules-components-shift");
+    const timeline = (await listBlocks(ctx)).find(block => block.type === "TIMELINE")!;
+    expect((await updateInlineBlockField(ctx, timeline.id, "component:field:items.1.note", "remove")).ok).toBe(true);
+    expect((await updateInlineBlockField(ctx, timeline.id, "component:row:items.2", "remove")).ok).toBe(true);
+    expect((await removeTimelineItem(ctx, timeline.id, 0)).ok).toBe(true);
+    expect((await getTheme(ctx)).removedComponents?.[timeline.id]).toEqual(["field:items.0.note", "row:items.1"]);
+    expect((await removeTimelineItem(ctx, timeline.id, 0)).ok).toBe(true);
+    expect((await getTheme(ctx)).removedComponents?.[timeline.id]).toEqual(["row:items.0"]);
+  });
   it("двадцать подписей, сохранённых одновременно, — все на месте", async () => {
     const ctx = await makeCtx("rules-labels");
     const keys = Array.from({ length: 20 }, (_, index) => `silk.t${index}`);
