@@ -50,6 +50,8 @@ import { saveWeddingProfile, savePhotoAdjustment } from "@/server/repositories/i
 import { discardDraft, getDraftState, saveSnapshot } from "@/server/repositories/invite-draft";
 import { PublishControls } from "@/components/invite/publish-controls";
 import { loadBuilder } from "./form/actions";
+import { listRsvpQuestions, updateRsvpQuestion } from "@/server/repositories/rsvp-questions";
+import { addDrinkOption, addMealOption } from "@/server/repositories/events";
 import { RsvpFormBuilder } from "./form/rsvp-form-builder";
 import { weddingSchema, invitationWarnings, personalizeBlocks, fromLocalInput, toLocalInput, type PhotoAdjustment } from "@/lib/invite-personalization";
 
@@ -198,6 +200,25 @@ export default async function InvitePage({ params, searchParams }: Props) {
     const ctx = await requireEventContext(eventId);
     const saved = await updateTheme(ctx, (current) => ({ ...current, introOff: off }));
     if (!saved) return { ok: false, message: "Не получилось сохранить" } as const;
+    updateTag(eventTag(eventId));
+    updateTag(inviteSlugTag(eventSlug));
+    return { ok: true } as const;
+  }
+
+  /** «+ Добавить вариант» в анкете прямо из приглашения. */
+  async function addRsvpOption(input: { target: string; title: string }) {
+    "use server";
+    const ctx = await requireEventContext(eventId);
+    const title = String(input.title ?? "").trim().slice(0, 120);
+    if (!title) return { ok: false, message: "Напишите вариант" } as const;
+    if (input.target === "drink") await addDrinkOption(ctx, eventId, title);
+    else if (input.target === "meal") await addMealOption(ctx, eventId, title);
+    else if (input.target.startsWith("q:")) {
+      const question = (await listRsvpQuestions(ctx)).find((item) => item.id === input.target.slice(2));
+      if (!question) return { ok: false, message: "Вопрос не найден — обновите страницу" } as const;
+      if (question.options.includes(title)) return { ok: false, message: "Такой вариант уже есть" } as const;
+      await updateRsvpQuestion(ctx, question.id, { options: [...question.options, title] });
+    } else return { ok: false, message: "Не понял, куда добавить" } as const;
     updateTag(eventTag(eventId));
     updateTag(inviteSlugTag(eventSlug));
     return { ok: true } as const;
@@ -362,6 +383,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
         blockTypes={BLOCK_ORDER.filter((type) => !(SINGLE_BLOCKS.includes(type) && blocks.some((block) => block.type === type))).map((type) => ({ type, label: BLOCK_LABELS[type] }))}
         rsvpBuilder={rsvpState ? <RsvpFormBuilder eventId={eventId} initial={rsvpState} allowPlusOne={event.allowPlusOne} /> : null}
         rsvpOpen={rsvp === "1"}
+        addRsvpOption={addRsvpOption}
         weddingForm={<WeddingPanel variant="plain" value={wedding} date={toLocalInput(event.eventDate, event.timezone)} deadline={event.rsvpDeadline ? toLocalInput(event.rsvpDeadline, event.timezone).slice(0, 10) : ""} timezone={event.timezone} action={saveWedding} warnings={warnings} />}
         weddingReady={Boolean(theme.wedding)}
         warnings={warnings}

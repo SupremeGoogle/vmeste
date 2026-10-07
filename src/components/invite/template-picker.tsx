@@ -11,7 +11,7 @@
  * редактор. Отдельных кнопок «применить» под телефоном больше нет — они
  * повторяли то же действие вторым и третьим способом.
  */
-import { PICKABLE_TEMPLATES } from "@/lib/invite-templates";
+import { shuffledTemplates } from "@/lib/invite-templates";
 import { PhonePreview } from "@/components/invite/phone-preview";
 
 export function TemplatePicker({
@@ -25,7 +25,7 @@ export function TemplatePicker({
     <>
     <p className="mb-6 text-sm text-stone-500">Нажмите на телефон — шаблон откроется в редакторе, ваши тексты и фотографии сохранятся.</p>
     <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-      {PICKABLE_TEMPLATES.map((template) => {
+      {shuffledTemplates().map((template) => {
         const current = template.id === currentId;
 
         return (

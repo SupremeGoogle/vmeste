@@ -177,6 +177,21 @@ export const PICKABLE_TEMPLATES: InviteTemplate[] = INVITE_TEMPLATES.filter(
 );
 
 /**
+ * Шаблоны в случайном порядке — так их показывают витрина и главная:
+ * при фиксированном порядке первые три шаблона выбирали все, а до
+ * последних никто не доматывал. Мешать только на сервере, иначе разметка
+ * сервера и браузера не совпадёт.
+ */
+export function shuffledTemplates(list: InviteTemplate[] = PICKABLE_TEMPLATES): InviteTemplate[] {
+  const result = [...list];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
  * Имена пары из образца шаблона («Валерия и Давид»): их подстановка
  * меняет на настоящие во всех текстах — подписи «С любовью, …»,
  * заголовках, календаре, — а не только на обложке.

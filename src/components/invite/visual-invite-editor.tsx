@@ -81,6 +81,7 @@ export function VisualInviteEditor({
   weddingForm,
   rsvpBuilder,
   rsvpOpen: rsvpOpenInitially = false,
+  addRsvpOption,
   weddingReady,
   warnings,
 }: {
@@ -115,6 +116,8 @@ export function VisualInviteEditor({
   rsvpBuilder?: ReactNode;
   /** Открыть конструктор анкеты сразу (старый адрес /invite/form ведёт сюда). */
   rsvpOpen?: boolean;
+  /** «+ Добавить вариант» под вариантами анкеты: drink, meal или q:<id вопроса>. */
+  addRsvpOption?: (input: { target: string; title: string }) => Promise<SaveResult>;
   /** Данные свадьбы уже заполнены хотя бы раз. */
   weddingReady: boolean;
   /** Что поправить перед отправкой гостям. */
@@ -135,6 +138,10 @@ export function VisualInviteEditor({
   }, [saveFieldAction, blockActionAction, saveMusicAction, savePhotoAction, saveIntroAction, saveStyleAction]);
   const { saveField, blockAction, saveMusic, savePhoto, saveIntro, saveStyle } = tracked;
   const [rsvpOpen, setRsvpOpen] = useState(rsvpOpenInitially);
+  const [optionTarget, setOptionTarget] = useState<string | null>(null);
+  const [optionTitle, setOptionTitle] = useState("");
+  const [optionError, setOptionError] = useState<string | null>(null);
+  const [addingOption, startAddingOption] = useTransition();
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const audioInput = useRef<HTMLInputElement>(null);
@@ -281,6 +288,12 @@ export function VisualInviteEditor({
       // Щелчок по дате на обложке: дата со временем выбирается в календаре панели.
       if (message.kind === "wedding-edit") openWedding(typeof message.focus === "string" ? message.focus : null);
       if (message.kind === "reload") reload();
+      if (message.kind === "rsvp-add" && addRsvpOption && typeof message.target === "string") {
+        setOptionTarget(message.target);
+        setOptionTitle("");
+        setOptionError(null);
+        return;
+      }
       // Анкета — внутри приглашения: щелчок по ней открывает конструктор вопросов.
       if (rsvpBuilder && (message.kind === "rsvp-builder" || (message.kind === "form-click" && sections.some((item) => item.id === blockId && item.type === "RSVP_FORM")))) {
         setRsvpOpen(true);
@@ -334,7 +347,23 @@ export function VisualInviteEditor({
     }
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas, rsvpBuilder]);
+  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas, rsvpBuilder, addRsvpOption]);
+
+  function submitOption(event: React.FormEvent) {
+    event.preventDefault();
+    const title = optionTitle.trim();
+    if (!optionTarget || !addRsvpOption || !title) return;
+    startAddingOption(async () => {
+      const result = await addRsvpOption({ target: optionTarget, title });
+      if (!result.ok) {
+        setOptionError(result.message);
+        return;
+      }
+      setOptionTarget(null);
+      setNotice("Вариант добавлен — гости уже видят его в анкете");
+      reload();
+    });
+  }
 
   const choices = (() => {
     if (!target || target.kind !== "image") return items;
@@ -667,6 +696,29 @@ export function VisualInviteEditor({
       <WeddingSheet open={weddingOpen} focus={weddingFocus} onClose={closeWedding}>
         {weddingForm}
       </WeddingSheet>
+      {optionTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setOptionTarget(null)}>
+          <form role="dialog" aria-modal="true" aria-label="Новый вариант" onSubmit={submitOption} onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl">
+            <h2 className="text-lg text-stone-900">{optionTarget === "drink" ? "Новый напиток" : optionTarget === "meal" ? "Новое блюдо" : "Новый вариант ответа"}</h2>
+            <input
+              autoFocus
+              value={optionTitle}
+              onChange={(event) => setOptionTitle(event.target.value)}
+              maxLength={120}
+              placeholder={optionTarget === "drink" ? "Например, Апероль" : optionTarget === "meal" ? "Например, Утка с яблоками" : "Текст варианта"}
+              className="mt-3 w-full rounded-lg border border-stone-300 bg-card px-3 py-2.5 text-base"
+            />
+            <p className="mt-2 text-xs text-stone-500">Появится в анкете у гостей сразу, без «Сохранить изменения».</p>
+            {optionError ? <p role="alert" className="mt-2 text-sm text-red-700">{optionError}</p> : null}
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setOptionTarget(null)} className="rounded-lg px-4 py-2 text-sm text-stone-600">Отмена</button>
+              <button disabled={addingOption || !optionTitle.trim()} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {addingOption ? "Добавляю…" : "Добавить"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
       {rsvpOpen && rsvpBuilder ? (
         <div role="dialog" aria-modal="true" aria-label="Анкета гостя" className="fixed inset-0 z-50 overflow-y-auto bg-stone-50">
           <div className="sticky top-0 z-10 border-b border-stone-200 bg-card/95 backdrop-blur-sm">

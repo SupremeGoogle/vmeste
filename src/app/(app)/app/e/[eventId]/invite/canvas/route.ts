@@ -25,6 +25,8 @@ import { AQUARELLE_EDITOR_CSS } from "@/server/guest-html/aquarelle/style";
 import { LILY_EDITOR_CSS } from "@/server/guest-html/lily/style";
 import { INLINE_EDITOR_CSS, INLINE_EDITOR_SCRIPT } from "@/server/guest-html/inline-editor";
 import { loadWishlist } from "@/server/guest-html/wishlist";
+import { buildInlineRsvp } from "@/server/guest-html/inline-rsvp";
+import { RSVP_FIELDS_CSS } from "@/server/guest-html/rsvp-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,13 @@ export async function GET(
   const visible = blocks.filter((block) => block.visible);
   // Подарки — настоящие; управление доступно только в редакторе.
   const wishlist = { ...(await loadWishlist(eventId)), ...(!preview ? { manageHref: `/app/e/${eventId}/invite/wishlist` } : {}) };
-  const body = renderBlocks(visible, null, null, event.eventDate, theme, event.timezone, { editable: !preview, wishlist });
+  // Анкета — настоящая, с вопросами и вариантами этой свадьбы, а не образец:
+  // организатор видит, что увидит гость, и добавляет варианты прямо здесь.
+  const rsvp = await buildInlineRsvp(eventId, theme.template, {
+    name: "", status: "PENDING", mealOptionId: null, drinkIds: [], answers: [], musicWish: "",
+    plusOneAllowed: event.allowPlusOne, comment: "", plusOneName: "", plusOneMealOptionId: null, plusOneDrinkOptionIds: [],
+  }, { action: "", saved: false, flash: { error: null, message: null } });
+  const body = renderBlocks(visible, null, null, event.eventDate, theme, event.timezone, { editable: !preview, wishlist, rsvp });
 
   // Скрипт редактора — первым: по его классу шаблоны выключают заставку,
   // появление при прокрутке и шейдеры, которые мешают править.
@@ -65,7 +73,7 @@ export async function GET(
     styleMeta: true,
     theme,
     noindex: true,
-    extraCss: preview ? "" : `${INLINE_EDITOR_CSS}${theme.template === "constellation" ? CONSTELLATION_EDITOR_CSS : ""}${theme.template === "evergreen" ? EVERGREEN_EDITOR_CSS : ""}${theme.template === "silk" ? SILK_EDITOR_CSS : ""}${theme.template === "pearl" ? PEARL_EDITOR_CSS : ""}${theme.template === "prism" ? PRISM_EDITOR_CSS : ""}${theme.template === "ruby" ? RUBY_EDITOR_CSS : ""}${theme.template === "tuscany" ? TUSCANY_EDITOR_CSS : ""}${theme.template === "vinyl" ? VINYL_EDITOR_CSS : ""}${theme.template === "aquarelle" ? AQUARELLE_EDITOR_CSS : ""}${theme.template === "lily" ? LILY_EDITOR_CSS : ""}`,
+    extraCss: preview ? RSVP_FIELDS_CSS : `${RSVP_FIELDS_CSS}${INLINE_EDITOR_CSS}${theme.template === "constellation" ? CONSTELLATION_EDITOR_CSS : ""}${theme.template === "evergreen" ? EVERGREEN_EDITOR_CSS : ""}${theme.template === "silk" ? SILK_EDITOR_CSS : ""}${theme.template === "pearl" ? PEARL_EDITOR_CSS : ""}${theme.template === "prism" ? PRISM_EDITOR_CSS : ""}${theme.template === "ruby" ? RUBY_EDITOR_CSS : ""}${theme.template === "tuscany" ? TUSCANY_EDITOR_CSS : ""}${theme.template === "vinyl" ? VINYL_EDITOR_CSS : ""}${theme.template === "aquarelle" ? AQUARELLE_EDITOR_CSS : ""}${theme.template === "lily" ? LILY_EDITOR_CSS : ""}`,
     body: `${body}<p class="foot">${formatEventDateTime(event.eventDate, event.timezone)}</p>`,
     script: scripts.join(";"),
   }), {

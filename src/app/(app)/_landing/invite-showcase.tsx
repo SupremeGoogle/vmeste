@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { PICKABLE_TEMPLATES } from "@/lib/invite-templates";
+import { shuffledTemplates } from "@/lib/invite-templates";
 import { Reveal } from "./reveal";
 
 function preview(id: string) {
@@ -8,6 +8,8 @@ function preview(id: string) {
 
 /** Витрина и полный каталог всегда используют актуальный список шаблонов. */
 export function InviteShowcase() {
+  // Порядок случайный при каждом показе — один и тот же для ленты и каталога.
+  const PICKABLE_TEMPLATES = shuffledTemplates();
   return <>
     <Reveal delay={120} className="home-marquee">
       <ul className="home-phones" aria-label="Примеры приглашений">

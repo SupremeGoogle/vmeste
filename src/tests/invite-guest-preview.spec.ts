@@ -13,6 +13,8 @@ vi.mock("@/server/repositories/events", () => ({ getEvent: mocks.getEvent }));
 vi.mock("@/server/repositories/invites", () => ({
   listBlocks: mocks.listBlocks, getTheme: mocks.getTheme, getInviteBySlug: mocks.getInviteBySlug,
 }));
+// Анкета превью читает вопросы из базы — здесь базы нет, анкета-образец.
+vi.mock("@/server/guest-html/inline-rsvp", () => ({ buildInlineRsvp: async () => null, hasInlineRsvp: () => true }));
 vi.mock("@/server/guest-html/wishlist", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/server/guest-html/wishlist")>(), loadWishlist: mocks.loadWishlist,
 }));

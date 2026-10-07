@@ -111,6 +111,8 @@ d.addEventListener('click',function(e){
  if(color){e.preventDefault();e.stopPropagation();send({kind:'color-edit',blockId:color.dataset.blockId,path:color.dataset.path,current:color.dataset.color||''});return}
  var image=e.target.closest('[data-image-edit]');
  if(image){e.preventDefault();e.stopPropagation();send({kind:'image-edit',blockId:image.dataset.blockId,path:image.dataset.path,current:image.getAttribute('src')||'',settings:image.dataset.photoSettings||'',ratio:image.clientWidth/Math.max(1,image.clientHeight)});return}
+ var add=e.target.closest('[data-rsvp-add]');
+ if(add){e.preventDefault();e.stopPropagation();send({kind:'rsvp-add',target:add.getAttribute('data-rsvp-add')});return}
  var rb=e.target.closest('[data-rsvp-builder]');
  if(rb){e.preventDefault();e.stopPropagation();send({kind:'rsvp-builder'});return}
  var nav=e.target.closest('[data-editor-nav]');
@@ -144,10 +146,40 @@ window.addEventListener('message',function(e){var m=e.data||{};if(m.source!=='in
 window.addEventListener('message',function(e){if(e.source!==parent)return;var m=e.data||{};if(m.source!=='invite-editor'||m.kind!=='scroll-component')return;
  var el=d.querySelector('[data-component-owner="'+CSS.escape(m.blockId||'')+'"][data-invite-component="'+CSS.escape(m.path||'')+'"]');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('ie-component-focus');setTimeout(function(){el.classList.remove('ie-component-focus')},1600)}});
 window.addEventListener('scroll',function(){send({kind:'scroll',y:window.scrollY});clearComponent()},{passive:true});
+(function(){
+ /* «+ Добавить вариант» под каждой группой вариантов анкеты — в любом шаблоне:
+    ищем по именам полей (напитки, блюда, вопросы q:<id>), а не по вёрстке. */
+ var used=[];
+ function place(inputs,target,label){
+  if(!inputs.length)return;
+  var last=inputs[inputs.length-1];
+  var box=last.closest('label')||last;
+  var host=box.parentElement;
+  if(!host||used.indexOf(host)>=0)return;used.push(host);
+  var b=d.createElement('button');b.type='button';b.className='ie-add-option';
+  b.setAttribute('data-editor-ui','');b.setAttribute('data-rsvp-add',target);b.textContent=label;
+  host.insertAdjacentElement('afterend',b);
+ }
+ d.querySelectorAll('form').forEach(function(f){
+  place(f.querySelectorAll('input[name="drinkOptionIds"]'),'drink','+ Добавить напиток');
+  place(f.querySelectorAll('input[name="mealOptionId"]'),'meal','+ Добавить блюдо');
+  var seen={};
+  f.querySelectorAll('input[name^="q:"]').forEach(function(i){
+   if((i.type!=='radio'&&i.type!=='checkbox')||i.closest('.rsvp-rating')||seen[i.name])return;seen[i.name]=1;
+   place(Array.prototype.filter.call(f.querySelectorAll('input[name="'+CSS.escape(i.name)+'"]'),function(x){return x.type===i.type}),'q:'+i.name.slice(2),'+ Добавить вариант');
+  });
+  f.querySelectorAll('select[name^="q:"]').forEach(function(s){
+   var b=d.createElement('button');b.type='button';b.className='ie-add-option';
+   b.setAttribute('data-editor-ui','');b.setAttribute('data-rsvp-add','q:'+s.name.slice(2));b.textContent='+ Добавить вариант';
+   (s.closest('label')||s).insertAdjacentElement('afterend',b);
+  });
+ });
+})();
 send({kind:'canvas-ready'});
 })()`;
 
 export const INLINE_EDITOR_CSS = `
+.ie-add-option{display:block!important;width:fit-content!important;margin:.6rem 0 .2rem!important;padding:.5rem .9rem!important;border:1px dashed #c79a55!important;border-radius:.5rem!important;background:#fff8ee!important;color:#8b6914!important;font:500 13px/1.3 system-ui,sans-serif!important;letter-spacing:normal!important;text-transform:none!important;cursor:pointer!important;min-height:0!important;box-shadow:none!important}
 [data-component-removed],[data-component-shell-removed]{display:none!important}
 .ie-component-focus{outline:2px solid #c79a55!important;outline-offset:4px}
 .ie-component-tools{position:fixed!important;z-index:2147483647!important;display:flex!important;align-items:center!important;gap:10px!important;padding:5px 6px 5px 10px!important;border:1px solid #ffffff30!important;border-radius:9px!important;background:#292521!important;color:#fff!important;box-shadow:0 5px 20px #0003!important;font:500 11px/1.3 system-ui,sans-serif!important;letter-spacing:normal!important;text-transform:none!important;width:max-content!important}
