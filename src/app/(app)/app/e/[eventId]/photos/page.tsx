@@ -16,9 +16,10 @@ import { isRetentionExempt } from "@/server/services/retention";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import {
-  countPhotos, deletePhoto, listApprovedPhotos, listPendingPhotos, moderatePhoto,
+  countPhotos, deletePhoto, listApprovedPhotos, listPendingPhotos, listRejectedPhotos, moderatePhoto,
 } from "@/server/services/photos";
 import { ModerationQueue } from "@/components/photos/moderation-queue";
+import { PhotoShelf } from "@/components/photos/photo-shelf";
 import { NSFW_FLAG } from "@/server/images/nsfw";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +34,11 @@ export default async function PhotosPage({
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
 
-  const [counts, pending, approved] = await Promise.all([
+  const [counts, pending, approved, rejected] = await Promise.all([
     countPhotos(ctx.eventId),
     listPendingPhotos(ctx.eventId),
     listApprovedPhotos(ctx.eventId, 48),
+    listRejectedPhotos(ctx.eventId),
   ]);
 
   // Фото без превью на проектор не идут (телефон не смог их уменьшить).
@@ -126,35 +128,42 @@ export default async function PhotosPage({
       <section className="mt-10">
         <h2 className="text-sm text-stone-500">Опубликованные</h2>
         {approved.length > 0 ? (
-          <ul className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {approved.map((photo) => (
-              <li key={photo.id} className="text-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/media/${eventId}/${photo.id}`}
-                  alt=""
-                  loading="lazy"
-                  className="aspect-square w-full rounded-lg object-cover"
-                />
-                <span className="mt-1 block truncate text-xs text-stone-500">
-                  {photo.guest?.displayName ?? "—"}
-                </span>
-                <div className="mt-1 flex justify-center gap-2 text-xs">
-                  <form action={setStatus}>
-                    <input type="hidden" name="photoId" value={photo.id} />
-                    <input type="hidden" name="status" value="REJECTED" />
-                    <button className="text-stone-500 underline">снять</button>
-                  </form>
-                  <form action={remove}>
-                    <input type="hidden" name="photoId" value={photo.id} />
-                    <button className="text-stone-400 hover:text-red-700">удалить</button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <PhotoShelf
+            eventId={eventId}
+            kind="approved"
+            photos={approved.map((photo) => ({ id: photo.id, guestName: photo.guest?.displayName ?? null }))}
+            setStatus={setStatus}
+            remove={remove}
+          />
         ) : (
           <p className="mt-3 text-sm text-stone-500">Одобренных фотографий пока нет.</p>
+        )}
+      </section>
+
+      {/* Отклонённые — отдельно: гостям и на экран они не идут, в общий
+          архив тоже, но организатор может их пересмотреть и вернуть. */}
+      <section className="mt-10">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm text-stone-500">Отклонённые{rejected.length ? ` · ${rejected.length}` : ""}</h2>
+          {rejected.length > 0 && stage !== "purged" ? (
+            <a href={`/api/app/events/${eventId}/photos/download?only=rejected`} className="text-sm text-stone-600 underline underline-offset-2" download>
+              Скачать отклонённые архивом
+            </a>
+          ) : null}
+        </div>
+        {rejected.length > 0 ? (
+          <>
+            <p className="mt-1 text-xs text-stone-500">Их не видят гости и экран в зале. Нажмите на снимок, чтобы рассмотреть, или «вернуть», чтобы опубликовать.</p>
+            <PhotoShelf
+              eventId={eventId}
+              kind="rejected"
+              photos={rejected.map((photo) => ({ id: photo.id, guestName: photo.guest?.displayName ?? null }))}
+              setStatus={setStatus}
+              remove={remove}
+            />
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-stone-500">Отклонённых нет.</p>
         )}
       </section>
     </main>

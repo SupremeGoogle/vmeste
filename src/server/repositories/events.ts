@@ -92,7 +92,7 @@ export async function findEventByShortCode(shortCode: string) {
     select: {
       id: true, orgId: true, title: true, slug: true, shortCode: true,
       status: true, eventDate: true, timezone: true, venueName: true,
-      photosEnabled: true, wishesEnabled: true,
+      photosEnabled: true, wishesEnabled: true, qrEntryOpen: true,
     },
   });
 
@@ -168,6 +168,7 @@ export type EventSettingsInput = {
   photosEnabled: boolean;
   wishesEnabled: boolean;
   raffleEnabled: boolean;
+  qrEntryOpen?: boolean;
   photoLimitPerGuest: number;
 };
 
@@ -189,6 +190,7 @@ export async function updateEventSettings(
       photosEnabled: input.photosEnabled,
       wishesEnabled: input.wishesEnabled,
       raffleEnabled: input.raffleEnabled,
+      qrEntryOpen: input.qrEntryOpen,
       photoLimitPerGuest: input.photoLimitPerGuest,
     },
   });

@@ -18,7 +18,7 @@ export const runtime = "nodejs";
 const text = (body: string, status: number) =>
   new Response(body, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 
-export async function GET(_request: Request, { params }: { params: Promise<{ eventId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
@@ -27,8 +27,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
   const limit = rateLimit(`photos-zip:${eventId}`, 3, 60_000);
   if (!limit.ok) return text("Подождите минуту и скачайте снова", 429);
 
+  const rejected = new URL(request.url).searchParams.get("only") === "rejected";
   const photos = await db.photo.findMany({
-    where: { eventId, orgId: ctx.orgId, status: { not: "REJECTED" } },
+    // Отклонённые в общий архив не идут — их скачивают отдельно (?only=rejected).
+    where: { eventId, orgId: ctx.orgId, status: rejected ? "REJECTED" : { not: "REJECTED" } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { id: true, storageKey: true },
   });
@@ -37,7 +39,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ eve
   return new Response(photoArchive(photos), {
     headers: {
       "content-type": "application/zip",
-      "content-disposition": `attachment; filename="wedding-${event.shortCode}-photos.zip"`,
+      "content-disposition": `attachment; filename="wedding-${event.shortCode}-${rejected ? "rejected" : "photos"}.zip"`,
       "cache-control": "private, no-store",
       "x-content-type-options": "nosniff",
     },

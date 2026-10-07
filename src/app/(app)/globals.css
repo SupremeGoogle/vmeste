@@ -121,6 +121,15 @@
   :root[data-theme="dark"] :is(a, button, label, span).bg-stone-900.text-white {
     color: #1b1714;
   }
+
+  /* Выпадающий список у <select>: Tailwind делает поле прозрачным, и
+     Chrome на Windows рисует список на белом, а пункты наследуют светлый
+     текст тёмной темы — белым по белому. Красим пункты явно. */
+  :root[data-theme="dark"] option,
+  :root[data-theme="dark"] optgroup {
+    background-color: var(--color-card);
+    color: var(--color-stone-950);
+  }
 }
 
 body {

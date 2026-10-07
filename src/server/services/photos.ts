@@ -242,6 +242,16 @@ export async function listApprovedPhotos(eventId: string, limit = 60) {
   });
 }
 
+/** Отклонённые — отдельной полкой: их можно пересмотреть и вернуть. */
+export async function listRejectedPhotos(eventId: string, limit = 200) {
+  return db.photo.findMany({
+    where: { eventId, status: "REJECTED" },
+    orderBy: [{ moderatedAt: "desc" }, { createdAt: "desc" }],
+    take: limit,
+    select: { id: true, createdAt: true, guest: { select: { displayName: true } } },
+  });
+}
+
 export async function listPendingPhotos(eventId: string, limit = 100) {
   return db.photo.findMany({
     where: { eventId, status: "PENDING" },

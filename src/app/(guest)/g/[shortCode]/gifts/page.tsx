@@ -84,7 +84,9 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
         <h1 className="font-serif text-[34px] leading-tight sm:text-4xl">Наш виш-лист</h1>
         <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-muted">
           {gifts.length > 0
-            ? "Отметьте, что хотите подарить, — у других гостей этот подарок станет занятым."
+            ? gifts.some((gift) => gift.reservable)
+              ? "Отметьте, что хотите подарить, — у других гостей этот подарок станет занятым."
+              : "Идеи подарков от пары — выбирайте любой."
             : hasEnvelope
               ? "Поздравить можно переводом — реквизиты ниже."
               : "Пара пока ничего сюда не добавила."}
@@ -118,7 +120,9 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
                     Где посмотреть ↗
                   </a>
                 ) : null}
-                {!taken && myGift && !mine ? (
+                {!gift.reservable && !mine && !taken ? (
+                  <p className="mt-3 text-[15px] text-muted">Без брони — этот подарок может сделать любой гость.</p>
+                ) : !taken && myGift && !mine ? (
                   <p className="mt-3 text-[15px] text-muted">Вы уже выбрали «{myGift.title}».</p>
                 ) : !taken ? (
                   <form action={choose} className="mt-3">

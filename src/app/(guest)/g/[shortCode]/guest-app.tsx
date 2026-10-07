@@ -23,7 +23,7 @@ const rise = {
   shown: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_OUT } },
 } as const;
 
-export function GuestApp({ code, eventId, event, hub }: { code: string; eventId: string; event: EventInfo; hub: GuestHub | null }) {
+export function GuestApp({ code, eventId, event, hub, openEntry = false }: { code: string; eventId: string; event: EventInfo; hub: GuestHub | null; openEntry?: boolean }) {
   return (
     <main className="guest-wedding-page mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pb-16">
       <GuestHeader event={event} />
@@ -35,7 +35,7 @@ export function GuestApp({ code, eventId, event, hub }: { code: string; eventId:
           </motion.div>
         ) : (
           <motion.div key="finder" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.5, ease: EASE_OUT }}>
-            <Finder code={code} />
+            <Finder code={code} openEntry={openEntry} />
           </motion.div>
         )}
       </AnimatePresence>

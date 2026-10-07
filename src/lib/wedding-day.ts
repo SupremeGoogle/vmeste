@@ -20,6 +20,8 @@ export const giftInput = z.object({
     .max(300)
     .refine((value) => value === "" || /^\/api\/asset\/[\w-]+\/[\w-]+$/.test(value), "Выберите картинку из загруженных")
     .default(""),
+  // Выключено — подарок «просто идея»: гости его не бронируют.
+  reservable: z.boolean().default(true),
 });
 
 export const envelopeInput = z.object({

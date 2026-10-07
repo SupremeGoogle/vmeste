@@ -31,10 +31,6 @@ async function copy(text: string): Promise<boolean> {
   }
 }
 
-function inviteText(name: string, url: string): string {
-  return `${name ? `${name}, ` : ""}мы приглашаем вас на нашу свадьбу! Всё о празднике и ответ — по ссылке:\n${url}`;
-}
-
 export function InviteShare({
   publicPath,
   published,
@@ -63,19 +59,6 @@ export function InviteShare({
   function notify(text: string) {
     setFlash(text);
     window.setTimeout(() => setFlash((current) => (current === text ? null : current)), 2200);
-  }
-
-  async function share(text: string, url: string) {
-    if (navigator.share) {
-      try {
-        await navigator.share({ text, url });
-        return;
-      } catch {
-        // Закрыли окно «Поделиться» — ничего не делаем.
-        return;
-      }
-    }
-    if (await copy(text)) notify("Текст с ссылкой скопирован");
   }
 
   function create(event: React.FormEvent) {
@@ -135,9 +118,6 @@ export function InviteShare({
             <button type="button" className={button} onClick={() => void copy(publicUrl).then((ok) => ok && notify("Общая ссылка скопирована"))}>
               Скопировать ссылку
             </button>
-            <button type="button" className={button} onClick={() => void share(inviteText("", publicUrl), publicUrl)}>
-              Поделиться с текстом
-            </button>
             <a href={publicPath} target="_blank" rel="noreferrer" className={button}>Открыть ↗</a>
           </div>
         </div>
@@ -182,9 +162,6 @@ export function InviteShare({
                   </span>
                   <button type="button" className="text-sm text-stone-600 underline underline-offset-2" onClick={() => void copy(item.url).then((ok) => ok && notify("Ссылка скопирована"))}>
                     Ссылка
-                  </button>
-                  <button type="button" className="text-sm text-stone-600 underline underline-offset-2" onClick={() => void share(inviteText(item.name, item.url), item.url)}>
-                    С текстом
                   </button>
                 </li>
               ))}

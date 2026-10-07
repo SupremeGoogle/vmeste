@@ -47,6 +47,7 @@ export default async function GiftsPage({ params, searchParams }: Props) {
   ]);
   const pickerAssets = assets.map(({ id, url, alt }) => ({ id, url, alt }));
   const taken = gifts.filter((gift) => gift.reservation).length;
+  const reservable = gifts.filter((gift) => gift.reservable || gift.reservation).length;
   const path = `/app/e/${eventId}/invite/wishlist`;
   const guestPath = `/g/${event.shortCode}/gifts`;
 
@@ -78,6 +79,7 @@ export default async function GiftsPage({ params, searchParams }: Props) {
       description: String(data.get("description") ?? ""),
       url: String(data.get("url") ?? ""),
       imageUrl: String(data.get("imageUrl") ?? ""),
+      reservable: data.get("reservable") === "on",
     });
     await done(result.message);
   }
@@ -118,6 +120,13 @@ export default async function GiftsPage({ params, searchParams }: Props) {
         <span className="text-stone-400"> — необязательно</span>
         <input name="url" type="url" maxLength={2000} defaultValue={gift?.url} placeholder="https://" className={INPUT} />
       </label>
+      <label className="flex items-start gap-3 text-sm">
+        <input name="reservable" type="checkbox" defaultChecked={gift?.reservable ?? true} className="mt-0.5 size-4 accent-stone-900" />
+        <span>
+          <span className="text-stone-900">Можно забронировать</span>
+          <span className="mt-0.5 block text-stone-500">Гость нажимает «Я подарю это», и подарок занят для остальных. Выключите для того, что можно дарить многим, — например, цветы или сертификаты.</span>
+        </span>
+      </label>
     </>
   );
 
@@ -125,7 +134,7 @@ export default async function GiftsPage({ params, searchParams }: Props) {
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <a href={`/app/e/${eventId}/invite?edit=1`} className="mb-2 inline-flex min-h-11 items-center text-sm text-stone-500 hover:text-stone-900">← К редактору приглашения</a>
       <h1 className="mb-1 font-serif text-3xl text-stone-900">Виш-лист</h1>
-      <p className="mb-5 max-w-xl text-sm leading-relaxed text-stone-600">Раздел «Виш-лист» есть в каждом шаблоне. Его заголовок и текст правятся прямо в приглашении, а подарки и реквизиты — здесь. Гости отмечают «Я подарю это», и подарок становится занятым для остальных.</p>
+      <p className="mb-5 max-w-xl text-sm leading-relaxed text-stone-600">Раздел «Виш-лист» есть в каждом шаблоне. Его заголовок и текст правятся прямо в приглашении, а подарки и реквизиты — здесь. Гости отмечают «Я подарю это», и подарок становится занятым для остальных — если у него включена бронь.</p>
       {message ? (
         <p role="status" className="mb-4 rounded-lg bg-stone-100 px-4 py-3 text-sm text-stone-700">{message}</p>
       ) : null}
@@ -168,7 +177,7 @@ export default async function GiftsPage({ params, searchParams }: Props) {
 
       <div className="mt-8 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg">Виш-лист</h2>
-        {gifts.length > 0 ? <span className="text-sm text-stone-500">выбрано {taken} из {gifts.length}</span> : null}
+        {gifts.length > 0 ? <span className="text-sm text-stone-500">{reservable > 0 ? `выбрано ${taken} из ${reservable}` : `подарков: ${gifts.length}`}</span> : null}
       </div>
 
       <ul className="mt-3 space-y-3">
@@ -190,7 +199,7 @@ export default async function GiftsPage({ params, searchParams }: Props) {
                 ) : null}
               </div>
               <p className={`text-sm ${gift.reservation ? "text-emerald-700" : "text-stone-400"}`}>
-                {gift.reservation ? `берёт ${gift.reservation.guest.displayName}` : "свободен"}
+                {gift.reservation ? `берёт ${gift.reservation.guest.displayName}` : gift.reservable ? "свободен" : "без брони"}
               </p>
               </div>
             </div>

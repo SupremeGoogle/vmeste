@@ -154,6 +154,9 @@ model Gift {
   /// Картинка пункта виш-листа: адрес загруженной организатором картинки
   /// (`/api/asset/<eventId>/<id>`). Пусто — без картинки.
   imageUrl    String @default("")
+  /// Можно ли гостю забронировать подарок. Выключено — это просто идея:
+  /// «Я подарю это» нет, подарить может кто угодно и сколько угодно раз.
+  reservable  Boolean @default(true)
   createdAt   DateTime @default(now())
   event       Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
   reservation GiftReservation?
@@ -325,6 +328,10 @@ model Event {
   giftTransferDetails String    @default("")
   giftTransferUrl    String     @default("")
   albumEnabled       Boolean    @default(true)
+  /// Вход по QR на свадьбе для тех, кого нет в списке: гость пишет имя
+  /// и попадает на свою страницу как «добавился сам». По умолчанию —
+  /// только по списку.
+  qrEntryOpen        Boolean    @default(false)
   teamPlanToken      String?    @unique
   activeRaffleId     String?
 

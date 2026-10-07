@@ -3,6 +3,7 @@
 // Общие элементы настоящей страницы гостя и её демонстрации на главной.
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { GuestHub } from "@/server/services/guest-hub";
 import { EASE_OUT, SPRING } from "@/components/motion/motion";
 import { BrandLogo } from "@/components/brand";
@@ -57,8 +58,10 @@ const LOOKUP_HINT: Record<string, string> = {
   error: "Нет связи. Попробуйте ещё раз.",
 };
 
-export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoose, planHref = `/e/${code}/plan`, autoFocus = true }: {
+export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoose, planHref = `/e/${code}/plan`, autoFocus = true, openEntry = false }: {
   code: string;
+  /** Организатор пускает по QR и тех, кого нет в списке. */
+  openEntry?: boolean;
   lookupUrl?: string;
   onChoose?: (match: Match) => void;
   planHref?: string;
@@ -68,6 +71,9 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
   const [state, setState] = useState<LookupState>({ status: "idle" });
   const [active, setActive] = useState(0);
   const [picked, setPicked] = useState<Match | null>(null);
+  const router = useRouter();
+  const [entering, setEntering] = useState(false);
+  const [enterError, setEnterError] = useState<string | null>(null);
   const claimForm = useRef<HTMLFormElement>(null);
   const claimId = useRef<HTMLInputElement>(null);
   const cache = useRef(new Map<string, LookupState>());
@@ -127,6 +133,29 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
     // перерисовки: отправка не должна зависеть от кадров анимации.
     if (claimId.current) claimId.current.value = match.guestId;
     claimForm.current?.requestSubmit();
+  }
+
+  /** «Меня нет в списке» — завести себя под введённым именем и войти. */
+  async function enterAsNew() {
+    setEntering(true);
+    setEnterError(null);
+    try {
+      const res = await fetch(`/api/e/${code}/enter`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: query }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.ok) {
+        // Cookie уже стоит — страница гостя перерисуется сразу со столом.
+        router.refresh();
+        return;
+      }
+      setEnterError(body.message ?? "Не получилось войти. Попробуйте ещё раз.");
+    } catch {
+      setEnterError("Нет связи. Попробуйте ещё раз.");
+    }
+    setEntering(false);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -230,8 +259,24 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
         <AnimatePresence>
           {shown.status in LOOKUP_HINT && !picked ? (
             <motion.p key={shown.status} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-sm text-muted" role="status">
-              {LOOKUP_HINT[shown.status]}
+              {shown.status === "not_found" && openEntry ? "В списке гостей такого имени нет." : LOOKUP_HINT[shown.status]}
             </motion.p>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {openEntry && shown.status === "not_found" && !picked ? (
+            <motion.div key="enter" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3">
+              <button
+                type="button"
+                disabled={entering}
+                onClick={() => void enterAsNew()}
+                className="guest-button min-h-12 w-full rounded-2xl px-4 text-[16px] font-medium disabled:opacity-60"
+              >
+                {entering ? "Входим…" : `Меня нет в списке — войти как «${query.trim()}»`}
+              </button>
+              {enterError ? <p className="mt-2 text-sm text-muted" role="alert">{enterError}</p> : null}
+            </motion.div>
           ) : null}
         </AnimatePresence>
 

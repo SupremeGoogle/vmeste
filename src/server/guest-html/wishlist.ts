@@ -27,6 +27,8 @@ export type WishlistGift = {
   imageUrl: string;
   taken: boolean;
   mine: boolean;
+  /** false — «просто идея»: без брони, подарить может любой. */
+  reservable?: boolean;
 };
 
 export type WishlistData = {
@@ -85,6 +87,7 @@ export async function loadWishlist(
       imageUrl: gift.imageUrl,
       mine: Boolean(opts.guestId) && gift.reservation?.guestId === opts.guestId,
       taken: Boolean(gift.reservation) && gift.reservation?.guestId !== opts.guestId,
+      reservable: gift.reservable,
     })),
     envelope: hasEnvelope && event
       ? {
@@ -135,6 +138,8 @@ function giftCard(gift: WishlistGift, content: BlockContentMap["WISHLIST"], data
   let action = "";
   if (gift.taken) {
     action = `<span class="vm-wl-state">Уже выбрали</span>`;
+  } else if (gift.reservable === false && !gift.mine) {
+    action = `<span class="vm-wl-state">Можно дарить всем</span>`;
   } else if (data.reserveAction) {
     action = gift.mine
       ? `<form method="post" action="${esc(data.reserveAction)}"><input type="hidden" name="giftId" value="${esc(gift.id)}"><input type="hidden" name="release" value="1"><button class="vm-wl-btn is-mine" type="submit">Это мой подарок · снять</button></form>`
@@ -162,7 +167,7 @@ export function wishlistBody(content: BlockContentMap["WISHLIST"], data: Wishlis
         data.envelope.qr ? `<img src="${data.envelope.qr}" alt="QR-код для перевода">` : ""
       }</div>`
     : "";
-  const note = !data.reserveAction && !data.sample && !editable && data.gifts.some((gift) => !gift.taken)
+  const note = !data.reserveAction && !data.sample && !editable && data.gifts.some((gift) => !gift.taken && gift.reservable !== false)
     ? `<p class="vm-wl-note">${data.joinHref ? `Выбрать подарок можно после ответа на приглашение — <a href="${esc(data.joinHref)}" style="color:inherit">ответить</a>.` : "Выбрать подарок можно по именной ссылке из приглашения."}</p>`
     : "";
   const sampleNote = editable && !data.gifts.length
@@ -190,9 +195,12 @@ function wishlistTeaser(blockId: string, content: BlockContentMap["WISHLIST"], d
     : data.pageHref
       ? `<a class="vm-wl-btn" href="${esc(data.pageHref)}">${label}</a>`
       : `<span class="vm-wl-btn">${label}</span>`;
-  const free = data.gifts.filter((gift) => !gift.taken).length;
+  // «Свободно» считаем только среди тех, что бронируются: идея без брони
+  // не бывает ни свободной, ни занятой.
+  const bookable = data.gifts.filter((gift) => gift.reservable !== false || gift.taken || gift.mine);
+  const free = bookable.filter((gift) => !gift.taken).length;
   const count = data.gifts.length
-    ? `<p class="vm-wl-count">Подарков в списке: ${data.gifts.length}${free < data.gifts.length ? ` · свободно ${free}` : ""}</p>`
+    ? `<p class="vm-wl-count">Подарков в списке: ${data.gifts.length}${free < bookable.length ? ` · свободно ${free}` : ""}</p>`
     : "";
   const manage = editable && data.manageHref
     ? `<a class="vm-wl-manage" data-editor-ui data-editor-nav href="${esc(data.manageHref)}" target="_top">Изменить подарки и реквизиты</a>`

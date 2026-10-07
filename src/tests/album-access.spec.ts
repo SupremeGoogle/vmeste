@@ -14,7 +14,7 @@ const params = { params: Promise.resolve({ shortCode: "ALBUM" }) };
 const request = () => new Request("http://localhost/g/ALBUM/album/download");
 beforeEach(() => { vi.resetAllMocks(); resetRateLimits(); vi.useRealTimers(); });
 async function setup(overrides = {}) {
-  vi.mocked(findEventByShortCode).mockResolvedValue({ id: "event", orgId: "org", title: "Свадьба", slug: "slug", shortCode: "ALBUM", status: "PUBLISHED", eventDate: new Date("2026-09-30T16:00Z"), timezone: "Europe/Kaliningrad", venueName: null, photosEnabled: true, wishesEnabled: true, ...overrides });
+  vi.mocked(findEventByShortCode).mockResolvedValue({ id: "event", orgId: "org", title: "Свадьба", slug: "slug", shortCode: "ALBUM", status: "PUBLISHED", eventDate: new Date("2026-09-30T16:00Z"), timezone: "Europe/Kaliningrad", venueName: null, photosEnabled: true, wishesEnabled: true, qrEntryOpen: false, ...overrides });
   vi.mocked(identifyByEventSession).mockResolvedValue({ orgId: "org", eventId: "event", guestId: "guest", displayName: "Анна", eventTitle: "Свадьба", photosEnabled: true, wishesEnabled: true });
   vi.mocked(db.event.findFirst).mockResolvedValue({ albumEnabled: true } as never);
   vi.mocked(db.photo.findMany).mockResolvedValue([{ id: "photo", storageKey: "one" }] as never);

@@ -34,6 +34,7 @@ export default async function GuestPage({ params }: { params: Promise<{ shortCod
       eventId={event.id}
       event={{ title: event.title, dateLabel, venue: event.venueName }}
       hub={hub}
+      openEntry={event.qrEntryOpen}
     />
   );
 }

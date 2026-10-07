@@ -103,6 +103,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
       photosEnabled: formData.get("photosEnabled") === "on",
       wishesEnabled: formData.get("wishesEnabled") === "on",
       raffleEnabled: formData.get("raffleEnabled") === "on",
+      qrEntryOpen: formData.get("qrEntryOpen") === "on",
       photoLimitPerGuest: Math.min(20, Math.max(1, Number(formData.get("photoLimit")) || 5)),
     });
     revalidatePath(`/app/e/${eventId}/settings`);
@@ -233,6 +234,18 @@ export default async function SettingsPage({ params, searchParams }: Props) {
             />
           </label>
         </div>
+
+        {/* Вход по QR на свадьбе: по умолчанию — только те, кто в списке. */}
+        <label className="flex items-start gap-3 rounded-lg border border-stone-200 px-4 py-3 text-sm">
+          <input type="checkbox" name="qrEntryOpen" defaultChecked={event.qrEntryOpen} className="mt-0.5" />
+          <span>
+            <span className="text-stone-900">Пускать по QR гостей, которых нет в списке</span>
+            <span className="mt-0.5 block text-xs text-stone-500">
+              Выключено — на свадьбе войти можно только найдя себя в списке. Включено — гость, которого нет в списке,
+              пишет своё имя и входит; в списке он появится с пометкой «добавился сам».
+            </span>
+          </span>
+        </label>
 
         <button className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white">Сохранить</button>
       </form>

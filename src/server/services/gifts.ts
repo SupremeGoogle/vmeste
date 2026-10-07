@@ -50,8 +50,11 @@ export async function reserveGift(guest: GuestIdentity, giftId: string, release:
     select: { id: true },
   });
   if (!event) return { ok: false, message: "Список подарков сейчас закрыт" };
-  const gift = await db.gift.findFirst({ where: { id: giftId, eventId: guest.eventId }, select: { id: true } });
+  const gift = await db.gift.findFirst({ where: { id: giftId, eventId: guest.eventId }, select: { id: true, reservable: true } });
   if (!gift) return { ok: false, message: "Такого подарка в списке уже нет" };
+  // Снять свою бронь можно всегда — даже если бронь у подарка выключили
+  // после того, как гость его выбрал. Новую — только где она разрешена.
+  if (!release && !gift.reservable) return { ok: false, message: "Этот подарок не бронируется — его может подарить любой гость" };
 
   if (release) {
     const result = await db.giftReservation.deleteMany({ where: { eventId: guest.eventId, giftId, guestId: guest.guestId } });
