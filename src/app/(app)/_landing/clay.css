@@ -212,9 +212,7 @@
 .feature-photo-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; color: var(--ink); font-size: 15px; font-weight: 600; }
 .feature-photo-badge { padding: 5px 9px; border-radius: 8px; color: #735165; background: #f2e7ed; font-size: 10px; font-weight: 500; }
 .feature-photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.feature-photo-grid img { display: block; width: 100%; height: auto; object-fit: cover; border-radius: 13px; }
-.feature-photo-grid img.is-tall { aspect-ratio: 4 / 5; }
-.feature-photo-grid img.is-wide { aspect-ratio: 4 / 3; }
+.feature-photo-grid img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 13px; }
 
 @media (max-width: 860px) {
   .home-nav--clay .home-burger { width: 40px; height: 40px; border-radius: 12px; gap: 5px; }

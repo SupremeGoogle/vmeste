@@ -18,13 +18,14 @@ export function FeatureVisual({ kind, onOpen }: { kind: keyof typeof VISUALS; on
   if (kind === "photos") {
     return <div className="feature-photo-gallery" aria-label="Пример галереи свадебных фотографий">
       <div className="feature-photo-heading"><span>Фотографии свадьбы</span><span className="feature-photo-badge">Фото гостей</span></div>
-      {/* Живые кадры со свадьбы, разного размера, как в настоящей галерее
-          гостей, — без подписей поверх: снимки говорят сами. */}
+      {/* Живые кадры со свадьбы без подписей поверх. Все вертикальные и в
+          одном формате 4:5: на телефоне и на компьютере кадр режется
+          одинаково, и пара в центре снимка остаётся целой. */}
       <div className="feature-photo-grid">
-        <Image src="/media/invite-evergreen/couple.webp" alt="Жених и невеста обнимаются под колоннадой" width={1122} height={1402} unoptimized sizes="(max-width: 560px) 42vw, 240px" className="is-tall" />
-        <Image src="/media/invite-evergreen/dance.webp" alt="Первый танец молодожёнов вечером во дворе" width={1122} height={1402} unoptimized sizes="(max-width: 560px) 42vw, 240px" className="is-tall" />
-        <Image src="/media/invite-kraski/couple-sunset.webp" alt="Пара на закате у моря" width={1672} height={941} unoptimized sizes="(max-width: 560px) 42vw, 240px" className="is-wide" />
-        <Image src="/media/invite-iskra/kiss.webp" alt="Жених и невеста в саду среди цветов" width={1672} height={941} unoptimized sizes="(max-width: 560px) 42vw, 240px" className="is-wide" />
+        <Image src="/media/invite-evergreen/dance.webp" alt="Первый танец молодожёнов вечером во дворе" width={1122} height={1402} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
+        <Image src="/media/invite-promise/couple.webp" alt="Улыбающиеся жених и невеста с букетом у моря" width={1000} height={1250} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
+        <Image src="/media/invite-tuscany/couple.webp" alt="Пара обнимается на закате среди холмов" width={1024} height={1536} unoptimized sizes="(max-width: 560px) 42vw, 240px" style={{ objectPosition: "50% 35%" }} />
+        <Image src="/media/invite-kraski/hero.webp" alt="Молодожёны идут по пирсу над морем" width={1122} height={1402} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
       </div>
     </div>;
   }
