@@ -14,12 +14,12 @@ const VISUALS_RU = {
 };
 
 const VISUALS_EN: typeof VISUALS_RU = {
-  invite: { title: "Invitation", alt: "A real screen of the “Love Confession” template in the Vmeste app", width: 780, height: 1688 },
-  rsvp: { title: "RSVPs", alt: "Account screenshot: guest replies, meal choices and the guest list", width: 1264, height: 1100 },
-  seating: { title: "Seating", alt: "A real, filled-in floor plan: 32 guests and the newlyweds at tables of different shapes", width: 2560, height: 2080 },
+  invite: { title: "Invitations", alt: "The “Love Confession” template as it looks in Vmeste", width: 780, height: 1688 },
+  rsvp: { title: "RSVPs", alt: "Dashboard screenshot: RSVPs, meal choices and the guest list", width: 1264, height: 1100 },
+  seating: { title: "Seating chart", alt: "A real seating chart: 32 guests and the couple at tables of different shapes", width: 2560, height: 2080 },
   qr: { title: "QR check-in", alt: "Screenshot of the printable sign editor with a real QR code", width: 1264, height: 1280 },
-  photos: { title: "Photos & album", alt: "A gallery of guests’ wedding photos", width: 1000, height: 900 },
-  raffle: { title: "Raffle", alt: "A real raffle example: 12 participants, the winner is Anastasia Petrova", width: 1264, height: 730 },
+  photos: { title: "Photo album", alt: "A gallery of guests’ wedding photos", width: 1000, height: 900 },
+  raffle: { title: "Raffle", alt: "A real raffle: 12 entrants, with Anastasia Petrova as the winner", width: 1264, height: 730 },
 };
 
 const TEXT = {
@@ -32,8 +32,8 @@ const TEXT = {
   en: {
     gallery: "Sample gallery of wedding photos", heading: "Wedding photos", badge: "Guest photos",
     photos: ["The newlyweds’ first dance in a courtyard at dusk", "A smiling bride and groom with a bouquet by the sea", "A couple embracing at sunset among the hills", "Newlyweds walking along a pier over the sea"],
-    inviteLink: "Open the “Love Confession” invitation", inviteAlt: "A real invitation for Valeria and David on a phone screen",
-    zoom: "View screenshot larger: ", enlarge: "Enlarge ↗", dialog: "Screenshot: ", close: "Close screenshot",
+    inviteLink: "Open the “Love Confession” invitation", inviteAlt: "Valeria and David’s real invitation on a phone screen",
+    zoom: "Enlarge screenshot: ", enlarge: "Enlarge ↗", dialog: "Screenshot: ", close: "Close screenshot",
   },
 };
 

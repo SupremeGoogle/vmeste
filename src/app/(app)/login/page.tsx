@@ -27,7 +27,7 @@ async function pageLang(lang?: string): Promise<Lang> {
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ lang?: string }> }): Promise<Metadata> {
   const lang = await pageLang((await searchParams).lang);
   return lang === "en"
-    ? { title: { absolute: "Sign in — Vmeste" }, description: "Sign in to your wedding organizer account on Vmeste.", alternates: { canonical: "/login" } }
+    ? { title: { absolute: "Sign in — Vmeste" }, description: "Sign in to your Vmeste account to plan your wedding.", alternates: { canonical: "/login" } }
     : { title: "Вход", description: "Вход в кабинет организатора свадьбы в сервисе «Вместе».", alternates: { canonical: "/login" } };
 }
 
@@ -82,15 +82,15 @@ const LOGIN_ERRORS: Record<string, string> = {
 };
 
 const LOGIN_ERRORS_EN: Record<string, string> = {
-  rate: "Too many attempts — please wait a bit.",
-  blocked: "Access to this account has been closed. Please contact support.",
-  google_only: "This address signs in with Google — use the button above.",
+  rate: "Too many attempts — please wait a moment.",
+  blocked: "This account has been suspended. Please contact support.",
+  google_only: "This email uses Google sign-in — use the button above.",
   google_off: "Google sign-in isn’t set up yet.",
   google_cancel: "Google sign-in was canceled.",
   google_state: "This sign-in link has expired — please start again.",
   google_fail: "Google didn’t confirm the sign-in. Please try again.",
-  link: "The link from the email has expired or was already used. Sign in or request a new email.",
-  default: "Wrong email or password.",
+  link: "This email link has expired or has already been used. Sign in or request a new one.",
+  default: "Incorrect email or password.",
 };
 
 const TEXT = {
@@ -100,8 +100,8 @@ const TEXT = {
     email: "Почта", password: "Пароль", submit: "Войти", forgot: "Забыли пароль?", noAccount: "Ещё нет кабинета?", create: "Создать", register: "/register",
   },
   en: {
-    home: "/en", title: "Sign in", subtitle: "Wedding organizer dashboard", google: "Sign in with Google",
-    googleNote: ["By signing in with Google for the first time, you accept the ", "Terms of Service", " and give your ", "consent to the processing of personal data", " (both in Russian)."],
+    home: "/en", title: "Sign in", subtitle: "Your wedding planning dashboard", google: "Sign in with Google",
+    googleNote: ["By signing in with Google for the first time, you accept the ", "Terms of Service", " and ", "consent to the processing of your personal data", " (both in Russian)."],
     email: "Email", password: "Password", submit: "Sign in", forgot: "Forgot your password?", noAccount: "Don’t have an account yet?", create: "Create one", register: "/register?lang=en",
   },
 };

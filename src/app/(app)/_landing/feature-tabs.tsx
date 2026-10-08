@@ -88,12 +88,12 @@ const TABS: Tab[] = [
 const TABS_EN: Tab[] = [
   {
     id: "invite",
-    title: "Invitation",
-    lead: "A personal page for every guest, put together from blocks in a single evening.",
+    title: "Invitations",
+    lead: "A personal page for every guest, built from ready-made blocks in a single evening.",
     points: [
-      "Cover, schedule for the day, directions, dress code, gifts",
-      "A personal link: each guest sees their own name and replies with one tap",
-      "Opens on any phone and weighs less than a photo",
+      "Cover, day-of schedule, directions, dress code and gifts",
+      "Personal links: every guest sees their own name and RSVPs in one tap",
+      "Opens on any phone and is lighter than a single photo",
     ],
     preview: "invite",
   },
@@ -102,41 +102,41 @@ const TABS_EN: Tab[] = [
     title: "RSVPs",
     lead: "Who’s coming, with whom, and what they’ll eat — all tallied for you.",
     points: [
-      "Coming / not coming / not sure yet — plus a named plus-one",
-      "Meal choices land right in a list for the restaurant",
-      "Export to CSV and import the list from your own spreadsheet",
+      "Yes, no or maybe — plus named plus-ones",
+      "Meal choices go straight into a list for your venue",
+      "Import your guest list from a spreadsheet, export to CSV",
     ],
     preview: "rsvp",
   },
   {
     id: "seating",
-    title: "Seating",
-    lead: "Lay out the floor plan with your mouse: round tables, long tables, a head table.",
+    title: "Seating chart",
+    lead: "Build your floor plan with the mouse: round tables, long tables, a head table.",
     points: [
-      "Drag guests and tables around — seats are counted by table shape",
-      "Bride and groom icons show exactly where the newlyweds sit",
-      "The very same plan goes to PDF and print, without a single discrepancy",
+      "Drag guests and tables around — seat counts follow each table’s shape",
+      "Bride and groom icons mark exactly where the couple sits",
+      "The exact same plan exports to PDF for printing — no discrepancies",
     ],
     preview: "seating",
   },
   {
     id: "qr",
     title: "QR check-in",
-    lead: "One code at the entrance for everyone: guests find themselves by name.",
+    lead: "One code at the entrance for everyone — guests look themselves up by name.",
     points: [
-      "Search understands short names — “Nastya” for “Anastasia” — and typos",
-      "All it shows is a name and a table number — nobody else’s details",
+      "Search handles nicknames like “Nastya” for “Anastasia” — and typos",
+      "Shows only a name and table number — no one else’s details",
       "Works from a printed sign — no app and no guest Wi-Fi needed",
     ],
     preview: "qr",
   },
   {
     id: "photos",
-    title: "Photos & album",
-    lead: "Guests’ shots go into a shared gallery, onto the screen at the venue, and into an album after the wedding.",
+    title: "Photo album",
+    lead: "Guest photos go to a shared gallery, onto the big screen at the venue and into a photo album after the wedding.",
     points: [
-      "Guests upload photos from their phones using their own link",
-      "A smart filter checks every photo for 18+ content: anything suspicious waits for your approval and stays hidden from guests and the screen until then",
+      "Guests upload photos from their phones via their personal link",
+      "An AI filter screens every photo for 18+ content: anything flagged waits for your approval and stays hidden from guests and the screen until then",
       "After the wedding, guests can open the album and download the photos",
     ],
     preview: "photos",
@@ -146,9 +146,9 @@ const TABS_EN: Tab[] = [
     title: "Raffle",
     lead: "A spinning drum of guest names — and a fair, verifiable result.",
     points: [
-      "Guests with approved photos take part",
-      "The order is fixed in advance and reproducible, so there’s nothing to argue about",
-      "The winner’s name fills the screen — all the host has to do is announce it",
+      "Every guest with an approved photo is entered",
+      "The draw order is locked in advance and reproducible — nothing to argue about",
+      "The winner’s name fills the screen — your MC just reads it out",
     ],
     preview: "raffle",
   },
@@ -248,7 +248,7 @@ export function FeatureTabs({ lang = "ru" }: { lang?: "ru" | "en" }) {
           </ul>
           <p className="mt-7">
             <Link href={lang === "en" ? "/register?lang=en" : "/register"} className="text-sm text-stone-900 underline underline-offset-4">
-              {lang === "en" ? "Try it for your own wedding →" : "Попробовать на своей свадьбе →"}
+              {lang === "en" ? "Try it for your wedding →" : "Попробовать на своей свадьбе →"}
             </Link>
           </p>
         </motion.div>

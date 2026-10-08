@@ -27,9 +27,9 @@ import "./home.css";
 import "./clay.css";
 
 export const EN_NAME = "Vmeste";
-export const EN_TITLE = "Vmeste — wedding planning app: invitations, RSVPs, seating charts";
+export const EN_TITLE = "Vmeste — wedding planning app for invitations, RSVPs and seating charts";
 export const EN_DESCRIPTION =
-  "Online wedding invitations, guest RSVPs, seating charts, QR check-in and a shared photo album — everything for your wedding in one place.";
+  "Online wedding invitations, RSVPs, seating charts, QR check-in and a shared photo album — your whole wedding in one place.";
 
 const FEATURE_LIST = {
   ru: [
@@ -43,12 +43,12 @@ const FEATURE_LIST = {
   ],
   en: [
     "Online wedding invitations with a personal link for every guest",
-    "Guest RSVPs: attendance, meal and drink choices",
-    "Seating chart with guests placed at tables on the floor plan",
-    "QR check-in so guests can find their own seat",
-    "Guest photos with AI moderation and a shared album",
-    "Gift list without duplicates",
-    "Guest import from Excel and CSV, printing to PDF",
+    "RSVPs with attendance, meal and drink choices",
+    "Seating chart: place guests at tables on your floor plan",
+    "QR check-in that shows each guest their seat",
+    "Guest photos with AI moderation and a shared photo album",
+    "Gift list that prevents duplicate gifts",
+    "Guest list import from Excel or CSV, PDF export for printing",
   ],
 };
 
@@ -169,27 +169,27 @@ const COPY: Record<Lang, Copy> = {
     },
   },
   en: {
-    cta: (signedIn) => (signedIn ? "Go to my account" : "Create a wedding"),
+    cta: (signedIn) => (signedIn ? "Go to my account" : "Create your wedding"),
     register: "/register?lang=en",
     login: "/login?lang=en",
     features: {
       kicker: "Features",
       title: <>Everything for your wedding, <em>all in one place</em></>,
-      lead: "From the first invitation to the last dance: tools that all work from a single guest list and never lose a detail.",
+      lead: "From the first invitation to the last dance — every tool works from one guest list, so no detail slips through.",
     },
     invites: {
       kicker: "Invitations",
       title: <>An invitation <em>worth keeping</em></>,
-      lead: "Designer templates with the fonts, colors and details already thought through. Guests open the invitation on any phone and reply with a single tap.",
+      lead: "Designer templates with the fonts, colors and details already worked out. Guests open their invitation on any phone and RSVP in one tap.",
     },
     seating: {
       kicker: "Seating & QR check-in",
-      title: <>Every guest has <em>a place of their own</em></>,
-      lead: "You seat your guests on the floor plan, and on the wedding day everyone finds their own table by scanning a QR code at the entrance — no usher with a clipboard needed.",
-      step1: "You do the seating: tap a guest, then an empty seat",
+      title: <>A place for <em>every guest</em></>,
+      lead: "Seat your guests on the floor plan, and on the day everyone finds their own table by scanning a QR code at the entrance — no usher with a clipboard required.",
+      step1: "You plan the seating: tap a guest, then an empty seat",
       step2: "On the day, guests find their own seats",
       steps: [
-        ["They scan the QR code", "With their phone camera, from the sign at the entrance."],
+        ["They scan the QR code", "With their phone camera, on the sign at the entrance."],
         ["They type their name", "Search understands “Nastya” for “Anastasia” — and typos, too."],
         ["They see their table and seat", "Plus a floor plan with their table highlighted."],
       ],
@@ -197,22 +197,22 @@ const COPY: Record<Lang, Copy> = {
     faq: {
       kicker: "Questions & answers",
       title: <>We’re with you <em>every step of the way</em></>,
-      lead: "Here’s what people ask us most often. Everything else is easiest to try out in your own account.",
+      lead: "Here’s what couples ask us most. For everything else, the quickest answer is to try it in your account.",
     },
     final: {
       kicker: "Vmeste",
       title: <>Let this day be <em>all about you</em></>,
-      lead: "Create your wedding now — you could be inviting guests as soon as tonight.",
+      lead: "Create your wedding now and start inviting guests as soon as tonight.",
     },
     footer: {
-      tagline: "Invitations, guests, seating and photos — everything for your wedding in one place.",
+      tagline: "Invitations, guest list, seating and photos — your whole wedding in one place.",
       product: "Product",
       featuresLink: "Features",
       seatingLink: "Seating",
       account: "Account",
       myAccount: "My account",
       signIn: "Sign in",
-      create: "Create a wedding",
+      create: "Create your wedding",
       faq: "FAQ",
       legal: "Legal",
       brand: "Vmeste",

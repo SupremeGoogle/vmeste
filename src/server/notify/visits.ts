@@ -8,7 +8,8 @@
  * чат: сверх потолка заходы считаются и приходят одной сводкой.
  *
  * Ни адрес, ни полный User-Agent не хранятся и не уходят в Telegram —
- * только хеш для повтора, раздел сайта, источник и тип устройства.
+ * только хеш для повтора, раздел сайта, источник, тип устройства, страна
+ * (ради неё адрес один раз уходит в country.is) и поведение на странице.
  * Токены именных ссылок из пути вырезаются.
  */
 import { createHash } from "node:crypto";
@@ -94,7 +95,50 @@ export function resetVisitState() {
   suppressed = 0;
 }
 
-export type Visit = { path: string; referrer: string; width?: number; language?: string; userAgent: string; address: string; ownHost: string | null };
+export type Visit = {
+  path: string;
+  referrer: string;
+  width?: number;
+  language?: string;
+  userAgent: string;
+  address: string;
+  ownHost: string | null;
+  /** Поведение до ухода со страницы (lib/visit-beacon.ts). */
+  exitPath?: string;
+  seconds?: number;
+  scroll?: number;
+  clicks?: string[];
+};
+
+/** «1 мин 12 с», «40 с». */
+export function durationOf(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m ? `${m} мин${s ? ` ${s} с` : ""}` : `${s} с`;
+}
+
+/**
+ * Страна по IP — через открытый сервис country.is (исходники открыты,
+ * база DB-IP/MaxMind). Адрес больше никуда не уходит и не хранится;
+ * не ответил за 2 секунды — пишем без страны.
+ */
+export async function countryOf(address: string): Promise<string | null> {
+  if (!address || /^(127\.|10\.|192\.168\.|::1|unknown)/.test(address)) return null;
+  try {
+    const res = await fetch(`https://api.country.is/${encodeURIComponent(address)}`, { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) return null;
+    const code = String(((await res.json()) as { country?: unknown }).country ?? "");
+    if (!/^[A-Z]{2}$/.test(code)) return null;
+    const flag = String.fromCodePoint(...[...code].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+    let name = code;
+    try {
+      name = new Intl.DisplayNames(["ru"], { type: "region" }).of(code) ?? code;
+    } catch {}
+    return `${flag} ${name}`;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Решить, писать ли владельцу, и написать. Возвращает, что сделали —
@@ -124,14 +168,29 @@ export function recordVisit(visit: Visit, now = Date.now()): "bot" | "repeat" | 
   sentInWindow += 1;
 
   const path = maskPath(visit.path);
-  const lines = [
-    `👀 Новый посетитель — ${sectionOf(visit.path)}`,
-    `Страница: ${path}`,
-    `Откуда: ${sourceOf(visit.referrer, visit.ownHost)}`,
-    `Устройство: ${deviceOf(visit.userAgent, visit.width)}`,
-    ...(visit.language ? [`Язык: ${visit.language.slice(0, 12)}`] : []),
-  ];
-  if (sentInWindow === VISITS_PER_HOUR) lines.push("Это 40-й за час — дальше пришлю одной сводкой.");
-  void notifyOwner(lines.join("\n")).catch(() => false);
+  const exit = visit.exitPath ? maskPath(visit.exitPath) : null;
+  const behaviour = [
+    typeof visit.seconds === "number" ? `пробыл ${durationOf(visit.seconds)}` : "",
+    typeof visit.scroll === "number" ? `долистал до ${visit.scroll}%` : "",
+  ].filter(Boolean).join(" · ");
+  const lastOfHour = sentInWindow === VISITS_PER_HOUR;
+  const send = (country: string | null) => {
+    const lines = [
+      `👤 Живой посетитель — ${sectionOf(visit.path)}`,
+      ...(country ? [`Страна: ${country}`] : []),
+      `Страница: ${path}`,
+      `Откуда: ${sourceOf(visit.referrer, visit.ownHost)}`,
+      `Устройство: ${deviceOf(visit.userAgent, visit.width)}`,
+      ...(visit.language ? [`Язык: ${visit.language.slice(0, 12)}`] : []),
+      ...(behaviour ? [`Поведение: ${behaviour}`] : []),
+      ...(visit.clicks?.length ? [`Нажимал: ${visit.clicks.map((c) => `«${c}»`).join(", ")}`] : []),
+      ...(exit && exit !== path ? [`Ушёл со страницы: ${exit}`] : []),
+    ];
+    if (lastOfHour) lines.push("Это 40-й за час — дальше пришлю одной сводкой.");
+    return notifyOwner(lines.join("\n"));
+  };
+  // В тестах страну не спрашиваем: без сети и сразу, как раньше.
+  if (process.env.NODE_ENV === "test") void send(null).catch(() => false);
+  else void countryOf(visit.address).then(send).catch(() => false);
   return "sent";
 }

@@ -10,7 +10,7 @@ const TEXT = {
   },
   en: {
     phones: "Sample invitations", open: (name: string) => `Open the “${name}” invitation`, alt: (name: string) => `The “${name}” invitation`,
-    all: "See all invitations", collapse: "Collapse the catalog", catalog: "All invitation templates", first: (name: string) => `Opening screen of the “${name}” invitation`,
+    all: "See all invitations", collapse: "Show fewer", catalog: "All invitation templates", first: (name: string) => `Opening screen of the “${name}” invitation`,
   },
 };
 

@@ -4,12 +4,12 @@ import { useState } from "react";
 
 const FEATURES = {
   ru: ["Приглашения", "Ответы гостей", "Рассадка", "Вход по QR", "Фотоальбом", "Подарки", "Музыка", "Розыгрыш"],
-  en: ["Invitations", "RSVPs", "Seating", "QR check-in", "Photo album", "Gifts", "Music", "Raffle"],
+  en: ["Invitations", "RSVPs", "Seating chart", "QR check-in", "Photo album", "Gift list", "Music", "Raffle"],
 };
 
 const TEXT = {
   ru: { region: "Всё для вашего дня", resume: "Продолжить движение лент", pause: "Остановить движение лент" },
-  en: { region: "Everything for your day", resume: "Resume the ribbons", pause: "Pause the ribbons" },
+  en: { region: "Everything for your day", resume: "Resume animation", pause: "Pause animation" },
 };
 
 export function FeatureRibbons({ lang = "ru" }: { lang?: "ru" | "en" }) {

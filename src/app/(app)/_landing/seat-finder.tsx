@@ -9,8 +9,8 @@ const TEXT = {
   },
   en: {
     sign: "Open a sample guest page", kicker: "Welcome", title: "Find your seat", qr: "QR code — open a sample guest page",
-    note: "Point your phone camera here", link: "Or open the example ↗", phone: "Open the real guest page",
-    shot: "The real guest page screen: Anya and Misha’s wedding, finding your seat", caption: "The real guest page — exactly how it looks on a phone",
+    note: "Point your phone camera here", link: "Or open the sample ↗", phone: "Open the real guest page",
+    shot: "The actual guest page for Anya and Misha’s wedding, with seat search", caption: "The actual guest page, exactly as it looks on a phone",
   },
 };
 

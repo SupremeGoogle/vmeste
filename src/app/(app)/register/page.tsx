@@ -32,7 +32,7 @@ async function pageLang(lang?: string): Promise<Lang> {
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ lang?: string }> }): Promise<Metadata> {
   const lang = await pageLang((await searchParams).lang);
   return lang === "en"
-    ? { title: { absolute: "Create account — Vmeste" }, description: "Create an account and start planning your wedding: invitations, guest list, RSVPs and seating in one place.", alternates: { canonical: "/register" } }
+    ? { title: { absolute: "Create an account — Vmeste" }, description: "Create an account and start planning your wedding: invitations, guest list, RSVPs and seating charts in one place.", alternates: { canonical: "/register" } }
     : { title: "Регистрация", description: "Создайте кабинет и начните готовить свадьбу: приглашения, список гостей, ответы и рассадка в одном месте.", alternates: { canonical: "/register" } };
 }
 
@@ -50,19 +50,19 @@ const ERRORS_EN: Record<string, string> = {
   email: "Please check your email address.",
   password_short: `Your password must be at least ${PASSWORD_MIN} characters.`,
   password_long: "That password is too long.",
-  password_weak: "This password is too simple — it’s the first one attackers try.",
+  password_weak: "This password is too common — it’s one of the first attackers try.",
   password_mismatch: "The passwords don’t match.",
   link: "This link has expired or was already used — please request a new one.",
   rate: "Too many attempts — please wait a few minutes.",
-  code_wrong: "That code doesn’t match — check the digits from the email.",
+  code_wrong: "That code is incorrect — double-check the digits in the email.",
   code_expired: "The code has expired — we’ll send you a new one.",
   code_attempts: "Too many wrong attempts — please request a new code.",
   google_off: "Google sign-in isn’t set up yet.",
   google_cancel: "Google sign-in was canceled — please try again.",
   google_state: "This sign-in link has expired — please start again.",
   google_fail: "Google didn’t confirm the sign-in. Please try again.",
-  blocked: "Access to this account has been closed. Please contact support.",
-  consent: "Please tick the consent box — we can’t create an account without it.",
+  blocked: "This account has been suspended. Please contact support.",
+  consent: "Please check the consent box — we can’t create an account without it.",
 };
 
 const TEXT = {
@@ -77,11 +77,11 @@ const TEXT = {
   },
   en: {
     home: "/en", title: "Create your account", subtitle: "Invitations, guests and seating — all in one place", google: "Continue with Google",
-    googleNote: ["By continuing with Google, you accept the ", "Terms of Service", " and give your ", "consent to the processing of personal data", " (both in Russian)."],
-    unavailable: "Sign-up is temporarily unavailable. Write to us and we’ll set up your account by hand.",
+    googleNote: ["By continuing with Google, you accept the ", "Terms of Service", " and ", "consent to the processing of your personal data", " (both in Russian)."],
+    unavailable: "Sign-up is temporarily unavailable. Contact us and we’ll set up your account manually.",
     email: "Email", password: "Password", min: `At least ${PASSWORD_MIN} characters`,
-    consent: ["I accept the ", "Terms of Service", " and give my ", "consent to the processing of personal data", " in accordance with the ", "Privacy Policy", " (documents in Russian)"],
-    submit: "Create account", code: "We’ll email you a 6-digit code — enter it and your account will open.", fallback: "Something went wrong — please try again.",
+    consent: ["I accept the ", "Terms of Service", " and ", "consent to the processing of my personal data", " under the ", "Privacy Policy", " (documents in Russian)"],
+    submit: "Create account", code: "We’ll email you a 6-digit code — enter it to open your account.", fallback: "Something went wrong — please try again.",
     hasAccount: "Already have an account?", login: "Sign in", loginHref: "/login?lang=en",
   },
 };

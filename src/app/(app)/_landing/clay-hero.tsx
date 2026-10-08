@@ -11,7 +11,7 @@ export function ClayHero({ destination, cta, lang = "ru" }: { destination: strin
           {en ? (
             <>
               <h1 id="home-title">Your day.<br />Your people.<br /><em>All together.</em></h1>
-              <p className="clay-hero-lead">Invite your guests, collect RSVPs and plan the seating — all in one place. And actually enjoy getting ready.</p>
+              <p className="clay-hero-lead">Invite guests, collect RSVPs and plan the seating — all in one place, so you can actually enjoy the planning.</p>
             </>
           ) : (
             <>
@@ -23,7 +23,7 @@ export function ClayHero({ destination, cta, lang = "ru" }: { destination: strin
 
         <div className="clay-mascot">
           <div className="clay-mascot-media">
-            <Image src="/media/mascot/mascot-ivory-poster.webp" alt={en ? "The Vmeste mascot — a little white bird with a burgundy bow and an invitation" : "Маскот «Вместе» — белая птичка с бордовым бантом и приглашением"} fill preload unoptimized sizes="(max-width: 560px) 48vw, 400px" />
+            <Image src="/media/mascot/mascot-ivory-poster.webp" alt={en ? "Vmeste mascot: a little white bird with a burgundy bow, holding an invitation" : "Маскот «Вместе» — белая птичка с бордовым бантом и приглашением"} fill preload unoptimized sizes="(max-width: 560px) 48vw, 400px" />
             <HeroVideo src="/media/mascot/mascot-ivory.mp4" poster="/media/mascot/mascot-ivory-poster.webp" />
           </div>
         </div>

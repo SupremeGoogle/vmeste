@@ -24,7 +24,7 @@ const LINKS = [
 
 const TEXT = {
   ru: { home: "/", brand: "Вместе — на главную", sections: "Разделы", account: "Личный кабинет", login: "Войти", register: "Создать свадьбу", close: "Закрыть меню", open: "Открыть меню", loginHref: "/login", registerHref: "/register" },
-  en: { home: "/en", brand: "Vmeste — home", sections: "Sections", account: "My account", login: "Sign in", register: "Create a wedding", close: "Close menu", open: "Open menu", loginHref: "/login?lang=en", registerHref: "/register?lang=en" },
+  en: { home: "/en", brand: "Vmeste home", sections: "Sections", account: "My account", login: "Sign in", register: "Create your wedding", close: "Close menu", open: "Open menu", loginHref: "/login?lang=en", registerHref: "/register?lang=en" },
 };
 
 export function Nav({ userName, lang = "ru" }: { userName: string | null; lang?: Lang }) {
