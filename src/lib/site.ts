@@ -19,5 +19,21 @@ export const OPERATOR = {
   email: "support@vvvmeste.com",
 };
 
+/**
+ * Коды подтверждения прав на сайт. Google и Яндекс подтверждены записью
+ * в DNS, Bing — meta-тегом на главной (его удалять нельзя: Bing
+ * периодически перепроверяет).
+ */
+export const BING_VERIFICATION = "4CB7192A7A37A65EC255AB924564323B";
+
+/** Счётчик Яндекс Метрики (кабинет gafarov.akb). */
+export const METRIKA_ID = 113573407;
+
+/**
+ * Ключ IndexNow: им Яндекс и Bing проверяют, что уведомления о новых
+ * страницах шлёт владелец сайта. Тот же ключ лежит в public/<ключ>.txt.
+ */
+export const INDEXNOW_KEY = "b4679f65b6e26c97cd4696693b8a5387";
+
 /** Дата вступления в силу текущих редакций документов. */
 export const LEGAL_UPDATED = "9 октября 2026 г.";

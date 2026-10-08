@@ -9,7 +9,8 @@ import { MotionRoot } from "@/components/motion/motion";
 import Script from "next/script";
 import { rybbitScriptProps } from "@/server/analytics/rybbit";
 import { VISIT_BEACON } from "@/lib/visit-beacon";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { BING_VERIFICATION, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { Metrika } from "@/components/metrika";
 import { CookieNotice } from "@/components/cookie-notice";
 
 export const metadata: Metadata = {
@@ -18,12 +19,8 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   openGraph: { type: "website", locale: "ru_RU", siteName: SITE_NAME },
-  // Коды подтверждения Search Console и Яндекс.Вебмастера — из окружения:
-  // меняются без правки кода, а пустые не выводятся вовсе.
-  verification: {
-    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
-    yandex: process.env.YANDEX_VERIFICATION || undefined,
-  },
+  // Google и Яндекс подтверждены через DNS; Bing — этим meta-тегом.
+  verification: { other: { "msvalidate.01": BING_VERIFICATION } },
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <body className="min-h-screen bg-stone-50 text-stone-900 antialiased">
         <MotionRoot>{children}</MotionRoot>
         <CookieNotice />
+        <Metrika />
         {/* Новый посетитель — уведомление владельцу в Telegram (api/visit). */}
         {/* Без условия: страница может собираться заранее, без переменных бота;
             без бота сервер отметку просто не пересылает. */}
