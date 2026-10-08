@@ -4,6 +4,7 @@ import { BrandLogo } from "@/components/brand";
  * после подтверждения почты (services/email-auth.ts).
  */
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { verifyPassword } from "@/server/auth/password";
@@ -14,6 +15,12 @@ import { emailConfigured } from "@/server/email/send";
 import { GoogleButton, OrRule } from "../_auth/google-button";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Вход",
+  description: "Вход в кабинет организатора свадьбы в сервисе «Вместе».",
+  alternates: { canonical: "/login" },
+};
 
 async function login(formData: FormData) {
   "use server";
@@ -83,6 +90,10 @@ export default async function LoginPage({
       {googleEnabled() && (
         <>
           <GoogleButton label="Войти через Google" />
+          <p className="mt-3 text-center text-xs leading-relaxed text-stone-500">
+            Входя через Google впервые, вы принимаете <Link href="/offer" className="underline">оферту</Link> и даёте{" "}
+            <Link href="/consent" className="underline">согласие на обработку персональных данных</Link>.
+          </p>
           <OrRule />
         </>
       )}

@@ -1,0 +1,13 @@
+/* Типографика юридических документов: длинный текст, нумерация пунктов. */
+.legal { color: var(--color-stone-700); font-size: 15px; line-height: 1.7; }
+.legal h2 { margin: 2.2em 0 .6em; color: var(--color-stone-900); font-size: 1.25rem; font-weight: 600; line-height: 1.35; }
+.legal h3 { margin: 1.6em 0 .4em; color: var(--color-stone-900); font-size: 1.05rem; font-weight: 600; }
+.legal p, .legal ul, .legal ol { margin: .7em 0; }
+.legal ul { padding-left: 1.3em; list-style: disc; }
+.legal ol { padding-left: 1.3em; list-style: decimal; }
+.legal li { margin: .3em 0; }
+.legal a { text-decoration: underline; text-underline-offset: 3px; }
+.legal table { width: 100%; margin: 1em 0; border-collapse: collapse; font-size: 14px; }
+.legal th, .legal td { padding: .5em .6em; border: 1px solid var(--color-stone-200); text-align: left; vertical-align: top; }
+.legal th { background: var(--color-stone-100); color: var(--color-stone-900); font-weight: 600; }
+.legal .legal-table { overflow-x: auto; }

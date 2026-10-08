@@ -10,6 +10,7 @@ import { BrandLogo } from "@/components/brand";
  * занял бы чужой адрес.
  */
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { googleEnabled } from "@/server/auth/google";
 import { rateLimit } from "@/server/rate-limit";
@@ -20,12 +21,19 @@ import { GoogleButton, OrRule } from "../_auth/google-button";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "Регистрация",
+  description: "Создайте кабинет и начните готовить свадьбу: приглашения, список гостей, ответы и рассадка в одном месте.",
+  alternates: { canonical: "/register" },
+};
+
 const GOOGLE_ERRORS: Record<string, string> = {
   google_off: "Вход через Google пока не настроен.",
   google_cancel: "Вход через Google отменён — попробуйте ещё раз.",
   google_state: "Ссылка входа устарела, начните заново.",
   google_fail: "Google не подтвердил вход. Попробуйте ещё раз.",
   blocked: "Доступ к кабинету закрыт. Напишите в поддержку.",
+  consent: "Отметьте согласие с условиями — без него кабинет не создать.",
 };
 
 async function register(formData: FormData) {
@@ -33,6 +41,8 @@ async function register(formData: FormData) {
   // Письма не настроены — кабинет без кода подтверждения не открыть.
   if (!emailConfigured()) redirect("/register");
   const email = normalizeEmail(String(formData.get("email") ?? ""));
+  // Согласие по 152-ФЗ — активное действие; браузерный `required` можно обойти.
+  if (formData.get("consent") !== "on") redirect(`/register?error=consent&email=${encodeURIComponent(email)}`);
   const { ip } = await requestOrigin();
   // Против рассылки писем по чужим адресам: 5 регистраций в час на адрес
   // почты и 20 — с одного IP (площадка с общим Wi-Fi остаётся в запасе).
@@ -72,6 +82,10 @@ export default async function RegisterPage({
       {enabled && (
         <>
           <GoogleButton label="Продолжить с Google" />
+          <p className="mt-3 text-center text-xs leading-relaxed text-stone-500">
+            Продолжая с Google, вы принимаете <Link href="/offer" className="underline">оферту</Link> и даёте{" "}
+            <Link href="/consent" className="underline">согласие на обработку персональных данных</Link>.
+          </p>
           {emailOn && <OrRule />}
         </>
       )}
@@ -98,6 +112,15 @@ export default async function RegisterPage({
           />
           <p className="mt-1 text-xs text-stone-500">Не короче {PASSWORD_MIN} символов</p>
         </div>
+
+        <label className="flex items-start gap-2.5 text-xs leading-relaxed text-stone-600">
+          <input type="checkbox" name="consent" required className="mt-0.5 size-4 shrink-0 accent-stone-900" />
+          <span>
+            Принимаю условия <Link href="/offer" className="underline">оферты</Link> и даю{" "}
+            <Link href="/consent" className="underline">согласие на обработку персональных данных</Link> в соответствии
+            с <Link href="/privacy" className="underline">Политикой конфиденциальности</Link>
+          </span>
+        </label>
 
         {message && <p className="text-sm text-red-700">{message}</p>}
 

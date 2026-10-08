@@ -13,6 +13,9 @@ import { ClayHero } from "./_landing/clay-hero";
 import { LandingIntro } from "./_landing/landing-intro";
 import { FeatureRibbons } from "./_landing/feature-ribbons";
 import { InviteShowcase } from "./_landing/invite-showcase";
+import { FAQ_ITEMS } from "./_landing/faq-items";
+import { LegalLinks } from "./(legal)/_legal/links";
+import { OPERATOR, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import "./_landing/landing.css";
 import "./_landing/home.css";
 import "./_landing/clay.css";
@@ -20,9 +23,64 @@ import "./_landing/clay.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Вместе — свадьба, продуманная до мелочей",
-  description:
-    "Приглашения, ответы гостей, рассадка и фотографии праздника — всё для свадьбы в одном месте.",
+  title: { absolute: SITE_TITLE },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/media/brand-hero.webp", alt: "Вместе — сервис для организации свадьбы" }],
+  },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: ["/media/brand-hero.webp"] },
+};
+
+/**
+ * Разметка для поисковиков и ИИ-поиска: кто мы (Organization), что за
+ * сайт (WebSite), что за сервис (WebApplication) и вопросы-ответы
+ * (FAQPage — те же тексты, что в блоке «Вопросы»).
+ */
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#org`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon.png`,
+      email: OPERATOR.email,
+      contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: OPERATOR.email, availableLanguage: "ru" },
+    },
+    { "@type": "WebSite", "@id": `${SITE_URL}/#site`, name: SITE_NAME, url: SITE_URL, inLanguage: "ru", publisher: { "@id": `${SITE_URL}/#org` } },
+    {
+      "@type": "WebApplication",
+      name: SITE_NAME,
+      url: SITE_URL,
+      applicationCategory: "LifestyleApplication",
+      operatingSystem: "Web",
+      inLanguage: "ru",
+      description: SITE_DESCRIPTION,
+      featureList: [
+        "Электронные приглашения на свадьбу по именной ссылке",
+        "Сбор ответов гостей (RSVP): присутствие, меню, напитки",
+        "Рассадка гостей по столам на плане зала",
+        "Вход гостей по QR-коду и поиск своего места",
+        "Фотографии гостей с ИИ-модерацией и общий альбом",
+        "Список подарков без повторов",
+        "Импорт гостей из Excel и CSV, печать в PDF",
+      ],
+      publisher: { "@id": `${SITE_URL}/#org` },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ_ITEMS.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: { "@type": "Answer", text: item.a },
+      })),
+    },
+  ],
 };
 
 const PHOTO = {
@@ -37,6 +95,11 @@ export default async function HomePage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        // `<` экранирован: текст ответа не может закрыть тег script.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }}
+      />
       <LandingIntro />
       <Nav userName={user?.name ?? null} />
       <main className="home home--clay">
@@ -183,6 +246,12 @@ export default async function HomePage() {
                   </>
                 )}
                 <li><a href="#voprosy">Вопросы</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4>Документы</h4>
+              <ul>
+                <LegalLinks />
               </ul>
             </div>
           </div>
