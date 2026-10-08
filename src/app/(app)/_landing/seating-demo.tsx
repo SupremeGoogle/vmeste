@@ -46,7 +46,7 @@ const HIT_RADIUS = 19;
 
 // Фамилии не длиннее восьми букв: тогда подпись у круглого стола встаёт
 // в две аккуратные строки и не уходит в наклон.
-const NAMES = [
+const NAMES_RU = [
   "Анна Ветрова", "Михаил Ветров", "Ирина Соколова", "Павел Крылов", "Мария Гринёва",
   "Тимур Асланов", "Ольга Литвин", "Артём Дроздов", "Елена Орлова", "Денис Морозов",
   "Ксения Белова", "Игорь Зайцев", "Софья Лебедева", "Никита Козлов", "Дарья Новикова",
@@ -57,11 +57,30 @@ const NAMES = [
   "Лев Захаров", "Алина Рябова", "Фёдор Котов", "Майя Жданова", "Ян Белов",
 ];
 
-const ALL_GUESTS: Guest[] = NAMES.map((name, index) => ({
+// Те же гости для английской версии: короткие фамилии по той же причине.
+const NAMES_EN = [
+  "Anna Weston", "Michael Weston", "Irene Cole", "Paul Carter", "Maria Green",
+  "Tyler Adams", "Olivia Lane", "Arthur Drake", "Ellen Ortiz", "Dennis Moore",
+  "Kate Bell", "Ian Hayes", "Sophie Lewis", "Nick Cooper", "Daria Novak",
+  "Ryan Evans", "Alice Ford", "Glen Smith", "Vera Price", "Owen Tate",
+  "Polly Brooks", "Max Wolfe", "Julia Kemp", "Kyle Porter", "Nina Sears",
+  "Tony Byrd", "Mila Kuhn", "Evan Mead", "Lydia Karp", "Steve Gray",
+  "Eva King", "Eli Chen", "Zoe Ward", "Brian Todd", "Tess Nolan",
+  "Leo Shaw", "Amy Reid", "Fred Cole", "Maya Dunn", "Jay Bloom",
+];
+
+const guestsFrom = (names: string[]): Guest[] => names.map((name, index) => ({
   id: `g${index + 1}`,
   name,
   role: index === 0 ? "BRIDE" : index === 1 ? "GROOM" : "GUEST",
 }));
+
+type DemoLang = "ru" | "en";
+
+const TEXT = {
+  ru: { couple: "Молодожёны", table: (n: number) => `Стол ${n}`, plan: "Демонстрационный план зала", empty: "Свободное место" },
+  en: { couple: "Newlyweds", table: (n: number) => `Table ${n}`, plan: "Sample floor plan", empty: "Empty seat" },
+};
 
 /**
  * `width` — шире стандартного: у длинного стола и стола молодожёнов места
@@ -99,36 +118,6 @@ function seatInOrder(tables: DemoTable[], guests: Guest[], seated: number[]): Re
   });
   return start;
 }
-
-// Два ряда: так зал целиком помещается в невысокий блок.
-const WIDE_TABLES = [
-  table("couple", "Молодожёны", "HEAD", 560, 150, 4, { isCouple: true, width: 330 }),
-  table("t1", "Стол 1", "ROUND", 170, 150, 8),
-  table("t3", "Стол 3", "ROUND", 950, 150, 8),
-  table("t2", "Стол 2", "RECT", 560, 425, 8, { width: 300 }),
-  table("t4", "Стол 4", "ROUND", 225, 425, 8),
-  table("t5", "Стол 5", "ROUND", 895, 425, 8),
-];
-
-// На телефоне — стол молодожёнов и один круглый стол в натуральную
-// величину: больше в ширину экрана читаемо не помещается.
-const NARROW_TABLES = [
-  { ...table("couple", "Молодожёны", "HEAD", 0, 0, 4, { isCouple: true, width: 220 }), height: 56 },
-  table("t1", "Стол 1", "ROUND", 0, 195, 8),
-];
-
-const WIDE: Layout = {
-  tables: WIDE_TABLES,
-  guests: ALL_GUESTS,
-  start: seatInOrder(WIDE_TABLES, ALL_GUESTS.slice(0, 36), [4, 7, 7, 7, 7, 4]),
-};
-
-const NARROW_GUESTS = ALL_GUESTS.slice(0, 14);
-const NARROW: Layout = {
-  tables: NARROW_TABLES,
-  guests: NARROW_GUESTS,
-  start: seatInOrder(NARROW_TABLES, NARROW_GUESTS.slice(0, 11), [4, 7]),
-};
 
 /** Ширина текста подписи в единицах плана — с тем же запасом, что в геометрии. */
 const textWidth = (line: string, fontSize: number) => line.length * 0.58 * fontSize;
@@ -183,8 +172,50 @@ function planBox(tables: DemoTable[], names: string[]) {
   return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
 }
 
-const WIDE_BOX = planBox(WIDE.tables, WIDE.guests.map((guest) => guest.name));
-const NARROW_BOX = planBox(NARROW.tables, NARROW.guests.map((guest) => guest.name));
+function plans(lang: DemoLang) {
+  const t = TEXT[lang];
+  const guests = guestsFrom(lang === "en" ? NAMES_EN : NAMES_RU);
+
+  // Два ряда: так зал целиком помещается в невысокий блок.
+  const wideTables = [
+    table("couple", t.couple, "HEAD", 560, 150, 4, { isCouple: true, width: 330 }),
+    table("t1", t.table(1), "ROUND", 170, 150, 8),
+    table("t3", t.table(3), "ROUND", 950, 150, 8),
+    table("t2", t.table(2), "RECT", 560, 425, 8, { width: 300 }),
+    table("t4", t.table(4), "ROUND", 225, 425, 8),
+    table("t5", t.table(5), "ROUND", 895, 425, 8),
+  ];
+
+  // На телефоне — стол молодожёнов и один круглый стол в натуральную
+  // величину: больше в ширину экрана читаемо не помещается.
+  const narrowTables = [
+    { ...table("couple", t.couple, "HEAD", 0, 0, 4, { isCouple: true, width: 220 }), height: 56 },
+    table("t1", t.table(1), "ROUND", 0, 195, 8),
+  ];
+
+  const wide: Layout = {
+    tables: wideTables,
+    guests,
+    start: seatInOrder(wideTables, guests.slice(0, 36), [4, 7, 7, 7, 7, 4]),
+  };
+
+  const narrowGuests = guests.slice(0, 14);
+  const narrow: Layout = {
+    tables: narrowTables,
+    guests: narrowGuests,
+    start: seatInOrder(narrowTables, narrowGuests.slice(0, 11), [4, 7]),
+  };
+
+  return {
+    wide,
+    narrow,
+    wideBox: planBox(wide.tables, wide.guests.map((guest) => guest.name)),
+    narrowBox: planBox(narrow.tables, narrow.guests.map((guest) => guest.name)),
+  };
+}
+
+const PLANS = { ru: plans("ru"), en: plans("en") };
+
 
 const NARROW_QUERY = "(max-width: 639px)";
 
@@ -194,7 +225,8 @@ function subscribe(onChange: () => void) {
   return () => query.removeEventListener("change", onChange);
 }
 
-export function SeatingDemo() {
+export function SeatingDemo({ lang = "ru" }: { lang?: DemoLang }) {
+  const plan = PLANS[lang];
   // На сервере ширины экрана нет — рисуем широкий план, телефон
   // переключится на свой сразу после загрузки.
   const narrow = useSyncExternalStore(
@@ -205,13 +237,14 @@ export function SeatingDemo() {
 
   // `key` сбрасывает рассадку при смене плана: у планов разные столы.
   return narrow ? (
-    <Board key="narrow" layout={NARROW} box={NARROW_BOX} />
+    <Board key="narrow" layout={plan.narrow} box={plan.narrowBox} lang={lang} />
   ) : (
-    <Board key="wide" layout={WIDE} box={WIDE_BOX} />
+    <Board key="wide" layout={plan.wide} box={plan.wideBox} lang={lang} />
   );
 }
 
-function Board({ layout, box }: { layout: Layout; box: ReturnType<typeof planBox> }) {
+function Board({ layout, box, lang }: { layout: Layout; box: ReturnType<typeof planBox>; lang: DemoLang }) {
+  const t = TEXT[lang];
   const [seats, setSeats] = useState<Record<string, string>>(layout.start);
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -248,7 +281,7 @@ function Board({ layout, box }: { layout: Layout; box: ReturnType<typeof planBox
           viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
           className="block h-auto w-full touch-manipulation"
           role="img"
-          aria-label="Демонстрационный план зала"
+          aria-label={t.plan}
         >
           {layout.tables.map((one) => {
             const fit = fitSeatLabels(
@@ -283,6 +316,7 @@ function Board({ layout, box }: { layout: Layout; box: ReturnType<typeof planBox
                     fit={fit}
                     guest={guestAt(key(one.id, index))}
                     picked={picked}
+                    emptyLabel={t.empty}
                     onTap={() => tapSeat(key(one.id, index))}
                   />
                 ))}
@@ -302,6 +336,7 @@ function Seat({
   fit,
   guest,
   picked,
+  emptyLabel,
   onTap,
 }: {
   table: DemoTable;
@@ -309,6 +344,7 @@ function Seat({
   fit: LabelFit;
   guest: Guest | null;
   picked: string | null;
+  emptyLabel: string;
   onTap: () => void;
 }) {
   const point = seatPosition(one, index);
@@ -328,7 +364,7 @@ function Seat({
           onTap();
         }
       }}
-      aria-label={guest ? `${guest.name}, ${one.title}` : `Свободное место, ${one.title}`}
+      aria-label={guest ? `${guest.name}, ${one.title}` : `${emptyLabel}, ${one.title}`}
     >
       <circle cx={point.x} cy={point.y} r={HIT_RADIUS} fill="transparent" />
       <circle

@@ -11,16 +11,24 @@
 import { BrandLogo } from "@/components/brand";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { LangSwitch } from "@/components/lang-switch";
+import type { Lang } from "@/lib/i18n";
 
 /** Разделы шапки — те же, что в меню телефона. */
 const LINKS = [
-  { href: "#vozmozhnosti", label: "Возможности" },
-  { href: "#priglasheniya", label: "Приглашения" },
-  { href: "#demo", label: "Рассадка" },
-  { href: "#voprosy", label: "Вопросы" },
+  { href: "#vozmozhnosti", label: { ru: "Возможности", en: "Features" } },
+  { href: "#priglasheniya", label: { ru: "Приглашения", en: "Invitations" } },
+  { href: "#demo", label: { ru: "Рассадка", en: "Seating" } },
+  { href: "#voprosy", label: { ru: "Вопросы", en: "FAQ" } },
 ];
 
-export function Nav({ userName }: { userName: string | null }) {
+const TEXT = {
+  ru: { home: "/", brand: "Вместе — на главную", sections: "Разделы", account: "Личный кабинет", login: "Войти", register: "Создать свадьбу", close: "Закрыть меню", open: "Открыть меню", loginHref: "/login", registerHref: "/register" },
+  en: { home: "/en", brand: "Vmeste — home", sections: "Sections", account: "My account", login: "Sign in", register: "Create a wedding", close: "Close menu", open: "Open menu", loginHref: "/login?lang=en", registerHref: "/register?lang=en" },
+};
+
+export function Nav({ userName, lang = "ru" }: { userName: string | null; lang?: Lang }) {
+  const t = TEXT[lang];
   const header = useRef<HTMLElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -124,29 +132,30 @@ export function Nav({ userName }: { userName: string | null }) {
   return (
     <header ref={header} className="home-nav home-nav--clay" data-solid={scrolled || open}>
       <div className="home-container home-nav-bar">
-        <Link href="/" className="home-brand" aria-label="Вместе — на главную">
+        <Link href={t.home} className="home-brand" aria-label={t.brand}>
           <BrandLogo adaptive={false} />
         </Link>
 
-        <nav className="home-nav-links" aria-label="Разделы">
+        <nav className="home-nav-links" aria-label={t.sections}>
           {LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
               aria-current={active === link.href ? "true" : undefined}
             >
-              {link.label}
+              {link.label[lang]}
             </a>
           ))}
         </nav>
 
         <div className="home-nav-actions">
+          <LangSwitch current={lang} className="home-nav-lang" />
           {userName ? (
-            <Link href="/app" className="home-button">Личный кабинет</Link>
+            <Link href="/app" className="home-button">{t.account}</Link>
           ) : (
             <>
-              <Link href="/login" className="home-nav-login">Войти</Link>
-              <Link href="/register" className="home-button">Создать свадьбу</Link>
+              <Link href={t.loginHref} className="home-nav-login">{t.login}</Link>
+              <Link href={t.registerHref} className="home-button">{t.register}</Link>
             </>
           )}
         </div>
@@ -156,7 +165,7 @@ export function Nav({ userName }: { userName: string | null }) {
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           aria-controls="home-mobile-menu"
-          aria-label={open ? "Закрыть меню" : "Открыть меню"}
+          aria-label={open ? t.close : t.open}
           className="home-burger"
         >
           <span />
@@ -167,22 +176,23 @@ export function Nav({ userName }: { userName: string | null }) {
       {open && (
         <div id="home-mobile-menu" className="home-menu">
           <div className="home-container">
-            <nav aria-label="Разделы">
+            <nav aria-label={t.sections}>
               {LINKS.map((link) => (
                 <a key={link.href} href={link.href} onClick={() => setOpen(false)}>
-                  {link.label}
+                  {link.label[lang]}
                 </a>
               ))}
             </nav>
             <div className="home-menu-actions">
               {userName ? (
-                <Link href="/app" className="home-button">Личный кабинет</Link>
+                <Link href="/app" className="home-button">{t.account}</Link>
               ) : (
                 <>
-                  <Link href="/register" className="home-button">Создать свадьбу</Link>
-                  <Link href="/login" className="home-button home-button--outline">Войти</Link>
+                  <Link href={t.registerHref} className="home-button">{t.register}</Link>
+                  <Link href={t.loginHref} className="home-button home-button--outline">{t.login}</Link>
                 </>
               )}
+              <LangSwitch current={lang} className="home-menu-lang" />
             </div>
           </div>
         </div>

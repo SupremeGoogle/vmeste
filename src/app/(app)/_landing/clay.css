@@ -407,3 +407,8 @@
   .home--clay .feature-invite-phone .home-phone-screen{border-radius:26px}
   .home--clay .feature-tabs-copy h3{font-size:27px}
 }
+
+/* Переключатель языка «RU | EN» в шапке, меню телефона и подвале. */
+.home-nav--clay .lang-switch { color: inherit; }
+.home-menu-lang { align-self: center; }
+.home-footer-bottom .lang-switch { color: inherit; }

@@ -9,10 +9,11 @@
  * без этого голосовой доступ читает раздел как сплошной текст.
  */
 import { useState } from "react";
-import { FAQ_ITEMS as ITEMS } from "./faq-items";
+import { faqItems } from "./faq-items";
 
-export function Faq() {
+export function Faq({ lang = "ru" }: { lang?: "ru" | "en" }) {
   const [open, setOpen] = useState<number | null>(null);
+  const ITEMS = faqItems(lang);
 
   return (
     <div className="divide-y divide-stone-200 border-y border-stone-200">

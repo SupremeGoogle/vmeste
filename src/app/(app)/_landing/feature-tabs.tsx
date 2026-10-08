@@ -84,9 +84,80 @@ const TABS: Tab[] = [
   },
 ];
 
+/** Те же вкладки по-английски: id и порядок совпадают с русскими. */
+const TABS_EN: Tab[] = [
+  {
+    id: "invite",
+    title: "Invitation",
+    lead: "A personal page for every guest, put together from blocks in a single evening.",
+    points: [
+      "Cover, schedule for the day, directions, dress code, gifts",
+      "A personal link: each guest sees their own name and replies with one tap",
+      "Opens on any phone and weighs less than a photo",
+    ],
+    preview: "invite",
+  },
+  {
+    id: "rsvp",
+    title: "RSVPs",
+    lead: "Who’s coming, with whom, and what they’ll eat — all tallied for you.",
+    points: [
+      "Coming / not coming / not sure yet — plus a named plus-one",
+      "Meal choices land right in a list for the restaurant",
+      "Export to CSV and import the list from your own spreadsheet",
+    ],
+    preview: "rsvp",
+  },
+  {
+    id: "seating",
+    title: "Seating",
+    lead: "Lay out the floor plan with your mouse: round tables, long tables, a head table.",
+    points: [
+      "Drag guests and tables around — seats are counted by table shape",
+      "Bride and groom icons show exactly where the newlyweds sit",
+      "The very same plan goes to PDF and print, without a single discrepancy",
+    ],
+    preview: "seating",
+  },
+  {
+    id: "qr",
+    title: "QR check-in",
+    lead: "One code at the entrance for everyone: guests find themselves by name.",
+    points: [
+      "Search understands short names — “Nastya” for “Anastasia” — and typos",
+      "All it shows is a name and a table number — nobody else’s details",
+      "Works from a printed sign — no app and no guest Wi-Fi needed",
+    ],
+    preview: "qr",
+  },
+  {
+    id: "photos",
+    title: "Photos & album",
+    lead: "Guests’ shots go into a shared gallery, onto the screen at the venue, and into an album after the wedding.",
+    points: [
+      "Guests upload photos from their phones using their own link",
+      "A smart filter checks every photo for 18+ content: anything suspicious waits for your approval and stays hidden from guests and the screen until then",
+      "After the wedding, guests can open the album and download the photos",
+    ],
+    preview: "photos",
+  },
+  {
+    id: "raffle",
+    title: "Raffle",
+    lead: "A spinning drum of guest names — and a fair, verifiable result.",
+    points: [
+      "Guests with approved photos take part",
+      "The order is fixed in advance and reproducible, so there’s nothing to argue about",
+      "The winner’s name fills the screen — all the host has to do is announce it",
+    ],
+    preview: "raffle",
+  },
+];
+
 const AUTOPLAY_MS = 7000;
 
-export function FeatureTabs() {
+export function FeatureTabs({ lang = "ru" }: { lang?: "ru" | "en" }) {
+  const tabs = lang === "en" ? TABS_EN : TABS;
   const [current, setCurrent] = useState(0);
   const [manual, setManual] = useState(false);
 
@@ -112,7 +183,7 @@ export function FeatureTabs() {
     setManual(true);
   };
 
-  const tab = TABS[current];
+  const tab = tabs[current];
 
   return (
     // Картинка — на всю ширину под вкладками: в колонке сбоку макеты были
@@ -125,7 +196,7 @@ export function FeatureTabs() {
           на телефоне это была прокрутка вбок на четверть экрана. */}
       <div className="min-w-0">
         <div className="story-feature-tabrail -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-          {TABS.map((item, index) => (
+          {tabs.map((item, index) => (
             <button
               key={item.id}
               type="button"
@@ -176,8 +247,8 @@ export function FeatureTabs() {
             ))}
           </ul>
           <p className="mt-7">
-            <Link href="/register" className="text-sm text-stone-900 underline underline-offset-4">
-              Попробовать на своей свадьбе →
+            <Link href={lang === "en" ? "/register?lang=en" : "/register"} className="text-sm text-stone-900 underline underline-offset-4">
+              {lang === "en" ? "Try it for your own wedding →" : "Попробовать на своей свадьбе →"}
             </Link>
           </p>
         </motion.div>
@@ -203,7 +274,7 @@ export function FeatureTabs() {
           animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE_OUT } }}
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.25, ease: EASE_OUT } }}
         >
-          <FeatureVisual kind={tab.preview} onOpen={() => pick(current)} />
+          <FeatureVisual kind={tab.preview} lang={lang} onOpen={() => pick(current)} />
         </motion.div>
         </AnimatePresence>
       </div>

@@ -1,0 +1,35 @@
+/**
+ * Названия и описания шаблонов приглашений для английского лендинга (/en).
+ * Сами шаблоны и их тексты остаются русскими; шаблон, которого здесь нет,
+ * покажется под русским названием.
+ */
+export const TEMPLATE_COPY_EN: Record<string, { name: string; mood: string }> = {
+  "little-happiness": { name: "Little Happiness", mood: "Childhood Polaroids, delicate headings and white flowers." },
+  protokol: { name: "The Protocol", mood: "Happiness under arrest: official forms, ID photos, stamps and an invitation with a classified case file." },
+  evergreen: { name: "Evergreen", mood: "An intimate evening classic: deep green, ivory, fine gold and large photos. The text and two photos can be changed right on the page." },
+  gazette: { name: "Gazette", mood: "A wedding front page: newspaper columns, a large photo and your story above the fold." },
+  zefir: { name: "Marshmallow", mood: "A scrapbook story: paper hearts, Polaroids and a card with a surprise." },
+  ruby: { name: "Ruby", mood: "A classic invitation in shades of burgundy: red roses, milky paper, delicate line art and a wax seal." },
+  aquarelle: { name: "Watercolor", mood: "Watercolor paper, satin ribbons and a striped envelope: the bride’s name in handwriting, burgundy headings and deep green captions." },
+  bohema: { name: "Bohème", mood: "A warm beige landscape, an arched cover, golden botanicals and elegant typography. A bohemian invitation with a program, details and a guest questionnaire." },
+  "skvoz-vremya": { name: "Through Time · Color", mood: "A cinematic dark cover, warm paper, Polaroid-style photos and a soft pastel palette." },
+  antic: { name: "Antique", mood: "Light textured paper, fine ink drawings, calligraphy and a classic wedding-day program." },
+  roseraie: { name: "Roseraie", mood: "A dark green envelope with a gold seal, cinematic photography and an airy classic look with botanical drawings." },
+  serdce: { name: "Heart to Heart", mood: "The couple’s own story on textured paper: Polaroid photos, dark pine, wavy transitions and a romantic serif." },
+  tili: { name: "Sitting in a Tree", mood: "Warm and lively: an envelope, bunting, childhood Polaroids, a calendar, a timeline with icons, a dark wishes section and a guest questionnaire. Music plays once the envelope opens." },
+  burgundy: { name: "Wine Envelope", mood: "A burgundy envelope with a seal, a watercolor arch with swans, roses and warm paper. No guest RSVP form." },
+  crayon: { name: "Childhood", mood: "Bride and groom: childhood photos, crayon drawings and a warm love story." },
+  vinyl: { name: "Vinyl", mood: "A pink party with a record on the cover: orange headings, tilted photos, sparkles and lots of dancing." },
+  prism: { name: "Prism", mood: "A modern ceremony in a glass greenhouse: spectral light, liquid glass, dimensional photos and soft iridescence." },
+  kraski: { name: "Colors of Love", mood: "A white seaside story: a large photo of the couple, a torn paper edge, a crisp serif, a schedule with icons and pastel dress-code brushstrokes." },
+  constellation: { name: "Constellation", mood: "A night ceremony by the water: an eclipse, glowing orbits, constellations, glass and warm candlelight." },
+  silk: { name: "Silk", mood: "A romantic wedding day at a single venue: powder-pink silk, wine accents, wavy cards, a photo collage and gentle botanical animation." },
+  tuscany: { name: "Tuscany", mood: "An intimate wedding among the cypresses: textured paper, a chocolate ribbon, dried flowers, a wax seal and warm editorial photography." },
+  pearl: { name: "Pearl", mood: "An airy classic in ivory and sage: an oval portrait, a single lakeside venue, delicate botanicals and soft scroll animations." },
+  iskra: { name: "Spark", mood: "A burgundy box with a secret, a black-and-white photo strip and handwritten notes. A little spark — a big love story." },
+  lily: { name: "Lily", mood: "Deep olive and white stripes, wavy transitions, outlined lilies and handwritten headings. A calm invitation for an intimate outdoor wedding." },
+  priznanie: { name: "Love Confession", mood: "Cream paper, red declarations of love and photos in Polaroid frames." },
+  postcard: { name: "Postcard", mood: "A hand-drawn postcard: a terracotta heart, a couple in love and warm paper details." },
+  "floral-garden": { name: "Flower Garden", mood: "White flowers around the invitation, a burgundy serif, a calendar with a heart and a flowing program for the day." },
+  odnazhdy: { name: "Once Upon a Time…", mood: "Black-and-white photos, handwritten names and a love story." },
+};

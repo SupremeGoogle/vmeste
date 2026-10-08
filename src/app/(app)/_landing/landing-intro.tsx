@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 
 const SEEN = "vm-intro-seen";
 
-export function LandingIntro() {
+export function LandingIntro({ lang = "ru" }: { lang?: "ru" | "en" }) {
   const [phase, setPhase] = useState<"loading" | "leaving" | "hidden">("loading");
   const [progress, setProgress] = useState(0);
 
@@ -84,8 +84,8 @@ export function LandingIntro() {
         <div className="clay-loader-curtain clay-loader-curtain--rose" />
         <div className="clay-loader-curtain clay-loader-curtain--sage" />
         <div className="clay-loader-curtain clay-loader-curtain--ivory" />
-        <div className="clay-loader-inner" role="status" aria-label="Загружаем Вместе">
-          <span className="clay-loader-logo-wrap"><span className="clay-loader-logo" role="img" aria-label="Вместе" /></span>
+        <div className="clay-loader-inner" role="status" aria-label={lang === "en" ? "Loading Vmeste" : "Загружаем Вместе"}>
+          <span className="clay-loader-logo-wrap"><span className="clay-loader-logo" role="img" aria-label={lang === "en" ? "Vmeste" : "Вместе"} /></span>
           <div className="clay-loader-bar" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
           <span className="clay-loader-percent" aria-hidden="true">{progress}%</span>
         </div>
