@@ -1,9 +1,13 @@
+"use client";
+
 import { Bone, LoadingHeading, LoadingScreen } from "@/components/loading/skeleton";
+import { useT } from "@/components/i18n-provider";
 
 export default function InviteLoading() {
+  const t = useT();
   return (
-    <LoadingScreen label="Загружаем приглашение">
-      <LoadingHeading title="Приглашение" detail="Подготавливаем редактор и фотографии…" />
+    <LoadingScreen label={t("Загружаем приглашение", "Loading invitation")}>
+      <LoadingHeading title={t("Приглашение", "Invitation")} detail={t("Подготавливаем редактор и фотографии…", "Getting the editor and photos ready…")} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-4">
           <div className="rounded-xl border border-stone-200 bg-card p-5"><Bone className="h-5 w-40" /><Bone className="mt-5 h-10 w-full rounded-lg" /><Bone className="mt-3 h-10 w-4/5 rounded-lg" /></div>

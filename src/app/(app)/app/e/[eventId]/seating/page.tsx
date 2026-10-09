@@ -14,6 +14,7 @@ import { seatingTag } from "@/lib/cache-tags";
 import { SHAPES } from "@/lib/seating-geometry";
 import type { TableShape } from "@/generated/prisma/enums";
 import { getEditorPlan, listUnseatedGuests } from "@/server/repositories/seating";
+import { getEvent } from "@/server/repositories/events";
 import { applyOp, type SeatingOp } from "@/server/services/seating-ops";
 import { SeatingEditor } from "@/components/seating/editor";
 
@@ -24,8 +25,8 @@ const fold = (text: string) => text.toLowerCase().replace(/ё/g, "е").trim();
 export default async function SeatingPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const ctx = await requireEventContext(eventId);
-  const plan = await getEditorPlan(ctx);
-  if (!plan) notFound();
+  const [plan, event] = await Promise.all([getEditorPlan(ctx), getEvent(ctx, eventId)]);
+  if (!plan || !event) notFound();
 
   /** Действие формы без JS: версию форма не знает, проверка версии пропускается. */
   async function run(op: SeatingOp) {
@@ -97,6 +98,7 @@ export default async function SeatingPage({ params }: { params: Promise<{ eventI
         eventId={eventId}
         initial={plan}
         actions={{ addTable, addCoupleTable, removeTable, changeShape, seatByName, unseat }}
+        eventLang={event.language === "en" ? "en" : "ru"}
       />
     </main>
   );

@@ -16,5 +16,5 @@ if(counter){
 var form=d.querySelector('.bo-form[data-demo]');
 if(form)form.addEventListener('submit',function(e){e.preventDefault();var note=form.querySelector('.bo-demo-note');if(note)note.hidden=false});
 var music=d.querySelector('.bo-music'),audio=d.getElementById('bo-audio');
-if(music&&audio)music.addEventListener('click',function(){if(audio.paused){audio.play().then(function(){music.setAttribute('aria-pressed','true');music.setAttribute('aria-label','Выключить музыку')}).catch(function(){})}else{audio.pause();music.setAttribute('aria-pressed','false');music.setAttribute('aria-label','Включить музыку')}});
+if(music&&audio)music.addEventListener('click',function(){if(audio.paused){audio.play().then(function(){music.setAttribute('aria-pressed','true');music.setAttribute('aria-label',music.dataset.on||'Выключить музыку')}).catch(function(){})}else{audio.pause();music.setAttribute('aria-pressed','false');music.setAttribute('aria-label',music.dataset.off||'Включить музыку')}});
 })()`;

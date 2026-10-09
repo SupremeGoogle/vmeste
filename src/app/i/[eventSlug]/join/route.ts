@@ -25,6 +25,7 @@ import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
 import { readRsvpDraft, renderRsvpPage, rsvpSessionExpiry, type RsvpSubject } from "@/server/guest-html/rsvp-page";
 import { flashQuery, readFlash } from "@/server/guest-html/flash";
 import { SELF_REGISTRATION_CAP, samePerson, selfRegistrationNameProblem } from "@/server/services/self-registration";
+import { parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ async function findPublicEvent(slug: string) {
     orderBy: { eventDate: "asc" },
     select: {
       id: true, orgId: true, title: true, eventDate: true, timezone: true,
-      rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true,
+      rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true, language: true,
     },
   });
 }
@@ -56,7 +57,7 @@ type PublicEvent = NonNullable<Awaited<ReturnType<typeof findPublicEvent>>>;
 function blankSubject(event: PublicEvent, name: string): RsvpSubject {
   return {
     eventId: event.id,
-    event: { timezone: event.timezone, rsvpDeadline: event.rsvpDeadline, allowPlusOne: event.allowPlusOne },
+    event: { timezone: event.timezone, rsvpDeadline: event.rsvpDeadline, allowPlusOne: event.allowPlusOne, language: event.language },
     displayName: name,
     rsvpStatus: "PENDING",
     mealOptionId: null,
@@ -120,7 +121,7 @@ export async function POST(
     return html(page, { status: 422, headers: { "cache-control": "private, no-store" } });
   };
 
-  const nameProblem = selfRegistrationNameProblem(name);
+  const nameProblem = selfRegistrationNameProblem(name, parseLang(event.language) ?? "ru");
   if (nameProblem) return fail(name ? "invalid" : "name", name ? nameProblem : "");
   // Срок вышел — не заводим гостя, который всё равно не сможет ответить.
   if (event.rsvpDeadline && Date.now() > event.rsvpDeadline.getTime()) return fail("deadline");
@@ -161,7 +162,7 @@ export async function POST(
   // отправка найдёт этого же гостя.
   await setGuestSession({ eventId: event.id, guestId: guest.id }, event.guestLinkSecret, rsvpSessionExpiry(event.eventDate));
 
-  const result = await submitRsvp(guest.linkToken, draft, questions);
+  const result = await submitRsvp(guest.linkToken, draft, questions, parseLang(event.language) ?? "ru");
   const personal = `/i/${eventSlug}/${guest.linkToken}`;
   if (!result.ok) {
     // Гость уже заведён — дальше он правит ответ по своей именной ссылке.

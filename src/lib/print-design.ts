@@ -1,14 +1,15 @@
 import { z } from "zod";
+import type { Lang } from "@/lib/i18n";
 
 export const PRINT_TEMPLATES = [
-  { id: "rose", name: "Розовый сад · колонки", qrName: "Розовый сад · открытка", accent: "#936c73", ink: "#3c3032", paper: "#fffdfb", art: "roses", qrArt: "qr-roses", frame: "none", layout: "grid3" },
-  { id: "eucalyptus", name: "Эвкалипт · широкая сетка", qrName: "Эвкалипт · диагональ", accent: "#6f857b", ink: "#34413b", paper: "#fffefd", art: "eucalyptus", qrArt: "qr-eucalyptus", frame: "none", layout: "grid4" },
-  { id: "hydrangea", name: "Гортензия · крупные списки", qrName: "Гортензия · композиция", accent: "#8092b0", ink: "#303c53", paper: "#ffffff", art: "hydrangea", qrArt: "qr-hydrangea", frame: "none", layout: "grid2" },
-  { id: "classic", name: "Классика · списки", qrName: "Бордовая лента · классика", accent: "#987d54", ink: "#2c2925", paper: "#fffdf8", art: "none", qrArt: "qr-ribbon", frame: "double", layout: "grid3portrait" },
-  { id: "botanical", name: "Ботаника · карточки", qrName: "Ботаника · два поля", accent: "#6e8060", ink: "#354032", paper: "#fbfcf8", art: "eucalyptus", qrArt: "qr-eucalyptus", frame: "thin", layout: "cards" },
-  { id: "minimal", name: "Минимализм · плакат", qrName: "Лента · современный", accent: "#43413f", ink: "#22211f", paper: "#ffffff", art: "none", qrArt: "qr-ribbon", frame: "none", layout: "wide" },
-  { id: "deco", name: "Ар-деко · схема зала", qrName: "Золото и бордо", accent: "#a88148", ink: "#242c35", paper: "#fffdf8", art: "none", qrArt: "qr-ribbon", frame: "deco", layout: "orbit" },
-  { id: "blush", name: "Акварель · стол на лист", qrName: "Нежная акварель", accent: "#bc8f98", ink: "#483943", paper: "#fffafa", art: "roses", qrArt: "qr-roses", frame: "thin", layout: "single" },
+  { id: "rose", name: "Розовый сад · колонки", qrName: "Розовый сад · открытка", nameEn: "Rose garden · columns", qrNameEn: "Rose garden · card", accent: "#936c73", ink: "#3c3032", paper: "#fffdfb", art: "roses", qrArt: "qr-roses", frame: "none", layout: "grid3" },
+  { id: "eucalyptus", name: "Эвкалипт · широкая сетка", qrName: "Эвкалипт · диагональ", nameEn: "Eucalyptus · wide grid", qrNameEn: "Eucalyptus · diagonal", accent: "#6f857b", ink: "#34413b", paper: "#fffefd", art: "eucalyptus", qrArt: "qr-eucalyptus", frame: "none", layout: "grid4" },
+  { id: "hydrangea", name: "Гортензия · крупные списки", qrName: "Гортензия · композиция", nameEn: "Hydrangea · large lists", qrNameEn: "Hydrangea · bouquet", accent: "#8092b0", ink: "#303c53", paper: "#ffffff", art: "hydrangea", qrArt: "qr-hydrangea", frame: "none", layout: "grid2" },
+  { id: "classic", name: "Классика · списки", qrName: "Бордовая лента · классика", nameEn: "Classic · lists", qrNameEn: "Burgundy ribbon · classic", accent: "#987d54", ink: "#2c2925", paper: "#fffdf8", art: "none", qrArt: "qr-ribbon", frame: "double", layout: "grid3portrait" },
+  { id: "botanical", name: "Ботаника · карточки", qrName: "Ботаника · два поля", nameEn: "Botanical · cards", qrNameEn: "Botanical · two panels", accent: "#6e8060", ink: "#354032", paper: "#fbfcf8", art: "eucalyptus", qrArt: "qr-eucalyptus", frame: "thin", layout: "cards" },
+  { id: "minimal", name: "Минимализм · плакат", qrName: "Лента · современный", nameEn: "Minimal · poster", qrNameEn: "Ribbon · modern", accent: "#43413f", ink: "#22211f", paper: "#ffffff", art: "none", qrArt: "qr-ribbon", frame: "none", layout: "wide" },
+  { id: "deco", name: "Ар-деко · схема зала", qrName: "Золото и бордо", nameEn: "Art deco · floor plan", qrNameEn: "Gold and burgundy", accent: "#a88148", ink: "#242c35", paper: "#fffdf8", art: "none", qrArt: "qr-ribbon", frame: "deco", layout: "orbit" },
+  { id: "blush", name: "Акварель · стол на лист", qrName: "Нежная акварель", nameEn: "Watercolor · one table per page", qrNameEn: "Soft watercolor", accent: "#bc8f98", ink: "#483943", paper: "#fffafa", art: "roses", qrArt: "qr-roses", frame: "thin", layout: "single" },
 ] as const;
 
 export type PrintTemplateId = (typeof PRINT_TEMPLATES)[number]["id"];
@@ -231,24 +232,35 @@ export function guestFontSize(design: PrintDesign, element: PrintElement, guests
   return round(clampNum(Math.min(fit, byWidth, solo ? 19 : 15), 5, 40) * design.guestScale);
 }
 
-export function defaultPrintDesign(mode: PrintMode, templateId: PrintTemplateId, title: string, date: string, tables: PrintTable[] = []): PrintDesign {
+/**
+ * Подписи макета по умолчанию — на языке мероприятия: лист печатают и
+ * читают гости, а не организатор.
+ */
+function defaultTexts(lang: Lang) {
+  return lang === "en"
+    ? { welcome: "WELCOME", seating: "SEATING CHART", caption: "Point your phone camera here to open the celebration", code: "ACCESS CODE" }
+    : { welcome: "ДОБРО ПОЖАЛОВАТЬ", seating: "ПЛАН РАССАДКИ ГОСТЕЙ", caption: "Наведите камеру телефона, чтобы открыть праздник", code: "КОД ДОСТУПА" };
+}
+
+export function defaultPrintDesign(mode: PrintMode, templateId: PrintTemplateId, title: string, date: string, tables: PrintTable[] = [], lang: Lang = "ru"): PrintDesign {
   const theme = PRINT_TEMPLATES.find((item) => item.id === templateId) ?? PRINT_TEMPLATES[0];
+  const texts = defaultTexts(lang);
   if (mode === "qr") {
     const spot = QR_POSITIONS[theme.id];
     const [hx, hy, hw] = spot.head;
     const from = (id: string, kind: PrintElement["kind"], text: string, [x, y, w]: [number, number, number], fontSize: number): PrintElement => ({ id, kind, text, x, y, w, fontSize, align: "center", hidden: false, page: 0, auto: false });
     return { version: 1, mode, template: theme.id, paper: "A4", orientation: "portrait", accent: theme.accent, ink: theme.ink, textScale: 1, guestScale: 1, elements: [
-      from("eyebrow", "text", "ДОБРО ПОЖАЛОВАТЬ", [hx, hy - 6, hw], 13),
+      from("eyebrow", "text", texts.welcome, [hx, hy - 6, hw], 13),
       from("title", "text", title, [hx, hy, hw], 42),
       from("date", "text", date, [hx + 10, hy + 9, hw - 20], 14),
       from("qr", "qr", "", spot.qr, 20),
-      from("qr-caption", "text", "Наведите камеру телефона, чтобы открыть праздник", spot.caption, 17),
+      from("qr-caption", "text", texts.caption, spot.caption, 17),
     ] };
   }
   const isWide = ["rose", "eucalyptus", "minimal", "deco"].includes(theme.id);
   const headingY = theme.layout === "single" ? 14 : theme.layout === "wide" || theme.layout === "orbit" ? 11 : 13;
   const common: PrintElement[] = [
-    { id: "eyebrow", kind: "text", text: "ПЛАН РАССАДКИ ГОСТЕЙ", x: 15, y: headingY - 4, w: 70, fontSize: 13, align: "center", hidden: false, page: 0, auto: false },
+    { id: "eyebrow", kind: "text", text: texts.seating, x: 15, y: headingY - 4, w: 70, fontSize: 13, align: "center", hidden: false, page: 0, auto: false },
     { id: "title", kind: "text", text: title, x: 10, y: headingY, w: 80, fontSize: 42, align: "center", hidden: false, page: 0, auto: false },
     { id: "date", kind: "text", text: date, x: 20, y: headingY + 8, w: 60, fontSize: 14, align: "center", hidden: false, page: 0, auto: false },
   ];
@@ -261,8 +273,8 @@ export function defaultPrintDesign(mode: PrintMode, templateId: PrintTemplateId,
   ] : [
     ...common,
     { id: "qr", kind: "qr", text: "", x: ["eucalyptus", "botanical"].includes(theme.id) ? 12 : ["hydrangea", "deco"].includes(theme.id) ? 55 : 31, y: theme.layout === "single" ? 42 : 38, w: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 33 : 38, fontSize: 20, align: "center", hidden: false, page: 0, auto: false },
-    { id: "qr-caption", kind: "text", text: "Наведите камеру телефона, чтобы открыть праздник", x: ["eucalyptus", "botanical"].includes(theme.id) ? 53 : ["hydrangea", "deco"].includes(theme.id) ? 10 : 15, y: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 47 : 77, w: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 36 : 70, fontSize: 17, align: "center", hidden: false, page: 0, auto: false },
-    { id: "code", kind: "code", text: "КОД ДОСТУПА", x: ["eucalyptus", "botanical"].includes(theme.id) ? 52 : ["hydrangea", "deco"].includes(theme.id) ? 11 : 25, y: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 62 : 85, w: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 37 : 50, fontSize: 23, align: "center", hidden: false, page: 0, auto: false },
+    { id: "qr-caption", kind: "text", text: texts.caption, x: ["eucalyptus", "botanical"].includes(theme.id) ? 53 : ["hydrangea", "deco"].includes(theme.id) ? 10 : 15, y: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 47 : 77, w: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 36 : 70, fontSize: 17, align: "center", hidden: false, page: 0, auto: false },
+    { id: "code", kind: "code", text: texts.code, x: ["eucalyptus", "botanical"].includes(theme.id) ? 52 : ["hydrangea", "deco"].includes(theme.id) ? 11 : 25, y: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 62 : 85, w: ["eucalyptus", "botanical", "hydrangea", "deco"].includes(theme.id) ? 37 : 50, fontSize: 23, align: "center", hidden: false, page: 0, auto: false },
   ];
   return { version: 1, mode, template: theme.id, paper, orientation, accent: theme.accent, ink: theme.ink, textScale: 1, guestScale: 1, elements };
 }
@@ -279,9 +291,9 @@ export function relayoutTables(design: PrintDesign): PrintDesign {
 }
 
 /** New tables appear on the print sheet without replacing saved typography or positions. */
-export function reconcilePrintDesign(saved: unknown, mode: PrintMode, title: string, date: string, tables: PrintTable[]): PrintDesign {
+export function reconcilePrintDesign(saved: unknown, mode: PrintMode, title: string, date: string, tables: PrintTable[], lang: Lang = "ru"): PrintDesign {
   const parsed = printDesignSchema.safeParse(saved);
-  if (!parsed.success || parsed.data.mode !== mode) return defaultPrintDesign(mode, mode === "qr" ? "classic" : "rose", title, date, tables);
+  if (!parsed.success || parsed.data.mode !== mode) return defaultPrintDesign(mode, mode === "qr" ? "classic" : "rose", title, date, tables, lang);
   const design = parsed.data;
   // QR ведёт прямо на праздник — код доступа гостю не нужен, убираем его и из старых макетов.
   if (mode === "qr") return { ...design, elements: design.elements.filter((element) => element.kind !== "code") };

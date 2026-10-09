@@ -14,6 +14,7 @@
  * делается «на чтении» (см. `migrate`), строки в БД не переписываются.
  */
 import { z } from "zod";
+import type { Lang } from "@/lib/i18n";
 import { SCRAPBOOK_SAMPLE_IMAGES } from "@/lib/invite-templates/scrapbook-assets";
 import { EDITORIAL_SAMPLE_IMAGES } from "@/lib/invite-templates/editorial-assets";
 import { photoSettingsSchema } from "@/lib/invite-personalization";
@@ -40,6 +41,7 @@ import { ROSERAIE_SAMPLE_IMAGES } from "@/lib/invite-templates/roseraie-assets";
 import { FLORAL_GARDEN_SAMPLE_IMAGES } from "@/lib/invite-templates/floral-garden-assets";
 import { ISKRA_SAMPLE_IMAGES } from "@/lib/invite-templates/iskra-assets";
 import { WEDWED_SAMPLE_IMAGES } from "@/lib/invite-templates/wedwed-assets";
+import { CELEBRATION_SAMPLE_IMAGES } from "@/lib/invite-templates/celebration-assets";
 
 /** Текущая версия содержимого. Растёт, когда меняется форма данных. */
 export const BLOCK_SCHEMA_VERSION = 1;
@@ -74,6 +76,7 @@ const httpUrl = z
  * чужой домен. Здесь пройдут только идентификаторы, которые выдали мы.
  */
 const imageRef = httpUrl
+  .or(z.enum(CELEBRATION_SAMPLE_IMAGES))
   .or(z.enum(EDITORIAL_SAMPLE_IMAGES))
   .or(z.enum(SCRAPBOOK_SAMPLE_IMAGES))
   .or(z.enum(CONSTELLATION_SAMPLE_IMAGES))
@@ -298,6 +301,26 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   WISHLIST: "Виш-лист",
 };
 
+/** Те же названия для кабинета на английском. Хранимые значения и тексты для гостей не меняются. */
+export const BLOCK_LABELS_EN: Record<BlockType, string> = {
+  COVER: "Cover",
+  PHOTOS: "Photos",
+  COUNTDOWN: "Countdown",
+  CALENDAR: "Calendar",
+  TIMELINE: "Day plan",
+  VENUE: "Venue",
+  DRESSCODE: "Dress code",
+  MAP: "Getting there",
+  TEXT: "Text",
+  RSVP_FORM: "RSVP form",
+  WISHLIST: "Gift list",
+};
+
+/** Название типа раздела на языке кабинета. */
+export function blockLabel(type: BlockType, lang: Lang): string {
+  return lang === "en" ? BLOCK_LABELS_EN[type] : BLOCK_LABELS[type];
+}
+
 export const BLOCK_ORDER: BlockType[] = [
   "COVER", "PHOTOS", "CALENDAR", "COUNTDOWN", "TIMELINE", "VENUE", "MAP", "DRESSCODE", "TEXT", "WISHLIST", "RSVP_FORM",
 ];
@@ -338,6 +361,38 @@ const FIELD_LABELS: Record<string, string> = {
   buttonLabel: "Надпись на кнопке",
   message: "Текст",
 };
+
+/** `FIELD_LABELS` и сообщения схем по-английски — для `blockProblemEn`. */
+const FIELD_LABELS_EN: Record<string, string> = {
+  Заголовок: "Heading", Имена: "Names", "Дата словами": "Date in words", Подпись: "Caption",
+  "Ссылка на фотографию": "Photo link", "Пункты тайминга": "Day plan items", "Название площадки": "Venue name",
+  Адрес: "Address", Комментарий: "Note", Текст: "Text", Палитра: "Palette",
+  "Ссылка на Яндекс Карты": "Yandex Maps link", "Ссылка на Google Maps": "Google Maps link",
+  "Надпись на кнопке": "Button label", Содержимое: "Content",
+};
+const MESSAGES_EN: Record<string, string> = {
+  "нужен текст": "text is required",
+  "не длиннее 120 символов": "120 characters max",
+  "не длиннее 2000 символов": "2000 characters max",
+  "нужен цвет": "a color is required",
+  "цвет пишется как #c8b7a6": "use a color code like #c8b7a6",
+  "нужна ссылка": "a link is required",
+  "ссылка слишком длинная": "the link is too long",
+  "нужна ссылка целиком, вида https://…": "paste the full link, like https://…",
+  "неизвестный адрес картинки": "unknown image address",
+};
+
+/**
+ * Ошибка `parseBlockContent` («Поле: сообщение») для кабинета на английском.
+ * Схемы остаются русскими — переводим готовое сообщение; незнакомое не трогаем.
+ */
+export function blockProblemEn(message: string): string {
+  const at = message.indexOf(": ");
+  if (at < 0) return MESSAGES_EN[message] ?? message;
+  const field = message.slice(0, at);
+  const text = message.slice(at + 2);
+  return `${FIELD_LABELS_EN[field] ?? field}: ${MESSAGES_EN[text] ?? text}`;
+}
 
 export function parseBlockContent<T extends BlockType>(
   type: T,

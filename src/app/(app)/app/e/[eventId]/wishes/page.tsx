@@ -11,13 +11,14 @@ import { notFound } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import { countWishes, listWishes, moderateWish } from "@/server/services/wishes";
+import { getT } from "@/server/i18n";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "ждёт",
-  APPROVED: "опубликовано",
-  REJECTED: "отклонено",
+const STATUS_LABEL: Record<string, [string, string]> = {
+  PENDING: ["ждёт", "pending"],
+  APPROVED: ["опубликовано", "published"],
+  REJECTED: ["отклонено", "rejected"],
 };
 
 export default async function WishesPage({
@@ -29,6 +30,7 @@ export default async function WishesPage({
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const t = await getT();
 
   const [counts, wishes] = await Promise.all([countWishes(ctx.eventId), listWishes(ctx.eventId)]);
 
@@ -45,9 +47,9 @@ export default async function WishesPage({
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="grid gap-3 sm:grid-cols-3">
         {[
-          { label: "Ждут проверки", value: counts.pending },
-          { label: "Опубликовано", value: counts.approved },
-          { label: "Отклонено", value: counts.rejected },
+          { label: t("Ждут проверки", "Awaiting review"), value: counts.pending },
+          { label: t("Опубликовано", "Published"), value: counts.approved },
+          { label: t("Отклонено", "Rejected"), value: counts.rejected },
         ].map((tile) => (
           <div key={tile.label} className="rounded-xl border border-stone-200 bg-card p-4">
             <p className="tile-value text-2xl">{tile.value}</p>
@@ -64,9 +66,9 @@ export default async function WishesPage({
               <span className="text-stone-500">
                 {wish.authorName}
                 {wish.guest && wish.guest.displayName !== wish.authorName ? (
-                  <span className="text-stone-400"> · в списке: {wish.guest.displayName}</span>
+                  <span className="text-stone-400"> · {t("в списке", "on the list as")}: {wish.guest.displayName}</span>
                 ) : null}
-                <span className="ml-2 text-xs text-stone-400">{STATUS_LABEL[wish.status]}</span>
+                <span className="ml-2 text-xs text-stone-400">{STATUS_LABEL[wish.status] ? t(...STATUS_LABEL[wish.status]) : null}</span>
               </span>
               <div className="flex gap-2">
                 {wish.status !== "APPROVED" ? (
@@ -74,7 +76,7 @@ export default async function WishesPage({
                     <input type="hidden" name="wishId" value={wish.id} />
                     <input type="hidden" name="status" value="APPROVED" />
                     <button className="rounded-lg bg-stone-900 px-4 py-2 text-xs text-white">
-                      Опубликовать
+                      {t("Опубликовать", "Publish")}
                     </button>
                   </form>
                 ) : null}
@@ -83,7 +85,7 @@ export default async function WishesPage({
                     <input type="hidden" name="wishId" value={wish.id} />
                     <input type="hidden" name="status" value="REJECTED" />
                     <button className="rounded-lg border border-stone-300 px-4 py-2 text-xs">
-                      Отклонить
+                      {t("Отклонить", "Reject")}
                     </button>
                   </form>
                 ) : null}
@@ -95,7 +97,7 @@ export default async function WishesPage({
 
       {wishes.length === 0 ? (
         <p className="mt-8 text-stone-600">
-          Пожеланий пока нет. Гости пишут их по ссылке из приглашения.
+          {t("Пожеланий пока нет. Гости пишут их по ссылке из приглашения.", "No wishes yet. Guests leave them using the link in the invitation.")}
         </p>
       ) : null}
     </main>

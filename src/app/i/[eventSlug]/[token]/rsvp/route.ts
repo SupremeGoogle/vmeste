@@ -13,6 +13,7 @@ import { invitePage } from "@/server/guest-html/invite-html";
 import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
 import { readRsvpDraft, renderRsvpPage, rsvpSessionExpiry } from "@/server/guest-html/rsvp-page";
 import { flashQuery, readFlash } from "@/server/guest-html/flash";
+import { parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export async function POST(
   // Стёртое имя не сохраняем: без имени организатор не поймёт, кто ответил.
   const result = draft.guestName === ""
     ? { ok: false as const, reason: "name" as const, message: "" }
-    : await submitRsvp(token, draft, questions);
+    : await submitRsvp(token, draft, questions, parseLang(guest.event.language) ?? "ru");
 
   // Анкета, встроенная в само приглашение, возвращает гостя к ней же,
   // а не на отдельную страницу ответа.

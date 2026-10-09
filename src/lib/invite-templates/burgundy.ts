@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 
 const IMG = "/media/invite-burgundy";
 
@@ -31,3 +31,21 @@ export const BURGUNDY_TEMPLATE: InviteTemplate = {
     { type: "TEXT", content: { v: 1, tag: "До встречи", title: "С любовью, Валерия и Давид", text: "С нетерпением ждём встречи с вами!" } },
   ],
 };
+
+/** English sample: same sections and pictures as `BURGUNDY_TEMPLATE.blocks`. */
+export const BURGUNDY_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, names: "Emily & James", title: "Wedding invitation", dateText: "July 11, 2027", subtitle: "With love, we invite you to share this day with us", imageUrl: `${IMG}/hero.webp` } },
+  { type: "TEXT", content: { v: 1, tag: "Dear friends", title: "We would love to see you there", text: "A new chapter of our story is about to begin. We’d be so happy if you spent this special day with us.\nMay it become a warm memory for each of us." } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Counting down until we meet", doneText: "Today is our day!" } },
+  { type: "TIMELINE", content: { v: 1, title: "Order of the day", items: [
+    { time: "5:00 PM", title: "Guests arrive", note: "Hellos and hugs" },
+    { time: "6:00 PM", title: "Ceremony", note: "The most important “I do”" },
+    { time: "7:00 PM", title: "Cocktail hour", note: "Time to mingle and raise the first toasts" },
+    { time: "8:00 PM", title: "Dinner", note: "A cozy evening with our loved ones" },
+    { time: "9:00 PM", title: "First dance", note: "Then dancing until the end of the night" },
+  ] } },
+  { type: "VENUE", content: { v: 1, title: "The venue", name: "The Rose Garden Estate", address: "22 Garden Lane, Charleston, South Carolina", note: "We’ll be waiting for you among the flowers in the soft summer light.", imageUrl: `${IMG}/venue.webp`, mapUrl: "https://www.google.com/maps/search/?api=1&query=22%20Garden%20Lane%2C%20Charleston%2C%20SC", mapLabel: "Open map" } },
+  { type: "DRESSCODE", content: { v: 1, title: "Dress code", text: "We’d be delighted if you joined in the mood of the day with an outfit in the colors of our palette.", palette: ["#6a283c", "#9e5363", "#c99296", "#dfc0a1", "#5b413e"] } },
+  { type: "PHOTOS", content: { v: 1, title: "Outfit inspiration", items: [{ imageUrl: `${IMG}/dress.webp`, caption: "Inspiration for your celebration look" }] } },
+  { type: "TEXT", content: { v: 1, tag: "See you soon", title: "With love, Emily & James", text: "We can’t wait to celebrate with you!" } },
+];

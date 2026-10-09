@@ -12,6 +12,7 @@
  * кнопки тоже работают, а страница после них перерисовывается сама.
  */
 import { useCallback, useEffect, useState } from "react";
+import { useT } from "@/components/i18n-provider";
 
 export type ShelfPhoto = { id: string; guestName: string | null };
 
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export function PhotoShelf({ eventId, photos, kind, setStatus, remove }: Props) {
+  const t = useT();
   // По id, а не по номеру: снятое фото уходит из списка, и номер
   // показал бы соседнее, хотя решение принимали про другое.
   const [openId, setOpenId] = useState<string | null>(null);
@@ -58,12 +60,12 @@ export function PhotoShelf({ eventId, photos, kind, setStatus, remove }: Props) 
         <input type="hidden" name="photoId" value={photo.id} />
         <input type="hidden" name="status" value={kind === "approved" ? "REJECTED" : "APPROVED"} />
         <button className={large ? "rounded-lg bg-white/15 px-4 py-2 text-white hover:bg-white/25" : "text-stone-500 underline"}>
-          {kind === "approved" ? "снять" : "вернуть"}
+          {kind === "approved" ? t("снять", "unpublish") : t("вернуть", "restore")}
         </button>
       </form>
-      <form action={remove} onSubmit={(event) => { if (!window.confirm("Удалить фото насовсем? Вернуть его будет нельзя.")) event.preventDefault(); }}>
+      <form action={remove} onSubmit={(event) => { if (!window.confirm(t("Удалить фото насовсем? Вернуть его будет нельзя.", "Delete this photo for good? It can't be restored."))) event.preventDefault(); }}>
         <input type="hidden" name="photoId" value={photo.id} />
-        <button className={large ? "rounded-lg px-4 py-2 text-white/70 hover:text-white" : "text-stone-400 hover:text-red-700"}>удалить</button>
+        <button className={large ? "rounded-lg px-4 py-2 text-white/70 hover:text-white" : "text-stone-400 hover:text-red-700"}>{t("удалить", "delete")}</button>
       </form>
     </div>
   );
@@ -73,7 +75,7 @@ export function PhotoShelf({ eventId, photos, kind, setStatus, remove }: Props) 
       <ul className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
         {photos.map((photo, index) => (
           <li key={photo.id} className="text-center">
-            <button type="button" onClick={() => setOpen(index)} className="block w-full overflow-hidden rounded-lg" aria-label={`Открыть фото ${index + 1}`}>
+            <button type="button" onClick={() => setOpen(index)} className="block w-full overflow-hidden rounded-lg" aria-label={t(`Открыть фото ${index + 1}`, `Open photo ${index + 1}`)}>
               {/* eslint-disable-next-line @next/next/no-img-element -- снимки отдаёт своё API */}
               <img src={media(photo.id)} alt="" loading="lazy" className={`aspect-square w-full object-cover ${kind === "rejected" ? "opacity-70 grayscale-[35%]" : ""}`} />
             </button>
@@ -84,20 +86,20 @@ export function PhotoShelf({ eventId, photos, kind, setStatus, remove }: Props) 
       </ul>
 
       {current ? (
-        <div role="dialog" aria-label="Фотография" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/90 p-4" onClick={() => setOpenId(null)}>
+        <div role="dialog" aria-label={t("Фотография", "Photo")} className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/90 p-4" onClick={() => setOpenId(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element -- см. выше */}
           <img src={media(current.id, true)} alt="" className="max-h-[78dvh] max-w-full rounded-lg object-contain" onClick={(event) => event.stopPropagation()} />
           <div className="flex flex-col items-center gap-2 text-white" onClick={(event) => event.stopPropagation()}>
-            <p className="text-sm text-white/70">{current.guestName ?? "Гость не указан"} · {open! + 1} из {photos.length}</p>
+            <p className="text-sm text-white/70">{current.guestName ?? t("Гость не указан", "Guest not specified")} · {t(`${open! + 1} из ${photos.length}`, `${open! + 1} of ${photos.length}`)}</p>
             {actions(current, true)}
           </div>
           {photos.length > 1 ? (
             <>
-              <button type="button" aria-label="Предыдущее" onClick={(event) => { event.stopPropagation(); step(-1); }} className="absolute top-1/2 left-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20">‹</button>
-              <button type="button" aria-label="Следующее" onClick={(event) => { event.stopPropagation(); step(1); }} className="absolute top-1/2 right-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20">›</button>
+              <button type="button" aria-label={t("Предыдущее", "Previous")} onClick={(event) => { event.stopPropagation(); step(-1); }} className="absolute top-1/2 left-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20">‹</button>
+              <button type="button" aria-label={t("Следующее", "Next")} onClick={(event) => { event.stopPropagation(); step(1); }} className="absolute top-1/2 right-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20">›</button>
             </>
           ) : null}
-          <button type="button" aria-label="Закрыть" className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full bg-white/10 text-2xl text-white">×</button>
+          <button type="button" aria-label={t("Закрыть", "Close")} className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full bg-white/10 text-2xl text-white">×</button>
         </div>
       ) : null}
     </>

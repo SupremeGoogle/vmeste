@@ -21,11 +21,15 @@ import {
   guestFontSize, isSoloPrintTable, pageScale, paperSize, PRINT_TEMPLATES, defaultPrintDesign, relayoutTables,
   type PrintDesign, type PrintElement, type PrintMode, type PrintTable, type PrintTemplateId,
 } from "@/lib/print-design";
+import { useT } from "@/components/i18n-provider";
+import type { Lang } from "@/lib/i18n";
 import "./print-designer.css";
 
 type Props = {
   eventId: string; mode: PrintMode; initial: PrintDesign;
   title: string; date: string; tables: PrintTable[]; qrData: string; shortCode: string;
+  /** Язык мероприятия: на нём подписи, которые уходят в печать. Интерфейс — на языке кабинета. */
+  lang?: Lang;
 };
 type Drag = { id: string; kind: "move" | "resize"; x: number; y: number; start: PrintElement };
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
@@ -33,7 +37,10 @@ const round = (n: number) => Math.round(n * 10) / 10;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 4;
 
-export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrData, shortCode }: Props) {
+export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrData, shortCode, lang = "ru" }: Props) {
+  const t = useT();
+  /** Текст для листа — на языке мероприятия. */
+  const pl = (ru: string, en: string) => (lang === "en" ? en : ru);
   const [design, setDesign] = useState(initial);
   const [selected, setSelected] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -62,15 +69,15 @@ export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrD
 
   function patch(updater: (prev: PrintDesign) => PrintDesign) {
     setDesign(updater);
-    setState("Есть несохранённые изменения");
+    setState(t("Есть несохранённые изменения", "You have unsaved changes"));
   }
   const update = useCallback((id: string, changes: Partial<PrintElement>) => {
     setDesign((prev) => ({ ...prev, elements: prev.elements.map((item) => item.id === id ? { ...item, ...changes } : item) }));
-    setState("Есть несохранённые изменения");
-  }, []);
+    setState(t("Есть несохранённые изменения", "You have unsaved changes"));
+  }, [t]);
 
   function chooseTemplate(id: PrintTemplateId) {
-    const fresh = defaultPrintDesign(mode, id, title, date, tables);
+    const fresh = defaultPrintDesign(mode, id, title, date, tables, lang);
     patch((prev) => {
       const prior = new Map(prev.elements.map((item) => [item.id, item]));
       const core = fresh.elements.map((item) => {
@@ -195,15 +202,15 @@ export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrD
   function pointerUp() { drag.current = null; }
 
   async function save() {
-    setState("Сохраняем…");
+    setState(t("Сохраняем…", "Saving…"));
     try {
       const res = await fetch(`/api/app/events/${eventId}/print-design`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(design) });
       if (!res.ok) throw new Error("Не удалось сохранить макет");
-      setState("Макет сохранён");
-    } catch { setState("Не удалось сохранить. Попробуйте ещё раз."); }
+      setState(t("Макет сохранён", "Layout saved"));
+    } catch { setState(t("Не удалось сохранить. Попробуйте ещё раз.", "Couldn't save. Please try again.")); }
   }
   async function download() {
-    setState("Готовим PDF…");
+    setState(t("Готовим PDF…", "Preparing PDF…"));
     try {
       const res = await fetch(`/api/app/events/${eventId}/print-design/pdf`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(design) });
       if (!res.ok) throw new Error("PDF не готов");
@@ -211,11 +218,11 @@ export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrD
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = mode === "seating" ? "план-рассадки.pdf" : "qr-код.pdf";
+      link.download = mode === "seating" ? t("план-рассадки.pdf", "seating-chart.pdf") : t("qr-код.pdf", "qr-code.pdf");
       document.body.append(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-      setState("PDF скачан");
-    } catch { setState("Не удалось создать PDF. Попробуйте ещё раз."); }
+      setState(t("PDF скачан", "PDF downloaded"));
+    } catch { setState(t("Не удалось создать PDF. Попробуйте ещё раз.", "Couldn't create the PDF. Please try again.")); }
   }
 
   /** Карточка, у которой текст не влез, подсвечивается — видно, что надо ужать. */
@@ -229,60 +236,63 @@ export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrD
   return <div className="print-editor">
     <div className="print-editor-top">
       <div>
-        <h2>{mode === "seating" ? "План рассадки для печати" : "QR-код для печати"}</h2>
+        <h2>{mode === "seating" ? t("План рассадки для печати", "Printable seating chart") : t("QR-код для печати", "Printable QR code")}</h2>
         <p>{mode === "seating"
-          ? `Столов: ${tables.length}, гостей: ${guestCount}. Стол молодожёнов на план не выводится. Перетаскивайте элементы, приближайте лист колесом с Ctrl.`
-          : "Выберите стиль и перетащите элементы на листе."}</p>
+          ? t(
+            `Столов: ${tables.length}, гостей: ${guestCount}. Стол молодожёнов на план не выводится. Перетаскивайте элементы, приближайте лист колесом с Ctrl.`,
+            `Tables: ${tables.length}, guests: ${guestCount}. The couple's table isn't shown on the chart. Drag elements around; Ctrl + scroll to zoom.`,
+          )
+          : t("Выберите стиль и перетащите элементы на листе.", "Pick a style and drag the elements on the sheet.")}</p>
       </div>
-      <div className="print-editor-actions"><button type="button" onClick={save}>Сохранить макет</button><button type="button" className="primary" onClick={download}>Скачать PDF</button></div>
+      <div className="print-editor-actions"><button type="button" onClick={save}>{t("Сохранить макет", "Save layout")}</button><button type="button" className="primary" onClick={download}>{t("Скачать PDF", "Download PDF")}</button></div>
     </div>
     <p className="print-editor-state" role="status">{state}</p>
-    <div className="print-editor-templates" aria-label="Шаблоны оформления">
+    <div className="print-editor-templates" aria-label={t("Шаблоны оформления", "Design templates")}>
       {PRINT_TEMPLATES.map((item) => <button key={item.id} type="button" className={design.template === item.id ? "active" : ""} onClick={() => chooseTemplate(item.id)} aria-pressed={design.template === item.id}>
         <span className={`print-template-thumb print-theme-${item.id}`} style={{ color: item.ink, background: item.paper }}>
           {mode === "qr" ? <img className="print-qr-thumb-art" src={`/media/print-design/${item.qrArt}.webp`} alt="" /> : item.art !== "none" ? <img src={`/media/print-design/${item.art}.webp`} alt="" /> : <span className="print-thumb-mark">✦</span>}
           <i style={{ color: item.accent }}>A &amp; M</i>
           {mode === "seating" ? <span className={`print-thumb-structure structure-${item.layout}`} style={{ color: item.accent }}>{Array.from({ length: item.layout === "single" ? 1 : item.layout === "cards" ? 5 : item.layout === "orbit" ? 6 : item.layout === "grid4" ? 8 : item.layout === "grid2" || item.layout === "wide" ? 6 : 9 }, (_, i) => <b key={i} />)}</span> : <img className="print-thumb-qr" src={qrData} alt="" />}
-        </span><span>{mode === "qr" ? item.qrName : item.name}</span>
+        </span><span>{mode === "qr" ? t(item.qrName, item.qrNameEn) : t(item.name, item.nameEn)}</span>
       </button>)}
     </div>
     <div className="print-editor-workspace">
       <div className="print-editor-main">
         <div className="print-editor-toolbar">
-          <label>Формат <select value={design.paper} onChange={(e) => setSheet({ paper: e.target.value as PrintDesign["paper"] })}><option>A2</option><option>A3</option><option>A4</option></select></label>
-          <label>Ориентация <select value={design.orientation} onChange={(e) => setSheet({ orientation: e.target.value as PrintDesign["orientation"] })}><option value="portrait">Вертикально</option><option value="landscape">Горизонтально</option></select></label>
-          {pageCount > 1 ? <label>Лист <select value={page} onChange={(e) => { setPage(Number(e.target.value)); setSelected(null); }}>{Array.from({ length: pageCount }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}</select></label> : null}
-          <label>Акцент <input type="color" value={design.accent} onChange={(e) => patch((prev) => ({ ...prev, accent: e.target.value }))} /></label>
-          <label>Текст <input type="color" value={design.ink} onChange={(e) => patch((prev) => ({ ...prev, ink: e.target.value }))} /></label>
-          <button type="button" onClick={() => { const id = `text:${Date.now()}`; const item: PrintElement = { id, kind: "text", text: "Ваш текст", x: 24, y: 50, w: 52, fontSize: 22, align: "center", hidden: false, page, auto: false }; patch((prev) => ({ ...prev, elements: [...prev.elements, item] })); setSelected(id); }}>+ Надпись</button>
-          {mode === "seating" ? <button type="button" onClick={regrid} title="Вернуть все столы в ровную сетку на первом листе">Разложить столы</button> : null}
-          <button type="button" onClick={() => { if (!confirm("Вернуть расположение элементов по умолчанию?")) return; setDesign(defaultPrintDesign(mode, design.template, title, date, tables)); setSelected(null); setPage(0); setState("Расположение сброшено"); }}>Сбросить</button>
+          <label>{t("Формат", "Size")} <select value={design.paper} onChange={(e) => setSheet({ paper: e.target.value as PrintDesign["paper"] })}><option>A2</option><option>A3</option><option>A4</option></select></label>
+          <label>{t("Ориентация", "Orientation")} <select value={design.orientation} onChange={(e) => setSheet({ orientation: e.target.value as PrintDesign["orientation"] })}><option value="portrait">{t("Вертикально", "Portrait")}</option><option value="landscape">{t("Горизонтально", "Landscape")}</option></select></label>
+          {pageCount > 1 ? <label>{t("Лист", "Page")} <select value={page} onChange={(e) => { setPage(Number(e.target.value)); setSelected(null); }}>{Array.from({ length: pageCount }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}</select></label> : null}
+          <label>{t("Акцент", "Accent")} <input type="color" value={design.accent} onChange={(e) => patch((prev) => ({ ...prev, accent: e.target.value }))} /></label>
+          <label>{t("Текст", "Text")} <input type="color" value={design.ink} onChange={(e) => patch((prev) => ({ ...prev, ink: e.target.value }))} /></label>
+          <button type="button" onClick={() => { const id = `text:${Date.now()}`; const item: PrintElement = { id, kind: "text", text: pl("Ваш текст", "Your text"), x: 24, y: 50, w: 52, fontSize: 22, align: "center", hidden: false, page, auto: false }; patch((prev) => ({ ...prev, elements: [...prev.elements, item] })); setSelected(id); }}>{t("+ Надпись", "+ Text")}</button>
+          {mode === "seating" ? <button type="button" onClick={regrid} title={t("Вернуть все столы в ровную сетку на первом листе", "Put all tables back in a neat grid on the first page")}>{t("Разложить столы", "Arrange tables")}</button> : null}
+          <button type="button" onClick={() => { if (!confirm(t("Вернуть расположение элементов по умолчанию?", "Reset all elements to the default layout?"))) return; setDesign(defaultPrintDesign(mode, design.template, title, date, tables, lang)); setSelected(null); setPage(0); setState(t("Расположение сброшено", "Layout reset")); }}>{t("Сбросить", "Reset")}</button>
         </div>
         <div className="print-editor-toolbar print-editor-sizes">
-          <span className="print-stepper" aria-label="Размер всего текста">
-            <span>Весь текст</span>
-            <button type="button" onClick={() => scaleText("textScale", -0.1)} aria-label="Уменьшить весь текст">A−</button>
+          <span className="print-stepper" aria-label={t("Размер всего текста", "Size of all text")}>
+            <span>{t("Весь текст", "All text")}</span>
+            <button type="button" onClick={() => scaleText("textScale", -0.1)} aria-label={t("Уменьшить весь текст", "Make all text smaller")}>A−</button>
             <b>{Math.round(design.textScale * 100)}%</b>
-            <button type="button" onClick={() => scaleText("textScale", 0.1)} aria-label="Увеличить весь текст">A+</button>
+            <button type="button" onClick={() => scaleText("textScale", 0.1)} aria-label={t("Увеличить весь текст", "Make all text larger")}>A+</button>
           </span>
-          {mode === "seating" ? <span className="print-stepper" aria-label="Размер имён гостей">
-            <span>Имена гостей</span>
-            <button type="button" onClick={() => scaleText("guestScale", -0.1)} aria-label="Уменьшить имена">A−</button>
+          {mode === "seating" ? <span className="print-stepper" aria-label={t("Размер имён гостей", "Guest name size")}>
+            <span>{t("Имена гостей", "Guest names")}</span>
+            <button type="button" onClick={() => scaleText("guestScale", -0.1)} aria-label={t("Уменьшить имена", "Make names smaller")}>A−</button>
             <b>{Math.round(design.guestScale * 100)}%</b>
-            <button type="button" onClick={() => scaleText("guestScale", 0.1)} aria-label="Увеличить имена">A+</button>
+            <button type="button" onClick={() => scaleText("guestScale", 0.1)} aria-label={t("Увеличить имена", "Make names larger")}>A+</button>
           </span> : null}
-          <span className="print-stepper" aria-label="Масштаб листа">
-            <span>Масштаб</span>
-            <button type="button" onClick={() => zoomTo(zoom / 1.25)} aria-label="Отдалить">−</button>
-            <button type="button" className="print-zoom-value" onClick={() => zoomTo(1)} title="Вернуть лист по размеру окна">{Math.round(zoom * 100)}%</button>
-            <button type="button" onClick={() => zoomTo(zoom * 1.25)} aria-label="Приблизить">+</button>
+          <span className="print-stepper" aria-label={t("Масштаб листа", "Sheet zoom")}>
+            <span>{t("Масштаб", "Zoom")}</span>
+            <button type="button" onClick={() => zoomTo(zoom / 1.25)} aria-label={t("Отдалить", "Zoom out")}>−</button>
+            <button type="button" className="print-zoom-value" onClick={() => zoomTo(1)} title={t("Вернуть лист по размеру окна", "Fit the sheet to the window")}>{Math.round(zoom * 100)}%</button>
+            <button type="button" onClick={() => zoomTo(zoom * 1.25)} aria-label={t("Приблизить", "Zoom in")}>+</button>
           </span>
         </div>
         <div ref={scroller} className="print-canvas-scroll" onPointerDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
           <div ref={canvas} className={`print-canvas print-theme-${design.template}`} style={{ width: canvasWidth, background: theme.paper, color: design.ink, aspectRatio: `${sheet.w} / ${sheet.h}` }} onPointerDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
             {mode === "qr" ? <img className="print-canvas-qr-art" src={`/media/print-design/${theme.qrArt}.webp`} alt="" /> : theme.art !== "none" ? <><img className="print-canvas-art top" src={`/media/print-design/${theme.art}.webp`} alt="" /><img className="print-canvas-art bottom" src={`/media/print-design/${theme.art}.webp`} alt="" /></> : null}
             {theme.frame !== "none" ? <div className={`print-canvas-frame frame-${theme.frame}`} style={{ borderColor: design.accent }} /> : null}
-            {mode === "seating" && theme.layout === "orbit" && !design.elements.some((item) => item.page === page && item.kind === "table" && isSoloPrintTable(design, item)) ? <div className="print-orbit-center" style={{ borderColor: design.accent, color: design.accent, fontSize: pt(19) * design.textScale }}>СХЕМА<br />ЗАЛА</div> : null}
+            {mode === "seating" && theme.layout === "orbit" && !design.elements.some((item) => item.page === page && item.kind === "table" && isSoloPrintTable(design, item)) ? <div className="print-orbit-center" style={{ borderColor: design.accent, color: design.accent, fontSize: pt(19) * design.textScale }}>{pl("СХЕМА", "FLOOR")}<br />{pl("ЗАЛА", "PLAN")}</div> : null}
             {pageElements.filter((item) => !item.hidden).map((item) => {
               const table = tables.find((entry) => entry.id === item.tableId);
               const solo = item.kind === "table" && isSoloPrintTable(design, item);
@@ -296,7 +306,7 @@ export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrD
                 style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.w}%`, ...(item.kind === "table" && item.h ? { height: `${item.h}%` } : {}), textAlign: item.align, color: item.id === "title" || item.kind === "table" ? design.accent : design.ink, borderColor: design.accent }}
                 onPointerDown={(e) => pointerDown(e, item)} onPointerMove={pointerMove} onPointerUp={pointerUp} onLostPointerCapture={pointerUp}
               >
-                {item.kind === "qr" ? <img className="print-canvas-qr" src={qrData} alt="QR-код входа на праздник" />
+                {item.kind === "qr" ? <img className="print-canvas-qr" src={qrData} alt={t("QR-код входа на праздник", "QR code to open the celebration")} />
                   : item.kind === "code" ? <><small style={{ fontSize: pt(10) * design.textScale }}>{item.text}</small><strong style={{ fontSize: titleSize }}>{shortCode}</strong></>
                   : item.kind === "table" ? theme.layout === "orbit" && !solo ? <div className="print-orbit-table">
                     <strong style={{ fontSize: titleSize, color: design.accent, width: titleSize * 3.2, height: titleSize * 1.7 }}>{item.text || table?.label}</strong>
@@ -304,38 +314,38 @@ export function PrintDesigner({ eventId, mode, initial, title, date, tables, qrD
                       <span className="print-orbit-guests" style={{ fontSize: guestsSize, color: design.ink }}>{table?.guests.slice(0, Math.ceil(table.guests.length / 2)).join("\n") || ""}</span>
                       <span className="print-orbit-guests" style={{ fontSize: guestsSize, color: design.ink }}>{table?.guests.slice(Math.ceil(table.guests.length / 2)).join("\n") || ""}</span>
                     </div>
-                  </div> : <><strong style={{ fontSize: titleSize, color: design.accent, fontFamily: ["minimal", "deco"].includes(design.template) ? "PrintSerif" : "PrintScript" }}>{item.text || table?.label}</strong><span className="print-table-guests" style={{ fontSize: guestsSize, color: design.ink }}>{table?.guests.join("\n") || "Пока нет гостей"}</span></>
+                  </div> : <><strong style={{ fontSize: titleSize, color: design.accent, fontFamily: ["minimal", "deco"].includes(design.template) ? "PrintSerif" : "PrintScript" }}>{item.text || table?.label}</strong><span className="print-table-guests" style={{ fontSize: guestsSize, color: design.ink }}>{table?.guests.join("\n") || pl("Пока нет гостей", "No guests yet")}</span></>
                   : <span style={{ fontSize: titleSize, fontFamily: item.id === "title" || item.fontSize >= 25 ? "PrintScript" : "PrintSerif" }}>{item.text}</span>}
-                {isSelected ? <div className="print-resize-handle" title="Потяните, чтобы изменить размер" onPointerDown={(e) => pointerDown(e, item, "resize")} onPointerMove={pointerMove} onPointerUp={pointerUp} onLostPointerCapture={pointerUp} /> : null}
+                {isSelected ? <div className="print-resize-handle" title={t("Потяните, чтобы изменить размер", "Drag to resize")} onPointerDown={(e) => pointerDown(e, item, "resize")} onPointerMove={pointerMove} onPointerUp={pointerUp} onLostPointerCapture={pointerUp} /> : null}
               </div>;
             })}
           </div>
         </div>
-        <p className="print-editor-hint">Стрелки двигают выбранный элемент (с Shift быстрее), + и − меняют его размер, Ctrl + колесо приближает лист.</p>
+        <p className="print-editor-hint">{t("Стрелки двигают выбранный элемент (с Shift быстрее), + и − меняют его размер, Ctrl + колесо приближает лист.", "Arrow keys move the selected element (faster with Shift), + and − change its size, Ctrl + scroll zooms the sheet.")}</p>
       </div>
       <aside className="print-editor-side">
-        <h3>Элементы листа</h3>
-        <p>Нажмите на элемент и перетащите его. Скрытые можно вернуть.</p>
-        <div className="print-element-list">{design.elements.filter((item) => item.page === page).map((item) => <button key={item.id} type="button" className={selected === item.id ? "active" : ""} onClick={() => setSelected(item.id)}><span>{item.kind === "table" ? item.text : item.kind === "qr" ? "QR-код" : item.kind === "code" ? "Код входа" : item.text || "Надпись"}</span>{item.hidden ? <small>скрыт</small> : null}</button>)}</div>
+        <h3>{t("Элементы листа", "Sheet elements")}</h3>
+        <p>{t("Нажмите на элемент и перетащите его. Скрытые можно вернуть.", "Click an element and drag it. Hidden ones can be brought back.")}</p>
+        <div className="print-element-list">{design.elements.filter((item) => item.page === page).map((item) => <button key={item.id} type="button" className={selected === item.id ? "active" : ""} onClick={() => setSelected(item.id)}><span>{item.kind === "table" ? item.text : item.kind === "qr" ? t("QR-код", "QR code") : item.kind === "code" ? t("Код входа", "Access code") : item.text || t("Надпись", "Text")}</span>{item.hidden ? <small>{t("скрыт", "hidden")}</small> : null}</button>)}</div>
         {element ? <div className="print-element-settings" key={element.id}>
-          <h4>{element.kind === "table" ? "Карточка стола" : element.kind === "qr" ? "QR-код" : "Надпись"}</h4>
-          {element.kind !== "qr" ? <label>Текст <textarea value={element.text} onChange={(e) => update(element.id, { text: e.target.value })} rows={element.kind === "table" ? 1 : 3} /></label> : <p>QR-код ведёт на страницу входа гостей.</p>}
+          <h4>{element.kind === "table" ? t("Карточка стола", "Table card") : element.kind === "qr" ? t("QR-код", "QR code") : t("Надпись", "Text")}</h4>
+          {element.kind !== "qr" ? <label>{t("Текст", "Text")} <textarea value={element.text} onChange={(e) => update(element.id, { text: e.target.value })} rows={element.kind === "table" ? 1 : 3} /></label> : <p>{t("QR-код ведёт на страницу входа гостей.", "The QR code opens the guest entry page.")}</p>}
           {element.kind !== "qr" ? <div className="print-field">
-            <span>{element.kind === "table" ? "Размер названия" : "Размер шрифта"}</span>
+            <span>{element.kind === "table" ? t("Размер названия", "Name size") : t("Размер шрифта", "Font size")}</span>
             <div className="print-number">
-              <button type="button" onClick={() => update(element.id, { fontSize: clamp(element.fontSize - 1, 6, 110) })} aria-label="Меньше">−</button>
+              <button type="button" onClick={() => update(element.id, { fontSize: clamp(element.fontSize - 1, 6, 110) })} aria-label={t("Меньше", "Smaller")}>−</button>
               <input type="number" min={6} max={110} value={element.fontSize} onChange={(e) => update(element.id, { fontSize: clamp(Number(e.target.value) || 6, 6, 110) })} />
-              <button type="button" onClick={() => update(element.id, { fontSize: clamp(element.fontSize + 1, 6, 110) })} aria-label="Больше">+</button>
+              <button type="button" onClick={() => update(element.id, { fontSize: clamp(element.fontSize + 1, 6, 110) })} aria-label={t("Больше", "Larger")}>+</button>
             </div>
           </div> : null}
-          <label>Ширина, % <input type="number" min={4} max={100} value={element.w} onChange={(e) => update(element.id, { w: clamp(Number(e.target.value) || 4, 4, 100), auto: false })} /></label>
-          {element.kind === "table" ? <label>Высота, % <input type="number" min={3} max={100} value={element.h ?? 19} onChange={(e) => update(element.id, { h: clamp(Number(e.target.value) || 3, 3, 100), auto: false })} /></label> : null}
-          <label>Выравнивание <select value={element.align} onChange={(e) => update(element.id, { align: e.target.value as PrintElement["align"] })}><option value="left">Слева</option><option value="center">По центру</option><option value="right">Справа</option></select></label>
-          {pageCount > 1 && element.kind === "table" ? <label>Лист <select value={element.page} onChange={(e) => { update(element.id, { page: Number(e.target.value), auto: false }); setPage(Number(e.target.value)); }}><option value={0}>1</option>{Array.from({ length: pageCount - 1 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 2}</option>)}</select></label> : null}
-          {element.kind === "table" && pageCount <= 50 ? <button type="button" onClick={() => { update(element.id, { page: pageCount, x: 17, y: 30, w: 66, h: 60, fontSize: 40, auto: false }); setPage(pageCount); }}>Перенести на новый лист</button> : null}
-          <button type="button" onClick={() => update(element.id, { hidden: !element.hidden })}>{element.hidden ? "Показать" : "Скрыть с печати"}</button>
-          {element.kind === "text" && !["title", "date", "eyebrow"].includes(element.id) ? <button type="button" className="danger" onClick={() => { patch((prev) => ({ ...prev, elements: prev.elements.filter((item) => item.id !== element.id) })); setSelected(null); }}>Удалить надпись</button> : null}
-        </div> : <p className="print-select-hint">Выберите элемент на листе или в списке.</p>}
+          <label>{t("Ширина, %", "Width, %")} <input type="number" min={4} max={100} value={element.w} onChange={(e) => update(element.id, { w: clamp(Number(e.target.value) || 4, 4, 100), auto: false })} /></label>
+          {element.kind === "table" ? <label>{t("Высота, %", "Height, %")} <input type="number" min={3} max={100} value={element.h ?? 19} onChange={(e) => update(element.id, { h: clamp(Number(e.target.value) || 3, 3, 100), auto: false })} /></label> : null}
+          <label>{t("Выравнивание", "Alignment")} <select value={element.align} onChange={(e) => update(element.id, { align: e.target.value as PrintElement["align"] })}><option value="left">{t("Слева", "Left")}</option><option value="center">{t("По центру", "Center")}</option><option value="right">{t("Справа", "Right")}</option></select></label>
+          {pageCount > 1 && element.kind === "table" ? <label>{t("Лист", "Page")} <select value={element.page} onChange={(e) => { update(element.id, { page: Number(e.target.value), auto: false }); setPage(Number(e.target.value)); }}><option value={0}>1</option>{Array.from({ length: pageCount - 1 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 2}</option>)}</select></label> : null}
+          {element.kind === "table" && pageCount <= 50 ? <button type="button" onClick={() => { update(element.id, { page: pageCount, x: 17, y: 30, w: 66, h: 60, fontSize: 40, auto: false }); setPage(pageCount); }}>{t("Перенести на новый лист", "Move to a new page")}</button> : null}
+          <button type="button" onClick={() => update(element.id, { hidden: !element.hidden })}>{element.hidden ? t("Показать", "Show") : t("Скрыть с печати", "Hide from print")}</button>
+          {element.kind === "text" && !["title", "date", "eyebrow"].includes(element.id) ? <button type="button" className="danger" onClick={() => { patch((prev) => ({ ...prev, elements: prev.elements.filter((item) => item.id !== element.id) })); setSelected(null); }}>{t("Удалить надпись", "Delete text")}</button> : null}
+        </div> : <p className="print-select-hint">{t("Выберите элемент на листе или в списке.", "Select an element on the sheet or in the list.")}</p>}
       </aside>
     </div>
   </div>;

@@ -35,3 +35,12 @@ export function guestLang(): Lang {
 export function gl(ru: string, en: string): string {
   return current === "en" ? en : ru;
 }
+
+/**
+ * Тема приглашения на языке мероприятия. Часть подписей шаблонов и
+ * `<html lang>` берут язык из самой темы (`theme.language`), поэтому у
+ * английской свадьбы он ставится и там; у русской тема остаётся как есть.
+ */
+export function themeInLang<Theme extends { language?: Lang }>(theme: Theme, lang: string | null | undefined): Theme {
+  return { ...theme, language: parseLang(lang) ?? "ru" };
+}

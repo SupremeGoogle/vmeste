@@ -18,7 +18,8 @@
     "access-check": "python3 scripts/access-check.py",
     "admin:reset-2fa": "tsx scripts/admin-reset-2fa.ts",
     "retention": "tsx scripts/retention.ts",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "check:links": "bash scripts/check-links.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1115.0",

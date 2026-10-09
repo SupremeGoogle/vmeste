@@ -16,6 +16,8 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { SPRING } from "@/components/motion/motion";
 import { OpeningLink } from "@/components/loading/opening-link";
+import { useLang, useT } from "@/components/i18n-provider";
+import { countWord, type T } from "@/lib/i18n";
 
 export type EventCardData = {
   id: string;
@@ -33,11 +35,11 @@ const STATUS_STYLE: Record<EventCardData["status"], string> = {
   ARCHIVED: "bg-stone-100 text-stone-400",
 };
 
-const STATUS_LABEL: Record<EventCardData["status"], string> = {
-  DRAFT: "Черновик",
-  PUBLISHED: "Опубликовано",
-  ARCHIVED: "В архиве",
-};
+const STATUS_LABEL = (t: T): Record<EventCardData["status"], string> => ({
+  DRAFT: t("Черновик", "Draft"),
+  PUBLISHED: t("Опубликовано", "Published"),
+  ARCHIVED: t("В архиве", "Archived"),
+});
 
 export function EventCard({
   event,
@@ -55,6 +57,8 @@ export function EventCard({
   const [title, setTitle] = useState(event.title);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const t = useT();
+  const lang = useLang();
 
   function saveTitle() {
     const clean = title.trim();
@@ -106,7 +110,7 @@ export function EventCard({
                 onClick={saveTitle}
                 className="rounded-lg bg-stone-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
-                {isPending ? "Сохраняю…" : "Сохранить"}
+                {isPending ? t("Сохраняю…", "Saving…") : t("Сохранить", "Save")}
               </button>
               <button
                 type="button"
@@ -116,7 +120,7 @@ export function EventCard({
                 }}
                 className="rounded-lg px-3 py-1.5 text-sm text-stone-500 hover:text-stone-900"
               >
-                Отмена
+                {t("Отмена", "Cancel")}
               </button>
             </div>
           ) : (
@@ -137,8 +141,8 @@ export function EventCard({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                title="Переименовать"
-                aria-label="Переименовать"
+                title={t("Переименовать", "Rename")}
+                aria-label={t("Переименовать", "Rename")}
                 className="-mt-1 shrink-0 rounded-md p-2 text-stone-400 transition-colors duration-200 hover:bg-stone-100 hover:text-stone-700"
               >
                 ✎
@@ -149,7 +153,7 @@ export function EventCard({
           <p className="mt-1.5 text-sm text-stone-600">
             {event.eventDateLabel}
             {event.venueName ? ` · ${event.venueName}` : ""}
-            {` · ${event.guestCount} гостей`}
+            {` · ${countWord(lang, event.guestCount, ["гость", "гостя", "гостей"], ["guest", "guests"])}`}
           </p>
         </div>
 
@@ -160,7 +164,7 @@ export function EventCard({
         */}
         <div className="flex w-full shrink-0 items-center gap-3 sm:w-auto sm:flex-col sm:items-end sm:gap-1.5">
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[event.status]}`}>
-            {STATUS_LABEL[event.status]}
+            {STATUS_LABEL(t)[event.status]}
           </span>
           <p className="font-mono text-lg tracking-widest text-stone-600">{event.shortCode}</p>
         </div>
@@ -174,10 +178,10 @@ export function EventCard({
       */}
       <div className="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
         {[
-          { href: `/app/e/${event.id}/guests`, label: "Гости" },
-          { href: `/app/e/${event.id}/seating`, label: "Рассадка" },
-          { href: `/app/e/${event.id}/print`, label: "Печать и QR" },
-          { href: `/app/e/${event.id}/settings`, label: "Настройки" },
+          { href: `/app/e/${event.id}/guests`, label: t("Гости", "Guests") },
+          { href: `/app/e/${event.id}/seating`, label: t("Рассадка", "Seating") },
+          { href: `/app/e/${event.id}/print`, label: t("Печать и QR", "Print & QR") },
+          { href: `/app/e/${event.id}/settings`, label: t("Настройки", "Settings") },
         ].map((item) => (
           <Link
             key={item.href}
@@ -202,12 +206,12 @@ export function EventCard({
           rel="noreferrer"
           className="flex min-h-11 items-center text-sm font-medium text-stone-500 transition-colors duration-200 hover:text-stone-900"
         >
-          Вход гостя ↗
+          {t("Вход гостя ↗", "Guest view ↗")}
         </a>
 
         {confirmingDelete ? (
           <div className="flex items-center gap-1.5">
-            <span className="hidden text-sm text-red-800 sm:inline">Удалить безвозвратно?</span>
+            <span className="hidden text-sm text-red-800 sm:inline">{t("Удалить безвозвратно?", "Delete permanently?")}</span>
             <button
               type="button"
               disabled={isPending}
@@ -218,14 +222,14 @@ export function EventCard({
               }
               className="min-h-11 rounded-lg bg-[#8a2b2b] px-3 text-sm font-medium text-white transition-opacity duration-200 disabled:opacity-50"
             >
-              {isPending ? "Удаляю…" : "Да, удалить"}
+              {isPending ? t("Удаляю…", "Deleting…") : t("Да, удалить", "Yes, delete")}
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
               className="min-h-11 rounded-lg px-3 text-sm text-stone-500 transition-colors duration-200 hover:text-stone-900"
             >
-              Отмена
+              {t("Отмена", "Cancel")}
             </button>
           </div>
         ) : (
@@ -234,7 +238,7 @@ export function EventCard({
             onClick={() => setConfirmingDelete(true)}
             className="min-h-11 rounded-lg px-3 text-sm font-medium text-red-800 transition-colors duration-200 hover:bg-red-50"
           >
-            Удалить
+            {t("Удалить", "Delete")}
           </button>
         )}
       </div>

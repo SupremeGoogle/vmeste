@@ -19,6 +19,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/i18n-provider";
 
 export const DRAFT_CHANGED = "invite-draft-changed";
 /** Сообщение напоминанию в шапке мероприятия: есть ли несохранённое. */
@@ -49,6 +50,7 @@ export function PublishControls({
   discardChanges: () => Promise<ActionResult>;
 }) {
   const router = useRouter();
+  const t = useT();
   const [published, setPublished] = useState(initialPublished);
   const [dirty, setDirty] = useState(initialDirty);
   const [dialog, setDialog] = useState<null | "published" | "saved">(null);
@@ -129,11 +131,11 @@ export function PublishControls({
           className={`${button} border border-stone-300 bg-card text-stone-800`}
           data-rybbit-event="invite_unpublish"
           onClick={() => {
-            if (!window.confirm("Снять приглашение с публикации? Гости перестанут его открывать, пока вы не опубликуете снова.")) return;
+            if (!window.confirm(t("Снять приглашение с публикации? Гости перестанут его открывать, пока вы не опубликуете снова.", "Unpublish the invitation? Guests won’t be able to open it until you publish it again."))) return;
             run(unpublish, () => { setPublished(false); setDirty(false); });
           }}
         >
-          Снять с публикации
+          {t("Снять с публикации", "Unpublish")}
         </button>
       ) : (
         <button
@@ -143,7 +145,7 @@ export function PublishControls({
           data-rybbit-event="invite_publish"
           onClick={() => run(publish, () => { setPublished(true); setDirty(false); setDialog("published"); })}
         >
-          {pending ? "Публикуем…" : "Опубликовать"}
+          {pending ? t("Публикуем…", "Publishing…") : t("Опубликовать", "Publish")}
         </button>
       )}
 
@@ -160,7 +162,7 @@ export function PublishControls({
           >
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span className="size-2 shrink-0 animate-pulse rounded-full bg-amber-500" aria-hidden />
-              <span><b>Изменения не сохранены.</b> Гости пока видят прошлую версию приглашения.</span>
+              <span><b>{t("Изменения не сохранены.", "Unsaved changes.")}</b> {t("Гости пока видят прошлую версию приглашения.", "Guests still see the previous version of the invitation.")}</span>
             </span>
             <span className="flex gap-2">
               <button
@@ -168,11 +170,11 @@ export function PublishControls({
                 disabled={pending}
                 className="rounded-lg px-3 py-2 text-amber-900 underline underline-offset-2 disabled:opacity-50"
                 onClick={() => {
-                  if (!window.confirm("Отменить все несохранённые изменения? Приглашение вернётся к версии, которую видят гости.")) return;
+                  if (!window.confirm(t("Отменить все несохранённые изменения? Приглашение вернётся к версии, которую видят гости.", "Discard all unsaved changes? The invitation will go back to the version guests see."))) return;
                   run(discardChanges, () => setDirty(false));
                 }}
               >
-                Отменить
+                {t("Отменить", "Discard")}
               </button>
               <button
                 type="button"
@@ -180,7 +182,7 @@ export function PublishControls({
                 className="rounded-lg bg-stone-900 px-4 py-2 font-medium text-white disabled:opacity-50"
                 onClick={() => run(saveChanges, () => { setDirty(false); setDialog("saved"); })}
               >
-                {pending ? "Сохраняем…" : "Сохранить изменения"}
+                {pending ? t("Сохраняем…", "Saving…") : t("Сохранить изменения", "Save changes")}
               </button>
             </span>
           </motion.div>
@@ -193,28 +195,28 @@ export function PublishControls({
 
       <Dialog open={dialog !== null} onClose={() => setDialog(null)}>
         <p className="text-4xl" aria-hidden>{dialog === "saved" ? "✓" : "🎉"}</p>
-        <h2 className="mt-3 font-serif text-2xl text-stone-900">{dialog === "saved" ? "Изменения сохранены" : "Приглашение опубликовано"}</h2>
+        <h2 className="mt-3 font-serif text-2xl text-stone-900">{dialog === "saved" ? t("Изменения сохранены", "Changes saved") : t("Приглашение опубликовано", "Invitation published")}</h2>
         <p className="mt-2 text-sm leading-relaxed text-stone-600">
-          {dialog === "saved" ? "Гости уже видят новую версию по той же ссылке." : "Теперь его видят гости. Скопируйте ссылку и отправьте её — или разошлите именные приглашения из списка гостей."}
+          {dialog === "saved" ? t("Гости уже видят новую версию по той же ссылке.", "Guests now see the new version at the same link.") : t("Теперь его видят гости. Скопируйте ссылку и отправьте её — или разошлите именные приглашения из списка гостей.", "Guests can see it now. Copy the link and share it — or send personal invitations from your guest list.")}
         </p>
         <LinkBox url={`${origin}${publicPath}`} />
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <a href={publicPath} target="_blank" rel="noreferrer" className="rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-800">Посмотреть приглашение ↗</a>
+          <a href={publicPath} target="_blank" rel="noreferrer" className="rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-800">{t("Посмотреть приглашение ↗", "View invitation ↗")}</a>
           {dialog === "published" ? (
-            <a href={`/app/e/${eventId}/guests`} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white">Разослать гостям →</a>
+            <a href={`/app/e/${eventId}/guests`} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white">{t("Разослать гостям →", "Send to guests →")}</a>
           ) : null}
         </div>
-        <button type="button" onClick={() => setDialog(null)} className="mt-4 text-sm text-stone-500 underline underline-offset-2">Закрыть</button>
+        <button type="button" onClick={() => setDialog(null)} className="mt-4 text-sm text-stone-500 underline underline-offset-2">{t("Закрыть", "Close")}</button>
       </Dialog>
 
       <Dialog open={intro} onClose={() => setIntro(false)}>
         <p className="text-4xl" aria-hidden>✎</p>
-        <h2 className="mt-3 font-serif text-2xl text-stone-900">Приглашение уже у гостей</h2>
+        <h2 className="mt-3 font-serif text-2xl text-stone-900">{t("Приглашение уже у гостей", "Your guests already have this invitation")}</h2>
         <p className="mt-2 text-sm leading-relaxed text-stone-600">
-          Правьте спокойно: изменения сначала копятся в черновике, и гости их не видят. Когда закончите — нажмите
-          {" "}<b>«Сохранить изменения»</b> на плашке внизу. Передумали — <b>«Отменить»</b>.
+          {t("Правьте спокойно: изменения сначала копятся в черновике, и гости их не видят. Когда закончите — нажмите", "Edit freely: changes are kept in a draft first, and guests don’t see them. When you’re done, tap")}
+          {" "}<b>{t("«Сохранить изменения»", "Save changes")}</b> {t("на плашке внизу. Передумали —", "in the bar at the bottom. Changed your mind? Tap")} <b>{t("«Отменить»", "Discard")}</b>.
         </p>
-        <button type="button" onClick={() => setIntro(false)} className="mt-5 rounded-lg bg-stone-900 px-5 py-2.5 text-sm font-medium text-white">Понятно, редактировать</button>
+        <button type="button" onClick={() => setIntro(false)} className="mt-5 rounded-lg bg-stone-900 px-5 py-2.5 text-sm font-medium text-white">{t("Понятно, редактировать", "Got it, start editing")}</button>
       </Dialog>
     </>
   );
@@ -222,6 +224,7 @@ export function PublishControls({
 
 function LinkBox({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
+  const t = useT();
   return (
     <div className="mt-4 flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 p-1.5 pl-3">
       <span className="min-w-0 flex-1 truncate text-left font-mono text-sm text-stone-700">{url}</span>
@@ -235,7 +238,7 @@ function LinkBox({ url }: { url: string }) {
           }).catch(() => {});
         }}
       >
-        {copied ? "Скопировано ✓" : "Скопировать"}
+        {copied ? t("Скопировано ✓", "Copied ✓") : t("Скопировать", "Copy")}
       </button>
     </div>
   );

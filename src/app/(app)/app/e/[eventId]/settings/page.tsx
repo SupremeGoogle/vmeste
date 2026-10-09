@@ -17,6 +17,8 @@ import { formatEventDateTime } from "@/lib/format-datetime";
 import { allEventTags } from "@/lib/cache-tags";
 import { archiveAt, purgeAt, retentionDayLabel, retentionStage } from "@/lib/retention";
 import { isRetentionExempt } from "@/server/services/retention";
+import { getUiLang } from "@/server/i18n";
+import { makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -82,11 +84,20 @@ export default async function SettingsPage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const lang = await getUiLang();
+  const t = makeT(lang);
+  /** «12 сентября» / «September 12» — день, когда сработает срок хранения. */
+  const dayLabel = (date: Date) =>
+    lang === "en"
+      ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long", timeZone: event.timezone }).format(date)
+      : retentionDayLabel(date, event.timezone);
 
   async function save(formData: FormData) {
     "use server";
     const ctx = await requireEventContext(eventId);
     const timezone = String(formData.get("timezone") ?? "Europe/Moscow");
+    const language = parseLang(String(formData.get("language") ?? "")) ?? undefined;
+    const before = language ? await getEvent(ctx, eventId) : null;
     const when = fromLocalInput(String(formData.get("eventDate") ?? ""), timezone);
     if (!when) {
       revalidatePath(`/app/e/${eventId}/settings`);
@@ -105,7 +116,13 @@ export default async function SettingsPage({ params, searchParams }: Props) {
       raffleEnabled: formData.get("raffleEnabled") === "on",
       qrEntryOpen: formData.get("qrEntryOpen") === "on",
       photoLimitPerGuest: Math.min(20, Math.max(1, Number(formData.get("photoLimit")) || 5)),
+      language,
     });
+    // Язык меняет всё, что видят гости, — их закешированные страницы
+    // сбрасываем сразу, а не ждём, пока кеш истечёт сам.
+    if (before && language && before.language !== language) {
+      for (const tag of allEventTags(eventId, before.slug)) updateTag(tag);
+    }
     revalidatePath(`/app/e/${eventId}/settings`);
   }
 
@@ -153,16 +170,16 @@ export default async function SettingsPage({ params, searchParams }: Props) {
   const stage = (await isRetentionExempt(event.orgId)) ? "exempt" : retentionStage(event.eventDate);
 
   const toggles = [
-    { name: "allowPlusOne", label: "Разрешить +1", checked: event.allowPlusOne },
-    { name: "photosEnabled", label: "Приём фотографий", checked: event.photosEnabled },
-    { name: "wishesEnabled", label: "Приём пожеланий", checked: event.wishesEnabled },
-    { name: "raffleEnabled", label: "Розыгрыш", checked: event.raffleEnabled },
+    { name: "allowPlusOne", label: t("Разрешить +1", "Allow +1"), checked: event.allowPlusOne },
+    { name: "photosEnabled", label: t("Приём фотографий", "Photo uploads"), checked: event.photosEnabled },
+    { name: "wishesEnabled", label: t("Приём пожеланий", "Wishes from guests"), checked: event.wishesEnabled },
+    { name: "raffleEnabled", label: t("Розыгрыш", "Raffle"), checked: event.raffleEnabled },
   ];
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       {saved ? (
-        <p className="mb-4 rounded-lg bg-stone-900 px-4 py-3 text-sm text-white">Сохранено</p>
+        <p className="mb-4 rounded-lg bg-stone-900 px-4 py-3 text-sm text-white">{t("Сохранено", "Saved")}</p>
       ) : null}
       {error ? (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
@@ -170,7 +187,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
 
       <form action={save} className="space-y-4 rounded-xl border border-stone-200 bg-card p-5">
         <label className="block">
-          <span className="text-sm text-stone-500">Название</span>
+          <span className="text-sm text-stone-500">{t("Название", "Name")}</span>
           <input
             name="title" defaultValue={event.title}
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
@@ -179,7 +196,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
 
         <div className="flex flex-wrap gap-3">
           <label className="flex-1">
-            <span className="text-sm text-stone-500">Дата и время на площадке</span>
+            <span className="text-sm text-stone-500">{t("Дата и время на площадке", "Date and time at the venue")}</span>
             <input
               type="datetime-local" name="eventDate"
               defaultValue={toLocalInput(event.eventDate, event.timezone)}
@@ -187,7 +204,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
             />
           </label>
           <label className="flex-1">
-            <span className="text-sm text-stone-500">Часовой пояс площадки</span>
+            <span className="text-sm text-stone-500">{t("Часовой пояс площадки", "Venue time zone")}</span>
             <select
               name="timezone" defaultValue={event.timezone}
               className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
@@ -199,19 +216,33 @@ export default async function SettingsPage({ params, searchParams }: Props) {
           </label>
         </div>
         <p className="text-xs text-stone-500">
-          Сейчас: {formatEventDateTime(event.eventDate, event.timezone)} по времени площадки.
-          Гость увидит это же время, где бы он ни открыл приглашение.
+          {t("Сейчас", "Currently")}: {formatEventDateTime(event.eventDate, event.timezone, lang)} {t("по времени площадки.", "venue time.")}
+          {" "}{t("Гость увидит это же время, где бы он ни открыл приглашение.", "Guests see this same time wherever they open the invitation.")}
         </p>
 
         <label className="block">
-          <span className="text-sm text-stone-500">Площадка</span>
+          <span className="text-sm text-stone-500">{t("Язык приглашения и страниц гостей", "Invitation & guest pages language")}</span>
+          <select
+            name="language" defaultValue={event.language === "en" ? "en" : "ru"}
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+          >
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+          <span className="mt-1 block text-xs text-stone-500">
+            {t("На этом языке гости видят приглашение, анкету, свою страницу, экран в зале и печатные карточки. Язык кабинета — отдельно, переключатель в шапке.", "Guests see the invitation, RSVP form, guest page, venue screen and printed cards in this language. Your dashboard language is separate — use the switch in the header.")}
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-stone-500">{t("Площадка", "Venue")}</span>
           <input
             name="venueName" defaultValue={event.venueName ?? ""}
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
           />
         </label>
         <label className="block">
-          <span className="text-sm text-stone-500">Адрес площадки</span>
+          <span className="text-sm text-stone-500">{t("Адрес площадки", "Venue address")}</span>
           <input
             name="venueAddr" defaultValue={event.venueAddr ?? ""}
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
@@ -226,7 +257,7 @@ export default async function SettingsPage({ params, searchParams }: Props) {
             </label>
           ))}
           <label className="flex items-center gap-2 text-sm">
-            Фото на гостя:
+            {t("Фото на гостя:", "Photos per guest:")}
             <input
               type="number" name="photoLimit" min={1} max={20}
               defaultValue={event.photoLimitPerGuest}
@@ -239,42 +270,47 @@ export default async function SettingsPage({ params, searchParams }: Props) {
         <label className="flex items-start gap-3 rounded-lg border border-stone-200 px-4 py-3 text-sm">
           <input type="checkbox" name="qrEntryOpen" defaultChecked={event.qrEntryOpen} className="mt-0.5" />
           <span>
-            <span className="text-stone-900">Пускать по QR гостей, которых нет в списке</span>
+            <span className="text-stone-900">{t("Пускать по QR гостей, которых нет в списке", "Let guests who aren’t on the list check in by QR")}</span>
             <span className="mt-0.5 block text-xs text-stone-500">
-              Выключено — на свадьбе войти можно только найдя себя в списке. Включено — гость, которого нет в списке,
-              пишет своё имя и входит; в списке он появится с пометкой «добавился сам».
+              {t(
+                "Выключено — на свадьбе войти можно только найдя себя в списке. Включено — гость, которого нет в списке, пишет своё имя и входит; в списке он появится с пометкой «добавился сам».",
+                "Off — at the wedding, guests can only check in by finding their name on the list. On — a guest who isn’t on the list enters their name and checks in; they’ll appear on your list marked “added themselves”.",
+              )}
             </span>
           </span>
         </label>
 
-        <button className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white">Сохранить</button>
+        <button className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white">{t("Сохранить", "Save")}</button>
       </form>
 
       <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-card p-5">
         <div>
-          <h2 className="text-sm font-medium">Меню и бар</h2>
-          <p className="mt-1 text-xs text-stone-500">Блюда, напитки и другие вопросы гостям теперь настраиваются в анкете гостя.</p>
+          <h2 className="text-sm font-medium">{t("Меню и бар", "Menu and bar")}</h2>
+          <p className="mt-1 text-xs text-stone-500">{t("Блюда, напитки и другие вопросы гостям теперь настраиваются в анкете гостя.", "Meals, drinks and other questions for guests are now set up in the RSVP form.")}</p>
         </div>
         <Link href={`/app/e/${eventId}/invite/form`} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
-          Открыть анкету гостя
+          {t("Открыть анкету гостя", "Open RSVP form")}
         </Link>
       </section>
 
       <section className="mt-6 rounded-xl border border-stone-200 bg-card p-5">
-        <h2 className="text-sm font-medium">Публикация и доступ</h2>
+        <h2 className="text-sm font-medium">{t("Публикация и доступ", "Publishing and access")}</h2>
         {stage === "exempt" ? (
-          <p className="mt-3 text-xs text-stone-500">Свадьба администратора: сроки хранения не действуют — в архив сама не уйдёт, фото не удалятся.</p>
+          <p className="mt-3 text-xs text-stone-500">{t("Свадьба администратора: сроки хранения не действуют — в архив сама не уйдёт, фото не удалятся.", "Admin wedding: retention limits don’t apply — it won’t be archived automatically and photos won’t be deleted.")}</p>
         ) : stage !== "active" ? (
           <p className="mt-3 rounded-lg bg-stone-100 px-4 py-3 text-sm text-stone-600">
-            Свадьба прошла больше 10 дней назад — мероприятие в архиве. Гостевые ссылки не работают.
+            {t("Свадьба прошла больше 10 дней назад — мероприятие в архиве. Гостевые ссылки не работают.", "The wedding was more than 10 days ago, so the event has been archived. Guest links no longer work.")}
             {stage === "archived"
-              ? ` Фотографии удалятся ${retentionDayLabel(purgeAt(event.eventDate), event.timezone)} — скачайте их в разделе «Фото».`
-              : " Фотографии удалены по сроку хранения."}
-            {" "}Если дата свадьбы указана неверно — исправьте её выше, и сроки сдвинутся.
+              ? t(` Фотографии удалятся ${dayLabel(purgeAt(event.eventDate))} — скачайте их в разделе «Фото».`, ` Photos will be deleted on ${dayLabel(purgeAt(event.eventDate))} — download them in the Photos section.`)
+              : t(" Фотографии удалены по сроку хранения.", " Photos have been deleted under the retention policy.")}
+            {" "}{t("Если дата свадьбы указана неверно — исправьте её выше, и сроки сдвинутся.", "If the wedding date is wrong, correct it above and the deadlines will shift.")}
           </p>
         ) : (
           <p className="mt-3 text-xs text-stone-500">
-            {retentionDayLabel(archiveAt(event.eventDate), event.timezone)} мероприятие само уйдёт в архив, ещё через 5 дней фотографии удалятся.
+            {t(
+              `${dayLabel(archiveAt(event.eventDate))} мероприятие само уйдёт в архив, ещё через 5 дней фотографии удалятся.`,
+              `On ${dayLabel(archiveAt(event.eventDate))} the event will be archived automatically, and 5 days later the photos will be deleted.`,
+            )}
           </p>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
@@ -285,42 +321,40 @@ export default async function SettingsPage({ params, searchParams }: Props) {
               value={event.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED"}
             />
             <button className="rounded-lg border border-stone-300 px-4 py-2">
-              {event.status === "PUBLISHED" ? "Снять с публикации" : "Опубликовать"}
+              {event.status === "PUBLISHED" ? t("Снять с публикации", "Unpublish") : t("Опубликовать", "Publish")}
             </button>
           </form>
           {event.status !== "ARCHIVED" ? (
             <form action={setStatus}>
               <input type="hidden" name="status" value="ARCHIVED" />
               <button className="rounded-lg border border-stone-300 px-4 py-2">
-                Убрать в архив
+                {t("Убрать в архив", "Archive")}
               </button>
             </form>
           ) : (
             <form action={setStatus}>
               <input type="hidden" name="status" value="DRAFT" />
               <button className="rounded-lg border border-stone-300 px-4 py-2">
-                Вернуть из архива
+                {t("Вернуть из архива", "Restore from archive")}
               </button>
             </form>
           )}
           </> : null}
           <form action={rotate}>
             <button className="rounded-lg border border-stone-300 px-4 py-2">
-              Сбросить гостевые сессии
+              {t("Сбросить гостевые сессии", "Reset guest sessions")}
             </button>
           </form>
           <form action={dropCache}>
             <button className="rounded-lg border border-stone-300 px-4 py-2">
-              Сбросить кеш мероприятия
+              {t("Сбросить кеш мероприятия", "Clear event cache")}
             </button>
           </form>
           <span className="text-xs text-stone-500">
-            Архив прячет мероприятие от гостей: именные ссылки и вход по QR
-            перестают работать, данные остаются.
-            Сброс кеша нужен, если гость видит вчерашние данные и ждать
-            минуту нельзя.
-            Сброс разлогинивает всех гостей — если ссылка попала в общий чат.
-            Сами именные ссылки продолжают работать.
+            {t(
+              "Архив прячет мероприятие от гостей: именные ссылки и вход по QR перестают работать, данные остаются. Сброс кеша нужен, если гость видит вчерашние данные и ждать минуту нельзя. Сброс разлогинивает всех гостей — если ссылка попала в общий чат. Сами именные ссылки продолжают работать.",
+              "Archiving hides the event from guests: personal links and QR check-in stop working, but your data stays. Clear the cache if a guest sees outdated info and you can’t wait a minute. Resetting sessions signs out all guests — useful if a link ended up in a group chat. The personal links themselves keep working.",
+            )}
           </span>
         </div>
       </section>

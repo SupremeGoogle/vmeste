@@ -14,11 +14,13 @@ import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
 import { formatAnswer, parseStoredAnswers, WITH_OPTIONS } from "@/lib/rsvp-form";
 import Link from "next/link";
 import { Fragment } from "react";
+import { getUiLang } from "@/server/i18n";
+import { makeT } from "@/lib/i18n";
 
-const RSVP_LABEL: Record<string, string> = {
-  PENDING: "Ждём",
-  ACCEPTED: "Придёт",
-  DECLINED: "Не придёт",
+const RSVP_LABEL: Record<string, [string, string]> = {
+  PENDING: ["Ждём", "Pending"],
+  ACCEPTED: ["Придёт", "Attending"],
+  DECLINED: ["Не придёт", "Declined"],
 };
 
 export async function RsvpAnswers({
@@ -29,6 +31,9 @@ export async function RsvpAnswers({
   event: { slug: string; rsvpDeadline: Date | null; timezone: string };
 }) {
   const ctx = await requireEventContext(eventId);
+  const lang = await getUiLang();
+  const t = makeT(lang);
+  const NONE = t("Не выбрано", "Not chosen");
 
   const [summary, guests, questions] = await Promise.all([
     rsvpSummary(ctx.eventId),
@@ -43,9 +48,9 @@ export async function RsvpAnswers({
     const groups = new Map<string, string[]>();
     for (const guest of attending) {
       const keys = pick(guest);
-      for (const key of keys.length ? keys : ["Не выбрано"]) groups.set(key, [...(groups.get(key) ?? []), guest.displayName]);
+      for (const key of keys.length ? keys : [NONE]) groups.set(key, [...(groups.get(key) ?? []), guest.displayName]);
     }
-    return [...groups.entries()].sort((a, b) => (a[0] === "Не выбрано" ? 1 : b[0] === "Не выбрано" ? -1 : b[1].length - a[1].length));
+    return [...groups.entries()].sort((a, b) => (a[0] === NONE ? 1 : b[0] === NONE ? -1 : b[1].length - a[1].length));
   };
   const meals = questions.some((q) => q.type === "MEAL") ? groupBy((guest) => (guest.mealOption ? [guest.mealOption.title] : [])) : [];
   const drinks = questions.some((q) => q.type === "DRINKS") ? groupBy((guest) => guest.drinks.map((row) => row.drink.title)) : [];
@@ -79,14 +84,14 @@ export async function RsvpAnswers({
     <form action={setStatus} className="flex items-center gap-1.5">
       <input type="hidden" name="guestId" value={guest.id} />
       <select
-        name="status" defaultValue={guest.rsvpStatus} aria-label={`Ответ: ${guest.displayName}`}
+        name="status" defaultValue={guest.rsvpStatus} aria-label={t(`Ответ: ${guest.displayName}`, `RSVP: ${guest.displayName}`)}
         className="min-h-10 rounded-lg border border-stone-300 bg-card px-2 text-sm"
       >
-        {Object.entries(RSVP_LABEL).map(([value, label]) => (
-          <option key={value} value={value}>{label}</option>
+        {Object.entries(RSVP_LABEL).map(([value, [ru, en]]) => (
+          <option key={value} value={value}>{t(ru, en)}</option>
         ))}
       </select>
-      <button className="min-h-10 rounded-lg border border-stone-300 px-3 text-sm text-stone-700 hover:bg-stone-50">ок</button>
+      <button className="min-h-10 rounded-lg border border-stone-300 px-3 text-sm text-stone-700 hover:bg-stone-50">{t("ок", "OK")}</button>
     </form>
   );
 
@@ -109,40 +114,45 @@ export async function RsvpAnswers({
       */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-stone-500">
-          Не открыли ссылку: {summary.notOpened} · спутников (+1): {summary.plusOnes}
+          {t(
+            `Не открыли ссылку: ${summary.notOpened} · спутников (+1): ${summary.plusOnes}`,
+            `Haven’t opened their link: ${summary.notOpened} · +1s: ${summary.plusOnes}`,
+          )}
           {event.rsvpDeadline ? (
-            <> · форма ответа закроется после {formatDeadline(event.rsvpDeadline, event.timezone)}</>
+            lang === "en"
+              ? <> · RSVP closes after {formatDeadline(event.rsvpDeadline, event.timezone, lang).replace(/^by /, "")}</>
+              : <> · форма ответа закроется после {formatDeadline(event.rsvpDeadline, event.timezone)}</>
           ) : null}
         </p>
         <a
           href={`/api/app/events/${eventId}/guests/export`}
           className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white"
         >
-          Выгрузить таблицу
+          {t("Выгрузить таблицу", "Export spreadsheet")}
         </a>
       </div>
 
       {meals.length > 0 || drinks.length > 0 || choiceStats.length > 0 ? (
         <section className="mt-8">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg text-stone-900">Анкета</h2>
+            <h2 className="text-lg text-stone-900">{t("Анкета", "RSVP form")}</h2>
             <Link href={`/app/e/${eventId}/invite/form`} className="text-sm text-stone-500 underline underline-offset-4 hover:text-stone-900">
-              Изменить вопросы анкеты
+              {t("Изменить вопросы анкеты", "Edit RSVP questions")}
             </Link>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {[
-              { title: "Кто что ест", groups: meals, icon: "🍽" },
-              { title: "Кто что пьёт", groups: drinks, icon: "🥂" },
-            ].filter((card) => card.groups.some(([title]) => title !== "Не выбрано")).map((card) => (
+              { title: t("Кто что ест", "Who’s eating what"), groups: meals, icon: "🍽" },
+              { title: t("Кто что пьёт", "Who’s drinking what"), groups: drinks, icon: "🥂" },
+            ].filter((card) => card.groups.some(([title]) => title !== NONE)).map((card) => (
               <div key={card.title} className="rounded-2xl border border-stone-200 bg-card p-4">
-                <p className="text-sm font-medium text-stone-800"><span aria-hidden>{card.icon}</span> {card.title} <span className="font-normal text-stone-400">· из тех, кто придёт</span></p>
+                <p className="text-sm font-medium text-stone-800"><span aria-hidden>{card.icon}</span> {card.title} <span className="font-normal text-stone-400">{t("· из тех, кто придёт", "· attending guests only")}</span></p>
                 <ul className="mt-3 space-y-1.5">
                   {card.groups.map(([title, names]) => (
                     <li key={title}>
                       <details className="group">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-stone-50">
-                          <span className={title === "Не выбрано" ? "text-stone-400" : "text-stone-800"}>{title}</span>
+                          <span className={title === NONE ? "text-stone-400" : "text-stone-800"}>{title}</span>
                           <span className="tabular-nums text-stone-600">{names.length} <span className="text-stone-400 transition-transform group-open:rotate-90 inline-block">›</span></span>
                         </summary>
                         <p className="px-2 pb-1 text-xs leading-relaxed text-stone-500">{names.join(", ")}</p>
@@ -157,7 +167,7 @@ export async function RsvpAnswers({
               return (
                 <div key={question.id} className="rounded-2xl border border-stone-200 bg-card p-4">
                   <p className="text-sm font-medium text-stone-800">{question.title}</p>
-                  <p className="text-xs text-stone-400">ответили: {answered}</p>
+                  <p className="text-xs text-stone-400">{t(`ответили: ${answered}`, `responses: ${answered}`)}</p>
                   <ul className="mt-3 space-y-2">
                     {counts.map(([option, n]) => (
                       <li key={option} className="text-sm">
@@ -178,10 +188,10 @@ export async function RsvpAnswers({
       <ul className="mt-8 space-y-3 sm:hidden">
         {guests.map((guest) => {
           const details = [
-            ["Блюдо", guest.mealOption?.title ?? ""],
-            ["Напитки", guest.drinks.map((row) => row.drink.title).join(", ")],
-            ["Комментарий", guest.comment ?? ""],
-            ["Музыка", guest.musicWish ?? ""],
+            [t("Блюдо", "Meal"), guest.mealOption?.title ?? ""],
+            [t("Напитки", "Drinks"), guest.drinks.map((row) => row.drink.title).join(", ")],
+            [t("Комментарий", "Comment"), guest.comment ?? ""],
+            [t("Музыка", "Music"), guest.musicWish ?? ""],
           ].filter(([, value]) => value);
           const answers = answerLines(guest);
           return (
@@ -190,7 +200,7 @@ export async function RsvpAnswers({
                 <p className="min-w-0 text-base text-stone-900">
                   {guest.displayName}
                   {guest.parentGuest ? (
-                    <span className="block text-xs text-stone-400">+1 к {guest.parentGuest.displayName}</span>
+                    <span className="block text-xs text-stone-400">{t(`+1 к ${guest.parentGuest.displayName}`, `${guest.parentGuest.displayName}’s +1`)}</span>
                   ) : null}
                 </p>
                 <div className="shrink-0">{statusForm(guest)}</div>
@@ -208,9 +218,9 @@ export async function RsvpAnswers({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  именная ссылка
+                  {t("именная ссылка", "personal link")}
                 </a>
-                {" · "}{guest.linkOpenedAt ? "открыта" : "не открыта"}
+                {" · "}{guest.linkOpenedAt ? t("открыта", "opened") : t("не открыта", "not opened")}
               </p>
             </li>
           );
@@ -220,13 +230,13 @@ export async function RsvpAnswers({
       <table className="mt-8 hidden w-full border-collapse text-sm sm:table">
         <thead>
           <tr className="border-b border-stone-200 text-left text-stone-500 [&>th]:pr-4">
-            <th className="py-2 font-normal">Гость</th>
-            <th className="py-2 font-normal">Ответ</th>
-            <th className="py-2 font-normal">Блюдо</th>
-            <th className="py-2 font-normal">Напитки</th>
-            <th className="py-2 font-normal">Анкета</th>
-            <th className="py-2 font-normal">Комментарий</th>
-            <th className="py-2 font-normal">Ссылка</th>
+            <th className="py-2 font-normal">{t("Гость", "Guest")}</th>
+            <th className="py-2 font-normal">{t("Ответ", "RSVP")}</th>
+            <th className="py-2 font-normal">{t("Блюдо", "Meal")}</th>
+            <th className="py-2 font-normal">{t("Напитки", "Drinks")}</th>
+            <th className="py-2 font-normal">{t("Анкета", "Form")}</th>
+            <th className="py-2 font-normal">{t("Комментарий", "Comment")}</th>
+            <th className="py-2 font-normal">{t("Ссылка", "Link")}</th>
           </tr>
         </thead>
         <tbody>
@@ -236,7 +246,7 @@ export async function RsvpAnswers({
                 {guest.displayName}
                 {guest.parentGuest ? (
                   <span className="block text-xs text-stone-400">
-                    +1 к {guest.parentGuest.displayName}
+                    {t(`+1 к ${guest.parentGuest.displayName}`, `${guest.parentGuest.displayName}’s +1`)}
                   </span>
                 ) : null}
               </td>
@@ -253,7 +263,7 @@ export async function RsvpAnswers({
                   <span className="block text-stone-500">{guest.comment}</span>
                 ) : null}
                 {guest.musicWish ? (
-                  <span className="block text-stone-500">Музыка: {guest.musicWish}</span>
+                  <span className="block text-stone-500">{t("Музыка", "Music")}: {guest.musicWish}</span>
                 ) : null}
                 {!guest.comment && !guest.musicWish ? "—" : null}
               </td>
@@ -264,10 +274,10 @@ export async function RsvpAnswers({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  открыть
+                  {t("открыть", "open")}
                 </a>
                 <span className="block text-xs text-stone-400">
-                  {guest.linkOpenedAt ? "открыта" : "не открыта"}
+                  {guest.linkOpenedAt ? t("открыта", "opened") : t("не открыта", "not opened")}
                 </span>
               </td>
             </tr>
@@ -276,7 +286,7 @@ export async function RsvpAnswers({
       </table>
 
       {guests.length === 0 ? (
-        <p className="mt-8 text-stone-600">Гостей пока нет — добавьте их в списке гостей.</p>
+        <p className="mt-8 text-stone-600">{t("Гостей пока нет — добавьте их в списке гостей.", "No guests yet — add them on the guest list.")}</p>
       ) : null}
     </section>
   );

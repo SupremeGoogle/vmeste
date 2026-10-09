@@ -331,7 +331,7 @@ export async function findGuestByLinkToken(linkToken: string) {
           id: true, orgId: true, title: true, slug: true, status: true,
           eventDate: true, timezone: true, venueName: true, venueAddr: true,
           rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true,
-          photosEnabled: true, wishesEnabled: true,
+          photosEnabled: true, wishesEnabled: true, language: true,
         },
       },
       mealOption: { select: { id: true, title: true } },

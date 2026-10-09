@@ -134,7 +134,7 @@ export default async function LoginPage({
             {t.googleNote[0]}<Link href="/offer" className="underline">{t.googleNote[1]}</Link>{t.googleNote[2]}
             <Link href="/consent" className="underline">{t.googleNote[3]}</Link>{t.googleNote[4]}
           </p>
-          <OrRule />
+          <OrRule label={lang === "en" ? "or" : "или"} />
         </>
       )}
 
@@ -144,14 +144,14 @@ export default async function LoginPage({
           <label className="block text-sm text-stone-600" htmlFor="email">{t.email}</label>
           <input
             id="email" name="email" type="email" required autoComplete="username"
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+            className="ym-hide-content mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
           />
         </div>
         <div>
           <label className="block text-sm text-stone-600" htmlFor="password">{t.password}</label>
           <input
             id="password" name="password" type="password" required autoComplete="current-password"
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+            className="ym-hide-content mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
           />
         </div>
 

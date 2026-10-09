@@ -24,6 +24,7 @@
  * в базе.
  */
 import { z } from "zod";
+import type { Lang } from "@/lib/i18n";
 import { weddingSchema } from "@/lib/invite-personalization";
 
 /** Цвет в том же формате, что в блоках: значение уходит прямо в `style=`. */
@@ -118,6 +119,8 @@ export const inviteThemeSchema = z.object({
     // Подписей в шаблоне около сотни; потолок — чтобы тема не росла без конца.
     .refine((labels) => Object.keys(labels).length <= 500, "Слишком много надписей").optional(),
   previousTemplate: z.string().max(40).optional(),
+  /** Language of invitation controls; absence keeps existing invitations Russian. */
+  language: z.enum(["ru", "en"]).optional(),
   v: z.number().int().min(1).default(INVITE_THEME_VERSION),
 
   /** Шаблон, с которого начали. Нужен только чтобы показать выбор в панели. */
@@ -296,6 +299,38 @@ export const THEME_FIELD_LABELS: Record<string, string> = {
   leaf: "Зелень",
   template: "Шаблон",
 };
+
+/**
+ * Подписи настроек оформления для кабинета на английском. Хранимые значения
+ * (ключи) не меняются — только то, что видит организатор в редакторе.
+ */
+export const THEME_LABELS_EN = {
+  fields: {
+    bg: "Page background", card: "Card background", ink: "Main text", muted: "Secondary text", accent: "Accent",
+    line: "Lines", headingFont: "Heading font", bodyFont: "Body font", corner: "Corners", divider: "Divider",
+    cover: "Cover", frame: "Frame", capsHeadings: "All-caps headings", align: "Alignment", timeline: "Schedule",
+    sections: "Sections", dateStyle: "Cover date", intro: "Intro", decor: "Corner flowers", paper: "Paper texture",
+    frameOrnament: "Frame corner monogram", timelineIcons: "Schedule icons", leaf: "Greenery", template: "Template",
+  } as Record<string, string>,
+  font: { antiqua: "serif — classic", grotesk: "sans serif — modern", didona: "fine serif — evening" } satisfies Record<FontKey, string>,
+  corner: { sharp: "square", soft: "slightly rounded", round: "round" } satisfies Record<keyof typeof CORNER_LABEL, string>,
+  divider: { none: "no divider", line: "thin line", diamond: "line with a diamond", leaf: "sprig" } satisfies Record<keyof typeof DIVIDER_LABEL, string>,
+  timeline: { row: "in a row — time on the left", stack: "stacked — time above the caption" } satisfies Record<keyof typeof TIMELINE_LABEL, string>,
+  sections: { flat: "on the shared background", card: "each on a white card" } satisfies Record<keyof typeof SECTIONS_LABEL, string>,
+  date: { line: "in a line", display: "large numerals" } satisfies Record<keyof typeof DATE_LABEL, string>,
+  decor: { none: "no flowers", corners: "diagonal — two corners", frame: "all four corners" } satisfies Record<keyof typeof DECOR_LABEL, string>,
+  intro: { none: "opens right away", envelope: "an envelope guests tap to open" } satisfies Record<keyof typeof INTRO_LABEL, string>,
+  cover: { plain: "text only", photo: "full-width photo", frame: "framed photo" } satisfies Record<keyof typeof COVER_LABEL, string>,
+};
+
+/** Подписи настроек оформления на языке кабинета. */
+export function themeLabels(lang: Lang) {
+  if (lang === "en") return THEME_LABELS_EN;
+  return {
+    fields: THEME_FIELD_LABELS, font: FONT_LABEL, corner: CORNER_LABEL, divider: DIVIDER_LABEL, timeline: TIMELINE_LABEL,
+    sections: SECTIONS_LABEL, date: DATE_LABEL, decor: DECOR_LABEL, intro: INTRO_LABEL, cover: COVER_LABEL,
+  };
+}
 
 /** Радиус скругления в rem по выбранной форме углов. */
 export const CORNER_RADIUS: Record<InviteTheme["corner"], string> = {

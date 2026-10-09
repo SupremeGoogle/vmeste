@@ -19,6 +19,7 @@
  */
 import { esc } from "@/server/guest-html/layout";
 import type { InviteTheme } from "@/lib/invite-theme";
+import { guestLang } from "@/server/guest-html/guest-lang";
 
 export const INTRO_CSS = `
 #intro{position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;
@@ -60,6 +61,7 @@ export function envelopeMarkup(theme: InviteTheme, names: string): string {
   const line = esc(theme.line);
   const accent = esc(theme.accent);
   const card = esc(theme.card);
+  const en = (theme.language ?? guestLang()) === "en";
 
   // Веточка идёт вдоль сгиба клапана — от угла конверта к его острию.
   // Раньше листья висели по диагонали сами по себе и читались как
@@ -92,7 +94,7 @@ export function envelopeMarkup(theme: InviteTheme, names: string): string {
     )
     .join("");
 
-  return `<svg viewBox="0 0 400 260" role="img" aria-label="Конверт с приглашением">
+  return `<svg viewBox="0 0 400 260" role="img" aria-label="${en ? "Invitation envelope" : "Конверт с приглашением"}">
 <rect x="20" y="30" width="360" height="210" rx="8" fill="${card}" stroke="${line}" stroke-width="1.5"/>
 <path d="M20 240 L200 138 L380 240" fill="none" stroke="${line}" stroke-width="1.2"/>
 <g class="flap"><path d="M20 38 L200 152 L380 38 Z" fill="${card}" stroke="${accent}" stroke-width="1.5"/>
@@ -100,5 +102,5 @@ ${sprig}
 <g transform="translate(400 0) scale(-1 1)">${sprig}</g>
 ${nameLines}</g>
 </svg>
-<p>нажмите, чтобы открыть</p>`;
+<p>${en ? "tap to open" : "нажмите, чтобы открыть"}</p>`;
 }

@@ -15,6 +15,7 @@
 import { unzipSync } from "fflate";
 import Papa from "papaparse";
 import { IMPORT_LIMITS as L, ImportError, formatBytes } from "./limits";
+import { makeT, type Lang, type T } from "@/lib/i18n";
 
 export type Sheet = {
   name: string;
@@ -46,31 +47,35 @@ function containsUtf16(bytes: Uint8Array, text: string): boolean {
   return false;
 }
 
-export function readWorkbook(buffer: ArrayBuffer, fileName = ""): Workbook {
+export function readWorkbook(buffer: ArrayBuffer, fileName = "", lang: Lang = "ru"): Workbook {
+  const t = makeT(lang);
   const bytes = new Uint8Array(buffer);
-  if (bytes.length === 0) throw new ImportError("empty", "Файл пустой.");
+  if (bytes.length === 0) throw new ImportError("empty", t("Файл пустой.", "The file is empty."));
   if (bytes.length > L.fileBytes) {
     throw new ImportError(
       "too-big",
-      `Файл весит ${formatBytes(bytes.length)}, а можно до ${formatBytes(L.fileBytes)}. Список гостей столько не занимает — возможно, в файле картинки: сохраните только таблицу.`,
+      t(
+        `Файл весит ${formatBytes(bytes.length)}, а можно до ${formatBytes(L.fileBytes)}. Список гостей столько не занимает — возможно, в файле картинки: сохраните только таблицу.`,
+        `The file is ${formatBytes(bytes.length, lang)}, and the limit is ${formatBytes(L.fileBytes, lang)}. A guest list is never that big — the file may contain images. Save just the table.`,
+      ),
     );
   }
 
   if (startsWith(bytes, CFB)) {
     if (containsUtf16(bytes, "EncryptedPackage")) {
-      throw new ImportError("encrypted", "Файл защищён паролем. Снимите защиту в Excel («Файл → Сведения → Защита книги») и загрузите снова.");
+      throw new ImportError("encrypted", t("Файл защищён паролем. Снимите защиту в Excel («Файл → Сведения → Защита книги») и загрузите снова.", "The file is password-protected. Remove the protection in Excel (File → Info → Protect Workbook) and upload it again."));
     }
-    throw new ImportError("xls", "Это старый формат Excel (.xls). Откройте файл в Excel и сохраните как «Книга Excel (.xlsx)» — или как CSV.");
+    throw new ImportError("xls", t("Это старый формат Excel (.xls). Откройте файл в Excel и сохраните как «Книга Excel (.xlsx)» — или как CSV.", "This is the old Excel format (.xls). Open it in Excel and save as “Excel Workbook (.xlsx)” — or as CSV."));
   }
 
-  if (startsWith(bytes, ZIP)) return readXlsx(bytes);
+  if (startsWith(bytes, ZIP)) return readXlsx(bytes, t);
 
   // Не архив — пробуем как текст. Двоичный мусор (картинка, pdf) выдаёт себя нулевыми байтами.
   const head = bytes.subarray(0, 4096);
   if (head.includes(0) || /\.(pdf|docx?|pptx?|png|jpe?g|numbers|ods)$/i.test(fileName)) {
-    throw new ImportError("format", "Это не таблица. Подойдёт файл Excel (.xlsx) или CSV.");
+    throw new ImportError("format", t("Это не таблица. Подойдёт файл Excel (.xlsx) или CSV.", "This isn’t a spreadsheet. Please upload an Excel (.xlsx) or CSV file."));
   }
-  return readCsv(bytes);
+  return readCsv(bytes, t);
 }
 
 // ─── CSV ────────────────────────────────────────────────────────
@@ -109,7 +114,7 @@ export function guessDelimiter(text: string): string {
   return best;
 }
 
-function readCsv(bytes: Uint8Array): Workbook {
+function readCsv(bytes: Uint8Array, t: T): Workbook {
   const { text, encoding } = decodeText(bytes);
   const parsed = Papa.parse<string[]>(text, {
     header: false,
@@ -118,12 +123,12 @@ function readCsv(bytes: Uint8Array): Workbook {
     preview: L.rowsPerSheet * 2,
   });
   const rows = parsed.data.map((row) => row.map((cell) => clean(cell)));
-  return { format: "csv", encoding, sheets: [guardSheet({ name: "CSV", hidden: false, rows })] };
+  return { format: "csv", encoding, sheets: [guardSheet({ name: "CSV", hidden: false, rows }, t)] };
 }
 
 // ─── XLSX ───────────────────────────────────────────────────────
 
-function readXlsx(bytes: Uint8Array): Workbook {
+function readXlsx(bytes: Uint8Array, t: T): Workbook {
   let entries = 0;
   let total = 0;
   let macros = false;
@@ -133,7 +138,7 @@ function readXlsx(bytes: Uint8Array): Workbook {
     parts = unzipSync(bytes, {
       filter(file) {
         entries++;
-        if (entries > L.zipEntries) throw new ImportError("bomb", "Файл устроен подозрительно: слишком много частей внутри.");
+        if (entries > L.zipEntries) throw new ImportError("bomb", t("Файл устроен подозрительно: слишком много частей внутри.", "This file looks suspicious: it has too many parts inside."));
         if (/vbaProject\.bin$/i.test(file.name)) macros = true;
         const wanted =
           file.name === "xl/workbook.xml" ||
@@ -144,23 +149,23 @@ function readXlsx(bytes: Uint8Array): Workbook {
         total += file.originalSize;
         const ratio = file.size > 0 ? file.originalSize / file.size : 0;
         if (total > L.unzippedBytes || (file.originalSize > 1024 * 1024 && ratio > L.compressionRatio)) {
-          throw new ImportError("bomb", "Внутри файла слишком много данных для списка гостей. Сохраните в новый файл только лист с гостями.");
+          throw new ImportError("bomb", t("Внутри файла слишком много данных для списка гостей. Сохраните в новый файл только лист с гостями.", "There’s too much data in this file for a guest list. Save just the guest sheet to a new file."));
         }
         return true;
       },
     });
   } catch (error) {
     if (error instanceof ImportError) throw error;
-    throw new ImportError("broken", "Файл повреждён или это не Excel. Попробуйте пересохранить его.");
+    throw new ImportError("broken", t("Файл повреждён или это не Excel. Попробуйте пересохранить его.", "The file is damaged or isn’t an Excel file. Try saving it again."));
   }
 
   if (macros) {
-    throw new ImportError("macro", "В файле есть макросы (.xlsm). Сохраните его как обычную «Книгу Excel (.xlsx)».");
+    throw new ImportError("macro", t("В файле есть макросы (.xlsm). Сохраните его как обычную «Книгу Excel (.xlsx)».", "The file contains macros (.xlsm). Save it as a regular “Excel Workbook (.xlsx)”."));
   }
 
   const text = (name: string) => (parts[name] ? new TextDecoder().decode(parts[name]) : "");
   const workbookXml = text("xl/workbook.xml");
-  if (!workbookXml) throw new ImportError("broken", "Не нашли в файле ни одного листа. Попробуйте пересохранить его в Excel.");
+  if (!workbookXml) throw new ImportError("broken", t("Не нашли в файле ни одного листа. Попробуйте пересохранить его в Excel.", "We couldn’t find any sheets in the file. Try saving it again in Excel."));
 
   const shared = parseSharedStrings(text("xl/sharedStrings.xml"));
   const rels = new Map<string, string>();
@@ -173,27 +178,27 @@ function readXlsx(bytes: Uint8Array): Workbook {
   const sheets: Sheet[] = [];
   const sheetTags = [...workbookXml.matchAll(/<sheet\b[^>]*>/g)];
   if (sheetTags.length > L.sheets * 3) {
-    throw new ImportError("too-many-sheets", `В файле ${sheetTags.length} листов. Оставьте листы со списком гостей — до ${L.sheets}.`);
+    throw new ImportError("too-many-sheets", t(`В файле ${sheetTags.length} листов. Оставьте листы со списком гостей — до ${L.sheets}.`, `The file has ${sheetTags.length} sheets. Keep only the guest list sheets — up to ${L.sheets}.`));
   }
 
   let cells = 0;
   for (const tag of sheetTags) {
-    const name = decodeXml(attr(tag[0], "name") ?? "Лист");
+    const name = decodeXml(attr(tag[0], "name") ?? t("Лист", "Sheet"));
     const state = attr(tag[0], "state");
     const target = rels.get(attr(tag[0], "r:id") ?? "");
     const xml = target ? text(target) : "";
     if (!xml) continue;
-    const sheet = parseSheet(xml, shared, name, state === "hidden" || state === "veryHidden");
+    const sheet = parseSheet(xml, shared, name, state === "hidden" || state === "veryHidden", t);
     cells += sheet.rows.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
     if (cells > L.cellsTotal) {
-      throw new ImportError("too-many-rows", "В файле слишком много заполненных ячеек для списка гостей. Удалите лишние листы и столбцы.");
+      throw new ImportError("too-many-rows", t("В файле слишком много заполненных ячеек для списка гостей. Удалите лишние листы и столбцы.", "The file has too many filled cells for a guest list. Remove extra sheets and columns."));
     }
-    sheets.push(guardSheet(sheet));
+    sheets.push(guardSheet(sheet, t));
   }
 
   const visible = sheets.filter((s) => !s.hidden);
   if (visible.length > L.sheets) {
-    throw new ImportError("too-many-sheets", `В файле ${visible.length} листов. Оставьте листы со списком гостей — до ${L.sheets}.`);
+    throw new ImportError("too-many-sheets", t(`В файле ${visible.length} листов. Оставьте листы со списком гостей — до ${L.sheets}.`, `The file has ${visible.length} sheets. Keep only the guest list sheets — up to ${L.sheets}.`));
   }
   return { format: "xlsx", sheets };
 }
@@ -234,7 +239,7 @@ function cellRef(ref: string): [number, number] | null {
   return [Number(m[2]) - 1, col - 1];
 }
 
-function parseSheet(xml: string, shared: string[], name: string, hidden: boolean): Sheet {
+function parseSheet(xml: string, shared: string[], name: string, hidden: boolean, t: T): Sheet {
   const rows: string[][] = [];
 
   for (const rowMatch of xml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>|<row\b([^>]*)\/>/g)) {
@@ -243,7 +248,7 @@ function parseSheet(xml: string, shared: string[], name: string, hidden: boolean
     if (/\shidden="(1|true)"/.test(rowAttrs)) continue;
     const r = Number(attr(rowAttrs, "r") ?? rows.length + 1) - 1;
     if (r >= L.rowsPerSheet * 2) {
-      throw new ImportError("too-many-rows", `На листе «${name}» больше ${L.rowsPerSheet} строк. Список гостей столько не занимает — удалите лишнее.`);
+      throw new ImportError("too-many-rows", t(`На листе «${name}» больше ${L.rowsPerSheet} строк. Список гостей столько не занимает — удалите лишнее.`, `Sheet “${name}” has more than ${L.rowsPerSheet} rows. A guest list is never that long — please remove the extra rows.`));
     }
 
     for (const cell of (rowMatch[2] ?? "").matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
@@ -306,7 +311,7 @@ function clean(value: string): string {
 }
 
 /** Обрезаем пустые хвосты и проверяем пределы листа. */
-function guardSheet(sheet: Sheet): Sheet {
+function guardSheet(sheet: Sheet, t: T): Sheet {
   let rows = Array.from(sheet.rows, (row = []) => {
     let end = row.length;
     while (end > 0 && !row[end - 1]) end--;
@@ -317,7 +322,7 @@ function guardSheet(sheet: Sheet): Sheet {
   rows = rows.slice(0, last);
   const filled = rows.filter((row) => row.some(Boolean)).length;
   if (filled > L.rowsPerSheet) {
-    throw new ImportError("too-many-rows", `На листе «${sheet.name}» ${filled} заполненных строк, а можно до ${L.rowsPerSheet}.`);
+    throw new ImportError("too-many-rows", t(`На листе «${sheet.name}» ${filled} заполненных строк, а можно до ${L.rowsPerSheet}.`, `Sheet “${sheet.name}” has ${filled} filled rows, and the limit is ${L.rowsPerSheet}.`));
   }
   return { ...sheet, rows };
 }

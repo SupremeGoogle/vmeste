@@ -35,11 +35,11 @@ function GoogleGlyph() {
 }
 
 /** Разделитель «или» между Google и формой с паролем. */
-export function OrRule() {
+export function OrRule({ label = "или" }: { label?: string }) {
   return (
     <div className="my-6 flex items-center gap-4">
       <span className="h-px flex-1 bg-stone-200" />
-      <span className="text-xs text-stone-500">или</span>
+      <span className="text-xs text-stone-500">{label}</span>
       <span className="h-px flex-1 bg-stone-200" />
     </div>
   );

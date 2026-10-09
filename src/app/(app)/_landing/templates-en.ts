@@ -3,7 +3,10 @@
  * Сами шаблоны и их тексты остаются русскими; шаблон, которого здесь нет,
  * покажется под русским названием.
  */
+import { CELEBRATION_COPY, CELEBRATION_IDS } from "@/lib/invite-templates/celebration";
+
 export const TEMPLATE_COPY_EN: Record<string, { name: string; mood: string }> = {
+  ...Object.fromEntries(CELEBRATION_IDS.map(id => [id, CELEBRATION_COPY[id].en])),
   "little-happiness": { name: "Little Happiness", mood: "Childhood Polaroids, delicate headings and white flowers." },
   protokol: { name: "The Protocol", mood: "Love under arrest: official forms, mugshot-style photos, stamps and an invitation in a classified case file." },
   evergreen: { name: "Evergreen", mood: "An intimate evening classic: deep green, ivory, fine gold and large photos. You can edit the text and two photos right on the page." },
@@ -17,7 +20,7 @@ export const TEMPLATE_COPY_EN: Record<string, { name: string; mood: string }> = 
   roseraie: { name: "Roseraie", mood: "A dark green envelope with a gold seal, cinematic photography and an airy classic look with botanical drawings." },
   serdce: { name: "Heart to Heart", mood: "The couple’s own story on textured paper: Polaroid photos, deep pine green, wavy transitions and a romantic serif." },
   tili: { name: "Sitting in a Tree", mood: "Warm and lively: an envelope, bunting, childhood Polaroids, a calendar, a timeline with icons, a dark well-wishes section and an RSVP form. Music plays once the envelope opens." },
-  burgundy: { name: "Wine Envelope", mood: "A burgundy envelope with a seal, a watercolor arch with swans, roses and warm paper. No RSVP form." },
+  burgundy: { name: "Wine Envelope", mood: "A burgundy envelope with a seal, a watercolor arch with swans, roses, warm paper and an RSVP form." },
   crayon: { name: "Childhood", mood: "Childhood photos of the bride and groom, crayon drawings and a warm love story." },
   vinyl: { name: "Vinyl", mood: "A pink party with a record on the cover: orange headings, tilted photos, sparkles and lots of dancing." },
   prism: { name: "Prism", mood: "A modern ceremony in a glass greenhouse: spectral light, liquid glass, dimensional photos and soft iridescence." },

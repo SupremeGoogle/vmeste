@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Экран загрузки любого раздела мероприятия.
  *
@@ -7,10 +9,12 @@
  * с вкладками (layout.tsx) остаётся на месте.
  */
 import { Bone, LoadingScreen, Rows, TileRow } from "@/components/loading/skeleton";
+import { useT } from "@/components/i18n-provider";
 
 export default function EventSectionLoading() {
+  const t = useT();
   return (
-    <LoadingScreen label="Загружаем раздел">
+    <LoadingScreen label={t("Загружаем раздел", "Loading section")}>
       <TileRow />
       <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-card p-4">
         <Bone className="h-4 w-48" />

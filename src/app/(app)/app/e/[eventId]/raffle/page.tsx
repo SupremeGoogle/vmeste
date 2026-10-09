@@ -16,6 +16,7 @@ import { getEvent } from "@/server/repositories/events";
 import {
   createRaffle, drawWinner, eligibleGuests, fixEntries, getRaffle, listRaffles, resetDraw,
 } from "@/server/services/raffle";
+import { getT } from "@/server/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function RafflePage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const t = await getT();
 
   const raffles = await listRaffles(ctx);
   const current = selectedId
@@ -85,8 +87,11 @@ export default async function RafflePage({ params, searchParams }: Props) {
 
       <div className="rounded-xl border border-stone-200 bg-card p-4">
         <p className="text-sm text-stone-600">
-          В розыгрыш попадают гости, у которых есть хотя бы одна одобренная
-          фотография. Сейчас таких: <b className="text-stone-900">{eligible.length}</b>.
+          {t(
+            "В розыгрыш попадают гости, у которых есть хотя бы одна одобренная фотография. Сейчас таких:",
+            "Guests with at least one approved photo are entered in the raffle. Right now that's:",
+          )}{" "}
+          <b className="text-stone-900">{eligible.length}</b>.
         </p>
       </div>
 
@@ -95,13 +100,13 @@ export default async function RafflePage({ params, searchParams }: Props) {
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-lg font-medium">{current.title}</h2>
             <span className="text-sm text-stone-500">
-              участников зафиксировано: {current.entries.length}
+              {t("участников зафиксировано", "entrants locked in")}: {current.entries.length}
             </span>
           </div>
 
           {current.winnerLabel ? (
             <div className="mt-4 rounded-lg bg-stone-900 px-5 py-6 text-center text-white">
-              <p className="text-sm text-white/60">Победитель</p>
+              <p className="text-sm text-white/60">{t("Победитель", "Winner")}</p>
               <p className="mt-1 text-3xl font-semibold">{current.winnerLabel}</p>
               <p className="mt-3 font-mono text-xs text-white/50">seed: {current.seed}</p>
             </div>
@@ -113,13 +118,13 @@ export default async function RafflePage({ params, searchParams }: Props) {
                 <form action={fix}>
                   <input type="hidden" name="raffleId" value={current.id} />
                   <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
-                    Зафиксировать участников
+                    {t("Зафиксировать участников", "Lock in entrants")}
                   </button>
                 </form>
                 <form action={draw} className="flex gap-2">
                   <input type="hidden" name="raffleId" value={current.id} />
                   <input
-                    name="seed" placeholder="seed (необязательно)"
+                    name="seed" placeholder={t("seed (необязательно)", "seed (optional)")}
                     defaultValue={current.seed ?? ""}
                     className="rounded-lg border border-stone-300 px-3 py-2 font-mono text-sm"
                   />
@@ -127,7 +132,7 @@ export default async function RafflePage({ params, searchParams }: Props) {
                     disabled={current.entries.length === 0}
                     className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white disabled:opacity-40"
                   >
-                    Разыграть
+                    {t("Разыграть", "Draw")}
                   </button>
                 </form>
               </>
@@ -135,10 +140,10 @@ export default async function RafflePage({ params, searchParams }: Props) {
               <form action={reset}>
                 <input type="hidden" name="raffleId" value={current.id} />
                 <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
-                  Отменить результат
+                  {t("Отменить результат", "Undo result")}
                 </button>
                 <span className="ml-3 text-xs text-stone-500">
-                  Seed сохраняется: повторный запуск даст того же победителя.
+                  {t("Seed сохраняется: повторный запуск даст того же победителя.", "The seed is kept: drawing again gives the same winner.")}
                 </span>
               </form>
             )}
@@ -147,7 +152,7 @@ export default async function RafflePage({ params, searchParams }: Props) {
           {current.entries.length > 0 ? (
             <details className="mt-4 text-sm">
               <summary className="cursor-pointer text-stone-500">
-                Список участников ({current.entries.length})
+                {t("Список участников", "Entrants")} ({current.entries.length})
               </summary>
               <ul className="mt-2 columns-2 text-stone-600 sm:columns-3">
                 {current.entries.map((entry) => (
@@ -179,11 +184,11 @@ export default async function RafflePage({ params, searchParams }: Props) {
 
       <form action={add} className="mt-8 flex flex-wrap gap-2">
         <input
-          name="title" placeholder="Название розыгрыша"
+          name="title" placeholder={t("Название розыгрыша", "Raffle name")}
           className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
         />
         <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
-          Добавить розыгрыш
+          {t("Добавить розыгрыш", "Add raffle")}
         </button>
       </form>
 

@@ -84,7 +84,9 @@ import { TUSCANY_SCRIPT } from "@/server/guest-html/tuscany/script";
 import { renderTiliBlocks, type TiliRsvp } from "@/server/guest-html/tili/markup";
 import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
 import { renderWithWishlist, type WishlistData } from "@/server/guest-html/wishlist";
-import { withTemplateLabels } from "@/server/guest-html/template-labels";
+import { guestText, templateLanguage, withTemplateLabels } from "@/server/guest-html/template-labels";
+import { guestLang } from "@/server/guest-html/guest-lang";
+import { hasThemedIntro, THEMED_INTRO_PROFILES, themedIntroMarkup, themedIntroCss, THEMED_INTRO_SCRIPT } from "@/server/guest-html/themed-intro";
 import { styleDocument } from "@/server/guest-html/invite-style";
 import { inviteControlsCss } from "@/server/guest-html/invite-controls-css";
 import { FIT_TEXT_SCRIPT } from "@/server/guest-html/fit-text";
@@ -104,6 +106,9 @@ import { composeInviteComponents } from "@/server/guest-html/invite-components";
 const NO_EDIT = editAttrs("", false);
 import { TILI_CSS, TILI_FONTS_LINK } from "@/server/guest-html/tili/style";
 import { TILI_HEAD_SCRIPT, TILI_SCRIPT } from "@/server/guest-html/tili/script";
+import { isCelebrationTemplate } from "@/lib/invite-templates/celebration";
+import { localizeCelebrationBlocks, renderCelebrationBlocks } from "@/server/guest-html/celebration/markup";
+import { CELEBRATION_SCRIPT } from "@/server/guest-html/celebration/script";
 
 /**
  * Что ещё знает рендерер, кроме блоков.
@@ -209,6 +214,11 @@ border-radius:var(--radius)}
  * нажатия гостя.
  */
 export const TEMPLATE_INTROS: Record<string, { hide: string; open: string; extra?: string }> = {
+  ...Object.fromEntries(Object.keys(THEMED_INTRO_PROFILES).map(id => [id, { hide: ".vm-themed-intro", open: ".vm-themed-open" }])),
+  gravure: { hide: ".cl-intro", open: ".cl-open" },
+  disco: { hide: ".cl-intro", open: ".cl-open" },
+  coral: { hide: ".cl-intro", open: ".cl-open" },
+  chrome: { hide: ".cl-intro", open: ".cl-open" },
   gazette: { hide: ".ed-intro", open: ".ed-open" },
   protokol: { hide: ".ed-intro", open: ".ed-open" },
   postcard: { hide: ".ed-intro", open: ".ed-open" },
@@ -270,10 +280,10 @@ function buildInvitePage(opts: {
 }): string {
   // Выключенная заставка прячется стилями в <head>: без мелькания.
   const hideIntro = introOffCss(opts.theme);
-  opts = { ...opts, extraCss: `${opts.extraCss ?? ""}${inviteControlsCss(opts.theme?.template ?? "")}${hideIntro}` };
+  opts = { ...opts, extraCss: `${opts.extraCss ?? ""}${themedIntroCss(opts.theme?.template ?? "")}${inviteControlsCss(opts.theme?.template ?? "")}${hideIntro}` };
   if (opts.theme?.template === "tili") return tiliDocument(opts);
   if (opts.theme && isWedwedTemplate(opts.theme.template)) return wedwedDocument({ ...opts, theme: opts.theme });
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${opts.theme?.language ?? guestLang()}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="${esc((opts.theme ?? defaultTheme()).bg)}">
@@ -281,7 +291,7 @@ ${(opts.theme ?? defaultTheme()).template === "vinyl" ? VINYL_FONTS_LINK : ""}${
 ${opts.theme?.template === "zefir" || opts.theme?.template === "crayon" ? SCRAPBOOK_FONTS_LINK : ""}
 ${isEditorialTemplate(opts.theme?.template ?? "") ? EDITORIAL_FONTS_LINK : ""}
 <title>${esc(opts.title)}</title><style>${floorFontSizes(`${CSS}${PREMIUM_MOTION_CSS}${inviteThemeCss(opts.theme ?? defaultTheme())}${MOBILE_DENSITY_CSS}${TABLET_DENSITY_CSS}${MAP_LINK_TAP_CSS}${opts.extraCss ?? ""}`)}</style></head>
-<body><main class="sheet${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "prism" ? " prism" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}${(opts.theme ?? defaultTheme()).template === "vinyl" ? " vinyl" : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? " aquarelle" : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? " lily" : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? " bohema" : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? " kraski" : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? " serdce" : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? " antic" : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? " skvoz-vremya" : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? " burgundy" : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? " roseraie" : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? " floral-garden" : ""}${(opts.theme ?? defaultTheme()).template === "iskra" ? " iskra" : ""}${opts.theme?.template === "zefir" ? " zefir" : opts.theme?.template === "crayon" ? " crayon" : ""}${isEditorialTemplate(opts.theme?.template ?? "") ? ` ${opts.theme!.template}` : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
+<body><main class="sheet${isCelebrationTemplate(opts.theme?.template ?? "") ? ` celebration ${opts.theme!.template}` : ""}${(opts.theme ?? defaultTheme()).template === "constellation" ? " constellation" : ""}${(opts.theme ?? defaultTheme()).template === "evergreen" ? " evergreen" : ""}${(opts.theme ?? defaultTheme()).template === "silk" ? " silk" : ""}${(opts.theme ?? defaultTheme()).template === "pearl" ? " pearl" : ""}${(opts.theme ?? defaultTheme()).template === "prism" ? " prism" : ""}${(opts.theme ?? defaultTheme()).template === "ruby" ? " ruby" : ""}${(opts.theme ?? defaultTheme()).template === "tuscany" ? " tuscany" : ""}${(opts.theme ?? defaultTheme()).template === "vinyl" ? " vinyl" : ""}${(opts.theme ?? defaultTheme()).template === "aquarelle" ? " aquarelle" : ""}${(opts.theme ?? defaultTheme()).template === "lily" ? " lily" : ""}${(opts.theme ?? defaultTheme()).template === "bohema" ? " bohema" : ""}${(opts.theme ?? defaultTheme()).template === "kraski" ? " kraski" : ""}${(opts.theme ?? defaultTheme()).template === "serdce" ? " serdce" : ""}${(opts.theme ?? defaultTheme()).template === "antic" ? " antic" : ""}${(opts.theme ?? defaultTheme()).template === "skvoz-vremya" ? " skvoz-vremya" : ""}${(opts.theme ?? defaultTheme()).template === "burgundy" ? " burgundy" : ""}${(opts.theme ?? defaultTheme()).template === "roseraie" ? " roseraie" : ""}${(opts.theme ?? defaultTheme()).template === "floral-garden" ? " floral-garden" : ""}${(opts.theme ?? defaultTheme()).template === "iskra" ? " iskra" : ""}${opts.theme?.template === "zefir" ? " zefir" : opts.theme?.template === "crayon" ? " crayon" : ""}${isEditorialTemplate(opts.theme?.template ?? "") ? ` ${opts.theme!.template}` : ""}">${decorMarkup(opts.theme ?? defaultTheme())}${opts.body}</main>${
     opts.script ? `<script>${opts.script}</script>` : ""
   }</body></html>`;
 }
@@ -294,8 +304,8 @@ ${isEditorialTemplate(opts.theme?.template ?? "") ? EDITORIAL_FONTS_LINK : ""}
  */
 const TILI_ROUTE_CSS = `.foot{background:#2A1D0D;color:rgba(255,255,255,.4);text-align:center;padding:0 24px 34px;font-size:.85rem;letter-spacing:.12em;margin:0}.foot a{color:inherit}.links{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;background:#2A1D0D;padding:0 24px 24px}.links a{color:#BFAF9F;font-size:1rem;border:1px solid rgba(191,175,159,.4);border-radius:40px;padding:9px 22px;text-decoration:none}.ok{margin:0;padding:14px 20px;background:#8B6914;color:#fff;text-align:center}.who{padding:28px 20px 0;text-align:center;font-size:.85rem;letter-spacing:.3em;text-transform:uppercase;color:#BFAF9F}section.plain{padding:100px 24px;text-align:center}`;
 
-function tiliDocument(opts: { title: string; body: string; noindex?: boolean; extraCss?: string; script?: string }): string {
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+function tiliDocument(opts: { title: string; body: string; noindex?: boolean; extraCss?: string; script?: string; theme?: InviteTheme }): string {
+  return `<!doctype html><html lang="${opts.theme?.language ?? guestLang()}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${opts.noindex ? '<meta name="robots" content="noindex,nofollow">' : ""}
 <meta name="theme-color" content="#f8f1ea">
@@ -352,7 +362,7 @@ ${swatches ? `<div class="palette">${swatches}</div>` : ""}</section>`;
 
 function mapBlock(content: BlockContentMap["MAP"], e: EditAttrs = NO_EDIT): string {
   const links = [
-    { url: content.yandexUrl, label: "Яндекс Карты" },
+    { url: content.yandexUrl, label: guestText("Яндекс Карты", "Yandex Maps") },
     { url: content.googleUrl, label: "Google Maps" },
   ]
     .filter((link) => link.url)
@@ -401,6 +411,11 @@ const MONTHS_NOMINATIVE = [
   "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
 ];
 
+const MONTHS_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 /** Год/месяц/число мероприятия в его часовом поясе — не в браузере гостя. */
 function eventDateParts(date: Date, timezone: string) {
   const formatter = new Intl.DateTimeFormat("ru-RU", {
@@ -422,7 +437,7 @@ function eventDateParts(date: Date, timezone: string) {
  */
 function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, timezone: string, e: EditAttrs = NO_EDIT): string {
   const { day, month, year } = eventDateParts(eventDate, timezone);
-  const monthName = MONTHS_NOMINATIVE[month - 1];
+  const monthName = templateLanguage() === "en" ? MONTHS_EN[month - 1] : MONTHS_NOMINATIVE[month - 1];
   const label = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
   // Понедельник первым: `getUTCDay()` даёт 0=воскресенье, здесь считаем
@@ -430,7 +445,7 @@ function calendarBlock(content: BlockContentMap["CALENDAR"], eventDate: Date, ti
   const firstWeekday = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-  const weekdayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+  const weekdayNames = (templateLanguage() === "en" ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"])
     .map((name) => `<span class="dn">${name}</span>`)
     .join("");
 
@@ -463,7 +478,7 @@ function rsvpCall(
   const content = block.content as BlockContentMap["RSVP_FORM"];
   const given =
     answered && href
-      ? `<p class="center" style="margin-top:1.25rem">Ваш ответ: <b>${esc(answered)}</b> · <a href="${esc(href)}">изменить</a></p>`
+      ? `<p class="center" style="margin-top:1.25rem">${guestText("Ваш ответ", "Your reply")}: <b>${esc(answered)}</b> · <a href="${esc(href)}">${guestText("изменить", "change")}</a></p>`
       : "";
   return `<section><h2${e.text("title")}>${esc(content.title)}</h2>${paragraphs(content.text, "", e.text("text", { multiline: true }))}${inlineRsvpForm(block)}${given}</section>`;
 }
@@ -517,7 +532,8 @@ for(var i=0;i<els.length;i++)io.observe(els[i])})()`;
  * отсчёта и заставки, которым есть что включать или не включать.
  */
 export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
-  const script = templateScript(blocks, theme, names);
+  const nativeScript = templateScript(blocks, theme, names);
+  const script = hasThemedIntro(theme.template) ? `${nativeScript ?? ""};${THEMED_INTRO_SCRIPT}` : nativeScript;
   const intro = theme.introOff ? TEMPLATE_INTROS[theme.template] : undefined;
   if (!intro) return script;
   // Заставка выключена — открываем её сразу, тем же путём, что и гость.
@@ -526,6 +542,7 @@ export function inviteScript(blocks: InviteBlockView[], theme: InviteTheme, name
 }
 
 function templateScript(blocks: InviteBlockView[], theme: InviteTheme, names: string): string | undefined {
+  if (isCelebrationTemplate(theme.template)) return `${COUNTDOWN_SCRIPT};${CELEBRATION_SCRIPT}`;
   // У «Тили-тесто» свой скрипт целиком: отсчёт, конверт и появление
   // разделов устроены как в образце, а не как у остальных шаблонов.
   if (theme.template === "tili") return `${TILI_SCRIPT};${PREMIUM_MOTION_SCRIPT}`;
@@ -557,11 +574,13 @@ export function renderBlocks(
 ): string {
   // Виш-лист шаблон рисует как свой текстовый раздел, а сетку подарков
   // под ним вставляет общий рендер (см. guest-html/wishlist.ts).
+  if (isCelebrationTemplate(theme.template)) blocks = localizeCelebrationBlocks(blocks.filter(block => block.visible), theme.template, theme);
   if (isEditorialTemplate(theme.template) || theme.template === "zefir" || theme.template === "crayon") blocks = blocks.filter(block => block.visible);
   const html = withInlineRsvp(options.rsvp, options.editable === true, () => withTemplateLabels(theme, options.editable === true, () => renderWithWishlist(blocks, (list) => {
     if (!theme.template) return renderRawBlocks(list, rsvpHref, answered, eventDate, theme, timezone, options);
-    const personalized = personalizeBlocks(list, theme, eventDate, timezone, templateSampleNames(theme.template));
-    return personalizeMarkup(renderRawBlocks(personalized, rsvpHref, answered, eventDate, theme, timezone, options), personalized, theme, options.editable);
+    const personalized = personalizeBlocks(list, theme, eventDate, timezone, templateSampleNames(theme.template, theme.language));
+    const opening = !options.wishlistPage && personalized.some(block => block.type === "COVER" && block.visible) ? themedIntroMarkup(theme, coupleNames(personalized, theme.wedding?.names ?? ""), options.editable === true) : "";
+    return opening + personalizeMarkup(renderRawBlocks(personalized, rsvpHref, answered, eventDate, theme, timezone, options), personalized, theme, options.editable);
   }, options.wishlist, options.editable === true, options.wishlistPage ? "page" : "button")));
   return composeInviteComponents(html, blocks, theme, options.editable === true);
 }
@@ -576,6 +595,7 @@ function renderRawBlocks(
   options: RenderOptions = {},
 ): string {
   const editable = options.editable === true;
+  if (isCelebrationTemplate(theme.template)) return renderCelebrationBlocks(blocks, theme, { eventDate, timezone, editable });
   if (isEditorialTemplate(theme.template)) {
     return renderEditorialBlocks(blocks, theme, { eventDate, timezone, editable });
   }

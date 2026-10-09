@@ -54,16 +54,16 @@ export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme,
   return blocks.filter((block) => wedding.childhood || !(block.type === "PHOTOS" && /ребятиш|детств/i.test(String((block.content as {title?:string}).title)))).map((block) => {
     const c = { ...block.content } as Record<string, unknown>;
     replaceSampleNames(c, sampleNames, wedding.names);
-    if (date && typeof c.tag === "string" && /^\d{2}\s*[·./]\s*\d{2}\s*[·./]\s*\d{2,4}$/.test(c.tag)) c.tag = formatEventDate(date, timezone);
+    if (date && typeof c.tag === "string" && /^\d{2}\s*[·./]\s*\d{2}\s*[·./]\s*\d{2,4}$/.test(c.tag)) c.tag = formatEventDate(date, timezone, theme.language);
     if (block.type === "COVER") {
       c.names = wedding.names;
-      c.dateText = [date ? formatEventDate(date, timezone) : c.dateText, wedding.city].filter(Boolean).join(" · ");
+      c.dateText = [date ? formatEventDate(date, timezone, theme.language) : c.dateText, wedding.city].filter(Boolean).join(" · ");
       if (!wedding.childhood && theme.template !== "protokol") c.photos = [];
       if (theme.template === "serdce") c.footer = `С любовью, ${wedding.names}`;
     }
     if (block.type === "VENUE") Object.assign(c, { name: wedding.venueName, address: wedding.venueAddress, mapUrl: wedding.mapUrl });
     if (block.type === "MAP") Object.assign(c, { yandexUrl: wedding.mapUrl, googleUrl: "" });
-    if (block.type === "RSVP_FORM" && wedding.deadline && !["bohema", "kraski", "serdce", "antic", "floral-garden", "odnazhdy", "little-happiness", "priznanie"].includes(theme.template)) c.title = `Пожалуйста, ответьте до ${formatEventDate(new Date(wedding.deadline), timezone)}`;
+    if (block.type === "RSVP_FORM" && wedding.deadline && !["bohema", "kraski", "serdce", "antic", "floral-garden", "odnazhdy", "little-happiness", "priznanie"].includes(theme.template)) c.title = theme.language === "en" ? `Please reply by ${formatEventDate(new Date(wedding.deadline), timezone, theme.language)}` : `Пожалуйста, ответьте до ${formatEventDate(new Date(wedding.deadline), timezone, theme.language)}`;
     if (block.type === "RSVP_FORM" && !wedding.deadline && /\d{1,2}\s+[а-я]+\s+20\d{2}/i.test(String(c.title))) c.title = "Подтвердите присутствие";
     if (block.type === "TEXT" && /^С любовью, .+\.$/.test(String(c.text))) c.text = `С любовью, ${wedding.names}.`;
     if (theme.template === "serdce" && block.type === "TEXT" && c.title === "До встречи!") c.text = `С любовью, ${wedding.names}`;
@@ -74,7 +74,7 @@ export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme,
     // Срок ответа живёт в данных свадьбы («Имена, дата и место»); дата, вписанная в текст анкеты
     // ещё в образце («ответьте до 15 октября»), спорила бы с заголовком.
     if (block.type === "RSVP_FORM" && wedding.deadline && typeof c.text === "string") {
-      c.text = c.text.replace(/до\s+(?:\d{1,2}\s+[а-яё]+(?:\s+20\d{2})?|\d{1,2}\.\d{1,2}\.\d{2,4}(?:\s*г(?=\.))?)/i, `до ${formatEventDate(new Date(wedding.deadline), timezone)}`);
+      c.text = c.text.replace(/до\s+(?:\d{1,2}\s+[а-яё]+(?:\s+20\d{2})?|\d{1,2}\.\d{1,2}\.\d{2,4}(?:\s*г(?=\.))?)/i, `до ${formatEventDate(new Date(wedding.deadline), timezone, theme.language)}`);
     }
     return { ...block, content: c as InviteBlockView["content"] };
   });

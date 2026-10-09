@@ -27,17 +27,19 @@ import {
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import {
-  COUPLE_TABLE_LABEL, HALL_MAX, HALL_MIN, SHAPES, SHAPE_LABEL, clampToPlan, contentExtent, freeSpot, isRound,
+  COUPLE_TABLE_LABEL, COUPLE_TABLE_LABEL_EN, HALL_MAX, HALL_MIN, SHAPES, SHAPE_LABEL, SHAPE_LABEL_EN, clampToPlan, contentExtent, freeSpot, isRound,
   tableSize,
   MARK_LABEL_SHIFT, fitSeatLabels, labelLines, placeSeatLabel, seatPosition, snap, type Hall, type LabelFit, type Point,
 } from "@/lib/seating-geometry";
-import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
+import { MARK_RADIUS, ROLE_LABEL, ROLE_LABEL_EN, markFor } from "@/lib/couple-marks";
 import { COUPLE_TABLE } from "@/lib/couple-table-style";
 import type { GuestRole, TableShape as TableShapeEnum } from "@/generated/prisma/enums";
+import { useT } from "@/components/i18n-provider";
+import type { Lang } from "@/lib/i18n";
 import {
   useSeating, type EditorGuest, type EditorPlanState, type EditorSeat, type EditorTable, type Seating,
 } from "./use-seating";
-import { GuestSearch } from "./guest-search";
+import { GuestSearch, shownName } from "./guest-search";
 import { TableEditPanel } from "./table-panel";
 import { SeatingList, type ListActions } from "./seating-list";
 import { RingsIcon } from "./rings-icon";
@@ -80,6 +82,7 @@ const HIT_SIZE = 36;
 
 /** Значок невесты или жениха: фигуры общие с планом гостя и PDF. */
 function CoupleGlyph({ role, active }: { role: GuestRole; active: boolean }) {
+  const t = useT();
   const mark = markFor(role);
   if (!mark) return null;
 
@@ -88,7 +91,7 @@ function CoupleGlyph({ role, active }: { role: GuestRole; active: boolean }) {
       viewBox="-16 -16 32 32"
       width={26}
       height={26}
-      aria-label={mark.label}
+      aria-label={t(mark.label, mark.labelEn)}
       className={active ? "opacity-80" : ""}
     >
       <circle r={MARK_RADIUS} fill="#8b6f47" stroke="#fffdf9" strokeWidth={1.5} />
@@ -129,6 +132,7 @@ function SeatDot({
   onPlace: (seatId: string) => void;
   onOpenEmpty: (seat: EditorSeat, table: EditorTable, at: Point) => void;
 }) {
+  const t = useT();
   const { setNodeRef, isOver } = useDroppable({ id: `seat:${seat.id}` });
   const pos = seatPosition(table, seat.index);
   const role = seat.guest?.role ?? "GUEST";
@@ -189,8 +193,8 @@ function SeatDot({
         type="button"
         title={
           seat.guest
-            ? `${seat.guest.displayName} — щёлкните, чтобы перенести`
-            : "Свободное место — щёлкните, чтобы посадить гостя"
+            ? t(`${seat.guest.displayName} — щёлкните, чтобы перенести`, `${seat.guest.displayName} — click to move`)
+            : t("Свободное место — щёлкните, чтобы посадить гостя", "Empty seat — click to seat a guest")
         }
         className="pointer-events-auto absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
         style={{
@@ -334,6 +338,7 @@ function TableShape({
   onEdit: (tableId: string) => void;
   onOpenEmpty: (seat: EditorSeat, table: EditorTable, at: Point) => void;
 }) {
+  const t = useT();
   const draggable = useDraggable({
     id: `table:${table.id}`,
     data: { type: "table", tableId: table.id } satisfies DragPayload,
@@ -443,7 +448,7 @@ function TableShape({
           event.stopPropagation();
           onEdit(table.id);
         }}
-        title="Щёлкните, чтобы изменить стол; перетащите, чтобы передвинуть"
+        title={t("Щёлкните, чтобы изменить стол; перетащите, чтобы передвинуть", "Click to edit the table; drag to move it")}
         className={`pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center transition-[scale,box-shadow] duration-150 ${
           dragging ? "cursor-grabbing" : "cursor-grab"
         } ${round ? "rounded-full" : table.isCouple ? "rounded-2xl" : "rounded-lg"} ${
@@ -525,6 +530,7 @@ function NewTableChip({
   disabled: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
   const draggable = useDraggable({
     id: "new-table",
     data: { type: "new-table", label, shape, capacity } satisfies DragPayload,
@@ -541,9 +547,9 @@ function NewTableChip({
       onClick={onClick}
       className="flex shrink-0 cursor-grab select-none items-center gap-2 rounded-lg border-2 border-dashed border-stone-400 bg-stone-50 px-4 py-2 text-sm font-medium text-stone-700 active:cursor-grabbing disabled:opacity-50"
       style={{ opacity: draggable.isDragging ? 0.4 : 1 }}
-      title="Перетащите на план — стол встанет туда, куда отпустите. Или щёлкните — встанет в центр видимой части зала."
+      title={t("Перетащите на план — стол встанет туда, куда отпустите. Или щёлкните — встанет в центр видимой части зала.", "Drag onto the plan — the table lands where you drop it. Or click to place it in the middle of the visible area.")}
     >
-      <span aria-hidden>⠿</span> Новый стол — перетащите на план
+      <span aria-hidden>⠿</span> {t("Новый стол — перетащите на план", "New table — drag onto the plan")}
     </button>
   );
 }
@@ -558,6 +564,7 @@ function NewTableGhost({
   payload: Extract<DragPayload, { type: "new-table" }>;
   scale: number;
 }) {
+  const t = useT();
   const size = tableSize({ shape: payload.shape, capacity: payload.capacity });
   const round = isRound(payload.shape);
   return (
@@ -567,8 +574,8 @@ function NewTableGhost({
       }`}
       style={{ width: size.width * scale, height: size.height * scale }}
     >
-      <span className="max-w-full truncate px-1 text-xs font-semibold text-stone-700">{payload.label || "Новый стол"}</span>
-      <span className="text-[10px] text-stone-500">{payload.capacity} мест</span>
+      <span className="max-w-full truncate px-1 text-xs font-semibold text-stone-700">{payload.label || t("Новый стол", "New table")}</span>
+      <span className="text-[10px] text-stone-500">{t(`${payload.capacity} мест`, `${payload.capacity} ${payload.capacity === 1 ? "seat" : "seats"}`)}</span>
     </div>
   );
 }
@@ -580,6 +587,7 @@ function GuestChip({
   selected: boolean;
   onSelect: (guest: EditorGuest | null) => void;
 }) {
+  const t = useT();
   const draggable = useDraggable({
     id: `guest:${guest.id}`,
     data: { type: "guest", guest } satisfies DragPayload,
@@ -598,9 +606,9 @@ function GuestChip({
         }`}
         style={{ opacity: draggable.isDragging ? 0.3 : 1 }}
       >
-        {guest.displayName}
+        {shownName(guest.displayName, t)}
         {guest.role && guest.role !== "GUEST" ? (
-          <span className="ml-2 text-xs opacity-70">{ROLE_LABEL[guest.role]}</span>
+          <span className="ml-2 text-xs opacity-70">{t(ROLE_LABEL[guest.role], ROLE_LABEL_EN[guest.role])}</span>
         ) : null}
       </button>
     </li>
@@ -612,15 +620,15 @@ function GuestChip({
 type Edges = { left?: boolean; right?: boolean; top?: boolean; bottom?: boolean };
 type ResizePreview = { hall: Hall; shift: Point };
 
-const HANDLES: { edges: Edges; className: string; cursor: string; label: string }[] = [
-  { edges: { right: true }, className: "top-0 bottom-0 -right-3 w-6 pointer-coarse:-right-5 pointer-coarse:w-10", cursor: "ew-resize", label: "Растянуть зал вправо" },
-  { edges: { left: true }, className: "top-0 bottom-0 -left-3 w-6 pointer-coarse:-left-5 pointer-coarse:w-10", cursor: "ew-resize", label: "Растянуть зал влево" },
-  { edges: { bottom: true }, className: "left-0 right-0 -bottom-3 h-6 pointer-coarse:-bottom-5 pointer-coarse:h-10", cursor: "ns-resize", label: "Растянуть зал вниз" },
-  { edges: { top: true }, className: "left-0 right-0 -top-3 h-6 pointer-coarse:-top-5 pointer-coarse:h-10", cursor: "ns-resize", label: "Растянуть зал вверх" },
-  { edges: { right: true, bottom: true }, className: "-right-3 -bottom-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-right-5 pointer-coarse:-bottom-5", cursor: "nwse-resize", label: "Растянуть зал по диагонали" },
-  { edges: { left: true, top: true }, className: "-left-3 -top-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-left-5 pointer-coarse:-top-5", cursor: "nwse-resize", label: "Растянуть зал по диагонали" },
-  { edges: { right: true, top: true }, className: "-right-3 -top-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-right-5 pointer-coarse:-top-5", cursor: "nesw-resize", label: "Растянуть зал по диагонали" },
-  { edges: { left: true, bottom: true }, className: "-left-3 -bottom-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-left-5 pointer-coarse:-bottom-5", cursor: "nesw-resize", label: "Растянуть зал по диагонали" },
+const HANDLES: { edges: Edges; className: string; cursor: string; label: string; labelEn: string }[] = [
+  { edges: { right: true }, className: "top-0 bottom-0 -right-3 w-6 pointer-coarse:-right-5 pointer-coarse:w-10", cursor: "ew-resize", label: "Растянуть зал вправо", labelEn: "Stretch the hall right" },
+  { edges: { left: true }, className: "top-0 bottom-0 -left-3 w-6 pointer-coarse:-left-5 pointer-coarse:w-10", cursor: "ew-resize", label: "Растянуть зал влево", labelEn: "Stretch the hall left" },
+  { edges: { bottom: true }, className: "left-0 right-0 -bottom-3 h-6 pointer-coarse:-bottom-5 pointer-coarse:h-10", cursor: "ns-resize", label: "Растянуть зал вниз", labelEn: "Stretch the hall down" },
+  { edges: { top: true }, className: "left-0 right-0 -top-3 h-6 pointer-coarse:-top-5 pointer-coarse:h-10", cursor: "ns-resize", label: "Растянуть зал вверх", labelEn: "Stretch the hall up" },
+  { edges: { right: true, bottom: true }, className: "-right-3 -bottom-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-right-5 pointer-coarse:-bottom-5", cursor: "nwse-resize", label: "Растянуть зал по диагонали", labelEn: "Stretch the hall diagonally" },
+  { edges: { left: true, top: true }, className: "-left-3 -top-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-left-5 pointer-coarse:-top-5", cursor: "nwse-resize", label: "Растянуть зал по диагонали", labelEn: "Stretch the hall diagonally" },
+  { edges: { right: true, top: true }, className: "-right-3 -top-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-right-5 pointer-coarse:-top-5", cursor: "nesw-resize", label: "Растянуть зал по диагонали", labelEn: "Stretch the hall diagonally" },
+  { edges: { left: true, bottom: true }, className: "-left-3 -bottom-3 h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:-left-5 pointer-coarse:-bottom-5", cursor: "nesw-resize", label: "Растянуть зал по диагонали", labelEn: "Stretch the hall diagonally" },
 ];
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -674,11 +682,15 @@ export function SeatingEditor({
   eventId,
   initial,
   actions,
+  eventLang = "ru",
 }: {
   eventId: string;
   initial: EditorPlanState & { version: number };
   actions: ListActions;
+  /** Язык мероприятия: на нём подставляется название нового стола — оно уходит в печать. */
+  eventLang?: Lang;
 }) {
+  const t = useT();
   const seating = useSeating(eventId, initial);
   const isDesktop = useIsDesktop();
 
@@ -755,8 +767,9 @@ export function SeatingEditor({
   function autoLabel(): string {
     const used = new Set(seating.tables.map((t) => t.label));
     let n = seating.tables.filter((t) => !t.isCouple).length + 1;
-    while (used.has(`Стол ${n}`)) n += 1;
-    return `Стол ${n}`;
+    const word = eventLang === "en" ? "Table" : "Стол";
+    while (used.has(`${word} ${n}`)) n += 1;
+    return `${word} ${n}`;
   }
 
   /** Центр видимой части зала в единицах плана: туда встаёт новый стол. */
@@ -941,28 +954,28 @@ export function SeatingEditor({
         onChange={(e) => setDraftLabel(e.target.value)}
         placeholder={autoLabel()}
         maxLength={40}
-        aria-label="Название нового стола"
+        aria-label={t("Название нового стола", "New table name")}
         className="w-full rounded-lg border border-stone-300 px-2.5 py-2 text-base sm:w-36 sm:py-1.5 sm:text-sm"
       />
       <select
         value={draftShape}
         onChange={(e) => setDraftShape(e.target.value as TableShapeEnum)}
-        aria-label="Форма нового стола"
+        aria-label={t("Форма нового стола", "New table shape")}
         className="rounded-lg border border-stone-300 px-2.5 py-2 text-base sm:py-1.5 sm:text-sm"
       >
         {SHAPES.map((shape) => (
-          <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+          <option key={shape} value={shape}>{t(SHAPE_LABEL[shape], SHAPE_LABEL_EN[shape])}</option>
         ))}
       </select>
       <label className="flex items-center gap-1.5 text-sm text-stone-500">
-        мест
+        {t("мест", "seats")}
         <input
           value={draftCapacity}
           onChange={(e) => setDraftCapacity(e.target.value)}
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={2}
-          aria-label="Мест за новым столом"
+          aria-label={t("Мест за новым столом", "Seats at the new table")}
           aria-invalid={!draftCapacityValid}
           className={`w-14 rounded-lg border px-2.5 py-2 text-base text-stone-900 sm:py-1.5 sm:text-sm ${
             draftCapacityValid ? "border-stone-300" : "border-red-400"
@@ -977,11 +990,11 @@ export function SeatingEditor({
       type="button"
       onClick={addCoupleTable}
       disabled={Boolean(coupleTable) || openCoupleWhenReady}
-      title={coupleTable ? "Стол молодожёнов уже есть — щёлкните по нему на плане" : "Добавить стол молодожёнов"}
+      title={coupleTable ? t("Стол молодожёнов уже есть — щёлкните по нему на плане", "There's already a couple's table — click it on the plan") : t("Добавить стол молодожёнов", "Add the couple's table")}
       className="flex shrink-0 items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium disabled:opacity-45"
       style={{ borderColor: `var(--couple-stroke, ${COUPLE_TABLE.stroke})`, color: `var(--couple-text, ${COUPLE_TABLE.text})`, background: `var(--couple-fill, ${COUPLE_TABLE.fill})` }}
     >
-      <RingsIcon /> {COUPLE_TABLE_LABEL}
+      <RingsIcon /> {t(COUPLE_TABLE_LABEL, COUPLE_TABLE_LABEL_EN)}
     </button>
   );
 
@@ -1022,7 +1035,7 @@ export function SeatingEditor({
               }}
               className="rounded-lg border-2 border-dashed border-stone-400 bg-stone-50 px-4 py-2 text-sm font-medium"
             >
-              + Стол
+              {t("+ Стол", "+ Table")}
             </button>
             {coupleButton}
           </div>
@@ -1036,31 +1049,34 @@ export function SeatingEditor({
                 disabled={!draftCapacityValid}
                 className="col-span-2 rounded-lg bg-stone-900 px-4 py-2.5 text-sm text-white disabled:opacity-50"
               >
-                Поставить в центр экрана
+                {t("Поставить в центр экрана", "Place in the middle of the screen")}
               </button>
             </div>
           )}
 
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-stone-500">
             <span>
-              Зал {Math.round(hall.width)} × {Math.round(hall.height)} — тяните за края, чтобы изменить размер
+              {t(
+                `Зал ${Math.round(hall.width)} × ${Math.round(hall.height)} — тяните за края, чтобы изменить размер`,
+                `Hall ${Math.round(hall.width)} × ${Math.round(hall.height)} — drag the edges to resize`,
+              )}
             </span>
             <span className="flex shrink-0 gap-2">
               <button
                 type="button"
                 onClick={fitHall}
                 disabled={seating.tables.length === 0}
-                title="Убрать пустое место вокруг столов"
+                title={t("Убрать пустое место вокруг столов", "Trim the empty space around the tables")}
                 className="rounded-lg border border-stone-300 px-2.5 py-1 text-stone-600 disabled:opacity-40"
               >
-                Подогнать под столы
+                {t("Подогнать под столы", "Fit to tables")}
               </button>
               <button
                 type="button"
                 onClick={() => setOverview((v) => !v)}
                 className="rounded-lg border border-stone-300 px-2.5 py-1 text-stone-600"
               >
-                {overview ? "Обычный масштаб" : "Весь зал"}
+                {overview ? t("Обычный масштаб", "Normal zoom") : t("Весь зал", "Whole hall")}
               </button>
             </span>
           </div>
@@ -1103,7 +1119,7 @@ export function SeatingEditor({
                 {overview && (
                   <button
                     type="button"
-                    aria-label="Вернуть обычный масштаб"
+                    aria-label={t("Вернуть обычный масштаб", "Back to normal zoom")}
                     className="absolute inset-0 z-20 cursor-zoom-in"
                     onClick={(event) => {
                       event.stopPropagation();
@@ -1129,8 +1145,8 @@ export function SeatingEditor({
                     <div
                       key={handle.label + handle.className}
                       role="separator"
-                      aria-label={handle.label}
-                      title={handle.label}
+                      aria-label={t(handle.label, handle.labelEn)}
+                      title={t(handle.label, handle.labelEn)}
                       onPointerDown={(event) => onHandleDown(event, handle.edges)}
                       onPointerMove={onHandleMove}
                       onPointerUp={onHandleUp}
@@ -1206,10 +1222,10 @@ export function SeatingEditor({
           {selected ? (
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0 truncate">
-                <b>{selected.displayName}</b> — нажмите на место
+                <b>{shownName(selected.displayName, t)}</b>{t(" — нажмите на место", " — tap a seat")}
               </span>
               <button type="button" onClick={() => setSelected(null)} className="shrink-0 px-2 py-1 underline">
-                Отмена
+                {t("Отмена", "Cancel")}
               </button>
             </div>
           ) : (
@@ -1219,7 +1235,7 @@ export function SeatingEditor({
                 onClick={() => setGuestsOpen(true)}
                 className="flex-1 rounded-lg bg-stone-900 px-4 py-2.5 text-left text-sm text-white"
               >
-                Не рассажено: {seating.unseated.length} ▴
+                {t("Не рассажено", "Unseated")}: {seating.unseated.length} ▴
               </button>
               <StatusText seating={seating} />
             </div>
@@ -1239,7 +1255,7 @@ export function SeatingEditor({
       <DragOverlay dropAnimation={null} modifiers={dragging?.type === "new-table" ? [snapCenterToCursor] : undefined}>
         {dragging?.type === "guest" && (
           <div className="drag-lift rounded-lg border border-stone-400 bg-card px-3 py-1.5 text-sm shadow-lg">
-            {dragging.guest.displayName}
+            {shownName(dragging.guest.displayName, t)}
           </div>
         )}
         {dragging?.type === "new-table" && <NewTableGhost payload={dragging} scale={scale} />}
@@ -1250,11 +1266,12 @@ export function SeatingEditor({
 
 /** Выезжающая снизу панель для телефона. */
 function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const t = useT();
   return (
     <>
       <button
         type="button"
-        aria-label="Закрыть"
+        aria-label={t("Закрыть", "Close")}
         onClick={onClose}
         className="fixed inset-0 z-40 bg-stone-900/20"
       />
@@ -1278,11 +1295,12 @@ function EmptySeatPicker({
   isDesktop: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const seatLabel =
     target.table.isCouple && target.seat.index < 2
-      ? target.seat.index === 0 ? "место невесты" : "место жениха"
-      : `место ${target.seat.index + 1}`;
+      ? target.seat.index === 0 ? t("место невесты", "bride's seat") : t("место жениха", "groom's seat")
+      : t(`место ${target.seat.index + 1}`, `seat ${target.seat.index + 1}`);
 
   const body = (
     <div>
@@ -1293,7 +1311,7 @@ function EmptySeatPicker({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Закрыть"
+          aria-label={t("Закрыть", "Close")}
           className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-full text-lg text-stone-500 hover:bg-stone-100"
         >
           ×
@@ -1303,7 +1321,7 @@ function EmptySeatPicker({
         guests={seating.unseated}
         autoFocus={isDesktop}
         busy={busy}
-        placeholder="Найти или вписать нового"
+        placeholder={t("Найти или вписать нового", "Find or add a new guest")}
         onCancel={onClose}
         onPick={(guest) => {
           seating.assign(target.seat.id, guest);
@@ -1328,7 +1346,7 @@ function EmptySeatPicker({
 
   return (
     <>
-      <button type="button" aria-label="Закрыть" onClick={onClose} className="fixed inset-0 z-40 cursor-default" />
+      <button type="button" aria-label={t("Закрыть", "Close")} onClick={onClose} className="fixed inset-0 z-40 cursor-default" />
       <div
         className="fixed z-50 rounded-xl border border-stone-200 bg-card p-3 shadow-xl"
         style={{ left, top: Math.max(12, top), width }}
@@ -1340,12 +1358,14 @@ function EmptySeatPicker({
 }
 
 function StatusText({ seating }: { seating: Seating }) {
-  if (seating.status.kind === "saving") return <span className="text-xs text-stone-500">Сохраняем…</span>;
-  if (seating.status.kind === "idle") return <span className="text-xs text-stone-400">Сохранено</span>;
-  return <span className="text-xs text-red-700">Ошибка</span>;
+  const t = useT();
+  if (seating.status.kind === "saving") return <span className="text-xs text-stone-500">{t("Сохраняем…", "Saving…")}</span>;
+  if (seating.status.kind === "idle") return <span className="text-xs text-stone-400">{t("Сохранено", "Saved")}</span>;
+  return <span className="text-xs text-red-700">{t("Ошибка", "Error")}</span>;
 }
 
 function StatusBar({ seating }: { seating: Seating }) {
+  const t = useT();
   return (
     <div className="mt-3 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       <button
@@ -1354,11 +1374,11 @@ function StatusBar({ seating }: { seating: Seating }) {
         disabled={!seating.canUndo}
         className="rounded-lg border border-stone-300 px-3 py-1.5 disabled:opacity-40"
       >
-        Отменить
+        {t("Отменить", "Undo")}
       </button>
 
-      {seating.status.kind === "saving" && <span className="text-stone-500">Сохраняем…</span>}
-      {seating.status.kind === "idle" && <span className="text-stone-400">Всё сохранено</span>}
+      {seating.status.kind === "saving" && <span className="text-stone-500">{t("Сохраняем…", "Saving…")}</span>}
+      {seating.status.kind === "idle" && <span className="text-stone-400">{t("Всё сохранено", "All changes saved")}</span>}
 
       {seating.status.kind === "error" && (
         <span className="text-red-700">{seating.status.message}</span>
@@ -1378,6 +1398,7 @@ function UnseatedPanel({
   selected: EditorGuest | null;
   onSelect: (guest: EditorGuest | null) => void;
 }) {
+  const t = useT();
   const guests = seating.unseated;
   const { setNodeRef, isOver } = useDroppable({ id: "unseated" });
   const selectedIsSeated = selected && !guests.some((g) => g.id === selected.id);
@@ -1393,7 +1414,7 @@ function UnseatedPanel({
   return (
     <div>
       <p className="text-sm font-medium">
-        Не рассажено: <span className="text-stone-500">{guests.length}</span>
+        {t("Не рассажено", "Unseated")}: <span className="text-stone-500">{guests.length}</span>
       </p>
 
       <form
@@ -1412,31 +1433,31 @@ function UnseatedPanel({
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Новый гость"
+          placeholder={t("Новый гость", "New guest")}
           maxLength={120}
-          aria-label="Имя нового гостя"
+          aria-label={t("Имя нового гостя", "New guest name")}
           className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-base sm:py-1.5 sm:text-sm"
         />
         <button
           disabled={busy || !name.trim()}
           className="shrink-0 rounded-lg bg-stone-900 px-3 py-2 text-sm text-white disabled:opacity-40 sm:py-1.5"
         >
-          Добавить
+          {t("Добавить", "Add")}
         </button>
       </form>
 
       {selected && (
         <div className="mt-3 rounded-lg bg-stone-900 px-3 py-2 text-sm text-white">
-          <p className="font-medium">{selected.displayName}</p>
-          <p className="mt-0.5 text-xs text-stone-300">Щёлкните по месту на плане, чтобы посадить.</p>
+          <p className="font-medium">{shownName(selected.displayName, t)}</p>
+          <p className="mt-0.5 text-xs text-stone-300">{t("Щёлкните по месту на плане, чтобы посадить.", "Click a seat on the plan to seat them.")}</p>
           <div className="mt-2 flex gap-3 text-xs">
             {selectedIsSeated && (
               <button type="button" onClick={() => unseat(selected)} className="underline">
-                Снять с места
+                {t("Снять с места", "Unseat")}
               </button>
             )}
             <button type="button" onClick={() => onSelect(null)} className="underline">
-              Отмена
+              {t("Отмена", "Cancel")}
             </button>
           </div>
         </div>
@@ -1458,13 +1479,15 @@ function UnseatedPanel({
         ))}
 
         {guests.length === 0 && (
-          <li className="px-2 py-3 text-sm text-stone-500">Все гости за столами.</li>
+          <li className="px-2 py-3 text-sm text-stone-500">{t("Все гости за столами.", "Everyone has a seat.")}</li>
         )}
       </ul>
 
       <p className="mt-2 text-xs text-stone-500">
-        Щёлкните по гостю, затем по месту — или перетащите мышью. По свободному
-        месту можно щёлкнуть сразу и вписать имя.
+        {t(
+          "Щёлкните по гостю, затем по месту — или перетащите мышью. По свободному месту можно щёлкнуть сразу и вписать имя.",
+          "Click a guest, then a seat — or drag with the mouse. You can also click an empty seat and type a name.",
+        )}
       </p>
     </div>
   );

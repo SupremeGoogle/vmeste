@@ -13,6 +13,7 @@ import { searchGuests } from "@/server/services/guest-search";
 import { rateLimit } from "@/server/rate-limit";
 import { clientAddress, lookupKeys, WINDOW_MS } from "@/server/rate-limit/client-key";
 import { esc, html, page } from "@/server/guest-html/layout";
+import { gl, withGuestLang } from "@/server/guest-html/guest-lang";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ function hashIp(ip: string) {
   return createHash("sha256").update(ip).digest("hex").slice(0, 32);
 }
 
-function backLink(code: string, text = "Искать заново") {
+function backLink(code: string, text = gl("Искать заново", "Search again")) {
   return `<p class="hint"><a href="/e/${code}">${text}</a></p>`;
 }
 
@@ -56,9 +57,9 @@ function claimForms(code: string, guestId: string, photos: boolean, wishes: bool
 </form>`;
 
   return `<div class="claims">
-${button("hub", "Моя страница: стол, фото и рассадка", true)}
-${photos ? button("photos", "Загрузить фото") : ""}
-${wishes ? button("wish", "Написать пожелание") : ""}
+${button("hub", gl("Моя страница: стол, фото и рассадка", "My page: table, photos and seating"), true)}
+${photos ? button("photos", gl("Загрузить фото", "Upload photos")) : ""}
+${wishes ? button("wish", gl("Написать пожелание", "Write a wish")) : ""}
 </div>`;
 }
 
@@ -71,20 +72,20 @@ function seatPage(
   tableId: string | null = null,
 ) {
   const card = tableLabel
-    ? `<p class="sub" style="margin:0">Ваше место</p>
+    ? `<p class="sub" style="margin:0">${gl("Ваше место", "Your table")}</p>
        <p class="table-label">${esc(tableLabel)}</p>`
-    : `<p class="sub" style="margin:0">Место пока не назначено</p>
-       <p style="margin:.5rem 0 0">Подойдите к координатору — он подскажет, куда сесть.</p>`;
+    : `<p class="sub" style="margin:0">${gl("Место пока не назначено", "No seat assigned yet")}</p>
+       <p style="margin:.5rem 0 0">${gl("Подойдите к координатору — он подскажет, куда сесть.", "Please ask the coordinator where to sit.")}</p>`;
 
   return page({
     title: displayName,
     body: `<p class="eyebrow">${esc(eventTitle)}</p>
 <h1>${esc(displayName)}</h1>
 <div class="result">${card}</div>
-${tableId ? `<p class="hint"><a href="/e/${code}/plan?t=${tableId}">Показать на плане зала</a></p>` : ""}
+${tableId ? `<p class="hint"><a href="/e/${code}/plan?t=${tableId}">${gl("Показать на плане зала", "Show on the floor plan")}</a></p>` : ""}
 ${claims}
-<p class="hint">Страница сохранена в телефоне и откроется, даже если связь пропадёт.</p>
-${backLink(code, "Это не я, искать заново")}`,
+<p class="hint">${gl("Страница сохранена в телефоне и откроется, даже если связь пропадёт.", "This page is saved on your phone and will open even without a connection.")}</p>
+${backLink(code, gl("Это не я, искать заново", "Not me, search again"))}`,
     script: rememberScript(displayName, tableLabel),
   });
 }
@@ -111,6 +112,8 @@ export async function GET(
     );
   }
 
+  // Всё, что ниже рисуется, — на языке мероприятия.
+  const inLang = (render: () => string) => withGuestLang(event.language, render);
   const ip = clientAddress(req);
   // Два потолка: по клиенту и по мероприятию целиком. Подробности и цифры —
   // в client-key.ts, они выведены из нагрузочной проверки, а не из головы.
@@ -122,7 +125,7 @@ export async function GET(
 
   if (!limited.ok) {
     return html(
-      message(code, "Слишком много попыток", "Подождите минуту и попробуйте снова.", event.title),
+      inLang(() => message(code, gl("Слишком много попыток", "Too many attempts"), gl("Подождите минуту и попробуйте снова.", "Please wait a minute and try again."), event.title)),
       { status: 429, headers: { "retry-after": String(limited.retryAfterSec) } },
     );
   }
@@ -136,19 +139,19 @@ export async function GET(
       },
     });
     if (!guest) {
-      return html(message(code, "Не нашли вас в списке", "Попробуйте поискать ещё раз.", event.title), {
+      return html(inLang(() => message(code, gl("Не нашли вас в списке", "We couldn’t find you on the list"), gl("Попробуйте поискать ещё раз.", "Please try searching again."), event.title)), {
         status: 404,
       });
     }
     return html(
-      seatPage(
+      inLang(() => seatPage(
         code,
         event.title,
         guest.displayName,
         guest.seat?.table.label ?? null,
         claimForms(code, g, event.photosEnabled, event.wishesEnabled),
         guest.seat?.table.id ?? null,
-      ),
+      )),
       // Приватный кеш и ненадолго: страница именная, а на ней теперь ещё
       // и кнопки, выдающие гостевую сессию.
       { headers: { "cache-control": "private, max-age=60" } },
@@ -172,27 +175,27 @@ export async function GET(
     .catch(() => {});
 
   if (result.status === "too_short") {
-    return html(message(code, "Слишком короткий запрос", "Введите хотя бы две буквы имени или фамилии.", event.title));
+    return html(inLang(() => message(code, gl("Слишком короткий запрос", "Search is too short"), gl("Введите хотя бы две буквы имени или фамилии.", "Enter at least two letters of your first or last name."), event.title)));
   }
 
   if (result.status === "too_many") {
-    return html(message(code, "Слишком много совпадений", "Добавьте фамилию — так найдём точнее.", event.title));
+    return html(inLang(() => message(code, gl("Слишком много совпадений", "Too many matches"), gl("Добавьте фамилию — так найдём точнее.", "Add your last name to narrow it down."), event.title)));
   }
 
   if (result.status === "not_found") {
     return html(
-      message(
+      inLang(() => message(
         code,
-        "Не нашли вас в списке",
-        "Попробуйте ввести только фамилию. Если и так не находит — подойдите к координатору, он найдёт вас вручную.",
+        gl("Не нашли вас в списке", "We couldn’t find you on the list"),
+        gl("Попробуйте ввести только фамилию. Если и так не находит — подойдите к координатору, он найдёт вас вручную.", "Try entering just your last name. If that doesn’t work, the coordinator can find you."),
         event.title,
-      ),
+      )),
     );
   }
 
   if (result.matches.length === 1) {
     const m = result.matches[0];
-    return html(seatPage(code, event.title, m.displayName, m.tableLabel, claimForms(code, m.guestId, event.photosEnabled, event.wishesEnabled)), {
+    return html(inLang(() => seatPage(code, event.title, m.displayName, m.tableLabel, claimForms(code, m.guestId, event.photosEnabled, event.wishesEnabled))), {
       headers: { "cache-control": "private, max-age=300" },
     });
   }
@@ -205,10 +208,10 @@ export async function GET(
     .join("");
 
   return html(
-    page({
-      title: "Кто из них вы?",
-      body: `<p class="eyebrow">${esc(event.title)}</p><h1>Кто из них вы?</h1>
+    inLang(() => page({
+      title: gl("Кто из них вы?", "Which one is you?"),
+      body: `<p class="eyebrow">${esc(event.title)}</p><h1>${gl("Кто из них вы?", "Which one is you?")}</h1>
 <ul class="matches">${items}</ul>${backLink(code)}`,
-    }),
+    })),
   );
 }

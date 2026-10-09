@@ -13,20 +13,22 @@
  */
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/i18n-provider";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
 const STAGES = [
-  { id: "read", label: "Читаем файл" },
-  { id: "structure", label: "Понимаем, что в каких столбцах" },
-  { id: "people", label: "Разбираем пары и семьи" },
-  { id: "duplicates", label: "Ищем повторы" },
+  { id: "read", label: "Читаем файл", en: "Reading the file" },
+  { id: "structure", label: "Понимаем, что в каких столбцах", en: "Working out what’s in each column" },
+  { id: "people", label: "Разбираем пары и семьи", en: "Sorting out couples and families" },
+  { id: "duplicates", label: "Ищем повторы", en: "Looking for duplicates" },
 ] as const;
 
 type Stage = (typeof STAGES)[number]["id"];
 
 export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvailable: boolean }) {
   const router = useRouter();
+  const t = useT();
   const input = useRef<HTMLInputElement>(null);
   const abort = useRef<AbortController | null>(null);
   const [smart, setSmart] = useState(aiAvailable);
@@ -40,11 +42,14 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
   async function upload(file: File) {
     setError(null);
     if (file.size > MAX_BYTES) {
-      setError(`Файл весит ${(file.size / 1024 / 1024).toFixed(1)} МБ, а можно до 2 МБ. Сохраните в новый файл только таблицу с гостями.`);
+      setError(t(
+        `Файл весит ${(file.size / 1024 / 1024).toFixed(1)} МБ, а можно до 2 МБ. Сохраните в новый файл только таблицу с гостями.`,
+        `The file is ${(file.size / 1024 / 1024).toFixed(1)} MB, and the limit is 2 MB. Save just the guest table to a new file.`,
+      ));
       return;
     }
     if (/\.xls$/i.test(file.name)) {
-      setError("Это старый формат Excel (.xls). Откройте файл в Excel и сохраните как «Книга Excel (.xlsx)».");
+      setError(t("Это старый формат Excel (.xls). Откройте файл в Excel и сохраните как «Книга Excel (.xlsx)».", "This is the old Excel format (.xls). Open it in Excel and save as “Excel Workbook (.xlsx)”."));
       return;
     }
 
@@ -87,13 +92,13 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
       }
       // Ответ-ошибка приходит одним JSON без переноса строки.
       const tail = buffer.trim() ? (JSON.parse(buffer) as { message?: string }) : null;
-      throw new Error(tail?.message ?? "Сервер не ответил. Попробуйте ещё раз.");
+      throw new Error(tail?.message ?? t("Сервер не ответил. Попробуйте ещё раз.", "The server didn’t respond. Please try again."));
     } catch (err) {
       if (controller.signal.aborted) {
         setStage(null);
         return;
       }
-      setError(err instanceof Error && err.message !== "no body" ? err.message : "Не получилось загрузить файл. Попробуйте ещё раз.");
+      setError(err instanceof Error && err.message !== "no body" ? err.message : t("Не получилось загрузить файл. Попробуйте ещё раз.", "Couldn’t upload the file. Please try again."));
       setStage(null);
     } finally {
       if (input.current) input.current.value = "";
@@ -110,8 +115,8 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
     <details className="group overflow-hidden rounded-2xl border border-stone-200 bg-card open:shadow-sm">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-stone-50">
         <span className="min-w-0">
-          <span className="font-medium text-stone-900">Загрузить список</span>
-          <span className="ml-2 text-stone-500">Excel или CSV</span>
+          <span className="font-medium text-stone-900">{t("Загрузить список", "Upload a list")}</span>
+          <span className="ml-2 text-stone-500">{t("Excel или CSV", "Excel or CSV")}</span>
         </span>
         <span aria-hidden className="shrink-0 text-stone-400 transition-transform group-open:rotate-180">▾</span>
       </summary>
@@ -127,7 +132,7 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
       }}
       className="relative flex flex-col border-t border-stone-200 px-4 pb-4 pt-3"
     >
-      <p className="text-sm text-stone-500">Столбцы в любом порядке и с любыми названиями.</p>
+      <p className="text-sm text-stone-500">{t("Столбцы в любом порядке и с любыми названиями.", "Columns can be in any order, with any names.")}</p>
 
       <label
         onDragOver={(event) => {
@@ -150,9 +155,9 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
           <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
         </svg>
         <span className="mt-2 text-sm font-medium text-stone-800">
-          {dragOver ? "Отпустите файл" : "Перетащите файл сюда или выберите"}
+          {dragOver ? t("Отпустите файл", "Drop the file") : t("Перетащите файл сюда или выберите", "Drag a file here or browse")}
         </span>
-        <span className="mt-1 text-xs text-stone-500">.xlsx, .csv · до 2 МБ</span>
+        <span className="mt-1 text-xs text-stone-500">{t(".xlsx, .csv · до 2 МБ", ".xlsx, .csv · up to 2 MB")}</span>
         <input
           ref={input}
           type="file"
@@ -173,7 +178,7 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         {aiAvailable ? (
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-stone-700" title="Имена уходят в DeepSeek, телефоны и почты — нет">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-stone-700" title={t("Имена уходят в DeepSeek, телефоны и почты — нет", "Names are sent to DeepSeek; phone numbers and emails are not")}>
             <input
               type="checkbox"
               name="smart"
@@ -183,21 +188,21 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
               className="peer sr-only"
             />
             <span aria-hidden className="relative h-5 w-9 rounded-full bg-stone-300 transition-colors peer-checked:bg-stone-900 peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-card after:shadow after:transition-transform peer-checked:after:translate-x-4" />
-            <span>Умный разбор</span>
+            <span>{t("Умный разбор", "Smart parsing")}</span>
           </label>
         ) : (
           <input type="hidden" name="smart" value="off" />
         )}
         {/* Без JS файл не уходит сам при выборе — нужна кнопка. */}
         <noscript>
-          <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">Загрузить</button>
+          <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">{t("Загрузить", "Upload")}</button>
         </noscript>
         <a href="/samples/guests-example.xlsx" download className="text-xs text-stone-500 underline underline-offset-2 hover:text-stone-800">
-          Скачать пример
+          {t("Скачать пример", "Download a sample")}
         </a>
       </div>
       {aiAvailable && smart && (
-        <p className="mt-2 text-xs text-stone-400">Имена отправляются в DeepSeek для разбора, телефоны и почты — нет.</p>
+        <p className="mt-2 text-xs text-stone-400">{t("Имена отправляются в DeepSeek для разбора, телефоны и почты — нет.", "Names are sent to DeepSeek for parsing; phone numbers and emails are not.")}</p>
       )}
 
       {busy && (
@@ -212,7 +217,7 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
                   <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] ${done ? "bg-stone-900 text-white" : current ? "border-2 border-stone-900" : "border border-stone-300"}`}>
                     {done ? "✓" : current ? <span className="h-2 w-2 animate-ping rounded-full bg-stone-900" /> : null}
                   </span>
-                  {item.label}
+                  {t(item.label, item.en)}
                 </li>
               );
             })}
@@ -222,7 +227,7 @@ export function ImportCard({ eventId, aiAvailable }: { eventId: string; aiAvaila
             onClick={() => abort.current?.abort()}
             className="mt-5 self-start text-xs text-stone-500 underline underline-offset-2 hover:text-stone-900"
           >
-            Отменить
+            {t("Отменить", "Cancel")}
           </button>
         </div>
       )}

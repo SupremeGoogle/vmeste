@@ -33,6 +33,24 @@ export const ROLE_LABEL: Record<ColumnRole, string> = {
   ignore: "Не брать",
 };
 
+export const ROLE_LABEL_EN: Record<ColumnRole, string> = {
+  name: "Full name",
+  last_name: "Last name",
+  first_name: "First name",
+  middle_name: "Middle name",
+  phone: "Phone",
+  email: "Email",
+  plus_one: "Can bring a +1",
+  companion: "+1’s name",
+  party_size: "Party size",
+  side: "Side (bride/groom)",
+  group: "Group",
+  table: "Table",
+  note: "Note",
+  rsvp: "RSVP",
+  ignore: "Skip",
+};
+
 export const SECTION_MEANINGS = ["side", "group", "table"] as const;
 export type SectionMeaning = (typeof SECTION_MEANINGS)[number];
 

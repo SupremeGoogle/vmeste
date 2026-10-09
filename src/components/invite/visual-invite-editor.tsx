@@ -28,17 +28,20 @@ import { RUBY_SAMPLE_IMAGES } from "@/lib/invite-templates/ruby-assets";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 import { uploadType } from "@/lib/upload-type";
+import { useT } from "@/components/i18n-provider";
 import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
 import { BURGUNDY_SAMPLE_IMAGES } from "@/lib/invite-templates/burgundy-assets";
 import { ROSERAIE_SAMPLE_IMAGES } from "@/lib/invite-templates/roseraie-assets";
 import { FLORAL_GARDEN_SAMPLE_IMAGES } from "@/lib/invite-templates/floral-garden-assets";
 import type { InviteImageSlot } from "@/lib/invite-image-slots";
+import { CELEBRATION_SAMPLE_IMAGES } from "@/lib/invite-templates/celebration-assets";
 
 type SaveResult = { ok: true } | { ok: false; message: string };
 type Target = { kind: "image" | "link" | "color"; blockId: string; path: string; current: string };
 export type BlockAction = "up" | "down" | "hide" | "show" | "add-detail" | "remove-detail" | "duplicate" | "delete" | "insert-after" | "move-to";
 
 const SAMPLES: Record<string, readonly string[]> = {
+  ...Object.fromEntries(["gravure", "disco", "coral", "chrome"].map(id => [id, CELEBRATION_SAMPLE_IMAGES.filter(url => url.startsWith(`/media/invite-${id}/`))])),
   prism: PRISM_SAMPLE_IMAGES,
   constellation: CONSTELLATION_SAMPLE_IMAGES,
   evergreen: EVERGREEN_SAMPLE_IMAGES,
@@ -55,6 +58,7 @@ const SAMPLES: Record<string, readonly string[]> = {
 /** Подсказка по умолчанию. На телефоне её не показываем: место над
  *  приглашением дорого, а сообщения о сохранении остаются видны. */
 const EDIT_HINT = "Нажмите на любой текст, фотографию или дату — изменения сохраняются в черновик";
+const EDIT_HINT_EN = "Tap any text, photo or date to edit it — changes are saved to your draft";
 
 export function VisualInviteEditor({
   eventId,
@@ -137,6 +141,7 @@ export function VisualInviteEditor({
     };
   }, [saveFieldAction, blockActionAction, saveMusicAction, savePhotoAction, saveIntroAction, saveStyleAction]);
   const { saveField, blockAction, saveMusic, savePhoto, saveIntro, saveStyle } = tracked;
+  const t = useT();
   const [rsvpOpen, setRsvpOpen] = useState(rsvpOpenInitially);
   const [optionTarget, setOptionTarget] = useState<string | null>(null);
   const [optionTitle, setOptionTitle] = useState("");
@@ -153,7 +158,7 @@ export function VisualInviteEditor({
   const [phone, setPhone] = useState(false);
   const [items, setItems] = useState<PickerAsset[]>(() => [
     ...assets,
-    ...(SAMPLES[template] ?? []).map((url, index) => ({ id: `sample-${index}`, url, alt: `Пример шаблона ${index + 1}` })),
+    ...(SAMPLES[template] ?? []).map((url, index) => ({ id: `sample-${index}`, url, alt: t(`Пример шаблона ${index + 1}`, `Template sample ${index + 1}`) })),
   ]);
   const [songs, setSongs] = useState(audio);
   const [music, setMusic] = useState(musicUrl);
@@ -161,7 +166,7 @@ export function VisualInviteEditor({
   const [imagesOpen, setImagesOpen] = useState(false);
   const [photos, setPhotos] = useState(photoSlots);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState(EDIT_HINT);
+  const [notice, setNotice] = useState(() => t(EDIT_HINT, EDIT_HINT_EN));
   const [revision, setRevision] = useState(0);
   const [saving, startSaving] = useTransition();
   const [weddingOpen, setWeddingOpen] = useState(false);
@@ -198,7 +203,7 @@ export function VisualInviteEditor({
       const blockId = node.dataset.componentOwner ?? "";
       const key = node.dataset.inviteComponent ?? "";
       if (!blockId || !key || node.parentElement?.closest("[data-component-removed]")) return;
-      found.set(`${blockId}/${key}`, { blockId, key, label: node.dataset.componentLabel ?? "Элемент", removed: node.dataset.componentRemoved === "true" });
+      found.set(`${blockId}/${key}`, { blockId, key, label: node.dataset.componentLabel ?? t("Элемент", "Element"), removed: node.dataset.componentRemoved === "true" });
     });
     setComponents([...found.values()]);
     try {
@@ -206,12 +211,12 @@ export function VisualInviteEditor({
       if (meta) setTemplateStyle(JSON.parse(meta));
     } catch { /* Панель остаётся доступна и без метаданных оформления. */ }
     if (scrollY.current > 0) frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll", y: scrollY.current }, "*");
-  }, []);
+  }, [t]);
 
   function saveDesign(next: { accent: string | null; fonts: Record<string, string> }, done: string) {
     setAccent(next.accent);
     setFonts(next.fonts);
-    setNotice("Сохраняю оформление…");
+    setNotice(t("Сохраняю оформление…", "Saving design…"));
     startSaving(async () => {
       const result = await saveStyle(next);
       setNotice(result.ok ? done : result.message);
@@ -221,17 +226,17 @@ export function VisualInviteEditor({
 
   function toggleIntro() {
     const next = !intro;
-    setNotice("Сохраняю…");
+    setNotice(t("Сохраняю…", "Saving…"));
     startSaving(async () => {
       const result = await saveIntro(!next);
       if (result.ok) setIntro(next);
-      setNotice(result.ok ? (next ? "Заставка включена — гости увидят её при открытии" : "Заставка выключена — приглашение откроется сразу") : result.message);
+      setNotice(result.ok ? (next ? t("Заставка включена — гости увидят её при открытии", "Intro on — guests will see it when they open the invitation") : t("Заставка выключена — приглашение откроется сразу", "Intro off — the invitation opens right away")) : result.message);
     });
   }
 
   /** Действие со структурой: сохранить, обновить список разделов и страницу. */
   const runAction = useCallback((input: { blockId: string; action: BlockAction; index?: number; type?: string }, done: string) => {
-    setNotice("Обновляю разделы…");
+    setNotice(t("Обновляю разделы…", "Updating sections…"));
     startSaving(async () => {
       const result = await blockAction(input);
       setNotice(result.ok ? done : result.message);
@@ -240,25 +245,25 @@ export function VisualInviteEditor({
         setRevision((value) => value + 1);
       }
     });
-  }, [blockAction, router]);
+  }, [blockAction, router, t]);
 
   function scrollToSection(id: string) {
     frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll-to", blockId: id }, "*");
   }
 
   const changeComponent = useCallback((blockId: string, key: string, action: "remove" | "restore") => {
-    setNotice(action === "remove" ? "Удаляю элемент…" : "Возвращаю элемент…");
+    setNotice(action === "remove" ? t("Удаляю элемент…", "Removing element…") : t("Возвращаю элемент…", "Restoring element…"));
     startSaving(async () => {
       try {
         const result = await saveField({ blockId, path: `component:${key}`, value: action });
-        setNotice(result.ok ? action === "remove" ? "Элемент удалён — его можно вернуть в списке разделов" : "Элемент возвращён" : result.message);
+        setNotice(result.ok ? action === "remove" ? t("Элемент удалён — его можно вернуть в списке разделов", "Element removed — you can restore it from the sections list") : t("Элемент возвращён", "Element restored") : result.message);
         if (result.ok) {
           setLastRemoved(action === "remove" ? { blockId, key } : null);
           setRevision(value => value + 1);
         }
-      } catch { setNotice("Не удалось сохранить элемент. Попробуйте ещё раз."); }
+      } catch { setNotice(t("Не удалось сохранить элемент. Попробуйте ещё раз.", "Couldn’t save the element. Please try again.")); }
     });
-  }, [saveField]);
+  }, [saveField, t]);
 
   const reload = () => setRevision((value) => value + 1);
   const visiblePhotos = photos.filter((photo) => !hidden.some((block) => block.id === photo.blockId));
@@ -306,10 +311,10 @@ export function VisualInviteEditor({
 
       if (message.kind === "text-edit" && blockId && path && typeof message.value === "string") {
         const value = message.value;
-        setNotice("Сохраняю…");
+        setNotice(t("Сохраняю…", "Saving…"));
         startSaving(async () => {
           const result = await saveField({ blockId, path, value });
-          setNotice(result.ok ? "Сохранено" : result.message);
+          setNotice(result.ok ? t("Сохранено", "Saved") : result.message);
           // Отказ — вернуть на странице то, что действительно сохранено.
           reload();
         });
@@ -330,24 +335,24 @@ export function VisualInviteEditor({
 
       if (message.kind === "block-action" && blockId && message.action === "insert-after") { setInsertAfter(blockId); return; }
       if (message.kind === "block-action" && blockId && message.action === "delete") {
-        setToDelete(sections.find((item) => item.id === blockId) ?? { id: blockId, type: "", label: "раздел", hint: "", visible: true });
+        setToDelete(sections.find((item) => item.id === blockId) ?? { id: blockId, type: "", label: t("раздел", "section"), hint: "", visible: true });
         return;
       }
-      if (message.kind === "block-action" && blockId && message.action === "duplicate") { runAction({ blockId, action: "duplicate" }, "Копия раздела добавлена ниже"); return; }
+      if (message.kind === "block-action" && blockId && message.action === "duplicate") { runAction({ blockId, action: "duplicate" }, t("Копия раздела добавлена ниже", "Section copy added below")); return; }
       if (message.kind === "block-action" && blockId && (message.action === "up" || message.action === "down" || message.action === "hide" || message.action === "add-detail" || message.action === "remove-detail")) {
         const action = message.action as BlockAction;
         const index = typeof message.index === "number" ? message.index : undefined;
-        setNotice(action === "add-detail" ? "Добавляю новую деталь…" : action === "remove-detail" ? "Удаляю деталь…" : "Обновляю разделы…");
+        setNotice(action === "add-detail" ? t("Добавляю новую деталь…", "Adding a new item…") : action === "remove-detail" ? t("Удаляю деталь…", "Removing item…") : t("Обновляю разделы…", "Updating sections…"));
         startSaving(async () => {
           const result = await blockAction({ blockId, action, index });
-          setNotice(result.ok ? (action === "add-detail" ? "Деталь добавлена — нажмите на неё, чтобы заполнить" : action === "remove-detail" ? "Деталь удалена" : action === "hide" ? "Раздел скрыт — вернуть можно кнопкой «Скрытые разделы»" : "Сохранено") : result.message);
+          setNotice(result.ok ? (action === "add-detail" ? t("Деталь добавлена — нажмите на неё, чтобы заполнить", "Item added — tap it to fill it in") : action === "remove-detail" ? t("Деталь удалена", "Item removed") : action === "hide" ? t("Раздел скрыт — вернуть можно кнопкой «Скрытые разделы»", "Section hidden — bring it back from the sections list") : t("Сохранено", "Saved")) : result.message);
           if (result.ok) { reload(); router.refresh(); }
         });
       }
     }
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas, rsvpBuilder, addRsvpOption]);
+  }, [blockAction, saveField, openWedding, runAction, sections, router, changeComponent, readCanvas, rsvpBuilder, addRsvpOption, t]);
 
   function submitOption(event: React.FormEvent) {
     event.preventDefault();
@@ -360,7 +365,7 @@ export function VisualInviteEditor({
         return;
       }
       setOptionTarget(null);
-      setNotice("Вариант добавлен — гости уже видят его в анкете");
+      setNotice(t("Вариант добавлен — гости уже видят его в анкете", "Option added — guests can already see it in the RSVP form"));
       reload();
     });
   }
@@ -368,14 +373,14 @@ export function VisualInviteEditor({
   const choices = (() => {
     if (!target || target.kind !== "image") return items;
     const current = target.current && !items.some((item) => item.url === target.current)
-      ? [{ id: "current", url: target.current, alt: "Текущее изображение" }] : [];
+      ? [{ id: "current", url: target.current, alt: t("Текущее изображение", "Current image") }] : [];
     return [...current, ...items].filter((item, index, all) => all.findIndex((other) => other.url === item.url) === index);
   })();
 
   async function commit(value: string) {
     if (!target) return;
     setBusy(true);
-    setNotice("Сохраняю…");
+    setNotice(t("Сохраняю…", "Saving…"));
     const result = await saveField({ blockId: target.blockId, path: target.path, value });
     setBusy(false);
     if (!result.ok) {
@@ -386,7 +391,7 @@ export function VisualInviteEditor({
       { source: "invite-editor", kind: `${target.kind}-saved`, blockId: target.blockId, path: target.path, value },
       "*",
     );
-    setNotice("Сохранено");
+    setNotice(t("Сохранено", "Saved"));
     setTarget(null);
     // Перезагрузка нужна не только для новой раскладки: пустой слот — это
     // не <img>, а понятная плашка «Добавить фото». После выбора/удаления
@@ -402,7 +407,7 @@ export function VisualInviteEditor({
     }).then((response) => response.json());
     if (!presign.ok) throw new Error(presign.message);
     const put = await fetch(presign.uploadUrl, { method: "PUT", headers: { "content-type": uploadType(file) }, body: file });
-    if (!put.ok) throw new Error("Хранилище не приняло файл");
+    if (!put.ok) throw new Error(t("Хранилище не приняло файл", "The file couldn’t be uploaded to storage"));
     const done = await fetch(`/api/app/events/${eventId}/assets/complete`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -414,15 +419,15 @@ export function VisualInviteEditor({
 
   async function uploadImage(file: File) {
     setBusy(true);
-    setNotice("Загружаю фотографию…");
+    setNotice(t("Загружаю фотографию…", "Uploading photo…"));
     try {
       const asset = await uploadFile(file);
       setItems((current) => [asset, ...current]);
       setDraft(asset.url);
       setPhotoSettings(defaultPhotoAdjustment());
-      setNotice("Фотография загружена. Настройте кадр и нажмите «Сохранить фотографию».");
+      setNotice(t("Фотография загружена. Настройте кадр и нажмите «Сохранить фотографию».", "Photo uploaded. Adjust the framing and tap “Save photo”."));
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Не получилось загрузить фотографию");
+      setNotice(cause instanceof Error ? cause.message : t("Не получилось загрузить фотографию", "Couldn’t upload the photo"));
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -431,10 +436,10 @@ export function VisualInviteEditor({
 
   async function chooseMusic(url: string) {
     setBusy(true);
-    setNotice("Сохраняю музыку…");
+    setNotice(t("Сохраняю музыку…", "Saving music…"));
     const result = await saveMusic(url);
     setBusy(false);
-    setNotice(result.ok ? (url ? "Музыка сохранена" : "Музыка выключена") : result.message);
+    setNotice(result.ok ? (url ? t("Музыка сохранена", "Music saved") : t("Музыка выключена", "Music off")) : result.message);
     if (result.ok) {
       setMusic(url);
       setMusicOpen(false);
@@ -444,13 +449,13 @@ export function VisualInviteEditor({
 
   async function uploadSong(file: File) {
     setBusy(true);
-    setNotice("Загружаю песню…");
+    setNotice(t("Загружаю песню…", "Uploading song…"));
     try {
       const asset = await uploadFile(file);
       setSongs((current) => [asset, ...current]);
       await chooseMusic(asset.url);
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Не получилось загрузить песню");
+      setNotice(cause instanceof Error ? cause.message : t("Не получилось загрузить песню", "Couldn’t upload the song"));
     } finally {
       setBusy(false);
       if (audioInput.current) audioInput.current.value = "";
@@ -463,13 +468,13 @@ export function VisualInviteEditor({
     setBusy(true);
     try {
       const result = await savePhoto({ blockId: target.blockId, path: target.path, url: draft, settings: photoSettings });
-      setNotice(result.ok ? "Фотография и кадрирование сохранены" : result.message);
+      setNotice(result.ok ? t("Фотография и кадрирование сохранены", "Photo and framing saved") : result.message);
       if (result.ok) {
         setPhotos((current) => current.map((slot) => slot.blockId === target.blockId && slot.path === target.path ? { ...slot, url: draft, settings: photoSettings } : slot));
         setTarget(null);
         reload();
       }
-    } catch { setNotice("Не удалось сохранить. Проверьте соединение и попробуйте снова."); }
+    } catch { setNotice(t("Не удалось сохранить. Проверьте соединение и попробуйте снова.", "Couldn’t save. Check your connection and try again.")); }
     finally { setBusy(false); }
   }
 
@@ -477,8 +482,8 @@ export function VisualInviteEditor({
     <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-800 shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-stone-900 px-4 py-3 text-white sm:px-5">
         <div className="min-w-0">
-          <p className="hidden text-sm font-medium sm:block">Редактирование на странице</p>
-          <p className={`mt-0.5 text-xs ${saving || busy ? "text-amber-200" : "text-white/60"} ${notice === EDIT_HINT ? "hidden sm:block" : ""}`}>{notice}</p>
+          <p className="hidden text-sm font-medium sm:block">{t("Редактирование на странице", "Editing on the page")}</p>
+          <p className={`mt-0.5 text-xs ${saving || busy ? "text-amber-200" : "text-white/60"} ${notice === t(EDIT_HINT, EDIT_HINT_EN) ? "hidden sm:block" : ""}`}>{notice}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -486,42 +491,42 @@ export function VisualInviteEditor({
             onClick={() => openWedding()}
             className={`rounded-lg px-3 py-2 text-xs ${weddingReady ? "border border-white/20 hover:bg-white/10" : "bg-amber-200 font-medium text-stone-900"}`}
           >
-            Имена, дата и место
+            {t("Имена, дата и место", "Names, date & venue")}
           </button>
           {warnings.length > 0 && (
             <button type="button" onClick={() => setWarningsOpen((open) => !open)} className="rounded-lg border border-amber-200/50 px-3 py-2 text-xs text-amber-100 hover:bg-white/10" aria-expanded={warningsOpen}>
-              Перед отправкой: {warnings.length}
+              {t("Перед отправкой:", "Before sending:")} {warnings.length}
             </button>
           )}
           <button type="button" onClick={() => setMoreOpen((open) => !open)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10 sm:hidden" aria-expanded={moreOpen}>
-            {moreOpen ? "Скрыть" : "Ещё"}
+            {moreOpen ? t("Скрыть", "Less") : t("Ещё", "More")}
           </button>
           <div className={`${moreOpen ? "flex" : "hidden"} w-full flex-wrap items-center gap-2 sm:contents`}>
-          <button type="button" onClick={() => setPhone(!phone)} className="hidden rounded-lg border border-white/20 px-3 py-2 text-xs sm:block">{phone ? "Широкий экран" : "Посмотреть на телефоне"}</button>
+          <button type="button" onClick={() => setPhone(!phone)} className="hidden rounded-lg border border-white/20 px-3 py-2 text-xs sm:block">{phone ? t("Широкий экран", "Wide view") : t("Посмотреть на телефоне", "Phone view")}</button>
           <button type="button" onClick={() => setSectionsOpen((open) => !open)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10 lg:hidden" aria-expanded={sectionsOpen}>
-            Разделы{hidden.length > 0 ? ` · скрыто ${hidden.length}` : ""}
+            {t("Разделы", "Sections")}{hidden.length > 0 ? t(` · скрыто ${hidden.length}`, ` · ${hidden.length} hidden`) : ""}
           </button>
           <button type="button" onClick={() => setDesignOpen(true)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10">
-            Цвета и шрифты
+            {t("Цвета и шрифты", "Colors & fonts")}
           </button>
           {introAvailable && (
-            <button type="button" onClick={toggleIntro} disabled={saving} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10" aria-pressed={intro} title="Экран-заставка, который гость видит при открытии приглашения">
-              Заставка: {intro ? "включена" : "выключена"}
+            <button type="button" onClick={toggleIntro} disabled={saving} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10" aria-pressed={intro} title={t("Экран-заставка, который гость видит при открытии приглашения", "The intro screen guests see when they open the invitation")}>
+              {t("Заставка:", "Intro:")} {intro ? t("включена", "on") : t("выключена", "off")}
             </button>
           )}
           <button type="button" onClick={() => setMusicOpen(true)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10">
-            {music ? "♪ Музыка" : "♪ Добавить музыку"}
+            {music ? t("♪ Музыка", "♪ Music") : t("♪ Добавить музыку", "♪ Add music")}
           </button>
-          {visiblePhotos.length > 0 && <button type="button" onClick={() => setImagesOpen((open) => !open)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10">Все фотографии: {visiblePhotos.length}</button>}
-          <a href={previewHref} target="_blank" rel="noopener noreferrer" aria-disabled={saving || busy} onClick={(event) => { if (saving || busy) event.preventDefault(); }} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-medium text-stone-900 aria-disabled:opacity-50">Открыть как гость ↗</a>
+          {visiblePhotos.length > 0 && <button type="button" onClick={() => setImagesOpen((open) => !open)} className="rounded-lg border border-white/20 px-3 py-2 text-xs hover:bg-white/10">{t("Все фотографии:", "All photos:")} {visiblePhotos.length}</button>}
+          <a href={previewHref} target="_blank" rel="noopener noreferrer" aria-disabled={saving || busy} onClick={(event) => { if (saving || busy) event.preventDefault(); }} className="rounded-lg bg-amber-200 px-3 py-2 text-xs font-medium text-stone-900 aria-disabled:opacity-50">{t("Открыть как гость ↗", "View as guest ↗")}</a>
           </div>
         </div>
       </div>
 
       {!weddingReady && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-amber-100/10 px-4 py-3 text-sm text-amber-50 sm:px-5">
-          <span>Начните с имён и даты — они сразу появятся на обложке, в «Где» и в обратном отсчёте. Всё остальное правится прямо на странице.</span>
-          <button type="button" onClick={() => openWedding("names")} className="rounded-lg bg-amber-200 px-3 py-1.5 text-xs font-medium text-stone-900">Указать</button>
+          <span>{t("Начните с имён и даты — они сразу появятся на обложке, в «Где» и в обратном отсчёте. Всё остальное правится прямо на странице.", "Start with your names and date — they’ll appear right away on the cover, the venue section and the countdown. Everything else you can edit right on the page.")}</span>
+          <button type="button" onClick={() => openWedding("names")} className="rounded-lg bg-amber-200 px-3 py-1.5 text-xs font-medium text-stone-900">{t("Указать", "Add")}</button>
         </div>
       )}
 
@@ -533,8 +538,8 @@ export function VisualInviteEditor({
 
       {imagesOpen && (
         <div className="border-b border-white/10 bg-stone-900 px-4 py-4 text-white sm:px-5">
-          <p className="text-sm font-medium">Фотографии в приглашении</p>
-          <p className="mt-1 text-xs text-white/60">Здесь собраны фотографии всех разделов. Выберите карточку, загрузите свой снимок и сохраните. Фото из образца: {visiblePhotos.filter((photo) => displayedPhotoUrl(photo).startsWith("/media/invite-")).length}.</p>
+          <p className="text-sm font-medium">{t("Фотографии в приглашении", "Photos in the invitation")}</p>
+          <p className="mt-1 text-xs text-white/60">{t("Здесь собраны фотографии всех разделов. Выберите карточку, загрузите свой снимок и сохраните. Фото из образца:", "All the photos from every section are here. Pick a card, upload your own photo and save. Sample photos:")} {visiblePhotos.filter((photo) => displayedPhotoUrl(photo).startsWith("/media/invite-")).length}.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {visiblePhotos.map((photo) => (
               <button key={`${photo.blockId}:${photo.path}`} type="button" onClick={() => openPhotoSlot(photo)} className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 p-2 text-left hover:border-amber-200">
@@ -542,16 +547,16 @@ export function VisualInviteEditor({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={displayedPhotoUrl(photo)} alt="" className="h-20 w-20 shrink-0 rounded-lg bg-stone-700 object-cover" />
                 ) : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-white/30 text-2xl text-white/50">＋</span>}
-                <span className="min-w-0"><strong className="block text-sm font-medium">{photo.label}</strong><span className="mt-1 block text-xs text-amber-200">{displayedPhotoUrl(photo).startsWith("/media/invite-") ? "Фото из образца · заменить" : photo.url ? "Свое фото · изменить" : "Добавить фото"}</span></span>
+                <span className="min-w-0"><strong className="block text-sm font-medium">{photo.label}</strong><span className="mt-1 block text-xs text-amber-200">{displayedPhotoUrl(photo).startsWith("/media/invite-") ? t("Фото из образца · заменить", "Sample photo · replace") : photo.url ? t("Свое фото · изменить", "Your photo · change") : t("Добавить фото", "Add photo")}</span></span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {lastRemoved && <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-stone-900 px-4 py-2 text-xs text-white/70"><span>Элемент удалён</span><button type="button" disabled={saving} onClick={() => changeComponent(lastRemoved.blockId, lastRemoved.key, "restore")} className="rounded-lg px-3 py-2 font-medium text-amber-200 hover:bg-white/5 disabled:opacity-40">Отменить удаление</button></div>}
+      {lastRemoved && <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-stone-900 px-4 py-2 text-xs text-white/70"><span>{t("Элемент удалён", "Element removed")}</span><button type="button" disabled={saving} onClick={() => changeComponent(lastRemoved.blockId, lastRemoved.key, "restore")} className="rounded-lg px-3 py-2 font-medium text-amber-200 hover:bg-white/5 disabled:opacity-40">{t("Отменить удаление", "Undo")}</button></div>}
       <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
-      <aside className={`${sectionsOpen ? "block max-h-[60vh]" : "hidden"} border-b border-white/10 bg-[#211c19] lg:block lg:max-h-none lg:border-r lg:border-b-0`} aria-label="Разделы приглашения">
+      <aside className={`${sectionsOpen ? "block max-h-[60vh]" : "hidden"} border-b border-white/10 bg-[#211c19] lg:block lg:max-h-none lg:border-r lg:border-b-0`} aria-label={t("Разделы приглашения", "Invitation sections")}>
         <div className="lg:sticky lg:top-0 lg:h-[calc(78vh+3rem)]">
           <SectionsPanel
             sections={sections}
@@ -560,9 +565,9 @@ export function VisualInviteEditor({
             onScrollToComponent={(blockId, key) => frame.current?.contentWindow?.postMessage({ source: "invite-editor", kind: "scroll-component", blockId, path: key }, "*")}
             busy={saving || busy}
             onScrollTo={scrollToSection}
-            onToggle={(id, visible) => runAction({ blockId: id, action: visible ? "show" : "hide" }, visible ? "Раздел снова на странице" : "Раздел скрыт — вернуть можно «глазом» в списке")}
-            onMove={(id, index) => runAction({ blockId: id, action: "move-to", index }, "Порядок разделов сохранён")}
-            onDuplicate={(id) => runAction({ blockId: id, action: "duplicate" }, "Копия раздела добавлена ниже")}
+            onToggle={(id, visible) => runAction({ blockId: id, action: visible ? "show" : "hide" }, visible ? t("Раздел снова на странице", "Section is back on the page") : t("Раздел скрыт — вернуть можно «глазом» в списке", "Section hidden — tap the eye in the list to bring it back"))}
+            onMove={(id, index) => runAction({ blockId: id, action: "move-to", index }, t("Порядок разделов сохранён", "Section order saved"))}
+            onDuplicate={(id) => runAction({ blockId: id, action: "duplicate" }, t("Копия раздела добавлена ниже", "Section copy added below"))}
             onDelete={(item) => setToDelete(item)}
             onInsertAfter={(id) => setInsertAfter(id)}
           />
@@ -574,7 +579,7 @@ export function VisualInviteEditor({
           ref={frame}
           src={`${canvasSrc}?v=${revision}`}
           onLoad={readCanvas}
-          title="Визуальный редактор приглашения"
+          title={t("Визуальный редактор приглашения", "Visual invitation editor")}
           className="block h-[78vh] min-h-[560px] w-full rounded-xl bg-card shadow-2xl"
           sandbox="allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
         />
@@ -589,14 +594,14 @@ export function VisualInviteEditor({
           fontChoices={fontChoices}
           busy={saving}
           onClose={() => setDesignOpen(false)}
-          onAccent={(value) => saveDesign({ accent: value, fonts }, value ? "Цвет сохранён" : "Цвета как в шаблоне")}
+          onAccent={(value) => saveDesign({ accent: value, fonts }, value ? t("Цвет сохранён", "Color saved") : t("Цвета как в шаблоне", "Template colors restored"))}
           onFont={(from, to) => {
             const next = { ...fonts };
             if (!to || to === from) delete next[from];
             else next[from] = to;
-            saveDesign({ accent, fonts: next }, "Шрифт сохранён");
+            saveDesign({ accent, fonts: next }, t("Шрифт сохранён", "Font saved"));
           }}
-          onReset={() => saveDesign({ accent: null, fonts: {} }, "Оформление как в шаблоне")}
+          onReset={() => saveDesign({ accent: null, fonts: {} }, t("Оформление как в шаблоне", "Template design restored"))}
         />
       )}
 
@@ -607,7 +612,7 @@ export function VisualInviteEditor({
           onPick={(type) => {
             const afterId = insertAfter;
             setInsertAfter(undefined);
-            runAction({ blockId: afterId ?? "", action: "insert-after", type }, "Раздел добавлен — нажмите на текст, чтобы заполнить");
+            runAction({ blockId: afterId ?? "", action: "insert-after", type }, t("Раздел добавлен — нажмите на текст, чтобы заполнить", "Section added — tap the text to fill it in"));
           }}
         />
       )}
@@ -615,12 +620,12 @@ export function VisualInviteEditor({
       {toDelete && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(event) => { if (event.target === event.currentTarget) setToDelete(null); }}>
           <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl">
-            <p className="font-serif text-2xl text-stone-900">Удалить раздел?</p>
-            <p className="mt-2 text-sm text-stone-600">«{toDelete.label}{toDelete.hint ? ` · ${toDelete.hint}` : ""}» исчезнет вместе с текстами и фотографиями. Если раздел просто не нужен сейчас — лучше скрыть его «глазом».</p>
+            <p className="font-serif text-2xl text-stone-900">{t("Удалить раздел?", "Delete section?")}</p>
+            <p className="mt-2 text-sm text-stone-600">{t("«", "“")}{toDelete.label}{toDelete.hint ? ` · ${toDelete.hint}` : ""}{t("» исчезнет вместе с текстами и фотографиями. Если раздел просто не нужен сейчас — лучше скрыть его «глазом».", "” will be deleted along with its text and photos. If you just don’t need it right now, hide it with the eye icon instead.")}</p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={() => setToDelete(null)} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Отмена</button>
-              <button type="button" onClick={() => { runAction({ blockId: toDelete.id, action: "hide" }, "Раздел скрыт"); setToDelete(null); }} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Скрыть</button>
-              <button type="button" onClick={() => { runAction({ blockId: toDelete.id, action: "delete" }, "Раздел удалён"); setToDelete(null); }} className="rounded-lg bg-red-700 px-4 py-2 text-sm text-white">Удалить</button>
+              <button type="button" onClick={() => setToDelete(null)} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">{t("Отмена", "Cancel")}</button>
+              <button type="button" onClick={() => { runAction({ blockId: toDelete.id, action: "hide" }, t("Раздел скрыт", "Section hidden")); setToDelete(null); }} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">{t("Скрыть", "Hide")}</button>
+              <button type="button" onClick={() => { runAction({ blockId: toDelete.id, action: "delete" }, t("Раздел удалён", "Section deleted")); setToDelete(null); }} className="rounded-lg bg-red-700 px-4 py-2 text-sm text-white">{t("Удалить", "Delete")}</button>
             </div>
           </div>
         </div>
@@ -631,9 +636,9 @@ export function VisualInviteEditor({
           <div className="max-h-[86vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card p-5 shadow-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <h2 className="text-lg text-stone-900">
-                {target.kind === "image" ? "Заменить фотографию" : target.kind === "link" ? "Ссылка" : "Цвет палитры"}
+                {target.kind === "image" ? t("Заменить фотографию", "Replace photo") : target.kind === "link" ? t("Ссылка", "Link") : t("Цвет палитры", "Palette color")}
               </h2>
-              <button type="button" disabled={busy} onClick={() => setTarget(null)} className="rounded-lg px-3 py-1 text-stone-500 hover:bg-stone-100">Закрыть</button>
+              <button type="button" disabled={busy} onClick={() => setTarget(null)} className="rounded-lg px-3 py-1 text-stone-500 hover:bg-stone-100">{t("Закрыть", "Close")}</button>
             </div>
 
             {target.kind === "image" && (
@@ -645,7 +650,7 @@ export function VisualInviteEditor({
                   className={`flex min-h-32 flex-col items-center justify-center rounded-xl border-2 px-4 text-center ${target.current ? "border-stone-200 text-stone-600 hover:border-red-300 hover:bg-red-50" : "border-stone-900 bg-stone-50 text-stone-900"}`}
                 >
                   <span className="text-xl">×</span>
-                  <span className="mt-1 text-sm">Без фотографии</span>
+                  <span className="mt-1 text-sm">{t("Без фотографии", "No photo")}</span>
                 </button>
                 {choices.map((asset) => (
                   <button key={asset.id} type="button" disabled={busy} onClick={() => { setDraft(asset.url); setPhotoSettings(defaultPhotoAdjustment()); }} className={`group overflow-hidden rounded-xl border-2 text-left ${draft === asset.url ? "border-stone-900" : "border-stone-200"}`}>
@@ -656,15 +661,15 @@ export function VisualInviteEditor({
                   </button>
                 ))}
                 <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-300 px-4 text-center text-sm text-stone-500 hover:border-stone-500">
-                  <span className="text-2xl">＋</span><span className="mt-1">Загрузить свою</span>
+                  <span className="text-2xl">＋</span><span className="mt-1">{t("Загрузить свою", "Upload your own")}</span>
                   <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,.heic,.heif" className="sr-only" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); }} />
                 </label>
                 <p className="col-span-full text-xs leading-5 text-stone-500">
-                  Фотографию можно убрать сейчас и вернуть позже: пустое место останется доступным в редакторе.
+                  {t("Фотографию можно убрать сейчас и вернуть позже: пустое место останется доступным в редакторе.", "You can remove the photo now and add one back later — the empty spot stays available in the editor.")}
                 </p>
                 {draft && <div className="col-span-full"><PhotoControls src={draft} value={photoSettings} onChange={setPhotoSettings} ratio={photoRatio} /></div>}
                 <p role="status" className="col-span-full text-sm text-stone-600">{notice}</p>
-                <button type="button" disabled={busy} onClick={() => void commitPhoto()} className="col-span-full rounded-xl bg-stone-900 px-4 py-3 text-sm text-white disabled:opacity-50">{busy ? "Сохраняю…" : draft ? "Сохранить фотографию" : "Убрать фотографию"}</button>
+                <button type="button" disabled={busy} onClick={() => void commitPhoto()} className="col-span-full rounded-xl bg-stone-900 px-4 py-3 text-sm text-white disabled:opacity-50">{busy ? t("Сохраняю…", "Saving…") : draft ? t("Сохранить фотографию", "Save photo") : t("Убрать фотографию", "Remove photo")}</button>
               </div>
             )}
 
@@ -677,8 +682,8 @@ export function VisualInviteEditor({
                   autoFocus
                   className="w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base"
                 />
-                <p className="text-xs text-stone-500">Вставьте ссылку на карту целиком. Пустое поле убирает кнопку у гостей.</p>
-                <button disabled={busy} className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm text-white disabled:opacity-50">Сохранить</button>
+                <p className="text-xs text-stone-500">{t("Вставьте ссылку на карту целиком. Пустое поле убирает кнопку у гостей.", "Paste the full map link. Leave it empty to hide the button from guests.")}</p>
+                <button disabled={busy} className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm text-white disabled:opacity-50">{t("Сохранить", "Save")}</button>
               </form>
             )}
 
@@ -686,7 +691,7 @@ export function VisualInviteEditor({
               <form className="mt-4 flex flex-wrap items-center gap-3" onSubmit={(event) => { event.preventDefault(); void commit(draft); }}>
                 <input type="color" value={/^#[0-9a-f]{6}$/i.test(draft) ? draft : "#e8dbc8"} onChange={(event) => setDraft(event.target.value)} className="h-14 w-20 cursor-pointer rounded-lg border border-stone-300" />
                 <input value={draft} onChange={(event) => setDraft(event.target.value)} className="w-32 rounded-lg border border-stone-300 px-3 py-2.5 font-mono text-base" />
-                <button disabled={busy} className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm text-white disabled:opacity-50">Сохранить</button>
+                <button disabled={busy} className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm text-white disabled:opacity-50">{t("Сохранить", "Save")}</button>
               </form>
             )}
           </div>
@@ -698,41 +703,41 @@ export function VisualInviteEditor({
       </WeddingSheet>
       {optionTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setOptionTarget(null)}>
-          <form role="dialog" aria-modal="true" aria-label="Новый вариант" onSubmit={submitOption} onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl">
-            <h2 className="text-lg text-stone-900">{optionTarget === "drink" ? "Новый напиток" : optionTarget === "meal" ? "Новое блюдо" : "Новый вариант ответа"}</h2>
+          <form role="dialog" aria-modal="true" aria-label={t("Новый вариант", "New option")} onSubmit={submitOption} onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl">
+            <h2 className="text-lg text-stone-900">{optionTarget === "drink" ? t("Новый напиток", "New drink") : optionTarget === "meal" ? t("Новое блюдо", "New dish") : t("Новый вариант ответа", "New answer option")}</h2>
             <input
               autoFocus
               value={optionTitle}
               onChange={(event) => setOptionTitle(event.target.value)}
               maxLength={120}
-              placeholder={optionTarget === "drink" ? "Например, Апероль" : optionTarget === "meal" ? "Например, Утка с яблоками" : "Текст варианта"}
+              placeholder={optionTarget === "drink" ? t("Например, Апероль", "e.g. Aperol spritz") : optionTarget === "meal" ? t("Например, Утка с яблоками", "e.g. Duck with apples") : t("Текст варианта", "Option text")}
               className="mt-3 w-full rounded-lg border border-stone-300 bg-card px-3 py-2.5 text-base"
             />
-            <p className="mt-2 text-xs text-stone-500">Появится в анкете у гостей сразу, без «Сохранить изменения».</p>
+            <p className="mt-2 text-xs text-stone-500">{t("Появится в анкете у гостей сразу, без «Сохранить изменения».", "Guests will see it in the RSVP form right away — no need to save changes.")}</p>
             {optionError ? <p role="alert" className="mt-2 text-sm text-red-700">{optionError}</p> : null}
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setOptionTarget(null)} className="rounded-lg px-4 py-2 text-sm text-stone-600">Отмена</button>
+              <button type="button" onClick={() => setOptionTarget(null)} className="rounded-lg px-4 py-2 text-sm text-stone-600">{t("Отмена", "Cancel")}</button>
               <button disabled={addingOption || !optionTitle.trim()} className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                {addingOption ? "Добавляю…" : "Добавить"}
+                {addingOption ? t("Добавляю…", "Adding…") : t("Добавить", "Add")}
               </button>
             </div>
           </form>
         </div>
       ) : null}
       {rsvpOpen && rsvpBuilder ? (
-        <div role="dialog" aria-modal="true" aria-label="Анкета гостя" className="fixed inset-0 z-50 overflow-y-auto bg-stone-50">
+        <div role="dialog" aria-modal="true" aria-label={t("Анкета гостя", "RSVP form")} className="fixed inset-0 z-50 overflow-y-auto bg-stone-50">
           <div className="sticky top-0 z-10 border-b border-stone-200 bg-card/95 backdrop-blur-sm">
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-stone-900">Анкета гостя</p>
-                <p className="truncate text-xs text-stone-500">Вопросы сохраняются сразу и сразу появляются у гостей в приглашении.</p>
+                <p className="text-sm font-medium text-stone-900">{t("Анкета гостя", "RSVP form")}</p>
+                <p className="truncate text-xs text-stone-500">{t("Вопросы сохраняются сразу и сразу появляются у гостей в приглашении.", "Questions save instantly and appear in your guests’ invitation right away.")}</p>
               </div>
               <button
                 type="button"
                 onClick={() => { setRsvpOpen(false); reload(); }}
                 className="shrink-0 rounded-lg bg-stone-900 px-5 py-2 text-sm font-medium text-white"
               >
-                Готово
+                {t("Готово", "Done")}
               </button>
             </div>
           </div>
@@ -745,29 +750,29 @@ export function VisualInviteEditor({
           <div className="max-h-[86vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-5 shadow-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg text-stone-900">Музыка приглашения</h2>
-                <p className="mt-1 text-sm text-stone-500">Играет тихо после того, как гость открыл приглашение; в углу есть кнопка, чтобы выключить.</p>
+                <h2 className="text-lg text-stone-900">{t("Музыка приглашения", "Invitation music")}</h2>
+                <p className="mt-1 text-sm text-stone-500">{t("Играет тихо после того, как гость открыл приглашение; в углу есть кнопка, чтобы выключить.", "Plays softly once a guest opens the invitation; there’s a button in the corner to turn it off.")}</p>
               </div>
-              <button type="button" disabled={busy} onClick={() => setMusicOpen(false)} className="rounded-lg px-3 py-1 text-stone-500 hover:bg-stone-100">Закрыть</button>
+              <button type="button" disabled={busy} onClick={() => setMusicOpen(false)} className="rounded-lg px-3 py-1 text-stone-500 hover:bg-stone-100">{t("Закрыть", "Close")}</button>
             </div>
             <ul className="mt-4 space-y-2">
               {songs.map((song) => (
                 <li key={song.id} className={`flex items-center gap-3 rounded-xl border p-3 ${music === song.url ? "border-stone-900" : "border-stone-200"}`}>
                   <audio src={song.url} controls preload="none" className="h-9 min-w-0 flex-1" />
                   <button type="button" disabled={busy || music === song.url} onClick={() => void chooseMusic(song.url)} className="shrink-0 rounded-lg bg-stone-900 px-3 py-2 text-xs text-white disabled:opacity-40">
-                    {music === song.url ? "Играет" : "Выбрать"}
+                    {music === song.url ? t("Играет", "Playing") : t("Выбрать", "Choose")}
                   </button>
                 </li>
               ))}
             </ul>
             <div className="mt-4 flex flex-wrap gap-2">
               <label className="cursor-pointer rounded-lg border-2 border-dashed border-stone-300 px-4 py-2.5 text-sm text-stone-600 hover:border-stone-500">
-                ＋ Загрузить песню (MP3)
+                {t("＋ Загрузить песню (MP3)", "＋ Upload a song (MP3)")}
                 <input ref={audioInput} type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a" className="sr-only" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadSong(file); }} />
               </label>
               {music && (
                 <button type="button" disabled={busy} onClick={() => void chooseMusic("")} className="rounded-lg px-4 py-2.5 text-sm text-red-800 hover:bg-red-50">
-                  Без музыки
+                  {t("Без музыки", "No music")}
                 </button>
               )}
             </div>

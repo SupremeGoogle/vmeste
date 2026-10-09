@@ -104,6 +104,7 @@ async function register(formData: FormData) {
   const result = await registerWithEmail({
     email,
     password: String(formData.get("password") ?? ""),
+    lang: formData.get("lang") === "en" ? "en" : "ru",
   });
   if (!result.ok) redirect(`/register?error=${result.code}&email=${encodeURIComponent(email)}${q}`);
   redirect(`/register/check?email=${encodeURIComponent(email)}${q}`);
@@ -141,7 +142,7 @@ export default async function RegisterPage({
             {t.googleNote[0]}<Link href="/offer" className="underline">{t.googleNote[1]}</Link>{t.googleNote[2]}
             <Link href="/consent" className="underline">{t.googleNote[3]}</Link>{t.googleNote[4]}
           </p>
-          {emailOn && <OrRule />}
+          {emailOn && <OrRule label={lang === "en" ? "or" : "или"} />}
         </>
       )}
 
@@ -157,14 +158,14 @@ export default async function RegisterPage({
           <label className="block text-sm text-stone-600" htmlFor="email">{t.email}</label>
           <input
             id="email" name="email" type="email" required maxLength={200} autoComplete="email" defaultValue={email ?? ""}
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+            className="ym-hide-content mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
           />
         </div>
         <div>
           <label className="block text-sm text-stone-600" htmlFor="password">{t.password}</label>
           <input
             id="password" name="password" type="password" required minLength={PASSWORD_MIN} maxLength={200} autoComplete="new-password"
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
+            className="ym-hide-content mt-1 w-full rounded-lg border border-stone-300 bg-card px-3 py-2"
           />
           <p className="mt-1 text-xs text-stone-500">{t.min}</p>
         </div>

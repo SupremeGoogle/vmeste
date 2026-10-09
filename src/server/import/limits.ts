@@ -7,6 +7,8 @@
  * до того, как съест память и время процесса, который обслуживает
  * и гостей на входе.
  */
+import type { Lang } from "@/lib/i18n";
+
 export const IMPORT_LIMITS = {
   /** Сам файл. Список гостей в Excel весит десятки килобайт. */
   fileBytes: 2 * 1024 * 1024,
@@ -48,5 +50,7 @@ export class ImportError extends Error {
   }
 }
 
-export const formatBytes = (bytes: number) =>
-  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1).replace(".0", "")} МБ` : `${Math.ceil(bytes / 1024)} КБ`;
+export const formatBytes = (bytes: number, lang: Lang = "ru") =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1).replace(".0", "")} ${lang === "en" ? "MB" : "МБ"}`
+    : `${Math.ceil(bytes / 1024)} ${lang === "en" ? "KB" : "КБ"}`;

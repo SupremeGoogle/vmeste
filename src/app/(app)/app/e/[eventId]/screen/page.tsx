@@ -13,23 +13,25 @@ import {
   createScreenToken, listScreenTokens, revokeScreenToken, setScreenMode,
 } from "@/server/services/screen";
 import type { ScreenMode } from "@/generated/prisma/enums";
+import { getT } from "@/server/i18n";
+import type { T } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-const MODES: { value: ScreenMode; label: string; hint: string }[] = [
-  { value: "MIXED", label: "Фото и пожелания", hint: "Снимки, поверх — пожелание" },
-  { value: "PHOTOS", label: "Только фото", hint: "Лента одобренных снимков" },
-  { value: "WISHES", label: "Только пожелания", hint: "Крупный текст без фото" },
-  { value: "RAFFLE", label: "Розыгрыш", hint: "Участники и победитель" },
-  { value: "IDLE", label: "Заставка", hint: "Только название — на паузу" },
+const MODES: { value: ScreenMode; label: [string, string]; hint: [string, string] }[] = [
+  { value: "MIXED", label: ["Фото и пожелания", "Photos and wishes"], hint: ["Снимки, поверх — пожелание", "Photos with a wish on top"] },
+  { value: "PHOTOS", label: ["Только фото", "Photos only"], hint: ["Лента одобренных снимков", "A feed of approved photos"] },
+  { value: "WISHES", label: ["Только пожелания", "Wishes only"], hint: ["Крупный текст без фото", "Large text, no photos"] },
+  { value: "RAFFLE", label: ["Розыгрыш", "Raffle"], hint: ["Участники и победитель", "Entrants and the winner"] },
+  { value: "IDLE", label: ["Заставка", "Title screen"], hint: ["Только название — на паузу", "Just the title, for breaks"] },
 ];
 
-function ago(date: Date | null): string {
-  if (!date) return "не подключался";
+function ago(date: Date | null, t: T): string {
+  if (!date) return t("не подключался", "never connected");
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
-  if (minutes < 2) return "на связи";
-  if (minutes < 60) return `был ${minutes} мин назад`;
-  return `был ${Math.round(minutes / 60)} ч назад`;
+  if (minutes < 2) return t("на связи", "online");
+  if (minutes < 60) return t(`был ${minutes} мин назад`, `seen ${minutes} min ago`);
+  return t(`был ${Math.round(minutes / 60)} ч назад`, `seen ${Math.round(minutes / 60)} h ago`);
 }
 
 export default async function ScreenAdminPage({
@@ -42,6 +44,7 @@ export default async function ScreenAdminPage({
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
   const tokens = await listScreenTokens(ctx, eventId);
+  const t = await getT();
 
   async function switchMode(formData: FormData) {
     "use server";
@@ -68,7 +71,7 @@ export default async function ScreenAdminPage({
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
-      <h2 className="text-sm text-stone-500">Что показывать сейчас</h2>
+      <h2 className="text-sm text-stone-500">{t("Что показывать сейчас", "What to show now")}</h2>
       <div className="mt-3 grid gap-2 sm:grid-cols-5">
         {MODES.map((mode) => (
           <form key={mode.value} action={switchMode}>
@@ -80,25 +83,25 @@ export default async function ScreenAdminPage({
                   : "border-stone-200 bg-card hover:border-stone-400"
               }`}
             >
-              <span className="block font-medium">{mode.label}</span>
+              <span className="block font-medium">{t(...mode.label)}</span>
               <span
                 className={`mt-1 block text-xs ${
                   event.screenMode === mode.value ? "text-white/70" : "text-stone-500"
                 }`}
               >
-                {mode.hint}
+                {t(...mode.hint)}
               </span>
             </button>
           </form>
         ))}
       </div>
 
-      <h2 className="mt-10 text-sm text-stone-500">Ссылки для проектора</h2>
+      <h2 className="mt-10 text-sm text-stone-500">{t("Ссылки для проектора", "Projector links")}</h2>
       <p className="mt-1 text-xs text-stone-500">
-        Открывается один раз на ноутбуке в зале. Ссылку никому не пересылайте:
-        она показывает всё одобренное без пароля. Отозвать можно в любой момент:
-        открытый экран гаснет сам в течение 20 секунд, новые подключения
-        не проходят вовсе.
+        {t(
+          "Открывается один раз на ноутбуке в зале. Ссылку никому не пересылайте: она показывает всё одобренное без пароля. Отозвать можно в любой момент: открытый экран гаснет сам в течение 20 секунд, новые подключения не проходят вовсе.",
+          "Open it once on the laptop at the venue. Don't share the link with anyone: it shows everything approved, with no password. You can revoke it at any time: an open screen goes dark within 20 seconds, and new connections are refused.",
+        )}
       </p>
 
       <ul className="mt-3 space-y-2">
@@ -114,7 +117,7 @@ export default async function ScreenAdminPage({
               </span>
             </span>
             <span className="text-xs text-stone-500">
-              {token.revokedAt ? "отозвана" : ago(token.lastSeenAt)}
+              {token.revokedAt ? t("отозвана", "revoked") : ago(token.lastSeenAt, t)}
             </span>
             {!token.revokedAt ? (
               <div className="flex gap-3">
@@ -124,11 +127,11 @@ export default async function ScreenAdminPage({
                   rel="noreferrer"
                   className="text-xs underline"
                 >
-                  открыть
+                  {t("открыть", "open")}
                 </a>
                 <form action={revoke}>
                   <input type="hidden" name="tokenId" value={token.id} />
-                  <button className="text-xs text-stone-400 hover:text-red-700">отозвать</button>
+                  <button className="text-xs text-stone-400 hover:text-red-700">{t("отозвать", "revoke")}</button>
                 </form>
               </div>
             ) : null}
@@ -139,22 +142,22 @@ export default async function ScreenAdminPage({
       <form action={addToken} className="mt-4 flex flex-wrap gap-2">
         <input
           name="label"
-          placeholder="Название (например, «Проектор в зале»)"
+          placeholder={t("Название (например, «Проектор в зале»)", "Name (e.g. “Hall projector”)")}
           className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
         />
         <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">
-          Создать ссылку
+          {t("Создать ссылку", "Create link")}
         </button>
       </form>
 
       <details className="mt-10 rounded-xl border border-stone-200 bg-card p-4 text-sm">
-        <summary className="cursor-pointer font-medium">Памятка для дня свадьбы</summary>
+        <summary className="cursor-pointer font-medium">{t("Памятка для дня свадьбы", "Wedding day checklist")}</summary>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-stone-600">
-          <li>Отключите на ноутбуке сон и автоматические обновления.</li>
-          <li>Откройте экран заранее и разверните на весь экран (F11).</li>
-          <li>Проверьте индикатор в правом верхнем углу: зелёная точка — связь есть.</li>
-          <li>Экран сам переживает обрыв связи: перезагружать страницу не нужно.</li>
-          <li>Прогрейте сервер до приезда гостей — первый запрос всегда медленнее.</li>
+          <li>{t("Отключите на ноутбуке сон и автоматические обновления.", "Turn off sleep mode and automatic updates on the laptop.")}</li>
+          <li>{t("Откройте экран заранее и разверните на весь экран (F11).", "Open the screen in advance and switch to full screen (F11).")}</li>
+          <li>{t("Проверьте индикатор в правом верхнем углу: зелёная точка — связь есть.", "Check the indicator in the top right corner: a green dot means it’s connected.")}</li>
+          <li>{t("Экран сам переживает обрыв связи: перезагружать страницу не нужно.", "The screen recovers from dropped connections on its own: no need to reload the page.")}</li>
+          <li>{t("Прогрейте сервер до приезда гостей — первый запрос всегда медленнее.", "Warm up the server before guests arrive — the first request is always slower.")}</li>
         </ul>
       </details>
     </main>

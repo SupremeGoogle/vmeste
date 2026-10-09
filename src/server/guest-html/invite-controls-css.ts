@@ -2,6 +2,10 @@ import { RSVP_FIELDS_CSS } from "./rsvp-fields";
 
 /** Shared questions and gifts use the same materials as each invitation. */
 const MATERIALS: Record<string, string> = {
+  gravure: "--vm-accent:var(--accent);--vm-button:var(--accent);--vm-button-text:var(--bg);--vm-font:var(--cl-sans);--vm-radius:0px",
+  disco: "--vm-accent:var(--accent);--vm-button:var(--accent);--vm-button-text:var(--bg);--vm-font:var(--cl-sans);--vm-radius:0px",
+  coral: "--vm-accent:var(--accent);--vm-button:var(--accent);--vm-button-text:var(--bg);--vm-font:var(--cl-sans);--vm-radius:0px",
+  chrome: "--vm-accent:var(--accent);--vm-button:var(--bg);--vm-button-text:var(--accent);--vm-font:var(--cl-sans);--vm-radius:0px",
   gazette: "--vm-accent:#45453b;--vm-button:#45453b;--vm-font:var(--ed-body);--vm-radius:0px",
   protokol: "--vm-accent:#7c3438;--vm-button:#7c3438;--vm-font:var(--ed-mono);--vm-radius:0px",
   postcard: "--vm-accent:#b7502f;--vm-button:#b7502f;--vm-font:var(--ed-sans);--vm-radius:8px",

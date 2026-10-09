@@ -17,6 +17,7 @@ import Link from "next/link";
 import {
   archiveGuestAction, bulkGuestsAction, restoreGuestAction, togglePlusOneAction,
 } from "@/app/(app)/app/e/[eventId]/guests/actions";
+import { useT } from "@/components/i18n-provider";
 
 export type ListGuest = {
   id: string;
@@ -41,12 +42,12 @@ export type ListGuest = {
 type Filter = "all" | "accepted" | "pending" | "declined" | "unseated" | "unopened";
 
 const STATUS = {
-  ACCEPTED: { label: "Придёт", className: "bg-emerald-50 text-emerald-800", dot: "bg-emerald-500" },
-  PENDING: { label: "Ждём ответа", className: "bg-stone-100 text-stone-700", dot: "bg-stone-400" },
-  DECLINED: { label: "Не придёт", className: "bg-rose-50 text-rose-800", dot: "bg-rose-400" },
+  ACCEPTED: { label: "Придёт", en: "Attending", className: "bg-emerald-50 text-emerald-800", dot: "bg-emerald-500" },
+  PENDING: { label: "Ждём ответа", en: "Awaiting reply", className: "bg-stone-100 text-stone-700", dot: "bg-stone-400" },
+  DECLINED: { label: "Не придёт", en: "Declined", className: "bg-rose-50 text-rose-800", dot: "bg-rose-400" },
 } as const;
 
-const ROLE = { BRIDE: "Невеста", GROOM: "Жених", GUEST: null } as const;
+const ROLE = { BRIDE: ["Невеста", "Bride"], GROOM: ["Жених", "Groom"], GUEST: null } as const;
 
 const AVATAR_TONES = ["bg-amber-100 text-amber-900", "bg-emerald-100 text-emerald-900", "bg-sky-100 text-sky-900", "bg-rose-100 text-rose-900", "bg-violet-100 text-violet-900", "bg-stone-200 text-stone-800"];
 
@@ -77,6 +78,7 @@ export function GuestList({
   const [toast, setToast] = useState<{ id: string; name: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const t = useT();
 
   const [optimistic, applyOptimistic] = useOptimistic(
     guests,
@@ -121,8 +123,8 @@ export function GuestList({
     const seated = [...map.entries()]
       .sort(([a], [b]) => a.localeCompare(b, "ru", { numeric: true }))
       .map(([label, members]) => ({ label, guests: members.sort((a, b) => (a.seatIndex ?? 0) - (b.seatIndex ?? 0)) }));
-    return unseated.length ? [...seated, { label: "Не рассажено", guests: unseated }] : seated;
-  }, [shown, byTable]);
+    return unseated.length ? [...seated, { label: t("Не рассажено", "Not seated"), guests: unseated }] : seated;
+  }, [shown, byTable, t]);
 
   function formFor(values: Record<string, string>) {
     const data = new FormData();
@@ -162,7 +164,7 @@ export function GuestList({
       setCopied(guest.id);
       setTimeout(() => setCopied((current) => (current === guest.id ? null : current)), 1800);
     } catch {
-      window.prompt("Скопируйте ссылку", url);
+      window.prompt(t("Скопируйте ссылку", "Copy the link"), url);
     }
   }
 
@@ -180,8 +182,8 @@ export function GuestList({
     return (
       <div className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-card px-6 py-12 text-center">
         <p className="text-4xl" aria-hidden>💌</p>
-        <p className="mt-3 text-lg text-stone-900">Гостей пока нет</p>
-        <p className="mt-1 text-sm text-stone-500">Добавьте первого вручную или загрузите готовый список из Excel — выше.</p>
+        <p className="mt-3 text-lg text-stone-900">{t("Гостей пока нет", "No guests yet")}</p>
+        <p className="mt-1 text-sm text-stone-500">{t("Добавьте первого вручную или загрузите готовый список из Excel — выше.", "Add your first guest by hand or upload a ready-made list from Excel — above.")}</p>
       </div>
     );
   }
@@ -191,10 +193,10 @@ export function GuestList({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-lg border border-stone-200 bg-card p-1 text-sm">
           <Link href={`/app/e/${eventId}/guests`} scroll={false} className={`rounded-md px-3 py-1 ${!byTable ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}>
-            Списком
+            {t("Списком", "List")}
           </Link>
           <Link href={`/app/e/${eventId}/guests?view=bytable`} scroll={false} className={`rounded-md px-3 py-1 ${byTable ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}>
-            По столам
+            {t("По столам", "By table")}
           </Link>
         </div>
         <label className="relative w-full sm:w-72">
@@ -203,8 +205,8 @@ export function GuestList({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Найти по имени, телефону, столу"
-            aria-label="Поиск гостя"
+            placeholder={t("Найти по имени, телефону, столу", "Search by name, phone, table")}
+            aria-label={t("Поиск гостя", "Search guests")}
             className="w-full rounded-lg border border-stone-300 bg-card py-2 pl-8 pr-3 text-base sm:text-sm"
           />
         </label>
@@ -212,12 +214,12 @@ export function GuestList({
 
       <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {([
-          ["all", "Все"],
-          ["accepted", "Придут"],
-          ["pending", "Ждём ответа"],
-          ["declined", "Не придут"],
-          ["unseated", "Без места"],
-          ["unopened", "Ссылка не открыта"],
+          ["all", t("Все", "All")],
+          ["accepted", t("Придут", "Attending")],
+          ["pending", t("Ждём ответа", "Awaiting reply")],
+          ["declined", t("Не придут", "Declined")],
+          ["unseated", t("Без места", "Not seated")],
+          ["unopened", t("Ссылка не открыта", "Link not opened")],
         ] as [Filter, string][]).map(([value, label]) => (
           <button
             key={value}
@@ -237,16 +239,16 @@ export function GuestList({
         <form action={bulkGuestsAction} onSubmit={() => setSelected(new Set())} className="rise sticky top-28 z-10 mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-sm text-white shadow-lg">
           <input type="hidden" name="eventId" value={eventId} />
           {[...selected].map((id) => <input key={id} type="hidden" name="guestId" value={id} />)}
-          <span className="mr-auto">Выбрано: {selected.size}</span>
-          <button name="bulk" value="plus-one-on" className="rounded-lg bg-white/10 px-3 py-1 hover:bg-white/20">Разрешить +1</button>
-          <button name="bulk" value="plus-one-off" className="rounded-lg bg-white/10 px-3 py-1 hover:bg-white/20">Без пары</button>
+          <span className="mr-auto">{t("Выбрано", "Selected")}: {selected.size}</span>
+          <button name="bulk" value="plus-one-on" className="rounded-lg bg-white/10 px-3 py-1 hover:bg-white/20">{t("Разрешить +1", "Allow +1")}</button>
+          <button name="bulk" value="plus-one-off" className="rounded-lg bg-white/10 px-3 py-1 hover:bg-white/20">{t("Без пары", "No +1")}</button>
           <button
             name="bulk"
             value="archive"
-            onClick={(e) => { if (!window.confirm(`Убрать в архив ${selected.size}?`)) e.preventDefault(); }}
+            onClick={(e) => { if (!window.confirm(t(`Убрать в архив ${selected.size}?`, `Archive ${selected.size}?`))) e.preventDefault(); }}
             className="rounded-lg bg-rose-500/80 px-3 py-1 hover:bg-rose-500"
           >
-            В архив
+            {t("В архив", "Archive")}
           </button>
           <button type="button" onClick={() => setSelected(new Set())} className="px-2 py-1 text-white/70 hover:text-white">✕</button>
         </form>
@@ -258,18 +260,18 @@ export function GuestList({
             type="checkbox"
             checked={allShownSelected}
             onChange={() => setSelected(allShownSelected ? new Set() : new Set(shown.map((g) => g.id)))}
-            aria-label="Выбрать всех показанных"
+            aria-label={t("Выбрать всех показанных", "Select all shown")}
             className="h-4 w-4 accent-stone-900"
           />
-          <span>Гость</span>
-          <span>Ответ</span>
-          <span>Стол</span>
-          <span>Пара</span>
-          <span className="text-right">Ссылка</span>
+          <span>{t("Гость", "Guest")}</span>
+          <span>{t("Ответ", "RSVP")}</span>
+          <span>{t("Стол", "Table")}</span>
+          <span>{t("Пара", "+1")}</span>
+          <span className="text-right">{t("Ссылка", "Link")}</span>
           <span />
         </div>
 
-        {shown.length === 0 && <p className="px-4 py-8 text-center text-sm text-stone-500">Никого не нашли — поменяйте поиск или фильтр.</p>}
+        {shown.length === 0 && <p className="px-4 py-8 text-center text-sm text-stone-500">{t("Никого не нашли — поменяйте поиск или фильтр.", "No one found — try a different search or filter.")}</p>}
 
         {groups.map((group) => (
           <section key={group.label ?? "all"}>
@@ -292,7 +294,7 @@ export function GuestList({
                       type="checkbox"
                       checked={selected.has(guest.id)}
                       onChange={() => toggleSelect(guest.id)}
-                      aria-label={`Выбрать ${guest.displayName}`}
+                      aria-label={t(`Выбрать ${guest.displayName}`, `Select ${guest.displayName}`)}
                       className="h-4 w-4 accent-stone-900"
                     />
 
@@ -306,11 +308,11 @@ export function GuestList({
                             {guest.displayName}
                           </Link>
                           {ROLE[guest.role] && (
-                            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900">{ROLE[guest.role]}</span>
+                            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900">{t(ROLE[guest.role]![0], ROLE[guest.role]![1])}</span>
                           )}
-                          {guest.isPlusOne && <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">спутник</span>}
-                          {guest.selfRegistered && <span title="Вписал себя сам по общей ссылке на приглашение" className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-900">добавился сам</span>}
-                          {guest.maybeDuplicateOf && <span title={`В списке уже есть «${guest.maybeDuplicateOf}». Если это один человек, удалите лишнюю строку.`} className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-800">возможно, повтор</span>}
+                          {guest.isPlusOne && <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">{t("спутник", "plus-one")}</span>}
+                          {guest.selfRegistered && <span title={t("Вписал себя сам по общей ссылке на приглашение", "Added themselves via the shared invitation link")} className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-900">{t("добавился сам", "added themselves")}</span>}
+                          {guest.maybeDuplicateOf && <span title={t(`В списке уже есть «${guest.maybeDuplicateOf}». Если это один человек, удалите лишнюю строку.`, `“${guest.maybeDuplicateOf}” is already on the list. If it’s the same person, remove the extra row.`)} className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-800">{t("возможно, повтор", "possible duplicate")}</span>}
                         </p>
                         <p className="truncate text-xs text-stone-500">
                           {guest.phone ? <a href={`tel:${guest.phone}`} className="hover:text-stone-800">{guest.phone}</a> : null}
@@ -334,11 +336,11 @@ export function GuestList({
                     <div className="col-span-3 col-start-2 flex flex-wrap items-center gap-2 md:contents">
                       <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${status.className}`}>
                         <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-                        {status.label}
+                        {t(status.label, status.en)}
                       </span>
 
                       <span className={`w-fit truncate rounded-md px-2 py-1 text-xs ${guest.table ? "bg-stone-100 text-stone-700" : "text-stone-400"}`}>
-                        {guest.table ?? "без места"}
+                        {guest.table ?? t("без места", "not seated")}
                       </span>
 
                       <form action={togglePlusOneAction} onSubmit={(e) => { e.preventDefault(); togglePlusOne(guest); }} className="min-w-0">
@@ -348,7 +350,7 @@ export function GuestList({
                         <button
                           role="switch"
                           aria-checked={guest.plusOneAllowed}
-                          title={guest.plusOneAllowed ? "Гость может прийти с парой — нажмите, чтобы запретить" : "Разрешить прийти с парой"}
+                          title={guest.plusOneAllowed ? t("Гость может прийти с парой — нажмите, чтобы запретить", "Guest can bring a +1 — click to remove") : t("Разрешить прийти с парой", "Allow a +1")}
                           className="flex max-w-full items-center gap-2 rounded-full py-0.5 text-xs text-stone-700"
                         >
                           {/* Ползунок отсчитывается от левого края дорожки:
@@ -358,12 +360,12 @@ export function GuestList({
                           <span aria-hidden className={`relative block h-5 w-9 shrink-0 rounded-full transition-colors ${guest.plusOneAllowed ? "bg-stone-900" : "bg-stone-200 ring-1 ring-inset ring-stone-300"}`}>
                             <span className={`absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-card shadow transition-transform ${guest.plusOneAllowed ? "translate-x-4" : "translate-x-0"}`} />
                           </span>
-                          <span className="truncate">{guest.plusOneAllowed ? guest.plusOneName ?? "+1" : "без пары"}</span>
+                          <span className="truncate">{guest.plusOneAllowed ? guest.plusOneName ?? "+1" : t("без пары", "no +1")}</span>
                         </button>
                       </form>
 
                       <span className={`text-xs md:text-right ${guest.linkOpened ? "text-emerald-700" : "text-stone-400"}`}>
-                        {guest.linkOpened ? "✓ открыта" : "не открыта"}
+                        {guest.linkOpened ? t("✓ открыта", "✓ opened") : t("не открыта", "not opened")}
                       </span>
                     </div>
                   </li>
@@ -376,10 +378,10 @@ export function GuestList({
 
       {toast && (
         <div role="status" className="rise fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl bg-stone-900 px-4 py-3 text-sm text-white shadow-xl">
-          <span className="truncate">{toast.name} — в архиве</span>
+          <span className="truncate">{t(`${toast.name} — в архиве`, `${toast.name} archived`)}</span>
           <div className="flex shrink-0 gap-3">
-            <button type="button" onClick={restore} className="font-medium text-amber-200 hover:text-amber-100">Отменить</button>
-            <button type="button" onClick={() => setToast(null)} aria-label="Закрыть" className="text-white/60 hover:text-white">✕</button>
+            <button type="button" onClick={restore} className="font-medium text-amber-200 hover:text-amber-100">{t("Отменить", "Undo")}</button>
+            <button type="button" onClick={() => setToast(null)} aria-label={t("Закрыть", "Close")} className="text-white/60 hover:text-white">✕</button>
           </div>
         </div>
       )}
@@ -398,30 +400,31 @@ function GuestMenu({
   onArchive: () => void;
   className?: string;
 }) {
+  const t = useT();
   return (
     <div className={`flex items-center justify-end gap-1 ${className}`}>
       <button
         type="button"
         onClick={onCopy}
-        title="Скопировать именную ссылку"
+        title={t("Скопировать именную ссылку", "Copy personal link")}
         className={`hidden rounded-lg px-2 py-1 text-xs transition-colors sm:block ${copied ? "bg-emerald-50 text-emerald-700" : "text-stone-500 hover:bg-stone-100 hover:text-stone-900"}`}
       >
-        {copied ? "Скопировано" : "Ссылка"}
+        {copied ? t("Скопировано", "Copied") : t("Ссылка", "Link")}
       </button>
       <details className="relative">
-        <summary aria-label="Действия" className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900 [&::-webkit-details-marker]:hidden">
+        <summary aria-label={t("Действия", "Actions")} className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900 [&::-webkit-details-marker]:hidden">
           ⋯
         </summary>
         <div className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-stone-200 bg-card py-1 text-sm shadow-lg">
           <button type="button" onClick={(e) => { onCopy(); e.currentTarget.closest("details")?.removeAttribute("open"); }} className="block w-full px-3 py-2 text-left hover:bg-stone-50">
-            {copied ? "✓ Скопировано" : "Скопировать ссылку"}
+            {copied ? t("✓ Скопировано", "✓ Copied") : t("Скопировать ссылку", "Copy link")}
           </button>
-          <a href={href} target="_blank" rel="noreferrer" className="block px-3 py-2 hover:bg-stone-50">Открыть приглашение ↗</a>
-          <Link href={`/app/e/${eventId}/guests/${guest.id}`} className="block px-3 py-2 hover:bg-stone-50">Карточка гостя</Link>
+          <a href={href} target="_blank" rel="noreferrer" className="block px-3 py-2 hover:bg-stone-50">{t("Открыть приглашение ↗", "Open invitation ↗")}</a>
+          <Link href={`/app/e/${eventId}/guests/${guest.id}`} className="block px-3 py-2 hover:bg-stone-50">{t("Карточка гостя", "Guest details")}</Link>
           <form action={archiveGuestAction} onSubmit={(e) => { e.preventDefault(); e.currentTarget.closest("details")?.removeAttribute("open"); onArchive(); }}>
             <input type="hidden" name="eventId" value={eventId} />
             <input type="hidden" name="guestId" value={guest.id} />
-            <button className="block w-full px-3 py-2 text-left text-rose-700 hover:bg-rose-50">В архив</button>
+            <button className="block w-full px-3 py-2 text-left text-rose-700 hover:bg-rose-50">{t("В архив", "Archive")}</button>
           </form>
         </div>
       </details>

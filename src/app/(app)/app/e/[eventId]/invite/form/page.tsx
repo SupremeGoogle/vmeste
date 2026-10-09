@@ -12,6 +12,8 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
+import { getT } from "@/server/i18n";
+import { parseLang } from "@/lib/i18n";
 import { loadBuilder } from "./actions";
 import { RsvpFormBuilder } from "./rsvp-form-builder";
 
@@ -24,13 +26,14 @@ export default async function RsvpFormPage({ params }: { params: Promise<{ event
   if (!event) notFound();
   if (await db.inviteBlock.count({ where: { eventId } })) redirect(`/app/e/${eventId}/invite?edit=1&rsvp=1`);
   const initial = await loadBuilder(eventId);
+  const t = await getT();
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <Link href={`/app/e/${eventId}/invite`} className="inline-flex min-h-11 items-center text-sm text-stone-500 hover:text-stone-900">
-        ← Приглашение
+        {t("← Приглашение", "← Invitation")}
       </Link>
-      <RsvpFormBuilder eventId={eventId} initial={initial} allowPlusOne={event.allowPlusOne} />
+      <RsvpFormBuilder eventId={eventId} initial={initial} allowPlusOne={event.allowPlusOne} guestLang={parseLang(event.language) ?? "ru"} />
     </main>
   );
 }

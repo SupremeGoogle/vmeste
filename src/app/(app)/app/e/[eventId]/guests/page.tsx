@@ -15,11 +15,12 @@ import { getEvent } from "@/server/repositories/events";
 import { countGuests, importBatchInfo, listGuests } from "@/server/repositories/guests";
 import { peekImportDraft } from "@/server/services/import-draft";
 import { aiConfigured } from "@/server/import/deepseek";
-import { COLUMN_ROLES, ROLE_LABEL, cell } from "@/server/import/structure";
+import { COLUMN_ROLES, ROLE_LABEL, ROLE_LABEL_EN, cell } from "@/server/import/structure";
 import { AddGuestCard } from "@/components/guests/add-guest-card";
 import { ImportCard } from "@/components/guests/import-card";
 import { ImportPreview, type PreviewData } from "@/components/guests/import-preview";
-import { plural } from "@/lib/plural";
+import { countWord, makeT } from "@/lib/i18n";
+import { getUiLang } from "@/server/i18n";
 import { GuestList, type ListGuest } from "@/components/guests/guest-list";
 import { CountUp } from "@/components/motion/motion";
 import { InviteShare } from "@/components/guests/invite-share";
@@ -46,6 +47,8 @@ export default async function GuestsPage({
     query.imported ? importBatchInfo(ctx, query.imported) : null,
   ]);
   if (!event) notFound();
+  const lang = await getUiLang();
+  const t = makeT(lang);
 
   const workspace = query.draft ? peekImportDraft(ctx, query.draft) : null;
 
@@ -63,7 +66,7 @@ export default async function GuestsPage({
         role: col.role,
         samples: dataRows.map((row) => cell(row, col.index)).filter(Boolean).slice(0, 3).map((v) => v.slice(0, 40)),
       })),
-      roleOptions: COLUMN_ROLES.map((value) => ({ value, label: ROLE_LABEL[value] })),
+      roleOptions: COLUMN_ROLES.map((value) => ({ value, label: t(ROLE_LABEL[value], ROLE_LABEL_EN[value]) })),
       planNote: workspace.plan.note,
       planSource: workspace.plan.source,
       guests: workspace.guests,
@@ -106,10 +109,10 @@ export default async function GuestsPage({
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="rise-stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Всего гостей", value: counts.total, hint: `ответили ${answered}%`, bar: answered },
-          { label: "Придут", value: counts.accepted, tone: "text-emerald-700" },
-          { label: "Ждём ответа", value: pending, hint: counts.declined ? `не придут: ${counts.declined}` : undefined },
-          { label: "Рассажено", value: counts.seated, hint: counts.accepted ? `${seatedShare}% пришедших` : undefined, bar: seatedShare },
+          { label: t("Всего гостей", "Total guests"), value: counts.total, hint: t(`ответили ${answered}%`, `${answered}% responded`), bar: answered },
+          { label: t("Придут", "Attending"), value: counts.accepted, tone: "text-emerald-700" },
+          { label: t("Ждём ответа", "Awaiting reply"), value: pending, hint: counts.declined ? t(`не придут: ${counts.declined}`, `declined: ${counts.declined}`) : undefined },
+          { label: t("Рассажено", "Seated"), value: counts.seated, hint: counts.accepted ? t(`${seatedShare}% пришедших`, `${seatedShare}% of attending`) : undefined, bar: seatedShare },
         ].map((tile, i) => (
           <div key={tile.label} style={{ "--i": i } as React.CSSProperties} className="rounded-2xl border border-stone-200 bg-card p-4 transition-[transform,box-shadow] duration-300 ease-[var(--ease-out-back)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-stone-900/5">
             <p className={`tile-value text-2xl tabular-nums ${tile.tone ?? "text-stone-900"}`}><CountUp value={tile.value} /></p>
@@ -125,10 +128,10 @@ export default async function GuestsPage({
       </div>
 
       {/* Список и ответы анкеты — одни и те же гости, два взгляда на них. */}
-      <nav className="mt-6 inline-flex rounded-xl border border-stone-200 bg-card p-1 text-sm" aria-label="Вид">
+      <nav className="mt-6 inline-flex rounded-xl border border-stone-200 bg-card p-1 text-sm" aria-label={t("Вид", "View")}>
         {[
-          { key: "list", label: "Список гостей", href: `/app/e/${eventId}/guests` },
-          { key: "answers", label: "Ответы анкеты", href: `/app/e/${eventId}/guests?tab=answers` },
+          { key: "list", label: t("Список гостей", "Guest list"), href: `/app/e/${eventId}/guests` },
+          { key: "answers", label: t("Ответы анкеты", "RSVP answers"), href: `/app/e/${eventId}/guests?tab=answers` },
         ].map((item) => {
           const active = (query.tab === "answers" ? "answers" : "list") === item.key;
           return (
@@ -152,18 +155,21 @@ export default async function GuestsPage({
       )}
       {query.draft && !workspace && (
         <p role="alert" className="rise mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Предпросмотр устарел (он хранится полчаса) — загрузите файл снова.
+          {t("Предпросмотр устарел (он хранится полчаса) — загрузите файл снова.", "This preview has expired (previews are kept for 30 minutes) — please upload the file again.")}
         </p>
       )}
       {batch && (
         <div role="status" className="rise mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          <span>✓ Добавили {batch.count} {plural(batch.count, "гостя", "гостя", "гостей")} из файла.</span>
+          <span>{t(
+            `✓ Добавили ${countWord(lang, batch.count, ["гостя", "гостя", "гостей"], ["guest", "guests"])} из файла.`,
+            `✓ Added ${countWord(lang, batch.count, ["гостя", "гостя", "гостей"], ["guest", "guests"])} from the file.`,
+          )}</span>
           {batch.undoable && (
             <form action={undoImportAction}>
               <input type="hidden" name="eventId" value={eventId} />
               <input type="hidden" name="batchId" value={query.imported} />
               <button className="rounded-lg border border-emerald-300 bg-card px-3 py-1.5 text-emerald-900 hover:bg-emerald-100">
-                Отменить импорт
+                {t("Отменить импорт", "Undo import")}
               </button>
             </form>
           )}

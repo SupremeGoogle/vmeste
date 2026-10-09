@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   requireEventContext: vi.fn(), getEvent: vi.fn(), listBlocks: vi.fn(),
   getTheme: vi.fn(), getInviteBySlug: vi.fn(), loadWishlist: vi.fn(),
 }));
+vi.mock("@/server/i18n", () => ({ getUiLang: async () => "ru", getT: async () => (ru: string) => ru }));
 vi.mock("@/server/context", () => ({ requireEventContext: mocks.requireEventContext }));
 vi.mock("@/server/repositories/events", () => ({ getEvent: mocks.getEvent }));
 vi.mock("@/server/repositories/invites", () => ({

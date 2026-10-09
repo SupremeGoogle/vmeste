@@ -27,6 +27,7 @@ import { INLINE_EDITOR_CSS, INLINE_EDITOR_SCRIPT } from "@/server/guest-html/inl
 import { loadWishlist } from "@/server/guest-html/wishlist";
 import { buildInlineRsvp } from "@/server/guest-html/inline-rsvp";
 import { RSVP_FIELDS_CSS } from "@/server/guest-html/rsvp-fields";
+import { getT } from "@/server/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,8 @@ export async function GET(
     listBlocks(ctx),
     getTheme(ctx),
   ]);
-  if (!event) return new Response("Не найдено", { status: 404 });
+  const t = await getT();
+  if (!event) return new Response(t("Не найдено", "Not found"), { status: 404 });
   const url = new URL(request.url);
   const template = findTemplate(url.searchParams.get("template") ?? "");
   const preview = url.searchParams.get("preview") === "1";
@@ -69,7 +71,7 @@ export async function GET(
   ].filter(Boolean);
 
   return html(invitePage({
-    title: preview ? event.title : `${event.title} — визуальный редактор`,
+    title: preview ? event.title : t(`${event.title} — визуальный редактор`, `${event.title} — visual editor`),
     styleMeta: true,
     theme,
     noindex: true,

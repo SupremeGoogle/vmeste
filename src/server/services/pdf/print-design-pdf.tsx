@@ -6,6 +6,7 @@ import { Document, Font, Image, Line, Page, Svg, Text, View } from "@react-pdf/r
 import {
   guestFontSize, isSoloPrintTable, pageScale, paperSize, PRINT_TEMPLATES, type PrintDesign, type PrintElement, type PrintTable,
 } from "@/lib/print-design";
+import type { Lang } from "@/lib/i18n";
 
 const fontDir = path.join(process.cwd(), "public", "fonts");
 Font.register({ family: "PrintSerif", src: path.join(fontDir, "CormorantGaramond-Regular.ttf") });
@@ -17,7 +18,7 @@ const artFile = (name: string) => path.join(process.cwd(), "public", "media", "p
 const artData = (name: string) => ({ data: readFileSync(artFile(name)), format: "png" as const });
 const percent = (value: number) => `${value}%`;
 
-function Decorations({ design, page }: { design: PrintDesign; page: number }) {
+function Decorations({ design, page, lang }: { design: PrintDesign; page: number; lang: Lang }) {
   const theme = PRINT_TEMPLATES.find((item) => item.id === design.template) ?? PRINT_TEMPLATES[0];
   const k = pageScale(design.paper) * design.textScale;
   return <>
@@ -34,7 +35,7 @@ function Decorations({ design, page }: { design: PrintDesign; page: number }) {
       <View style={{ position: "absolute", left: "7%", bottom: "4%", width: "86%", borderTopWidth: 0.7, borderColor: design.accent }} />
     </> : null}
     {/* Центр «схемы зала» совпадает с центром колец в `layoutTables` (50%, 60%). */}
-    {design.mode === "seating" && theme.layout === "orbit" && !design.elements.some((item) => item.page === page && item.kind === "table" && isSoloPrintTable(design, item)) ? <View style={{ position: "absolute", left: "43%", top: "52.5%", width: "14%", height: "15%", borderWidth: 1.5, borderColor: design.accent, borderRadius: 100, justifyContent: "center", alignItems: "center" }}><Text style={{ fontFamily: "PrintSerif", fontSize: 19 * k, color: design.accent, textAlign: "center" }}>{"СХЕМА\nЗАЛА"}</Text></View> : null}
+    {design.mode === "seating" && theme.layout === "orbit" && !design.elements.some((item) => item.page === page && item.kind === "table" && isSoloPrintTable(design, item)) ? <View style={{ position: "absolute", left: "43%", top: "52.5%", width: "14%", height: "15%", borderWidth: 1.5, borderColor: design.accent, borderRadius: 100, justifyContent: "center", alignItems: "center" }}><Text style={{ fontFamily: "PrintSerif", fontSize: 19 * k, color: design.accent, textAlign: "center" }}>{lang === "en" ? "FLOOR\nPLAN" : "СХЕМА\nЗАЛА"}</Text></View> : null}
   </>;
 }
 
@@ -100,14 +101,16 @@ function PrintItem({ element, design, tables, qrData, shortCode }: {
   return <View style={outer}><Text style={{ fontFamily: serif ? design.template === "minimal" || design.template === "deco" ? "PrintSerif" : "PrintScript" : "PrintSerif", fontSize: element.fontSize * k, color: element.id === "title" ? design.accent : design.ink, textAlign: element.align, lineHeight: serif ? 1.2 : 1.1, letterSpacing: serif ? 0 : 1 }}>{element.text}</Text></View>;
 }
 
-export function PrintDesignDocument({ design, tables, qrData, shortCode, title }: {
+export function PrintDesignDocument({ design, tables, qrData, shortCode, title, lang = "ru" }: {
   design: PrintDesign; tables: PrintTable[]; qrData: string; shortCode: string; title: string;
+  /** Язык мероприятия: лист читают гости. */
+  lang?: Lang;
 }) {
   const theme = PRINT_TEMPLATES.find((item) => item.id === design.template) ?? PRINT_TEMPLATES[0];
   const pages = [...new Set([0, ...design.elements.filter((item) => !item.hidden).map((item) => item.page)])].sort((a, b) => a - b);
-  return <Document title={`${title} — ${design.mode === "qr" ? "QR код" : "план рассадки"}`} author="Вместе">
+  return <Document title={lang === "en" ? `${title} — ${design.mode === "qr" ? "QR code" : "seating chart"}` : `${title} — ${design.mode === "qr" ? "QR код" : "план рассадки"}`} author={lang === "en" ? "Vmeste" : "Вместе"}>
     {pages.map((page) => <Page key={page} size={design.paper} orientation={design.orientation} style={{ position: "relative", backgroundColor: theme.paper }}>
-      <Decorations design={design} page={page} />
+      <Decorations design={design} page={page} lang={lang} />
       <TableFrames design={design} page={page} />
       {design.elements.filter((item) => item.page === page || page > 0 && item.kind === "text" && item.page === 0 && ["eyebrow", "title", "date"].includes(item.id)).map((element) => <PrintItem key={element.id} element={element} design={design} tables={tables} qrData={qrData} shortCode={shortCode} />)}
     </Page>)}

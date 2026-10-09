@@ -14,6 +14,8 @@ import { redirect } from "next/navigation";
 import { getOrgContext } from "@/server/context";
 import { createEvent } from "@/server/repositories/events";
 import { slugify } from "@/lib/slugify";
+import { getUiLang } from "@/server/i18n";
+import { makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -23,23 +25,26 @@ export default async function NewEventPage({ searchParams }: Props) {
   const { error } = await searchParams;
   const ctx = await getOrgContext();
   if (!ctx) redirect("/login");
+  const uiLang = await getUiLang();
+  const t = makeT(uiLang);
 
   async function create(formData: FormData) {
     "use server";
     const ctx = await getOrgContext();
     if (!ctx) redirect("/login");
+    const t = makeT(await getUiLang());
 
     const title = String(formData.get("title") ?? "").trim();
     const dateRaw = String(formData.get("eventDate") ?? "").trim();
     const timeRaw = String(formData.get("eventTime") ?? "16:00").trim() || "16:00";
 
     if (title.length < 2 || !dateRaw) {
-      redirect("/app/events/new?error=" + encodeURIComponent("Нужны имена пары и дата"));
+      redirect("/app/events/new?error=" + encodeURIComponent(t("Нужны имена пары и дата", "Please enter the couple’s names and the date")));
     }
 
     const slug = slugify(String(formData.get("slug") ?? "") || title);
     if (!slug) {
-      redirect("/app/events/new?error=" + encodeURIComponent("Не удалось составить адрес — задайте его вручную"));
+      redirect("/app/events/new?error=" + encodeURIComponent(t("Не удалось составить адрес — задайте его вручную", "Couldn’t build a link from the names — please set it manually")));
     }
 
     const event = await createEvent(ctx, {
@@ -49,12 +54,14 @@ export default async function NewEventPage({ searchParams }: Props) {
       // по умолчанию — Москва, как у большинства площадок.
       eventDate: new Date(`${dateRaw}T${timeRaw}:00`),
       venueName: String(formData.get("venueName") ?? "").trim() || undefined,
+      // Язык всего, что видят гости: приглашение, анкета, страница гостя.
+      language: parseLang(String(formData.get("language") ?? "")) ?? (await getUiLang()),
     });
 
     if (!event) {
       redirect(
         "/app/events/new?error=" +
-          encodeURIComponent(`Адрес «${slug}» уже занят другим мероприятием — задайте другой`),
+          encodeURIComponent(t(`Адрес «${slug}» уже занят другим мероприятием — задайте другой`, `The link “${slug}” is already used by another event — please choose a different one`)),
       );
     }
 
@@ -64,7 +71,7 @@ export default async function NewEventPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-6 sm:px-6 sm:py-10">
-      <h1 className="text-2xl font-semibold">Новое мероприятие</h1>
+      <h1 className="text-2xl font-semibold">{t("Новое мероприятие", "New event")}</h1>
 
       {error ? (
         <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
@@ -72,26 +79,26 @@ export default async function NewEventPage({ searchParams }: Props) {
 
       <form action={create} className="mt-6 space-y-4">
         <label className="block">
-          <span className="text-sm text-stone-500">Имена пары</span>
+          <span className="text-sm text-stone-500">{t("Имена пары", "Couple’s names")}</span>
           <input
-            name="title" required minLength={2} placeholder="Аня и Миша"
+            name="title" required minLength={2} placeholder={t("Аня и Миша", "Anna & Michael")}
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
           />
           <span className="mt-1 block text-xs text-stone-400">
-            Сразу появятся во всех шаблонах приглашения, включая заставку.
+            {t("Сразу появятся во всех шаблонах приглашения, включая заставку.", "They’ll appear right away in every invitation template, including the intro screen.")}
           </span>
         </label>
 
         <div className="flex gap-3">
           <label className="flex-1">
-            <span className="text-sm text-stone-500">Дата</span>
+            <span className="text-sm text-stone-500">{t("Дата", "Date")}</span>
             <input
               type="date" name="eventDate" required
               className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
             />
           </label>
           <label className="w-32">
-            <span className="text-sm text-stone-500">Начало</span>
+            <span className="text-sm text-stone-500">{t("Начало", "Start time")}</span>
             <input
               type="time" name="eventTime" defaultValue="16:00"
               className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
@@ -100,25 +107,39 @@ export default async function NewEventPage({ searchParams }: Props) {
         </div>
 
         <label className="block">
-          <span className="text-sm text-stone-500">Площадка</span>
+          <span className="text-sm text-stone-500">{t("Площадка", "Venue")}</span>
           <input
-            name="venueName" placeholder="Усадьба Гребнево"
+            name="venueName" placeholder={t("Усадьба Гребнево", "Rosewood Manor")}
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
           />
         </label>
 
         <label className="block">
-          <span className="text-sm text-stone-500">Адрес приглашения (необязательно)</span>
+          <span className="text-sm text-stone-500">{t("Язык приглашения и страниц гостей", "Invitation & guest pages language")}</span>
+          <select
+            name="language" defaultValue={uiLang}
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+          >
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+          <span className="mt-1 block text-xs text-stone-400">
+            {t("На этом языке гости увидят приглашение, анкету и свою страницу. Можно поменять в настройках.", "Guests will see the invitation, RSVP form and their guest page in this language. You can change it later in settings.")}
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-stone-500">{t("Адрес приглашения (необязательно)", "Invitation link (optional)")}</span>
           <input
             name="slug" placeholder="anya-misha"
             className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-mono text-sm"
           />
           <span className="mt-1 block text-xs text-stone-400">
-            Попадёт в публичную ссылку: /i/anya-misha. Пусто — составим из названия.
+            {t("Попадёт в публичную ссылку: /i/anya-misha. Пусто — составим из названия.", "Used in the public link: /i/anya-misha. Leave blank and we’ll build it from the names.")}
           </span>
         </label>
 
-        <button className="rounded-lg bg-stone-900 px-5 py-2.5 text-white" data-rybbit-event="event_create">Создать</button>
+        <button className="rounded-lg bg-stone-900 px-5 py-2.5 text-white" data-rybbit-event="event_create">{t("Создать", "Create")}</button>
       </form>
     </main>
   );

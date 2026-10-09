@@ -13,6 +13,7 @@ import { esc } from "@/server/guest-html/layout";
 import type { TiliRsvp } from "@/server/guest-html/tili/markup";
 import { flashText, type Flash } from "@/server/guest-html/flash";
 import type { RsvpAnswer } from "@/lib/rsvp-form";
+import { withGuestLang } from "@/server/guest-html/guest-lang";
 
 export function hasInlineRsvp(template: string | undefined): boolean {
   const id = template ?? "";
@@ -45,6 +46,8 @@ export async function buildInlineRsvp(
     flash: Flash;
     /** Срок ответа прошёл: анкета сразу говорит об этом, а не после отправки. */
     closed?: boolean;
+    /** Язык мероприятия: на нём тексты ошибок и полей анкеты. */
+    language?: string | null;
   },
 ): Promise<TiliRsvp & { plusOneAllowed: boolean }> {
   const [drinks, meals, questions] = await Promise.all([
@@ -59,8 +62,8 @@ export async function buildInlineRsvp(
   // Какой вопрос не заполнен — прямо над вопросами: у самих шаблонов
   // сообщение об ошибке общее, «проверьте анкету».
   const flash: Flash = opts.flash.error || !opts.closed || opts.saved ? opts.flash : { error: "deadline", message: null };
-  const errorText = flashText(flash);
-  const questionFields = rsvpFieldsHtml(questions, {
+  const errorText = withGuestLang(opts.language, () => flashText(flash));
+  const questionFields = withGuestLang(opts.language, () => rsvpFieldsHtml(questions, {
     meals, drinks,
     selectedMeal: guest.mealOptionId,
     selectedDrinks: guest.drinkIds,
@@ -68,7 +71,7 @@ export async function buildInlineRsvp(
     musicWish: guest.musicWish,
     // У «Тили-тесто» поле о музыке своё, в вёрстке образца.
     skip: { drinks: true, music: template === "tili" },
-  });
+  }));
   const extraFields = (errorText ? `<p class="rsvp-error" role="alert">${esc(errorText)}</p>` : "") + questionFields;
   return {
     action: opts.action,

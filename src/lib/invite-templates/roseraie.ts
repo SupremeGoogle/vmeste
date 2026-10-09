@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 
 const IMG = "/media/invite-roseraie";
 
@@ -33,3 +33,23 @@ export const ROSERAIE_TEMPLATE: InviteTemplate = {
     { type: "TEXT", content: { v: 1, tag: "До встречи", title: "Мы будем ждать вас с любовью", text: "Спасибо, что разделите этот день с нами." } },
   ],
 };
+
+/** English sample: same sections and pictures as `ROSERAIE_TEMPLATE.blocks`. */
+export const ROSERAIE_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, names: "Emily & James", title: "Together with their families", dateText: "June 12, 2027", subtitle: "What God has joined together, let no one separate.\nMark 10:9", imageUrl: `${IMG}/hero.webp` } },
+  { type: "TEXT", content: { v: 1, tag: "Our day", title: "Emily & James", text: "Together with their families, the bride and groom joyfully invite you to share in one of the most important days of their lives.\nWe would be so happy to have you with us as our new story begins." } },
+  { type: "PHOTOS", content: { v: 1, title: "Moments together", items: [
+    { imageUrl: `${IMG}/portrait.webp`, caption: "Counting down to our day" },
+    { imageUrl: `${IMG}/hero.webp`, caption: "With love, us" },
+  ] } },
+  { type: "TIMELINE", content: { v: 1, title: "Order of the day", items: [
+    { time: "3:30 PM", title: "Guests arrive", note: "Welcome drinks" },
+    { time: "4:00 PM", title: "Ceremony", note: "We say “I do”" },
+    { time: "5:00 PM", title: "Cocktail hour", note: "Time to catch up" },
+    { time: "7:00 PM", title: "Dinner", note: "An evening of celebration" },
+    { time: "10:00 PM", title: "First dance", note: "Then everyone to the dance floor" },
+  ] } },
+  { type: "VENUE", content: { v: 1, title: "Where to find us", name: "Villa Bellarosa", address: "Asolo, Veneto, Italy", note: "The ceremony and dinner will take place in the villa gardens.", imageUrl: `${IMG}/venue.webp`, mapUrl: "https://www.google.com/maps/search/?api=1&query=Asolo%2C%20Veneto%2C%20Italy", mapLabel: "View on map" } },
+  { type: "PHOTOS", content: { v: 1, title: "With love", items: [{ imageUrl: `${IMG}/portrait.webp`, caption: "We can’t wait to see you" }] } },
+  { type: "TEXT", content: { v: 1, tag: "See you soon", title: "We can’t wait to celebrate with you", text: "Thank you for sharing this day with us." } },
+];

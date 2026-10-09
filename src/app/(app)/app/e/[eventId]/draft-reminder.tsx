@@ -13,11 +13,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { DRAFT_STATE } from "@/components/invite/publish-controls";
+import { useT } from "@/components/i18n-provider";
 
 export function DraftReminder({ eventId, dirty: serverDirty }: { eventId: string; dirty: boolean }) {
   const path = usePathname();
   const [dirty, setDirty] = useState(serverDirty);
   const [server, setServer] = useState(serverDirty);
+  const t = useT();
   if (server !== serverDirty) {
     setServer(serverDirty);
     setDirty(serverDirty);
@@ -33,8 +35,8 @@ export function DraftReminder({ eventId, dirty: serverDirty }: { eventId: string
     <div className="no-print border-t border-amber-200 bg-amber-50 text-sm text-amber-900">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 sm:px-6">
         <span className="size-2 shrink-0 animate-pulse rounded-full bg-amber-500" aria-hidden />
-        <span className="min-w-0 flex-1">В приглашении есть несохранённые изменения — гости видят прошлую версию.</span>
-        <Link href={`/app/e/${eventId}/invite?edit=1`} className="font-medium underline underline-offset-2">Открыть и сохранить →</Link>
+        <span className="min-w-0 flex-1">{t("В приглашении есть несохранённые изменения — гости видят прошлую версию.", "Your invitation has unsaved changes — guests still see the previous version.")}</span>
+        <Link href={`/app/e/${eventId}/invite?edit=1`} className="font-medium underline underline-offset-2">{t("Открыть и сохранить →", "Open and save →")}</Link>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { EASE_OUT } from "@/components/motion/motion";
+import { useT } from "@/components/i18n-provider";
 
 export function WeddingSheet({
   open, focus, onClose, children,
@@ -22,6 +23,7 @@ export function WeddingSheet({
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +58,7 @@ export function WeddingSheet({
             ref={panel}
             role="dialog"
             aria-modal="true"
-            aria-label="Имена, дата и место"
+            aria-label={t("Имена, дата и место", "Names, date & venue")}
             className="max-h-[88vh] w-full overflow-y-auto rounded-t-2xl bg-card p-5 shadow-2xl sm:max-h-none sm:w-[440px] sm:rounded-none sm:rounded-l-2xl sm:p-6"
             initial={{ x: 0, y: 40, opacity: 0 }}
             animate={{ x: 0, y: 0, opacity: 1, transition: { duration: 0.35, ease: EASE_OUT } }}
@@ -64,10 +66,10 @@ export function WeddingSheet({
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg text-stone-900">Имена, дата и место</h2>
-                <p className="mt-1 text-sm text-stone-500">Общие для всего приглашения: обложка, «Где», карта, обратный отсчёт и анкета обновятся вместе.</p>
+                <h2 className="text-lg text-stone-900">{t("Имена, дата и место", "Names, date & venue")}</h2>
+                <p className="mt-1 text-sm text-stone-500">{t("Общие для всего приглашения: обложка, «Где», карта, обратный отсчёт и анкета обновятся вместе.", "Shared across the whole invitation: the cover, venue, map, countdown and RSVP form all update together.")}</p>
               </div>
-              <button type="button" onClick={onClose} className="rounded-lg px-3 py-1 text-stone-500 hover:bg-stone-100">Закрыть</button>
+              <button type="button" onClick={onClose} className="rounded-lg px-3 py-1 text-stone-500 hover:bg-stone-100">{t("Закрыть", "Close")}</button>
             </div>
             {children}
           </motion.div>

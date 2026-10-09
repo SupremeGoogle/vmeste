@@ -10,7 +10,7 @@
  * показывается только стандартная формулировка по коду ошибки.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { RSVP_ERRORS } from "@/server/guest-html/rsvp-page";
+import { RSVP_ERRORS, rsvpErrorText } from "@/server/guest-html/rsvp-page";
 
 function signature(secret: string, code: string, text: string): string {
   return createHmac("sha256", secret).update(`rsvp-flash\n${code}\n${text}`).digest("base64url").slice(0, 24);
@@ -45,10 +45,10 @@ export function readFlash(params: URLSearchParams, secret: string | null): Flash
   return { error, message: ok ? text : null };
 }
 
-/** Что сказать гостю: точный текст, если он подписан, иначе — по коду. */
+/** Что сказать гостю: точный текст, если он подписан, иначе — по коду (на языке мероприятия). */
 export function flashText(flash: Flash): string | null {
   if (!flash.error) return null;
-  return flash.message ?? RSVP_ERRORS[flash.error] ?? RSVP_ERRORS.invalid;
+  return flash.message ?? rsvpErrorText(flash.error);
 }
 
 /** Подпись для произвольной заметки в адресе (результат брони подарка). */

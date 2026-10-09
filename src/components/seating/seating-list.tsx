@@ -15,9 +15,10 @@
  * Раньше список рисовался сервером один раз, и после перестановки на
  * плане показывал рассадку до перезагрузки страницы.
  */
-import { SHAPES, SHAPE_LABEL } from "@/lib/seating-geometry";
+import { SHAPES, SHAPE_LABEL, SHAPE_LABEL_EN } from "@/lib/seating-geometry";
 import { COUPLE_TABLE } from "@/lib/couple-table-style";
-import { ROLE_LABEL } from "@/lib/couple-marks";
+import { ROLE_LABEL, ROLE_LABEL_EN } from "@/lib/couple-marks";
+import { useT } from "@/components/i18n-provider";
 import { baseName } from "./guest-search";
 import { RingsIcon } from "./rings-icon";
 import type { Seating } from "./use-seating";
@@ -40,18 +41,19 @@ export function SeatingList({
   actions: ListActions;
   eventId: string;
 }) {
+  const t = useT();
   const hasCouple = seating.tables.some((table) => table.isCouple);
 
   return (
     <section className="mt-10 border-t border-stone-200 pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-medium text-stone-900">Списком</h2>
-        <a href={`/app/e/${eventId}/seating/print`} className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">Печатные макеты</a>
+        <h2 className="text-base font-medium text-stone-900">{t("Списком", "List view")}</h2>
+        <a href={`/app/e/${eventId}/seating/print`} className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">{t("Печатные макеты", "Print layouts")}</a>
         <a
           href={`/api/app/events/${eventId}/seating/pdf`}
           className="rounded-lg border border-stone-300 px-4 py-2 text-sm"
         >
-          Скачать PDF
+          {t("Скачать PDF", "Download PDF")}
         </a>
       </div>
 
@@ -89,15 +91,15 @@ export function SeatingList({
                     name="shape"
                     value={table.shape}
                     onChange={(e) => seating.setShape(table.id, e.target.value)}
-                    aria-label={`Форма стола ${table.label}`}
+                    aria-label={t(`Форма стола ${table.label}`, `Shape of ${table.label}`)}
                     className="rounded border border-stone-200 px-2 py-1 text-xs text-stone-600"
                   >
                     {SHAPES.map((shape) => (
-                      <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+                      <option key={shape} value={shape}>{t(SHAPE_LABEL[shape], SHAPE_LABEL_EN[shape])}</option>
                     ))}
                   </select>
                   <noscript>
-                    <button className="ml-1 text-xs text-stone-500">сменить</button>
+                    <button className="ml-1 text-xs text-stone-500">{t("сменить", "change")}</button>
                   </noscript>
                 </form>
               )}
@@ -106,13 +108,13 @@ export function SeatingList({
                 action={actions.removeTable}
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (window.confirm(`Удалить «${table.label}»? Гости вернутся в список нерассаженных.`)) {
+                  if (window.confirm(t(`Удалить «${table.label}»? Гости вернутся в список нерассаженных.`, `Delete “${table.label}”? Its guests will go back to the unseated list.`))) {
                     seating.deleteTable(table.id);
                   }
                 }}
               >
                 <input type="hidden" name="tableId" value={table.id} />
-                <button className="px-1 py-1 text-xs text-stone-400 hover:text-red-700">Удалить</button>
+                <button className="px-1 py-1 text-xs text-stone-400 hover:text-red-700">{t("Удалить", "Delete")}</button>
               </form>
             </div>
 
@@ -125,7 +127,7 @@ export function SeatingList({
                       <span className="min-w-0 flex-1 truncate">
                         {seat.guest.displayName}
                         {seat.guest.role && seat.guest.role !== "GUEST" ? (
-                          <span className="ml-1 text-xs text-stone-500">{ROLE_LABEL[seat.guest.role]}</span>
+                          <span className="ml-1 text-xs text-stone-500">{t(ROLE_LABEL[seat.guest.role], ROLE_LABEL_EN[seat.guest.role])}</span>
                         ) : null}
                       </span>
                       <form
@@ -136,7 +138,7 @@ export function SeatingList({
                         }}
                       >
                         <input type="hidden" name="seatId" value={seat.id} />
-                        <button className="px-1 py-1 text-xs text-stone-400 hover:text-stone-900">снять</button>
+                        <button className="px-1 py-1 text-xs text-stone-400 hover:text-stone-900">{t("снять", "unseat")}</button>
                       </form>
                     </>
                   ) : (
@@ -162,14 +164,14 @@ export function SeatingList({
                         list="seating-unseated-names"
                         placeholder={
                           table.isCouple && seat.index < 2
-                            ? seat.index === 0 ? "место невесты" : "место жениха"
-                            : "выбрать или вписать"
+                            ? seat.index === 0 ? t("место невесты", "bride's seat") : t("место жениха", "groom's seat")
+                            : t("выбрать или вписать", "pick or type a name")
                         }
                         maxLength={120}
                         autoComplete="off"
                         className="min-w-0 flex-1 rounded border border-stone-200 px-2 py-1 text-base text-stone-700 sm:text-sm"
                       />
-                      <button className="shrink-0 px-1 text-xs text-stone-500 hover:text-stone-900">посадить</button>
+                      <button className="shrink-0 px-1 text-xs text-stone-500 hover:text-stone-900">{t("посадить", "seat")}</button>
                     </form>
                   )}
                 </li>
@@ -180,7 +182,7 @@ export function SeatingList({
       </div>
 
       {seating.tables.length === 0 && (
-        <p className="mt-4 text-sm text-stone-600">Столов пока нет — добавьте первый.</p>
+        <p className="mt-4 text-sm text-stone-600">{t("Столов пока нет — добавьте первый.", "No tables yet — add the first one.")}</p>
       )}
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
@@ -200,31 +202,31 @@ export function SeatingList({
           className="flex flex-wrap items-end gap-2"
         >
           <label>
-            <span className="block text-xs text-stone-500">Новый стол</span>
+            <span className="block text-xs text-stone-500">{t("Новый стол", "New table")}</span>
             <input
-              name="label" required placeholder="Стол 6" maxLength={40}
+              name="label" required placeholder={t("Стол 6", "Table 6")} maxLength={40}
               className="mt-1 w-36 rounded-lg border border-stone-300 px-3 py-1.5 text-base sm:text-sm"
             />
           </label>
           <label>
-            <span className="block text-xs text-stone-500">Форма</span>
+            <span className="block text-xs text-stone-500">{t("Форма", "Shape")}</span>
             <select
               name="shape" defaultValue="ROUND"
               className="mt-1 rounded-lg border border-stone-300 px-3 py-1.5 text-base sm:text-sm"
             >
               {SHAPES.map((shape) => (
-                <option key={shape} value={shape}>{SHAPE_LABEL[shape]}</option>
+                <option key={shape} value={shape}>{t(SHAPE_LABEL[shape], SHAPE_LABEL_EN[shape])}</option>
               ))}
             </select>
           </label>
           <label>
-            <span className="block text-xs text-stone-500">Мест</span>
+            <span className="block text-xs text-stone-500">{t("Мест", "Seats")}</span>
             <input
               name="capacity" inputMode="numeric" pattern="[0-9]*" defaultValue={8} required
               className="mt-1 w-16 rounded-lg border border-stone-300 px-3 py-1.5 text-base sm:text-sm"
             />
           </label>
-          <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">Добавить стол</button>
+          <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white">{t("Добавить стол", "Add table")}</button>
         </form>
 
         {!hasCouple && (
@@ -239,7 +241,7 @@ export function SeatingList({
               className="rounded-lg border-2 px-4 py-1.5 text-sm font-medium"
               style={{ borderColor: `var(--couple-stroke, ${COUPLE_TABLE.stroke})`, color: `var(--couple-text, ${COUPLE_TABLE.text})`, background: `var(--couple-fill, ${COUPLE_TABLE.fill})` }}
             >
-              <RingsIcon size={16} /> Стол молодожёнов
+              <RingsIcon size={16} /> {t("Стол молодожёнов", "Couple's table")}
             </button>
           </form>
         )}

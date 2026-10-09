@@ -8,11 +8,12 @@
 import { esc } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import type { InviteTheme } from "@/lib/invite-theme";
+import { gl } from "@/server/guest-html/guest-lang";
 
-const STATUS: Record<string, string> = {
-  PENDING: "ждёт проверки",
-  APPROVED: "показано в зале",
-  REJECTED: "не подошло",
+const STATUS: Record<string, () => string> = {
+  PENDING: () => gl("ждёт проверки", "awaiting review"),
+  APPROVED: () => gl("показано в зале", "shown at the venue"),
+  REJECTED: () => gl("не подошло", "not approved"),
 };
 
 export type WishView = { id: string; text: string; status: string };
@@ -34,32 +35,32 @@ export function wishPage(opts: {
   const list =
     opts.mine.length === 0
       ? ""
-      : `<section><h2>Ваши пожелания</h2>
+      : `<section><h2>${gl("Ваши пожелания", "Your wishes")}</h2>
 ${opts.mine
   .map(
     (wish) => `<p class="pre small" style="margin-bottom:.75rem">${esc(wish.text)}
-<span class="muted"> — ${esc(STATUS[wish.status] ?? wish.status)}</span></p>`,
+<span class="muted"> — ${esc(STATUS[wish.status]?.() ?? wish.status)}</span></p>`,
   )
   .join("")}</section>`;
 
   const form = opts.enabled
     ? `<form method="post" action="${esc(opts.action)}">
-  <label class="field"><span>Как подписать</span>
+  <label class="field"><span>${gl("Как подписать", "Sign as")}</span>
   <input name="authorName" required maxlength="80" value="${esc(opts.authorName)}"></label>
-  <label class="field"><span>Пожелание</span>
+  <label class="field"><span>${gl("Пожелание", "Your wish")}</span>
   <textarea name="text" required minlength="3" maxlength="500" rows="5"
-    placeholder="Несколько слов — их прочитают в зале"></textarea></label>
-  <button class="submit" type="submit">Отправить</button>
+    placeholder="${gl("Несколько слов — их прочитают в зале", "A few words to be read at the venue")}"></textarea></label>
+  <button class="submit" type="submit">${gl("Отправить", "Send")}</button>
 </form>`
-    : `<section><p class="center small muted">Приём пожеланий закрыт организатором.</p></section>`;
+    : `<section><p class="center small muted">${gl("Приём пожеланий закрыт организатором.", "The organizer has closed wishes.")}</p></section>`;
 
   return invitePage({
     theme: opts.theme,
-    title: "Пожелание молодожёнам",
+    title: gl("Пожелание молодожёнам", "Wishes for the couple"),
     noindex: true,
-    body: `${opts.saved ? `<p class="ok">Спасибо! Пожелание отправлено.</p>` : ""}
+    body: `${opts.saved ? `<p class="ok">${gl("Спасибо! Пожелание отправлено.", "Thank you! Your wish has been sent.")}</p>` : ""}
 <section style="padding-bottom:0">
-<h1 class="center" style="font-size:1.5rem">Пожелание молодожёнам</h1>
+<h1 class="center" style="font-size:1.5rem">${gl("Пожелание молодожёнам", "Wishes for the couple")}</h1>
 <p class="center small muted">${esc(opts.eventTitle)}</p>
 </section>
 ${opts.error ? `<p class="error">${esc(opts.error)}</p>` : ""}

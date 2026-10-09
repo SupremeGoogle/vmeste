@@ -17,6 +17,7 @@
  *    просто нести имя (`?name=`), а гость появится в списке, когда ответит.
  */
 import { useState, useSyncExternalStore, useTransition } from "react";
+import { useT } from "@/components/i18n-provider";
 
 const noop = () => () => {};
 
@@ -50,6 +51,7 @@ export function InviteShare({
   const [flash, setFlash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const t = useT();
 
   // Домен — только в браузере: на сервере его нет, и без этого разметка
   // сервера и клиента разошлись бы при гидратации.
@@ -70,7 +72,7 @@ export function InviteShare({
       const url = `${publicUrl}?name=${encodeURIComponent(clean)}`;
       setCreated((list) => [{ name: clean, url, listed: false }, ...list]);
       setName("");
-      void copy(url).then((ok) => ok && notify(`Ссылка для «${clean}» скопирована`));
+      void copy(url).then((ok) => ok && notify(t(`Ссылка для «${clean}» скопирована`, `Link for “${clean}” copied`)));
       return;
     }
     startTransition(async () => {
@@ -84,8 +86,8 @@ export function InviteShare({
       setName("");
       if (await copy(url)) {
         notify(result.existing
-          ? `«${result.name}» уже есть в списке — скопирована ссылка этого гостя`
-          : `«${clean}» в списке гостей, ссылка скопирована`);
+          ? t(`«${result.name}» уже есть в списке — скопирована ссылка этого гостя`, `“${result.name}” is already on the list — copied their link`)
+          : t(`«${clean}» в списке гостей, ссылка скопирована`, `“${clean}” added to the guest list, link copied`));
       }
     });
   }
@@ -94,48 +96,52 @@ export function InviteShare({
 
   return (
     <section className="rise rounded-2xl border border-stone-200 bg-card p-5 sm:p-6">
-      <p className="text-xs font-medium tracking-[0.18em] text-stone-500 uppercase">Рассылка</p>
-      <h2 className="mt-1 font-serif text-3xl text-stone-900">Разослать приглашение</h2>
+      <p className="text-xs font-medium tracking-[0.18em] text-stone-500 uppercase">{t("Рассылка", "Sharing")}</p>
+      <h2 className="mt-1 font-serif text-3xl text-stone-900">{t("Разослать приглашение", "Send the invitation")}</h2>
 
       <div className="mt-5 grid gap-6 lg:grid-cols-2">
         {/* Общая ссылка */}
         <div>
-          <h3 className="text-sm font-medium text-stone-900">Общая ссылка</h3>
+          <h3 className="text-sm font-medium text-stone-900">{t("Общая ссылка", "Shared link")}</h3>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
-            Для общего чата и всех, кого нет в списке. Гость напишет своё имя в анкете и сам
-            появится среди гостей с пометкой «добавился сам».
+            {t(
+              "Для общего чата и всех, кого нет в списке. Гость напишет своё имя в анкете и сам появится среди гостей с пометкой «добавился сам».",
+              "For group chats and anyone not on your list. Guests enter their name in the RSVP form and appear on your list marked “added themselves”.",
+            )}
           </p>
           {!published && (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Приглашение ещё не опубликовано — общая ссылка заработает после публикации.{" "}
-              <a href={editorHref} className="underline underline-offset-2">Открыть редактор</a>
+              {t("Приглашение ещё не опубликовано — общая ссылка заработает после публикации.", "The invitation isn’t published yet — the shared link will work once it is.")}{" "}
+              <a href={editorHref} className="underline underline-offset-2">{t("Открыть редактор", "Open editor")}</a>
             </p>
           )}
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
             <span className="min-w-0 flex-1 truncate font-mono text-sm text-stone-700">{publicUrl || publicPath}</span>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" className={button} onClick={() => void copy(publicUrl).then((ok) => ok && notify("Общая ссылка скопирована"))}>
-              Скопировать ссылку
+            <button type="button" className={button} onClick={() => void copy(publicUrl).then((ok) => ok && notify(t("Общая ссылка скопирована", "Shared link copied")))}>
+              {t("Скопировать ссылку", "Copy link")}
             </button>
-            <a href={publicPath} target="_blank" rel="noreferrer" className={button}>Открыть ↗</a>
+            <a href={publicPath} target="_blank" rel="noreferrer" className={button}>{t("Открыть ↗", "Open ↗")}</a>
           </div>
         </div>
 
         {/* Приглашение для человека */}
         <div>
-          <h3 className="text-sm font-medium text-stone-900">Приглашение для человека</h3>
+          <h3 className="text-sm font-medium text-stone-900">{t("Приглашение для человека", "Personal invitation")}</h3>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
-            Впишите имя — ссылка сразу скопируется. В анкете имя будет уже заполнено, но гость
-            сможет его поправить.
+            {t(
+              "Впишите имя — ссылка сразу скопируется. В анкете имя будет уже заполнено, но гость сможет его поправить.",
+              "Enter a name and the link is copied right away. The name will be pre-filled in the RSVP form, and the guest can correct it.",
+            )}
           </p>
           <form onSubmit={create} className="mt-3 flex flex-wrap gap-2">
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={120}
-              placeholder="Например: Иван и Мария Петровы"
-              aria-label="Имя гостя"
+              placeholder={t("Например: Иван и Мария Петровы", "For example: John & Mary Smith")}
+              aria-label={t("Имя гостя", "Guest name")}
               className="min-h-10 min-w-0 flex-1 rounded-lg border border-stone-300 bg-card px-3 text-sm"
             />
             <button
@@ -143,12 +149,12 @@ export function InviteShare({
               disabled={pending || !name.trim()}
               className="min-h-10 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white disabled:opacity-50"
             >
-              {pending ? "Создаём…" : "Создать и скопировать"}
+              {pending ? t("Создаём…", "Creating…") : t("Создать и скопировать", "Create & copy")}
             </button>
           </form>
           <label className="mt-2 flex items-start gap-2 text-sm text-stone-600">
             <input type="checkbox" checked={listed} onChange={(event) => setListed(event.target.checked)} className="mt-0.5 size-4 accent-stone-900" />
-            <span>Сразу добавить в список гостей — будет видно, открыл ли он ссылку и ответил ли</span>
+            <span>{t("Сразу добавить в список гостей — будет видно, открыл ли он ссылку и ответил ли", "Add to the guest list now — you’ll see whether they opened the link and RSVPed")}</span>
           </label>
           {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
 
@@ -158,10 +164,10 @@ export function InviteShare({
                 <li key={item.url} className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <span className="min-w-0 flex-1 truncate text-sm text-stone-900">
                     {item.name}
-                    <span className="ml-2 text-xs text-stone-400">{item.listed ? "в списке" : "добавится при ответе"}</span>
+                    <span className="ml-2 text-xs text-stone-400">{item.listed ? t("в списке", "on the list") : t("добавится при ответе", "added when they RSVP")}</span>
                   </span>
-                  <button type="button" className="text-sm text-stone-600 underline underline-offset-2" onClick={() => void copy(item.url).then((ok) => ok && notify("Ссылка скопирована"))}>
-                    Ссылка
+                  <button type="button" className="text-sm text-stone-600 underline underline-offset-2" onClick={() => void copy(item.url).then((ok) => ok && notify(t("Ссылка скопирована", "Link copied")))}>
+                    {t("Ссылка", "Link")}
                   </button>
                 </li>
               ))}

@@ -21,6 +21,7 @@ import { hashPassword } from "@/server/auth/password";
 import { createAccount } from "@/server/services/signup";
 import { sendEmail } from "@/server/email/send";
 import { alreadyRegistered, resetPassword, verifyCode } from "@/server/email/templates";
+import type { Lang } from "@/lib/i18n";
 
 const HOUR = 60 * 60 * 1000;
 export const CODE_TTL_MS = 15 * 60 * 1000;
@@ -48,6 +49,26 @@ export const AUTH_MESSAGES = {
   code_attempts: "Слишком много неверных попыток — запросите новый код.",
 } as const;
 export type AuthCode = keyof typeof AUTH_MESSAGES;
+
+/** Те же коды по-английски — для страниц входа на английском. */
+export const AUTH_MESSAGES_EN: Record<AuthCode, string> = {
+  email: "Please check your email address.",
+  password_short: `Your password must be at least ${PASSWORD_MIN} characters.`,
+  password_long: "That password is too long.",
+  password_weak: "This password is too common — it’s one of the first attackers try.",
+  password_mismatch: "The passwords don’t match.",
+  link: "This link has expired or was already used — please request a new one.",
+  rate: "Too many attempts — please wait a few minutes.",
+  code_wrong: "That code is incorrect — double-check the digits in the email.",
+  code_expired: "The code has expired — we’ll send you a new one.",
+  code_attempts: "Too many wrong attempts — please request a new code.",
+};
+
+/** Текст ошибки по коду на нужном языке. */
+export function authMessage(code: string, lang: Lang): string | null {
+  if (!(code in AUTH_MESSAGES)) return null;
+  return lang === "en" ? AUTH_MESSAGES_EN[code as AuthCode] : AUTH_MESSAGES[code as AuthCode];
+}
 
 export function emailProblem(email: string): AuthCode | null {
   if (email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return "email";
@@ -79,11 +100,11 @@ export async function issueToken(userId: string, email: string, purpose: Purpose
 }
 
 /** Имя в кабинете из адреса: anna.petrova@… → «Anna Petrova». Поменять можно в настройках. */
-export function nameFromEmail(email: string): string {
+export function nameFromEmail(email: string, lang: Lang = "ru"): string {
   const local = email.split("@")[0] ?? "";
   const words = local.split(/[._+-]+/).filter((word) => /[a-zа-яё]/i.test(word)).slice(0, 3);
   const name = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ").slice(0, 80);
-  return name.length >= 2 ? name : "Организатор";
+  return name.length >= 2 ? name : lang === "en" ? "Organizer" : "Организатор";
 }
 
 const codeHash = (id: string, code: string) => createHash("sha256").update(`${id}:${code}`).digest("hex");
@@ -159,9 +180,10 @@ export async function consumeToken(token: string, purpose: Purpose): Promise<{ i
 
 export type RegisterResult = { ok: true } | { ok: false; code: AuthCode };
 
-export async function registerWithEmail(input: { email: string; password: string }): Promise<RegisterResult> {
+export async function registerWithEmail(input: { email: string; password: string; lang?: Lang }): Promise<RegisterResult> {
+  const lang = input.lang ?? "ru";
   const email = normalizeEmail(input.email);
-  const name = nameFromEmail(email);
+  const name = nameFromEmail(email, lang);
   const problem = emailProblem(email) ?? passwordProblem(input.password);
   if (problem) return { ok: false, code: problem };
 
@@ -176,14 +198,14 @@ export async function registerWithEmail(input: { email: string; password: string
     // пароль не трогаем, хозяину — письмо «вы уже с нами» со ссылкой сброса.
     if (existing.emailVerified || existing.accounts.length) {
       const reset = await issueToken(existing.id, email, "RESET", RESET_TTL_MS);
-      await sendEmail(alreadyRegistered(email, `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")}/login`, link("/reset", reset)));
+      await sendEmail(alreadyRegistered(email, `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")}/login${lang === "en" ? "?lang=en" : ""}`, link("/reset", reset), lang));
       return { ok: true };
     }
     // Неподтверждённая регистрация — недействительна, её можно перезаписать:
     // войти ею всё равно нельзя, а хозяин почты подтвердит уже свою.
     await db.user.update({ where: { id: existing.id }, data: { name, passwordHash: await hashPassword(input.password) } });
     await db.session.deleteMany({ where: { userId: existing.id } });
-    await sendEmail(verifyCode(email, await issueCode(existing.id, email)));
+    await sendEmail(verifyCode(email, await issueCode(existing.id, email), lang));
     return { ok: true };
   }
 
@@ -195,26 +217,26 @@ export async function registerWithEmail(input: { email: string; password: string
     if ((error as { code?: string }).code === "P2002") return { ok: true };
     throw error;
   }
-  await sendEmail(verifyCode(email, await issueCode(userId, email)));
+  await sendEmail(verifyCode(email, await issueCode(userId, email), lang));
   return { ok: true };
 }
 
 /** Прислать код ещё раз — только неподтверждённым. */
-export async function resendVerification(rawEmail: string): Promise<void> {
+export async function resendVerification(rawEmail: string, lang: Lang = "ru"): Promise<void> {
   const email = normalizeEmail(rawEmail);
   const user = await db.user.findUnique({ where: { email }, select: { id: true, emailVerified: true, passwordHash: true, blockedAt: true } });
   if (!user || user.emailVerified || !user.passwordHash || user.blockedAt) return;
-  await sendEmail(verifyCode(email, await issueCode(user.id, email)));
+  await sendEmail(verifyCode(email, await issueCode(user.id, email), lang));
 }
 
 /** «Забыли пароль?» — письмо со ссылкой, если кабинет есть. Ответ сайта всегда одинаковый. */
-export async function requestPasswordReset(rawEmail: string): Promise<void> {
+export async function requestPasswordReset(rawEmail: string, lang: Lang = "ru"): Promise<void> {
   const email = normalizeEmail(rawEmail);
   if (emailProblem(email)) return;
   const user = await db.user.findUnique({ where: { email }, select: { id: true, blockedAt: true } });
   if (!user || user.blockedAt) return;
   const token = await issueToken(user.id, email, "RESET", RESET_TTL_MS);
-  await sendEmail(resetPassword(email, link("/reset", token)));
+  await sendEmail(resetPassword(email, link("/reset", token) + (lang === "en" ? "&lang=en" : ""), lang));
 }
 
 export type ResetResult = { ok: true; userId: string } | { ok: false; code: AuthCode };

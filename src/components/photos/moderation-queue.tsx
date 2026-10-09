@@ -23,6 +23,7 @@
  * ровно в тот момент, когда человек печатает имена гостей по-русски.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/components/i18n-provider";
 
 export type QueuePhoto = {
   id: string;
@@ -46,6 +47,7 @@ export function ModerationQueue({
   photos: QueuePhoto[];
   counts: PhotoCounts;
 }) {
+  const t = useT();
   const [queue, setQueue] = useState(photos);
   const [index, setIndex] = useState(0);
   const [history, setHistory] = useState<Decision[]>([]);
@@ -98,10 +100,10 @@ export function ModerationQueue({
         setHistory((prev) => prev.filter((item) => item.photoId !== photo.id));
         setDone((prev) => Math.max(0, prev - 1));
         setCounts((prev) => shift(prev, status, -1));
-        setError("Решение не сохранилось — проверьте связь");
+        setError(t("Решение не сохранилось — проверьте связь", "The decision wasn't saved — check your connection"));
       });
     },
-    [cursor, queue, send],
+    [cursor, queue, send, t],
   );
 
   const undo = useCallback(() => {
@@ -111,8 +113,8 @@ export function ModerationQueue({
     setDone((prev) => Math.max(0, prev - 1));
     void send(last.photoId, "PENDING")
       .then(() => window.location.reload())
-      .catch(() => setError("Отмена не сохранилась"));
-  }, [history, send]);
+      .catch(() => setError(t("Отмена не сохранилась", "The undo wasn't saved")));
+  }, [history, send, t]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -155,9 +157,9 @@ export function ModerationQueue({
   const tiles = (
     <div className="grid gap-3 sm:grid-cols-3">
       {[
-        { label: "На модерации", value: counts.pending },
-        { label: "Опубликовано", value: counts.approved },
-        { label: "Отклонено", value: counts.rejected },
+        { label: t("На модерации", "Awaiting review"), value: counts.pending },
+        { label: t("Опубликовано", "Published"), value: counts.approved },
+        { label: t("Отклонено", "Rejected"), value: counts.rejected },
       ].map((tile) => (
         <div key={tile.label} className="rounded-xl border border-stone-200 bg-card p-4">
           <p className="tile-value text-2xl">{tile.value}</p>
@@ -172,10 +174,10 @@ export function ModerationQueue({
       <div>
         {tiles}
         <div className="mt-6 rounded-2xl border border-stone-200 bg-card p-10 text-center">
-        <p className="text-lg">Очередь разобрана</p>
+        <p className="text-lg">{t("Очередь разобрана", "All caught up")}</p>
         <p className="mt-1 text-sm text-stone-500">
-          Разобрано за этот заход: {done}
-          {history.length > 0 ? " · Z — вернуть последнее в очередь" : ""}
+          {t("Разобрано за этот заход", "Reviewed this session")}: {done}
+          {history.length > 0 ? t(" · Z — вернуть последнее в очередь", " · Z — return the last one to the queue") : ""}
         </p>
           {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
         </div>
@@ -188,10 +190,10 @@ export function ModerationQueue({
       {tiles}
       <div className="mt-6 flex items-baseline justify-between text-sm text-stone-500">
         <span>
-          Осталось {queue.length} · разобрано {done}
+          {t(`Осталось ${queue.length} · разобрано ${done}`, `${queue.length} left · ${done} reviewed`)}
         </span>
         <span className="hidden sm:block">
-          пробел — одобрить · X — отклонить · Z — отменить · V — показать · ← → листать
+          {t("пробел — одобрить · X — отклонить · Z — отменить · V — показать · ← → листать", "space — approve · X — reject · Z — undo · V — reveal · ← → browse")}
         </span>
       </div>
 
@@ -207,12 +209,12 @@ export function ModerationQueue({
         />
         {current.nsfw && !revealed.has(current.id) ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center text-white">
-            <p className="text-sm">Возможно, откровенный кадр</p>
+            <p className="text-sm">{t("Возможно, откровенный кадр", "Possibly explicit photo")}</p>
             <button
               onClick={() => reveal(current.id)}
               className="rounded-lg border border-white/60 px-4 py-2 text-sm"
             >
-              Показать (V)
+              {t("Показать (V)", "Show (V)")}
             </button>
           </div>
         ) : null}
@@ -226,15 +228,15 @@ export function ModerationQueue({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-stone-600">
-          {current.guestName ?? "Гость не определён"}
+          {current.guestName ?? t("Гость не определён", "Unknown guest")}
           {current.nsfw ? (
             <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs text-red-900">
-              возможно 18+
+              {t("возможно 18+", "possibly 18+")}
             </span>
           ) : null}
           {!current.previewOk ? (
             <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
-              превью не получилось
+              {t("превью не получилось", "preview failed")}
             </span>
           ) : null}
         </p>
@@ -243,13 +245,13 @@ export function ModerationQueue({
             onClick={() => decide("REJECTED")}
             className="rounded-lg border border-stone-300 px-4 py-2 text-sm"
           >
-            Отклонить (X)
+            {t("Отклонить (X)", "Reject (X)")}
           </button>
           <button
             onClick={() => decide("APPROVED")}
             className="rounded-lg bg-stone-900 px-5 py-2 text-sm text-white"
           >
-            Одобрить (пробел)
+            {t("Одобрить (пробел)", "Approve (space)")}
           </button>
         </div>
       </div>

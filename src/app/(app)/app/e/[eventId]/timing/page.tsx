@@ -23,6 +23,8 @@ import { TimingTemplates } from "@/components/timing/timing-templates";
 import { applyTimingTemplate } from "@/server/services/timing-templates";
 import "@/components/timing/timing.css";
 import type { DayStep } from "@/generated/prisma/client";
+import { getUiLang } from "@/server/i18n";
+import { countWord, makeT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,9 @@ export default async function TimingPage({ params, searchParams }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const lang = await getUiLang();
+  const t = makeT(lang);
+  const eventLang = event.language === "en" ? "en" : "ru";
 
   const [steps, songs, now] = await Promise.all([
     listDaySteps(ctx),
@@ -66,19 +71,19 @@ export default async function TimingPage({ params, searchParams }: Props) {
       reminderMinutes: "0",
       action: "NONE",
       raffleId: "",
-    });
+    }, await getUiLang());
     await done(result.message);
   }
 
   async function run(data: FormData) {
     "use server";
-    const result = await runDayStep(await requireEventContext(eventId), String(data.get("stepId") ?? ""));
+    const result = await runDayStep(await requireEventContext(eventId), String(data.get("stepId") ?? ""), await getUiLang());
     await done(result.message);
   }
 
   async function applyTemplate(data: FormData) {
     "use server";
-    const result = await applyTimingTemplate(await requireEventContext(eventId), String(data.get("templateId") ?? ""));
+    const result = await applyTimingTemplate(await requireEventContext(eventId), String(data.get("templateId") ?? ""), await getUiLang());
     await done(result.message);
   }
 
@@ -88,34 +93,36 @@ export default async function TimingPage({ params, searchParams }: Props) {
     const result = await db.dayStep.deleteMany({
       where: { id: String(data.get("id")), eventId, orgId: ctx.orgId, status: { not: "RUNNING" } },
     });
-    await done(result.count ? "Этап удалён" : "Этап сейчас запускается — удалите его чуть позже");
+    const t = makeT(await getUiLang());
+    await done(result.count ? t("Этап удалён", "Step deleted") : t("Этап сейчас запускается — удалите его чуть позже", "This step is running right now — delete it a bit later"));
   }
 
   async function link(data: FormData) {
     "use server";
     const revoke = data.get("revoke") === "1";
     await changeTeamLink(await requireEventContext(eventId), revoke);
-    await done(revoke ? "Старая ссылка команды больше не работает" : "Ссылка для команды готова");
+    const t = makeT(await getUiLang());
+    await done(revoke ? t("Старая ссылка команды больше не работает", "The old team link no longer works") : t("Ссылка для команды готова", "The team link is ready"));
   }
 
   const fields = (step?: DayStep) => (
     <div className="grid gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={step?.id ?? ""} />
       <label className="block text-sm text-stone-600 sm:col-span-2">
-        Что происходит
-        <input name="title" required maxLength={160} defaultValue={step?.title} placeholder="Первый танец" className={INPUT} />
+        {t("Что происходит", "What's happening")}
+        <input name="title" required maxLength={160} defaultValue={step?.title} placeholder={t("Первый танец", "First dance")} className={INPUT} />
       </label>
       <label className="block text-sm text-stone-600">
-        Когда
+        {t("Когда", "When")}
         <input type="datetime-local" name="localTime" required defaultValue={localDateTime(step?.startsAt ?? event.eventDate, event.timezone)} className={INPUT} />
       </label>
       <label className="block text-sm text-stone-600">
-        Кто отвечает
-        <input name="responsible" maxLength={120} defaultValue={step?.responsible} placeholder="Ведущий" className={INPUT} />
+        {t("Кто отвечает", "Who's in charge")}
+        <input name="responsible" maxLength={120} defaultValue={step?.responsible} placeholder={t("Ведущий", "MC")} className={INPUT} />
       </label>
       <label className="block text-sm text-stone-600 sm:col-span-2">
-        Заметки
-        <textarea name="notes" rows={2} maxLength={2000} defaultValue={step?.notes} placeholder="Трек, реквизит, кого позвать" className={INPUT} />
+        {t("Заметки", "Notes")}
+        <textarea name="notes" rows={2} maxLength={2000} defaultValue={step?.notes} placeholder={t("Трек, реквизит, кого позвать", "Song, props, who to call up")} className={INPUT} />
       </label>
     </div>
   );
@@ -127,34 +134,34 @@ export default async function TimingPage({ params, searchParams }: Props) {
       ) : null}
 
       <div className="timing-heading flex flex-wrap items-baseline justify-between gap-2">
-        <div><h2>План вашего дня</h2><p>От встречи гостей до последнего танца — всё в своём ритме.</p></div>
+        <div><h2>{t("План вашего дня", "Your day plan")}</h2><p>{t("От встречи гостей до последнего танца — всё в своём ритме.", "From welcoming guests to the last dance — all at your own pace.")}</p></div>
         {steps.length > 0 ? (
-          <span className="text-sm text-stone-500">выполнено {steps.filter((step) => step.status === "DONE").length} из {steps.length}</span>
+          <span className="text-sm text-stone-500">{t(`выполнено ${steps.filter((step) => step.status === "DONE").length} из ${steps.length}`, `${steps.filter((step) => step.status === "DONE").length} of ${steps.length} done`)}</span>
         ) : null}
       </div>
 
-      <TimingTemplates apply={applyTemplate} hasSteps={steps.length > 0} />
+      <TimingTemplates apply={applyTemplate} hasSteps={steps.length > 0} eventLang={eventLang} />
 
-      <DayPlanList steps={steps} timezone={event.timezone} now={now} run={run}>
+      <DayPlanList steps={steps} timezone={event.timezone} now={now} run={run} lang={lang}>
         {(step) => (
           <details className="mt-3 border-t border-stone-100 pt-3 text-sm">
-            <summary className="cursor-pointer text-stone-500">Изменить</summary>
+            <summary className="cursor-pointer text-stone-500">{t("Изменить", "Edit")}</summary>
             {step.status === "PENDING" ? (
               <form action={save} className="mt-3 space-y-3">
                 {fields(step)}
-                <SubmitButton className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50">Сохранить</SubmitButton>
+                <SubmitButton className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50">{t("Сохранить", "Save")}</SubmitButton>
               </form>
             ) : (
-              <p className="mt-2 text-stone-500">Этап уже выполнен — изменить его нельзя, только удалить.</p>
+              <p className="mt-2 text-stone-500">{t("Этап уже выполнен — изменить его нельзя, только удалить.", "This step is already done — it can't be changed, only deleted.")}</p>
             )}
             <form action={remove} className="mt-3">
               <input type="hidden" name="id" value={step.id} />
               <ConfirmButton
                 disabled={step.status === "RUNNING"}
-                confirmText={`Удалить «${step.title}» из плана?`}
+                confirmText={t(`Удалить «${step.title}» из плана?`, `Delete “${step.title}” from the plan?`)}
                 className="text-red-700 underline underline-offset-2"
               >
-                Удалить этап
+                {t("Удалить этап", "Delete step")}
               </ConfirmButton>
             </form>
           </details>
@@ -162,35 +169,38 @@ export default async function TimingPage({ params, searchParams }: Props) {
       </DayPlanList>
 
       <details className="timing-add-step">
-      <summary>＋ Добавить свой этап</summary>
+      <summary>{t("＋ Добавить свой этап", "＋ Add your own step")}</summary>
       <form action={save} className="space-y-3">
         {fields()}
-        <SubmitButton className="rounded-lg border border-stone-300 px-4 py-2 text-sm disabled:opacity-50" pendingText="Добавляем…">
-          Добавить этап
+        <SubmitButton className="rounded-lg border border-stone-300 px-4 py-2 text-sm disabled:opacity-50" pendingText={t("Добавляем…", "Adding…")}>
+          {t("Добавить этап", "Add step")}
         </SubmitButton>
       </form>
       </details>
 
       <section className="mt-8 rounded-xl border border-stone-200 bg-card p-5">
-        <h2 className="text-lg">Для ведущего и диджея</h2>
+        <h2 className="text-lg">{t("Для ведущего и диджея", "For the MC and DJ")}</h2>
         <p className="mt-1 text-sm text-stone-600">
-          По этой ссылке видно только план дня и песни гостей. Отмечать этапы по ней можно, менять что-то ещё — нельзя.
+          {t(
+            "По этой ссылке видно только план дня и песни гостей. Отмечать этапы по ней можно, менять что-то ещё — нельзя.",
+            "This link shows only the day plan and guests' song requests. Steps can be marked done there, but nothing else can be changed.",
+          )}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {teamPath ? (
             <>
               <CopyFormLink path={teamPath} />
-              <a href={teamPath} target="_blank" rel="noreferrer" className="rounded-lg border border-stone-300 px-4 py-2 text-sm">Открыть ↗</a>
+              <a href={teamPath} target="_blank" rel="noreferrer" className="rounded-lg border border-stone-300 px-4 py-2 text-sm">{t("Открыть ↗", "Open ↗")}</a>
               <form action={link}>
                 <input type="hidden" name="revoke" value="1" />
-                <ConfirmButton confirmText="Отключить ссылку? Тот, у кого она есть, больше не откроет план." className="px-2 py-2 text-sm text-red-700 underline underline-offset-2">
-                  Отключить ссылку
+                <ConfirmButton confirmText={t("Отключить ссылку? Тот, у кого она есть, больше не откроет план.", "Turn off the link? Anyone who has it won't be able to open the plan anymore.")} className="px-2 py-2 text-sm text-red-700 underline underline-offset-2">
+                  {t("Отключить ссылку", "Turn off link")}
                 </ConfirmButton>
               </form>
             </>
           ) : (
             <form action={link}>
-              <SubmitButton className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50">Создать ссылку</SubmitButton>
+              <SubmitButton className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50">{t("Создать ссылку", "Create link")}</SubmitButton>
             </form>
           )}
         </div>
@@ -198,11 +208,14 @@ export default async function TimingPage({ params, searchParams }: Props) {
         <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-4 text-sm">
           <span className="text-stone-600">
             {songs.length > 0
-              ? `Гости предложили ${songs.length} ${plural(songs.length, "песню", "песни", "песен")}`
-              : "Песен пока нет — добавьте вопрос о песне в анкету или создайте музыкальную форму."}
+              ? t(
+                `Гости предложили ${songs.length} ${plural(songs.length, "песню", "песни", "песен")}`,
+                `Guests suggested ${countWord("en", songs.length, ["песня", "песни", "песен"], ["song", "songs"])}`,
+              )
+              : t("Песен пока нет — добавьте вопрос о песне в анкету или создайте музыкальную форму.", "No songs yet — add a song question to the RSVP form or create a music form.")}
           </span>
           {songs.length > 0 ? (
-            <a href={`/api/app/events/${eventId}/playlist`} className="text-stone-700 underline underline-offset-2">Скачать список для диджея</a>
+            <a href={`/api/app/events/${eventId}/playlist`} className="text-stone-700 underline underline-offset-2">{t("Скачать список для диджея", "Download the list for the DJ")}</a>
           ) : null}
         </div>
       </section>

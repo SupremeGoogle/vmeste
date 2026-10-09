@@ -18,6 +18,7 @@ import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
 import { editAttrs } from "@/server/guest-html/inline-editor";
+import { guestText, templateLanguage } from "@/server/guest-html/template-labels";
 
 export type WishlistGift = {
   id: string;
@@ -137,41 +138,42 @@ function giftCard(gift: WishlistGift, content: BlockContentMap["WISHLIST"], data
   const anyMine = data.gifts.some((item) => item.mine);
   let action = "";
   if (gift.taken) {
-    action = `<span class="vm-wl-state">Уже выбрали</span>`;
+    action = `<span class="vm-wl-state">${guestText("Уже выбрали", "Already reserved")}</span>`;
   } else if (gift.reservable === false && !gift.mine) {
-    action = `<span class="vm-wl-state">Можно дарить всем</span>`;
+    action = `<span class="vm-wl-state">${guestText("Можно дарить всем", "Everyone is welcome to gift this")}</span>`;
   } else if (data.reserveAction) {
     action = gift.mine
-      ? `<form method="post" action="${esc(data.reserveAction)}"><input type="hidden" name="giftId" value="${esc(gift.id)}"><input type="hidden" name="release" value="1"><button class="vm-wl-btn is-mine" type="submit">Это мой подарок · снять</button></form>`
+      ? `<form method="post" action="${esc(data.reserveAction)}"><input type="hidden" name="giftId" value="${esc(gift.id)}"><input type="hidden" name="release" value="1"><button class="vm-wl-btn is-mine" type="submit">${guestText("Это мой подарок · снять","My gift · release reservation")}</button></form>`
       : anyMine
-        ? `<span class="vm-wl-state">Свободен</span>`
-        : `<form method="post" action="${esc(data.reserveAction)}"><input type="hidden" name="giftId" value="${esc(gift.id)}"><button class="vm-wl-btn" type="submit">${esc(content.buttonLabel || "Я подарю это")}</button></form>`;
+        ? `<span class="vm-wl-state">${guestText("Свободен", "Available")}</span>`
+        : `<form method="post" action="${esc(data.reserveAction)}"><input type="hidden" name="giftId" value="${esc(gift.id)}"><button class="vm-wl-btn" type="submit">${esc(content.buttonLabel || guestText("Я подарю это", "I will gift this"))}</button></form>`;
   } else {
-    action = `<span class="vm-wl-state">Свободен</span>`;
+    action = `<span class="vm-wl-state">${guestText("Свободен", "Available")}</span>`;
   }
   return `<li class="vm-wl-card${gift.taken ? " is-taken" : ""}">${picture}<div class="vm-wl-body"><p class="vm-wl-title">${esc(gift.title)}</p>${
     gift.description ? `<p class="vm-wl-desc">${esc(gift.description)}</p>` : ""
-  }${gift.url ? `<a class="vm-wl-link" href="${esc(gift.url)}" target="_blank" rel="noopener noreferrer">Где посмотреть ↗</a>` : ""}${action}</div></li>`;
+  }${gift.url ? `<a class="vm-wl-link" href="${esc(gift.url)}" target="_blank" rel="noopener noreferrer">${guestText("Где посмотреть ↗","View gift ↗")}</a>` : ""}${action}</div></li>`;
 }
 
 /** Сетка подарков и конверт — то, что встаёт под шапку раздела. */
 export function wishlistBody(content: BlockContentMap["WISHLIST"], data: WishlistData, editable: boolean): string {
-  const gifts = data.gifts.length ? data.gifts : editable || data.sample ? SAMPLE_WISHLIST.gifts : [];
+  const samples = templateLanguage() === "en" ? SAMPLE_WISHLIST.gifts.map((gift, i) => ({ ...gift, title: ["Coffee machine", "Travel gift card", "Dinnerware set"][i], description: ["For our mornings together", "Dreaming of the sea after the wedding", "For our first family dinners"][i] })) : SAMPLE_WISHLIST.gifts;
+  const gifts = data.gifts.length ? data.gifts : editable || data.sample ? samples : [];
   const grid = gifts.length
     ? `<ul class="vm-wl-grid">${gifts.map((gift) => giftCard(gift, content, data)).join("")}</ul>`
     : "";
   const envelope = data.envelope
     ? `<div class="vm-wl-env"><h3>${esc(content.envelopeTitle || data.envelope.label)}</h3>${
         data.envelope.details ? `<p>${esc(data.envelope.details)}</p>` : ""
-      }${data.envelope.url ? `<p style="margin-top:.75rem"><a class="vm-wl-btn" style="width:auto" href="${esc(data.envelope.url)}" target="_blank" rel="noopener noreferrer">Перевести</a></p>` : ""}${
-        data.envelope.qr ? `<img src="${data.envelope.qr}" alt="QR-код для перевода">` : ""
+      }${data.envelope.url ? `<p style="margin-top:.75rem"><a class="vm-wl-btn" style="width:auto" href="${esc(data.envelope.url)}" target="_blank" rel="noopener noreferrer">${guestText("Перевести","Send a contribution")}</a></p>` : ""}${
+        data.envelope.qr ? `<img src="${data.envelope.qr}" alt="${guestText("QR-код для перевода","Contribution QR code")}">` : ""
       }</div>`
     : "";
   const note = !data.reserveAction && !data.sample && !editable && data.gifts.some((gift) => !gift.taken && gift.reservable !== false)
-    ? `<p class="vm-wl-note">${data.joinHref ? `Выбрать подарок можно после ответа на приглашение — <a href="${esc(data.joinHref)}" style="color:inherit">ответить</a>.` : "Выбрать подарок можно по именной ссылке из приглашения."}</p>`
+    ? `<p class="vm-wl-note">${data.joinHref ? `${guestText("Выбрать подарок можно после ответа на приглашение —", "Choose a gift after replying to the invitation —")} <a href="${esc(data.joinHref)}" style="color:inherit">${guestText("ответить", "reply")}</a>.` : guestText("Выбрать подарок можно по именной ссылке из приглашения.", "Choose a gift through your personal invitation link.")}</p>`
     : "";
   const sampleNote = editable && !data.gifts.length
-    ? `<p class="vm-wl-note">Это примеры. Добавьте свои подарки — гости увидят их здесь.</p>`
+    ? `<p class="vm-wl-note">${guestText("Это примеры. Добавьте свои подарки — гости увидят их здесь.","These are examples. Add your own gifts for your guests.")}</p>`
     : "";
   const manage = editable && data.manageHref
     ? `<a class="vm-wl-manage" data-editor-ui data-editor-nav href="${esc(data.manageHref)}" target="_top">Изменить подарки и реквизиты</a>`
@@ -189,7 +191,7 @@ export function wishlistBody(content: BlockContentMap["WISHLIST"], data: Wishlis
  */
 function wishlistTeaser(blockId: string, content: BlockContentMap["WISHLIST"], data: WishlistData, editable: boolean): string {
   if (!editable && !data.sample && data.gifts.length === 0 && !data.envelope) return "";
-  const label = esc(content.openLabel || "Открыть виш-лист");
+  const label = esc(content.openLabel || guestText("Открыть виш-лист", "Open gift list"));
   const button = editable
     ? `<span class="vm-wl-btn"${editAttrs(blockId, true).text("openLabel")}>${label}</span>`
     : data.pageHref
@@ -200,7 +202,7 @@ function wishlistTeaser(blockId: string, content: BlockContentMap["WISHLIST"], d
   const bookable = data.gifts.filter((gift) => gift.reservable !== false || gift.taken || gift.mine);
   const free = bookable.filter((gift) => !gift.taken).length;
   const count = data.gifts.length
-    ? `<p class="vm-wl-count">Подарков в списке: ${data.gifts.length}${free < bookable.length ? ` · свободно ${free}` : ""}</p>`
+    ? `<p class="vm-wl-count">${guestText("Подарков в списке", "Gifts on our list")}: ${data.gifts.length}${free < bookable.length ? ` · ${guestText("свободно", "available")} ${free}` : ""}</p>`
     : "";
   const manage = editable && data.manageHref
     ? `<a class="vm-wl-manage" data-editor-ui data-editor-nav href="${esc(data.manageHref)}" target="_top">Изменить подарки и реквизиты</a>`

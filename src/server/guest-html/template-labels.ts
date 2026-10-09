@@ -15,21 +15,26 @@
  */
 import { esc } from "@/server/guest-html/layout";
 import type { InviteTheme } from "@/lib/invite-theme";
+import { guestLang } from "@/server/guest-html/guest-lang";
 
 /** «Раздел»-владелец надписей шаблона — так их узнаёт сохранение. */
 export const TEMPLATE_LABEL_OWNER = "__template";
 
-let current: { labels: Record<string, string>; editable: boolean } = { labels: {}, editable: false };
+// Язык — шаблона (`theme.language`), а вне рендера шаблона — мероприятия (`withGuestLang`).
+let current: { labels: Record<string, string>; editable: boolean; language?: "ru" | "en" } = { labels: {}, editable: false };
 
 export function withTemplateLabels<T>(theme: InviteTheme, editable: boolean, render: () => T): T {
   const previous = current;
-  current = { labels: theme.labels ?? {}, editable };
+  current = { labels: theme.labels ?? {}, editable, language: theme.language ?? guestLang() };
   try {
     return render();
   } finally {
     current = previous;
   }
 }
+
+export const templateLanguage = (): "ru" | "en" => current.language ?? guestLang();
+export const guestText = (ru: string, en: string) => templateLanguage() === "en" ? en : ru;
 
 /** Текст надписи без разметки — для мест, где нужен только текст. */
 export function labelText(key: string, fallback: string): string {

@@ -86,6 +86,10 @@ describe("удалённые шаблоны", () => {
 describe("шаблоны", () => {
   it("все шаблоны доступны, и идентификаторы не повторяются", () => {
     expect(INVITE_TEMPLATES.map((template) => template.id)).toEqual([
+      "gravure",
+      "disco",
+      "coral",
+      "chrome",
       "gazette",
       "protokol",
       "postcard",
@@ -276,7 +280,23 @@ describe("обратный отсчёт", () => {
       // Полсуток сверху, чтобы округление вниз не съедало день на границе.
       const date = new Date(Date.now() + days * 86_400_000 + 43_200_000);
       const html = renderBlocks([block], null, null, date);
-      expect(html, `${days} → ${word}`).toContain(`>${days}</b><span data-word="days">${word}<`);
+      // Слово обёрнуто в надпись шаблона: организатор может её переписать.
+      expect(html, `${days} → ${word}`).toMatch(new RegExp(`>${days}</b><span data-word="days" data-label=""><span[^>]*>${word}<`));
+    }
+  });
+
+  it("на английской свадьбе — английские единицы", async () => {
+    const { renderBlocks } = await import("@/server/guest-html/invite-html");
+    const { withGuestLang } = await import("@/server/guest-html/guest-lang");
+    const block = {
+      id: "b1", type: "COUNTDOWN" as const, order: 0, visible: true, degraded: false,
+      content: { v: 1, title: "Until the wedding", doneText: "Today!" },
+    };
+    for (const [days, word] of [[1, "day"], [5, "days"], [21, "days"]] as const) {
+      const date = new Date(Date.now() + days * 86_400_000 + 43_200_000);
+      const html = withGuestLang("en", () => renderBlocks([block], null, null, date));
+      expect(html, `${days} → ${word}`).toMatch(new RegExp(`>${days}</b><span data-word="days" data-label=""><span[^>]*>${word}<`));
+      expect(html).toContain('data-locale="en"');
     }
   });
 

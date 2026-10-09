@@ -18,12 +18,14 @@ import { getInviteBlocks, getInviteTheme } from "@/server/repositories/invites";
 import { formatDeadline, formatEventDateTime } from "@/lib/format-datetime";
 import { esc, html } from "@/server/guest-html/layout";
 import { coupleNames, invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
+import { gl, themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
+import { parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-const ANSWER: Record<string, string> = {
-  ACCEPTED: "придём",
-  DECLINED: "не сможем быть",
+const ANSWER: Record<string, () => string> = {
+  ACCEPTED: () => gl("придём", "attending"),
+  DECLINED: () => gl("не сможем быть", "not attending"),
 };
 
 export async function GET(
@@ -42,12 +44,14 @@ export async function GET(
   // Отметка «ссылка дошла» не должна задерживать отрисовку.
   void markLinkOpened(guest.eventId, guest.id).catch(() => {});
 
-  const [blocks, theme] = await Promise.all([
+  const lang = parseLang(guest.event.language) ?? "ru";
+  const [blocks, storedTheme] = await Promise.all([
     getInviteBlocks(guest.eventId),
     getInviteTheme(guest.eventId),
   ]);
+  const theme = themeInLang(storedTheme, lang);
   const rsvpHref = `/i/${eventSlug}/${token}/rsvp`;
-  const answered = guest.rsvpStatus === "PENDING" ? null : ANSWER[guest.rsvpStatus];
+  const answered = guest.rsvpStatus === "PENDING" ? null : withGuestLang(lang, () => ANSWER[guest.rsvpStatus]?.() ?? null);
   const url = new URL(request.url);
   const saved = url.searchParams.get("ok");
   const deadline = guest.event.rsvpDeadline;
@@ -79,37 +83,41 @@ export async function GET(
       saved: Boolean(saved),
       closed: Boolean(deadline && Date.now() > deadline.getTime()),
       flash: readFlash(url.searchParams, guest.event.guestLinkSecret),
+      language: lang,
     });
+    return html(withGuestLang(lang, () => {
     const links = [
       ...featureLinks,
-      guest.event.photosEnabled ? `<a href="/i/${eventSlug}/${token}/photos">Фотографии со свадьбы</a>` : "",
-      guest.event.wishesEnabled ? `<a href="/i/${eventSlug}/${token}/wish">Написать пожелание</a>` : "",
+      guest.event.photosEnabled ? `<a href="/i/${eventSlug}/${token}/photos">${gl("Фотографии со свадьбы", "Wedding photos")}</a>` : "",
+      guest.event.wishesEnabled ? `<a href="/i/${eventSlug}/${token}/wish">${gl("Написать пожелание", "Write a wish")}</a>` : "",
     ].filter(Boolean);
-    return html(invitePage({
+    return invitePage({
       title: guest.event.title,
       theme,
       noindex: true,
       extraCss: RSVP_FIELDS_CSS,
       body: `${renderBlocks(blocks, rsvpHref, answered, guest.event.eventDate, theme, guest.event.timezone, { rsvp, wishlist })}${withInlineRsvp(rsvp, false, () => fallbackRsvpSection(blocks))}${
         links.length > 0 ? `<div class="links">${links.join("")}</div>` : ""
-      }<p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone)}</p>`,
+      }<p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone, lang)}</p>`,
       script: inviteScript(blocks, theme, coupleNames(blocks, guest.event.title)),
+    });
     }), { headers: { "cache-control": "private, no-store" } });
   }
 
   // Гость возвращается на верх длинной страницы, а его ответ показан внизу,
   // в блоке формы. Без этой полосы отправка выглядит как «ничего не произошло».
+  return html(withGuestLang(lang, () => {
   const banner = saved
-    ? `<p class="ok">Спасибо, ответ записан${answered ? `: ${esc(answered)}` : ""}</p>`
+    ? `<p class="ok">${gl("Спасибо, ответ записан", "Thank you, your reply is saved")}${answered ? `: ${esc(answered)}` : ""}</p>`
     : "";
 
   const extras = [
     ...featureLinks,
     guest.event.photosEnabled
-      ? `<a href="/i/${eventSlug}/${token}/photos">Фотографии со свадьбы</a>`
+      ? `<a href="/i/${eventSlug}/${token}/photos">${gl("Фотографии со свадьбы", "Wedding photos")}</a>`
       : "",
     guest.event.wishesEnabled
-      ? `<a href="/i/${eventSlug}/${token}/wish">Написать пожелание</a>`
+      ? `<a href="/i/${eventSlug}/${token}/wish">${gl("Написать пожелание", "Write a wish")}</a>`
       : "",
   ].filter(Boolean);
 
@@ -120,20 +128,21 @@ ${
   blocks.some((block) => block.type === "RSVP_FORM")
     ? ""
     : `<section class="center"><a class="cta" href="${rsvpHref}">${
-        answered ? "Изменить ответ" : "Ответить на приглашение"
+        answered ? gl("Изменить ответ", "Change reply") : gl("Ответить на приглашение", "RSVP")
       }</a></section>`
 }
 ${extras.length > 0 ? `<div class="links">${extras.join("")}</div>` : ""}
-<p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone)}
-${deadline ? `<br>Ответ ждём до ${formatDeadline(deadline, guest.event.timezone)}` : ""}</p>`;
+<p class="foot">${formatEventDateTime(guest.event.eventDate, guest.event.timezone, lang)}
+${deadline ? `<br>${gl(`Ответ ждём до ${formatDeadline(deadline, guest.event.timezone)}`, `Please reply ${formatDeadline(deadline, guest.event.timezone, "en")}`)}` : ""}</p>`;
 
-  return html(invitePage({
+  return invitePage({
       title: guest.event.title,
       theme,
       body,
       noindex: true,
       script: inviteScript(blocks, theme, coupleNames(blocks, guest.event.title)),
-    }), {
+    });
+  }), {
     headers: { "cache-control": "private, no-store" },
   });
 }

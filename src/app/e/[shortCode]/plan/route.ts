@@ -14,6 +14,7 @@ import { findEventByShortCode } from "@/server/repositories/events";
 import { getPublicPlan } from "@/server/repositories/seating";
 import { esc, html, page } from "@/server/guest-html/layout";
 import { floorPlanSvg, PLAN_SCROLL_SCRIPT } from "@/server/guest-html/floor-plan-svg";
+import { gl, withGuestLang } from "@/server/guest-html/guest-lang";
 
 export const dynamic = "force-dynamic";
 
@@ -36,30 +37,28 @@ export async function GET(
 
   if (tables.length === 0) {
     return html(
-      page({
-        title: "План зала",
-        body: `<p class="eyebrow">${esc(event.title)}</p><h1>План зала</h1>
-<p class="sub">Рассадка ещё готовится. Подойдите к координатору.</p>
-<p class="hint"><a href="/e/${shortCode}">Найти свой стол по имени</a></p>`,
-      }),
+      withGuestLang(event.language, () => page({
+        title: gl("План зала", "Floor plan"),
+        body: `<p class="eyebrow">${esc(event.title)}</p><h1>${gl("План зала", "Floor plan")}</h1>
+<p class="sub">${gl("Рассадка ещё готовится. Подойдите к координатору.", "The seating chart isn’t ready yet. Please ask the coordinator.")}</p>
+<p class="hint"><a href="/e/${shortCode}">${gl("Найти свой стол по имени", "Find your table by name")}</a></p>`,
+      })),
       { headers: { "cache-control": "public, max-age=60, stale-while-revalidate=86400" } },
     );
   }
 
-  const svg = floorPlanSvg(tables, highlight, hall);
-
   const highlighted = highlight ? tables.find((table) => table.id === highlight) : null;
 
   return html(
-    page({
-      title: `План зала — ${event.title}`,
+    withGuestLang(event.language, () => page({
+      title: `${gl("План зала", "Floor plan")} — ${event.title}`,
       body: `<p class="eyebrow">${esc(event.title)}</p>
-<h1>План зала</h1>
-${highlighted ? `<p class="sub">Ваш стол — <b>${esc(highlighted.label)}</b>, он закрашен на плане.</p>` : `<p class="sub">Найдите свой стол по названию.</p>`}
-${svg}
-<p class="hint"><a href="/e/${shortCode}">Искать себя по имени</a></p>`,
+<h1>${gl("План зала", "Floor plan")}</h1>
+${highlighted ? `<p class="sub">${gl("Ваш стол", "Your table")} — <b>${esc(highlighted.label)}</b>${gl(", он закрашен на плане.", ", highlighted on the plan.")}</p>` : `<p class="sub">${gl("Найдите свой стол по названию.", "Find your table by its name.")}</p>`}
+${floorPlanSvg(tables, highlight, hall)}
+<p class="hint"><a href="/e/${shortCode}">${gl("Искать себя по имени", "Search by name")}</a></p>`,
       script: PLAN_SCROLL_SCRIPT,
-    }),
+    })),
     {
       headers: {
         // Тот же расчёт, что и на входе: пусть живёт в кеше браузера и CDN,

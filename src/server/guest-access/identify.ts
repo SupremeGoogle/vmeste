@@ -13,6 +13,7 @@
 import { findGuestByLinkToken } from "@/server/repositories/guests";
 import { readGuestSession, setGuestSession } from "@/server/guest-access/session";
 import { db } from "@/server/db";
+import { parseLang, type Lang } from "@/lib/i18n";
 
 export type GuestIdentity = {
   orgId: string;
@@ -22,6 +23,8 @@ export type GuestIdentity = {
   eventTitle: string;
   photosEnabled: boolean;
   wishesEnabled: boolean;
+  /** Язык мероприятия — всего, что видит гость. Нет — русский. */
+  language?: Lang;
 };
 
 /** Сколько живёт гостевая сессия: месяц после свадьбы. */
@@ -38,7 +41,7 @@ export async function identifyByToken(token: string): Promise<GuestIdentity | nu
 
   const event = await db.event.findFirst({
     where: { id: guest.eventId, orgId: guest.orgId },
-    select: { photosEnabled: true, wishesEnabled: true },
+    select: { photosEnabled: true, wishesEnabled: true, language: true },
   });
 
   await setGuestSession(
@@ -55,6 +58,7 @@ export async function identifyByToken(token: string): Promise<GuestIdentity | nu
     eventTitle: guest.event.title,
     photosEnabled: event?.photosEnabled ?? false,
     wishesEnabled: event?.wishesEnabled ?? false,
+    language: parseLang(event?.language) ?? "ru",
   };
 }
 
@@ -70,7 +74,7 @@ export async function identifyBySlugSession(slug: string): Promise<GuestIdentity
     orderBy: { eventDate: "asc" },
     select: {
       id: true, orgId: true, title: true, guestLinkSecret: true,
-      photosEnabled: true, wishesEnabled: true,
+      photosEnabled: true, wishesEnabled: true, language: true,
     },
   });
   if (!event) return null;
@@ -92,6 +96,7 @@ export async function identifyBySlugSession(slug: string): Promise<GuestIdentity
     eventTitle: event.title,
     photosEnabled: event.photosEnabled,
     wishesEnabled: event.wishesEnabled,
+    language: parseLang(event.language) ?? "ru",
   };
 }
 
@@ -101,7 +106,7 @@ export async function identifyByEventSession(eventId: string): Promise<GuestIden
     where: { id: eventId, status: { not: "ARCHIVED" } },
     select: {
       id: true, orgId: true, title: true, guestLinkSecret: true,
-      photosEnabled: true, wishesEnabled: true,
+      photosEnabled: true, wishesEnabled: true, language: true,
     },
   });
   if (!event) return null;
@@ -123,6 +128,7 @@ export async function identifyByEventSession(eventId: string): Promise<GuestIden
     eventTitle: event.title,
     photosEnabled: event.photosEnabled,
     wishesEnabled: event.wishesEnabled,
+    language: parseLang(event.language) ?? "ru",
   };
 }
 

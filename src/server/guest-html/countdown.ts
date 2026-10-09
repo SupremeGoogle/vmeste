@@ -14,6 +14,7 @@
 import type { BlockContentMap } from "@/lib/invite-blocks";
 import { esc } from "@/server/guest-html/layout";
 import type { EditAttrs } from "@/server/guest-html/inline-editor";
+import { L, labelText, templateLanguage } from "@/server/guest-html/template-labels";
 
 const UNITS = [
   { unit: "days", words: ["день", "дня", "дней"] },
@@ -37,7 +38,7 @@ export const COUNTDOWN_CSS = `
 .vm-cd-cell::after{content:"";position:absolute;left:18%;right:18%;top:50%;height:1px;background:color-mix(in srgb,currentColor 10%,transparent)}
 .vm-cd-cell b{position:relative;z-index:1;display:block;font-family:var(--serif,inherit);font-size:clamp(1.75rem,8.4vw,2.7rem);font-weight:400;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;transition:opacity .25s ease,transform .25s ease}
 .vm-cd-cell b.vm-cd-tick{opacity:.35;transform:translateY(-.18em)}
-.vm-cd-cell span{position:relative;z-index:1;display:block;margin-top:.5rem;font-size:clamp(9.5px,2.6vw,.66rem);letter-spacing:clamp(.04em,.5vw,.16em);text-transform:uppercase;opacity:.68}
+.vm-cd-cell>span{position:relative;z-index:1;display:block;margin-top:.5rem;font-size:clamp(9.5px,2.6vw,.66rem);letter-spacing:clamp(.04em,.5vw,.16em);text-transform:uppercase;opacity:.68}.vm-cd-cell>span>span{display:inline;margin:0;font:inherit;letter-spacing:inherit;opacity:1}
 .vm-cd-done{margin:1.25rem auto 0;font-size:1.15em;font-style:italic}
 @media(prefers-reduced-motion:reduce){.vm-cd-cell b{transition:none}}
 `.replace(/\n/g, "");
@@ -60,10 +61,11 @@ export function countdownCells(content: BlockContentMap["COUNTDOWN"], eventDate:
     return `<p class="vm-cd-done"${e?.text("doneText") ?? ""}>${esc(content.doneText)}</p>`;
   }
   const value = parts(eventDate);
+  const en = templateLanguage() === "en";
   const cells = UNITS.map(({ unit, words }) =>
-    `<div class="vm-cd-cell"><b data-unit="${unit}">${String(value[unit]).padStart(unit === "days" ? 1 : 2, "0")}</b><span data-word="${unit}">${plural(value[unit], words)}</span></div>`,
+    `<div class="vm-cd-cell"><b data-unit="${unit}">${String(value[unit]).padStart(unit === "days" ? 1 : 2, "0")}</b><span data-word="${unit}" data-label="${esc(labelText(`countdown.${unit}`, ""))}">${L(`countdown.${unit}`, en ? (value[unit] === 1 ? unit.slice(0, -1) : unit) : plural(value[unit], words))}</span></div>`,
   ).join("");
-  return `<style>${COUNTDOWN_CSS}</style><div class="vm-cd"${e?.component("widget:countdown") ?? ""} data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div>`;
+  return `<style>${COUNTDOWN_CSS}</style><div class="vm-cd"${e?.component("widget:countdown") ?? ""} data-locale="${templateLanguage()}" data-until="${eventDate.getTime()}" data-done="${esc(content.doneText)}">${cells}</div>`;
 }
 
 /**
@@ -79,5 +81,5 @@ if(l<=0){var p=document.createElement('p');p.className='vm-cd-done';p.textConten
 var s=Math.floor(l/1e3),v={days:Math.floor(s/86400),hours:Math.floor(s/3600)%24,minutes:Math.floor(s/60)%60,seconds:s%60};
 for(var k in v){var b=n.querySelector('[data-unit='+k+']'),w=n.querySelector('[data-word='+k+']');if(!b)continue;
 var txt=k==='days'?String(v[k]):String(v[k]).padStart(2,'0');if(b.textContent!==txt){b.textContent=txt;if(k!=='seconds'){b.classList.add('vm-cd-tick');setTimeout(function(x){return function(){x.classList.remove('vm-cd-tick')}}(b),180)}}
-if(w)w.textContent=f(v[k],W[k])}})}
+if(w&&!w.dataset.label)(w.firstElementChild||w).textContent=n.dataset.locale==='en'?(v[k]===1?k.slice(0,-1):k):f(v[k],W[k])}})}
 setInterval(t,1000)})()`;

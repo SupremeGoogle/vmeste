@@ -12,8 +12,10 @@
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react";
 import { useState, useTransition, type KeyboardEvent } from "react";
 import { EASE_OUT, SPRING } from "@/components/motion/motion";
-import { RSVP_TYPE_LABEL, SINGLETON, WITH_OPTIONS, type RsvpQuestion, type RsvpQuestionType } from "@/lib/rsvp-form";
+import { RSVP_TYPE_LABEL, SINGLETON, WITH_OPTIONS, rsvpTypeLabel, type RsvpQuestion, type RsvpQuestionType } from "@/lib/rsvp-form";
 import type { QuestionPatch } from "@/server/repositories/rsvp-questions";
+import { useLang, useT } from "@/components/i18n-provider";
+import { makeT, type Lang } from "@/lib/i18n";
 import {
   addChoiceAction, addQuestionAction, deleteQuestionAction, reorderQuestionsAction, toggleChoiceAction, updateQuestionAction,
   type BuilderOption, type BuilderState,
@@ -25,7 +27,9 @@ const ICON: Record<RsvpQuestionType, string> = {
   SHORT_TEXT: "Aa", LONG_TEXT: "¶", SINGLE_CHOICE: "◉", MULTIPLE_CHOICE: "☑", DROPDOWN: "▾", RATING: "★", DATE: "📅", MEAL: "🍽", DRINKS: "🥂", MUSIC: "♪",
 };
 
-export function RsvpFormBuilder({ eventId, initial, allowPlusOne }: { eventId: string; initial: BuilderState; allowPlusOne: boolean }) {
+export function RsvpFormBuilder({ eventId, initial, allowPlusOne, guestLang = "ru" }: { eventId: string; initial: BuilderState; allowPlusOne: boolean; /** Язык мероприятия — на нём анкету видят гости (превью справа). */ guestLang?: Lang }) {
+  const t = useT();
+  const lang = useLang();
   const [state, setState] = useState(initial);
   const [order, setOrder] = useState(initial.questions.map((question) => question.id));
   const [active, setActive] = useState<string | null>(null);
@@ -65,19 +69,19 @@ export function RsvpFormBuilder({ eventId, initial, allowPlusOne }: { eventId: s
       <section>
         <header>
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h1 className="text-xl text-stone-900">Анкета гостя</h1>
-            <p className="text-xs text-stone-500" aria-live="polite">{pending ? "Сохраняем…" : "Сохранено"}</p>
+            <h1 className="text-xl text-stone-900">{t("Анкета гостя", "RSVP form")}</h1>
+            <p className="text-xs text-stone-500" aria-live="polite">{pending ? t("Сохраняем…", "Saving…") : t("Сохранено", "Saved")}</p>
           </div>
           <p className="mt-1 text-sm text-stone-600">
-            Вопросы, которые гость видит, отвечая на приглашение, — в оформлении шаблона. Ответы — во вкладке «Ответы».
-            Порядок меняется перетаскиванием за <span aria-hidden>⠿</span>.
+            {t("Вопросы, которые гость видит, отвечая на приглашение, — в оформлении шаблона. Ответы — во вкладке «Ответы».", "The questions guests see when they RSVP, styled to match your template. Their answers appear under Guests.")}
+            {" "}{t("Порядок меняется перетаскиванием за", "Drag")} <span aria-hidden>⠿</span>{t(".", " to reorder.")}
           </p>
         </header>
 
         {state.error ? <p role="alert" className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{state.error}</p> : null}
 
-        <LockedCard title="Придёте?" note="Да / Нет — есть в любой анкете" />
-        {allowPlusOne ? <LockedCard title="Имя спутника" note="Для гостей, которым разрешён +1" /> : null}
+        <LockedCard title={t("Придёте?", "Will you attend?")} note={t("Да / Нет — есть в любой анкете", "Yes / No — included in every form")} />
+        {allowPlusOne ? <LockedCard title={t("Имя спутника", "Plus-one’s name")} note={t("Для гостей, которым разрешён +1", "For guests allowed a +1")} /> : null}
 
         <Reorder.Group
           axis="y"
@@ -103,7 +107,7 @@ export function RsvpFormBuilder({ eventId, initial, allowPlusOne }: { eventId: s
           </AnimatePresence>
         </Reorder.Group>
 
-        <LockedCard title="Что-то ещё для организатора" note="Свободный комментарий — на странице ответа" />
+        <LockedCard title={t("Что-то ещё для организатора", "Anything else for the hosts")} note={t("Свободный комментарий — на странице ответа", "A free-form comment on the RSVP page")} />
 
         <div className="relative mt-4">
           <motion.button
@@ -113,7 +117,7 @@ export function RsvpFormBuilder({ eventId, initial, allowPlusOne }: { eventId: s
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-card/60 text-sm font-medium text-stone-700 transition-colors hover:border-stone-400 hover:bg-card"
             aria-expanded={adding}
           >
-            <span className="text-lg leading-none">+</span> Добавить поле
+            <span className="text-lg leading-none">+</span> {t("Добавить поле", "Add field")}
           </motion.button>
           <AnimatePresence>
             {adding ? (
@@ -133,10 +137,10 @@ export function RsvpFormBuilder({ eventId, initial, allowPlusOne }: { eventId: s
                       disabled={taken}
                       onClick={() => add(type)}
                       className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-100 disabled:opacity-40"
-                      title={taken ? "Уже есть в анкете" : undefined}
+                      title={taken ? t("Уже есть в анкете", "Already in the form") : undefined}
                     >
                       <span className="w-5 shrink-0 text-center" aria-hidden>{ICON[type]}</span>
-                      {RSVP_TYPE_LABEL[type]}
+                      {rsvpTypeLabel(type, lang)}
                     </button>
                   );
                 })}
@@ -147,20 +151,21 @@ export function RsvpFormBuilder({ eventId, initial, allowPlusOne }: { eventId: s
       </section>
 
       <aside className="h-fit lg:sticky lg:top-40">
-        <Preview questions={questions} meals={state.meals} drinks={state.drinks} allowPlusOne={allowPlusOne} />
+        <Preview questions={questions} meals={state.meals} drinks={state.drinks} allowPlusOne={allowPlusOne} guestLang={guestLang} />
       </aside>
     </div>
   );
 }
 
 function LockedCard({ title, note }: { title: string; note: string }) {
+  const t = useT();
   return (
     <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 px-5 py-4">
       <div>
         <p className="text-[15px] text-stone-800">{title}</p>
         <p className="text-xs text-stone-500">{note}</p>
       </div>
-      <span className="text-xs text-stone-400" title="Это поле есть всегда">🔒</span>
+      <span className="text-xs text-stone-400" title={t("Это поле есть всегда", "This field is always included")}>🔒</span>
     </div>
   );
 }
@@ -180,6 +185,8 @@ function QuestionCard({
 }) {
   const controls = useDragControls();
   const special = SINGLETON.has(question.type);
+  const t = useT();
+  const lang = useLang();
 
   return (
     <Reorder.Item
@@ -202,7 +209,7 @@ function QuestionCard({
           type="button"
           onPointerDown={(event) => controls.start(event)}
           className="mt-1 -ml-1 flex h-9 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 active:cursor-grabbing"
-          aria-label="Перетащить поле"
+          aria-label={t("Перетащить поле", "Drag field")}
         >
           ⠿
         </button>
@@ -214,20 +221,20 @@ function QuestionCard({
               // На телефоне вопрос занимает всю строку, тип уходит под него:
               // иначе «Что подать на…» обрезалось рядом с выбором типа.
               className="min-w-0 flex-1 basis-full border-b border-transparent bg-transparent py-1 text-[16px] text-stone-900 outline-none focus:border-stone-400 sm:basis-auto"
-              ariaLabel="Вопрос"
+              ariaLabel={t("Вопрос", "Question")}
               wrap
             />
             {special ? (
-              <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">{ICON[question.type]} {RSVP_TYPE_LABEL[question.type]}</span>
+              <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600">{ICON[question.type]} {rsvpTypeLabel(question.type, lang)}</span>
             ) : (
               <select
                 value={question.type}
                 onChange={(event) => onUpdate({ type: event.target.value as RsvpQuestionType })}
                 className="rounded-lg border border-stone-300 bg-card px-2 py-1.5 text-sm"
-                aria-label="Тип поля"
+                aria-label={t("Тип поля", "Field type")}
               >
                 {(Object.keys(RSVP_TYPE_LABEL) as RsvpQuestionType[]).filter((type) => !SINGLETON.has(type)).map((type) => (
-                  <option key={type} value={type}>{RSVP_TYPE_LABEL[type]}</option>
+                  <option key={type} value={type}>{rsvpTypeLabel(type, lang)}</option>
                 ))}
               </select>
             )}
@@ -246,27 +253,27 @@ function QuestionCard({
                 <TextInput
                   value={question.description}
                   onSave={(description) => onUpdate({ description })}
-                  placeholder="Пояснение (необязательно)"
+                  placeholder={t("Пояснение (необязательно)", "Description (optional)")}
                   className="mt-2 w-full border-b border-transparent bg-transparent py-1 text-sm text-stone-600 outline-none placeholder:text-stone-400 focus:border-stone-300"
-                  ariaLabel="Пояснение"
+                  ariaLabel={t("Пояснение", "Description")}
                 />
 
                 {WITH_OPTIONS.has(question.type) ? (
                   <OptionsEditor type={question.type} options={question.options} onSave={(options) => onUpdate({ options })} />
                 ) : null}
                 {choices ? <ChoicesEditor kind={question.type === "MEAL" ? "meal" : "drink"} choices={choices} onAdd={onAddChoice} onToggle={onToggleChoice} /> : null}
-                {question.type === "RATING" ? <p className="mt-3 text-sm text-stone-500">Гость ставит оценку от 1 до 5.</p> : null}
-                {question.type === "DATE" ? <p className="mt-3 text-sm text-stone-500">Гость выбирает дату в календаре.</p> : null}
+                {question.type === "RATING" ? <p className="mt-3 text-sm text-stone-500">{t("Гость ставит оценку от 1 до 5.", "Guests give a rating from 1 to 5.")}</p> : null}
+                {question.type === "DATE" ? <p className="mt-3 text-sm text-stone-500">{t("Гость выбирает дату в календаре.", "Guests pick a date from a calendar.")}</p> : null}
                 {question.type === "SHORT_TEXT" || question.type === "LONG_TEXT" ? (
-                  <p className="mt-3 border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">{question.type === "SHORT_TEXT" ? "Короткий ответ" : "Развёрнутый ответ"}</p>
+                  <p className="mt-3 border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">{question.type === "SHORT_TEXT" ? t("Короткий ответ", "Short answer") : t("Развёрнутый ответ", "Long answer")}</p>
                 ) : null}
 
                 <div className="mt-4 flex items-center justify-end gap-4 border-t border-stone-100 pt-3">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-stone-600">
-                    Обязательный
+                    {t("Обязательный", "Required")}
                     <Switch checked={question.required} onChange={(required) => onUpdate({ required })} />
                   </label>
-                  <button type="button" onClick={onDelete} className="flex h-9 w-9 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-red-50 hover:text-red-700" aria-label="Удалить поле" title="Удалить поле">
+                  <button type="button" onClick={onDelete} className="flex h-9 w-9 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-red-50 hover:text-red-700" aria-label={t("Удалить поле", "Delete field")} title={t("Удалить поле", "Delete field")}>
                     🗑
                   </button>
                 </div>
@@ -320,6 +327,7 @@ function TextInput({ value, onSave, className, placeholder, ariaLabel, wrap = fa
 function OptionsEditor({ type, options, onSave }: { type: RsvpQuestionType; options: string[]; onSave: (options: string[]) => void }) {
   const marker = type === "MULTIPLE_CHOICE" ? "☐" : type === "DROPDOWN" ? "" : "○";
   const [fresh, setFresh] = useState("");
+  const t = useT();
   return (
     <ul className="mt-3 space-y-1.5">
       <AnimatePresence initial={false}>
@@ -330,13 +338,13 @@ function OptionsEditor({ type, options, onSave }: { type: RsvpQuestionType; opti
               value={option}
               onSave={(text) => onSave(options.map((item, i) => (i === index ? text : item)).filter((item) => item.trim()))}
               className="min-w-0 flex-1 border-b border-transparent bg-transparent py-1 text-sm outline-none focus:border-stone-300"
-              ariaLabel={`Вариант ${index + 1}`}
+              ariaLabel={t(`Вариант ${index + 1}`, `Option ${index + 1}`)}
             />
             <button
               type="button"
               onClick={() => onSave(options.filter((_, i) => i !== index))}
               className="flex h-8 w-8 items-center justify-center rounded-md text-stone-400 opacity-60 hover:bg-stone-100 hover:text-stone-700 group-hover:opacity-100"
-              aria-label={`Убрать вариант ${option}`}
+              aria-label={t(`Убрать вариант ${option}`, `Remove option ${option}`)}
             >
               ×
             </button>
@@ -359,7 +367,7 @@ function OptionsEditor({ type, options, onSave }: { type: RsvpQuestionType; opti
             onSave([...options, fresh.trim()]);
             setFresh("");
           }}
-          placeholder="Добавить вариант"
+          placeholder={t("Добавить вариант", "Add option")}
           maxLength={200}
           className="min-w-0 flex-1 border-b border-transparent bg-transparent py-1 text-sm text-stone-600 outline-none placeholder:text-stone-400 focus:border-stone-300"
         />
@@ -370,6 +378,7 @@ function OptionsEditor({ type, options, onSave }: { type: RsvpQuestionType; opti
 
 function ChoicesEditor({ kind, choices, onAdd, onToggle }: { kind: "meal" | "drink"; choices: BuilderOption[]; onAdd: (title: string) => void; onToggle: (id: string) => void }) {
   const [fresh, setFresh] = useState("");
+  const t = useT();
   const submit = () => {
     if (!fresh.trim()) return;
     onAdd(fresh.trim());
@@ -378,17 +387,16 @@ function ChoicesEditor({ kind, choices, onAdd, onToggle }: { kind: "meal" | "dri
   return (
     <div className="mt-3">
       <p className="text-xs text-stone-500">
-        {kind === "meal" ? "Блюда меню — гость выбирает одно. По ним считает кухня." : "Напитки бара — гость отмечает несколько."} Убранный вариант
-        пропадает из анкеты, но уже сделанный выбор сохраняется.
+        {kind === "meal" ? t("Блюда меню — гость выбирает одно. По ним считает кухня.", "Menu dishes — guests pick one. The kitchen plans by these.") : t("Напитки бара — гость отмечает несколько.", "Bar drinks — guests can pick several.")}{" "}{t("Убранный вариант пропадает из анкеты, но уже сделанный выбор сохраняется.", "A removed option disappears from the form, but choices already made are kept.")}
       </p>
       <ul className="mt-2 space-y-1.5">
         {choices.map((choice) => (
           <li key={choice.id} className="flex items-center gap-2 text-sm">
             <span className="w-5 text-center text-stone-400">{kind === "meal" ? "○" : "☐"}</span>
             <span className={`min-w-0 flex-1 ${choice.active ? "text-stone-800" : "text-stone-400 line-through"}`}>{choice.title}</span>
-            {choice.chosen > 0 ? <span className="text-xs text-stone-400">выбрали: {choice.chosen}</span> : null}
+            {choice.chosen > 0 ? <span className="text-xs text-stone-400">{t("выбрали:", "chosen:")} {choice.chosen}</span> : null}
             <button type="button" onClick={() => onToggle(choice.id)} className="rounded-md px-2 py-1 text-xs text-stone-500 hover:bg-stone-100 hover:text-stone-800">
-              {choice.active ? "убрать" : "вернуть"}
+              {choice.active ? t("убрать", "remove") : t("вернуть", "restore")}
             </button>
           </li>
         ))}
@@ -399,12 +407,12 @@ function ChoicesEditor({ kind, choices, onAdd, onToggle }: { kind: "meal" | "dri
           value={fresh}
           onChange={(event) => setFresh(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && (event.preventDefault(), submit())}
-          placeholder={kind === "meal" ? "Добавить блюдо, например «Сибас с овощами»" : "Добавить напиток, например «Белое вино»"}
+          placeholder={kind === "meal" ? t("Добавить блюдо, например «Сибас с овощами»", "Add a dish, e.g. “Sea bass with vegetables”") : t("Добавить напиток, например «Белое вино»", "Add a drink, e.g. “White wine”")}
           maxLength={60}
           className="min-w-0 flex-1 border-b border-stone-200 bg-transparent py-1 text-sm outline-none placeholder:text-stone-400 focus:border-stone-400"
         />
         <button type="button" onClick={submit} className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50">
-          Добавить
+          {t("Добавить", "Add")}
         </button>
       </div>
     </div>
@@ -426,7 +434,10 @@ function Switch({ checked, onChange }: { checked: boolean; onChange: (value: boo
 }
 
 /** Как анкету увидит гость — упрощённо, без оформления шаблона. */
-function Preview({ questions, meals, drinks, allowPlusOne }: { questions: RsvpQuestion[]; meals: BuilderOption[]; drinks: BuilderOption[]; allowPlusOne: boolean }) {
+function Preview({ questions, meals, drinks, allowPlusOne, guestLang }: { questions: RsvpQuestion[]; meals: BuilderOption[]; drinks: BuilderOption[]; allowPlusOne: boolean; guestLang: Lang }) {
+  const t = useT();
+  // Надписи самой анкеты — на языке мероприятия, как их увидит гость.
+  const g = makeT(guestLang);
   const option = (type: "radio" | "checkbox", label: string, key: string) => (
     <label key={key} className="flex items-center gap-2 py-0.5 text-sm text-stone-700">
       <input type={type} disabled className="accent-stone-900" /> {label}
@@ -434,14 +445,14 @@ function Preview({ questions, meals, drinks, allowPlusOne }: { questions: RsvpQu
   );
   return (
     <div className="rounded-2xl border border-stone-200 bg-card p-5">
-      <p className="text-sm text-stone-500">Так увидит гость</p>
+      <p className="text-sm text-stone-500">{t("Так увидит гость", "What guests will see")}</p>
       <div className="mt-4 space-y-4">
         <div>
-          <p className="text-sm font-medium text-stone-800">Придёте?</p>
-          {option("radio", "Да, будем", "yes")}
-          {option("radio", "К сожалению, не сможем", "no")}
+          <p className="text-sm font-medium text-stone-800">{g("Придёте?", "Will you attend?")}</p>
+          {option("radio", g("Да, будем", "Yes, we’ll be there"), "yes")}
+          {option("radio", g("К сожалению, не сможем", "Sorry, we can’t make it"), "no")}
         </div>
-        {allowPlusOne ? <p className="border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">Имя спутника, если придёте вдвоём</p> : null}
+        {allowPlusOne ? <p className="border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">{g("Имя спутника, если придёте вдвоём", "Your plus-one’s name, if you’re bringing one")}</p> : null}
         <AnimatePresence initial={false}>
           {questions.map((question) => {
             const list =
@@ -460,21 +471,21 @@ function Preview({ questions, meals, drinks, allowPlusOne }: { questions: RsvpQu
                   : question.type === "MULTIPLE_CHOICE" || question.type === "DRINKS"
                     ? list.map((item, i) => option("checkbox", item, `${i}`))
                     : question.type === "DROPDOWN"
-                      ? <div className="mt-1 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-400">— выберите —</div>
+                      ? <div className="mt-1 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-400">{g("— выберите —", "— choose —")}</div>
                       : question.type === "RATING"
                         ? <p className="mt-1 tracking-widest text-stone-300">★★★★★</p>
                         : question.type === "DATE"
-                          ? <div className="mt-1 w-40 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-400">дд.мм.гггг</div>
-                          : <div className="mt-1 border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">{question.type === "LONG_TEXT" ? "Развёрнутый ответ" : question.type === "MUSIC" ? "Исполнитель — название" : "Короткий ответ"}</div>}
+                          ? <div className="mt-1 w-40 rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-400">{g("дд.мм.гггг", "mm/dd/yyyy")}</div>
+                          : <div className="mt-1 border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">{question.type === "LONG_TEXT" ? g("Развёрнутый ответ", "Long answer") : question.type === "MUSIC" ? g("Исполнитель — название", "Artist — song title") : g("Короткий ответ", "Short answer")}</div>}
                 {(question.type === "MEAL" || question.type === "DRINKS") && list.length === 0 ? (
-                  <p className="text-xs text-amber-800">Добавьте варианты — без них поле гостю не показывается.</p>
+                  <p className="text-xs text-amber-800">{t("Добавьте варианты — без них поле гостю не показывается.", "Add options — guests won’t see this field without them.")}</p>
                 ) : null}
               </motion.div>
             );
           })}
         </AnimatePresence>
-        <p className="border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">Что-то ещё для организатора</p>
-        <div className="rounded-lg bg-stone-900 py-2 text-center text-sm text-white">Отправить</div>
+        <p className="border-b border-dotted border-stone-300 pb-1 text-sm text-stone-400">{g("Что-то ещё для организатора", "Anything else you’d like us to know")}</p>
+        <div className="rounded-lg bg-stone-900 py-2 text-center text-sm text-white">{g("Отправить", "Send")}</div>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { localeOf, type Lang } from "@/lib/i18n";
 
 /** Серверный снимок времени для первого клиентского кадра плана. */
 export async function currentPlanTime(): Promise<number> { return Date.now(); }
@@ -38,6 +39,25 @@ export const STEP_ACTIONS = {
   SCREEN_MIXED: "Фото и пожелания на экране",
   RAFFLE: "Провести розыгрыш на экране",
 } as const;
+
+export const STEP_ACTIONS_EN: Record<keyof typeof STEP_ACTIONS, string> = {
+  NONE: "Just mark as done",
+  SCREEN_PHOTOS: "Show photos on the screen",
+  SCREEN_WISHES: "Show wishes on the screen",
+  SCREEN_MIXED: "Photos and wishes on the screen",
+  RAFFLE: "Run the raffle on the screen",
+};
+
+/**
+ * Сообщения `stepInput` на английском — по полю ошибки. Схема общая и
+ * создаётся один раз, поэтому её русские сообщения переводятся здесь.
+ */
+export function stepInputMessage(path: PropertyKey | undefined, ru: string, lang: Lang = "ru"): string {
+  if (lang !== "en") return ru;
+  if (path === "title") return "Enter a step name";
+  if (path === "localTime") return "Enter a date and time";
+  return "Check the step details";
+}
 
 export const stepInput = z.object({
   title: z.string().trim().min(1, "Введите название этапа").max(160),
@@ -79,16 +99,16 @@ export function albumIsOpen(event: { eventDate: Date; timezone: string; albumEna
     localDateTime(now, event.timezone).slice(0, 10) > localDateTime(event.eventDate, event.timezone).slice(0, 10);
 }
 
-export function albumOpeningLabel(event: { eventDate: Date; timezone: string }): string {
+export function albumOpeningLabel(event: { eventDate: Date; timezone: string }, lang: Lang = "ru"): string {
   const day = localDateTime(event.eventDate, event.timezone).slice(0, 10);
   const next = new Date(`${day}T12:00:00Z`);
   next.setUTCDate(next.getUTCDate() + 1);
-  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(next);
+  return new Intl.DateTimeFormat(localeOf(lang), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(next);
 }
 
 export type CalendarStep = { id: string; title: string; responsible: string; notes: string; startsAt: Date; reminderMinutes: number };
 
-export function dayCalendar(steps: CalendarStep[]): string {
+export function dayCalendar(steps: CalendarStep[], lang: Lang = "ru"): string {
   const escape = (text: string) => text.replaceAll("\\", "\\\\").replace(/\r?\n/g, "\\n").replaceAll(";", "\\;").replaceAll(",", "\\,");
   const stamp = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   // RFC 5545: строки ограничиваются 75 октетами, кириллица занимает >1 байта.
@@ -105,7 +125,7 @@ export function dayCalendar(steps: CalendarStep[]): string {
   for (const step of steps) lines.push(
     "BEGIN:VEVENT", `UID:${step.id}@vmeste`, `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(step.startsAt)}`, `DTEND:${stamp(new Date(step.startsAt.getTime() + 15 * 60000))}`,
-    `SUMMARY:${escape(step.title)}`, `DESCRIPTION:${escape([step.responsible ? `Ответственный: ${step.responsible}` : "", step.notes].filter(Boolean).join("\n"))}`,
+    `SUMMARY:${escape(step.title)}`, `DESCRIPTION:${escape([step.responsible ? `${lang === "en" ? "In charge" : "Ответственный"}: ${step.responsible}` : "", step.notes].filter(Boolean).join("\n"))}`,
     "BEGIN:VALARM", `TRIGGER:-PT${step.reminderMinutes}M`, "ACTION:DISPLAY", `DESCRIPTION:${escape(step.title)}`, "END:VALARM", "END:VEVENT",
   );
   lines.push("END:VCALENDAR");

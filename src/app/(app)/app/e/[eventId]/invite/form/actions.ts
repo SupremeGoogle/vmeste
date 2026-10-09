@@ -12,6 +12,7 @@ import {
 } from "@/server/repositories/rsvp-questions";
 import { addDrinkOption, addMealOption, listDrinkOptions, listMealOptions, toggleDrinkOption, toggleMealOption } from "@/server/repositories/events";
 import type { RsvpQuestion } from "@/lib/rsvp-form";
+import { getT } from "@/server/i18n";
 
 export type BuilderOption = { id: string; title: string; active: boolean; chosen: number };
 export type BuilderState = { questions: RsvpQuestion[]; meals: BuilderOption[]; drinks: BuilderOption[]; error?: string };
@@ -40,7 +41,15 @@ async function done(eventId: string, error?: string): Promise<BuilderState> {
 export async function addQuestionAction(eventId: string, type: string): Promise<BuilderState> {
   const ctx = await requireEventContext(eventId);
   const result = await addRsvpQuestion(ctx, type);
-  return done(eventId, result.ok ? undefined : result.message);
+  if (result.ok) return done(eventId);
+  // Сообщение репозитория — по-русски; для кабинета на английском — своё,
+  // по тому же признаку: меню, бар и песня бывают в анкете по одному.
+  const t = await getT();
+  const en = type === "MEAL" ? "The menu question is already in the form"
+    : type === "DRINKS" ? "The bar question is already in the form"
+    : type === "MUSIC" ? "The song question is already in the form"
+    : "Unknown field type";
+  return done(eventId, t(result.message, en));
 }
 
 export async function updateQuestionAction(eventId: string, id: string, patch: QuestionPatch): Promise<BuilderState> {

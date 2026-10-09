@@ -12,6 +12,7 @@
  */
 import { esc } from "@/server/guest-html/layout";
 import { fieldName, type RsvpAnswer, type RsvpQuestion } from "@/lib/rsvp-form";
+import { gl } from "@/server/guest-html/guest-lang";
 
 export type RsvpFieldsContext = {
   meals: { id: string; title: string }[];
@@ -60,7 +61,7 @@ ${ctx.meals.map((meal) => choice("radio", "mealOptionId", meal.id, meal.title, c
 ${ctx.drinks.map((drink) => choice("checkbox", "drinkOptionIds", drink.id, drink.title, ctx.selectedDrinks.includes(drink.id))).join("")}</fieldset>`;
     case "MUSIC":
       if (ctx.skip?.music) return "";
-      return `<label class="field" data-rsvp-field="music"><span>${esc(question.title)}${mark(question)}</span>${note(question)}<input name="musicWish" maxlength="200" value="${esc(ctx.musicWish ?? "")}" placeholder="Исполнитель — название"></label>`;
+      return `<label class="field" data-rsvp-field="music"><span>${esc(question.title)}${mark(question)}</span>${note(question)}<input name="musicWish" maxlength="200" value="${esc(ctx.musicWish ?? "")}" placeholder="${gl("Исполнитель — название", "Artist — song")}"></label>`;
     case "SHORT_TEXT":
       return `<label class="field"><span>${esc(question.title)}${mark(question)}</span>${note(question)}${present}<input name="${esc(name)}" maxlength="200" value="${esc(values[0] ?? "")}"></label>`;
     case "LONG_TEXT":
@@ -68,7 +69,7 @@ ${ctx.drinks.map((drink) => choice("checkbox", "drinkOptionIds", drink.id, drink
     case "DATE":
       return `<label class="field"><span>${esc(question.title)}${mark(question)}</span>${note(question)}${present}<input type="date" name="${esc(name)}" value="${esc(values[0] ?? "")}"></label>`;
     case "DROPDOWN":
-      return `<label class="field"><span>${esc(question.title)}${mark(question)}</span>${note(question)}${present}<select name="${esc(name)}"><option value="">— выберите —</option>${question.options
+      return `<label class="field"><span>${esc(question.title)}${mark(question)}</span>${note(question)}${present}<select name="${esc(name)}"><option value="">${gl("— выберите —", "— choose —")}</option>${question.options
         .map((option) => `<option value="${esc(option)}"${values.includes(option) ? " selected" : ""}>${esc(option)}</option>`)
         .join("")}</select></label>`;
     case "SINGLE_CHOICE":

@@ -2,9 +2,11 @@
 
 /** Скопировать полную ссылку: путь в адресе знает сервер, домен — только браузер. */
 import { useState } from "react";
+import { useT } from "@/components/i18n-provider";
 
 export function CopyFormLink({ path }: { path: string }) {
   const [copied, setCopied] = useState(false);
+  const t = useT();
   return (
     <button
       type="button"
@@ -15,7 +17,7 @@ export function CopyFormLink({ path }: { path: string }) {
         window.setTimeout(() => setCopied(false), 1800);
       }}
     >
-      {copied ? "Скопировано" : "Скопировать ссылку"}
+      {copied ? t("Скопировано", "Copied") : t("Скопировать ссылку", "Copy link")}
     </button>
   );
 }

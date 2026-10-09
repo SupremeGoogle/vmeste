@@ -19,6 +19,7 @@
  * весит меньше мегабайта, а координаты из EXIF не уходят в галерею.
  */
 import { db } from "@/server/db";
+import { makeT, parseLang, type T } from "@/lib/i18n";
 import { bus } from "@/server/events/bus";
 import { GUEST_PHOTO, convertImage } from "@/server/images/convert";
 import { NSFW_FLAG, nsfwScore } from "@/server/images/nsfw";
@@ -47,12 +48,18 @@ export async function guestQuota(guest: GuestRef) {
     }),
     db.event.findFirst({
       where: { id: guest.eventId, orgId: guest.orgId },
-      select: { photoLimitPerGuest: true, photosEnabled: true },
+      select: { photoLimitPerGuest: true, photosEnabled: true, language: true },
     }),
   ]);
 
   const limit = event?.photoLimitPerGuest ?? 5;
-  return { used, limit, left: Math.max(0, limit - used), enabled: event?.photosEnabled ?? false };
+  return { used, limit, left: Math.max(0, limit - used), enabled: event?.photosEnabled ?? false, language: parseLang(event?.language) ?? "ru" };
+}
+
+/** Переводчик на язык мероприятия — для сообщений гостю до подсчёта лимита. */
+async function eventT(eventId: string): Promise<T> {
+  const event = await db.event.findFirst({ where: { id: eventId }, select: { language: true } });
+  return makeT(parseLang(event?.language) ?? "ru");
 }
 
 /**
@@ -67,24 +74,25 @@ export async function startUpload(
   input: { contentType: string; bytes: number },
 ): Promise<StartResult> {
   const quota = await guestQuota(guest);
+  const t = makeT(quota.language);
   if (!quota.enabled) {
-    return { ok: false, reason: "disabled", message: "Загрузка фотографий закрыта" };
+    return { ok: false, reason: "disabled", message: t("Загрузка фотографий закрыта", "Photo uploads are closed") };
   }
   if (quota.left <= 0) {
     return {
       ok: false,
       reason: "limit",
-      message: `Больше ${quota.limit} фотографий не принимаем — выберите лучшие`,
+      message: t(`Больше ${quota.limit} фотографий не принимаем — выберите лучшие`, `You can send up to ${quota.limit} photos. Please choose your favorites`),
     };
   }
   if (!ALLOWED_TYPES.includes(input.contentType)) {
-    return { ok: false, reason: "type", message: "Принимаем только фотографии" };
+    return { ok: false, reason: "type", message: t("Принимаем только фотографии", "Only photos can be uploaded") };
   }
   if (input.bytes <= 0 || input.bytes > MAX_UPLOAD_BYTES) {
     return {
       ok: false,
       reason: "size",
-      message: `Файл больше ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`,
+      message: t(`Файл больше ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ`, `The file is larger than ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB`),
     };
   }
 
@@ -115,7 +123,7 @@ export async function completeUpload(
 ): Promise<CompleteResult> {
   const thumbKey = thumbKeyFor(input.storageKey);
   if (!thumbKey || !keyBelongsToEvent(input.storageKey, guest.eventId)) {
-    return { ok: false, reason: "foreign", message: "Файл не от этого мероприятия" };
+    return { ok: false, reason: "foreign", message: (await eventT(guest.eventId))("Файл не от этого мероприятия", "This file doesn’t belong to this event") };
   }
 
   // Повторное подтверждение того же файла (двойной клик, повтор запроса
@@ -124,27 +132,28 @@ export async function completeUpload(
     where: { eventId: guest.eventId, storageKey: input.storageKey },
     select: { id: true },
   });
-  if (already) return { ok: false, reason: "duplicate", message: "Это фото уже отправлено" };
+  if (already) return { ok: false, reason: "duplicate", message: (await eventT(guest.eventId))("Это фото уже отправлено", "This photo has already been sent") };
 
   // Ранняя проверка — чтобы не перекодировать файл, который всё равно не
   // примем. Окончательная — ниже, в транзакции.
   const quota = await guestQuota(guest);
+  const t = makeT(quota.language);
   if (quota.left <= 0) {
     // Файл уже лежит в бакете, но принять его нельзя — убираем за собой,
     // иначе за вечер накопится мусор, за который платит организатор.
     await deleteObjects([input.storageKey]).catch(() => {});
-    return { ok: false, reason: "limit", message: "Лимит фотографий исчерпан" };
+    return { ok: false, reason: "limit", message: t("Лимит фотографий исчерпан", "Photo limit reached") };
   }
 
   let head;
   try {
     head = await headObject(input.storageKey);
   } catch {
-    return { ok: false, reason: "missing", message: "Файл не долетел — попробуйте ещё раз" };
+    return { ok: false, reason: "missing", message: t("Файл не долетел — попробуйте ещё раз", "The upload didn’t finish. Please try again") };
   }
   if (head.bytes <= 0 || head.bytes > MAX_UPLOAD_BYTES) {
     await deleteObjects([input.storageKey]).catch(() => {});
-    return { ok: false, reason: "size", message: "Файл слишком большой" };
+    return { ok: false, reason: "size", message: t("Файл слишком большой", "The file is too large") };
   }
 
   // Исходник заменяется перекодированным файлом по тому же ключу: второй
@@ -158,7 +167,7 @@ export async function completeUpload(
     return {
       ok: false,
       reason: "unreadable",
-      message: "Не получилось открыть файл — пришлите фото в JPEG или сделайте снимок экрана",
+      message: t("Не получилось открыть файл — пришлите фото в JPEG или сделайте снимок экрана", "We couldn’t open the file. Please send a JPEG or a screenshot"),
     };
   }
   const [, , nsfw] = await Promise.all([
@@ -210,10 +219,10 @@ export async function completeUpload(
 
   if ("error" in saved) {
     if (saved.error === "duplicate") {
-      return { ok: false, reason: "duplicate", message: "Это фото уже отправлено" };
+      return { ok: false, reason: "duplicate", message: t("Это фото уже отправлено", "This photo has already been sent") };
     }
     await deleteObjects([input.storageKey, thumbKey]).catch(() => {});
-    return { ok: false, reason: "limit", message: "Лимит фотографий исчерпан" };
+    return { ok: false, reason: "limit", message: t("Лимит фотографий исчерпан", "Photo limit reached") };
   }
   // Экран в зале узнаёт о новом снимке так же, как о ручном одобрении.
   if (autoApproved) await bus.publish(guest.eventId, "photo", saved.photo.id);

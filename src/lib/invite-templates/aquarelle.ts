@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { AQUARELLE_SAMPLE_IMAGES } from "@/lib/invite-templates/aquarelle-assets";
 
 /**
@@ -159,3 +159,27 @@ export const AQUARELLE_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** English sample: same sections and pictures as `AQUARELLE_TEMPLATE.blocks`. */
+export const AQUARELLE_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "Invite you to celebrate their wedding", names: "Emily & James", dateText: "November 20, 2027", subtitle: "", imageUrl: AQUARELLE_SAMPLE_IMAGES[4], photos: [], footer: "" } },
+  { type: "TEXT", content: { v: 1, tag: "", title: "Dear friends,", text: "We could hardly believe it ourselves, but the day has come — we’re getting married! We’d be so happy to spend this joyful day together with you." } },
+  { type: "VENUE", content: { v: 1, tag: "Location", title: "The venue", name: "The Vintage Hotel", address: "3 Harbour Road, Sausalito, California", note: "The map will help you find the venue quickly and arrive on time.", imageUrl: AQUARELLE_SAMPLE_IMAGES[1], mapUrl: "", mapLabel: "Open map" } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Counting down to our wedding", doneText: "Today is the day!" } },
+  { type: "TIMELINE", content: { v: 1, tag: "Schedule", title: "Order of the day", items: [
+    { time: "2:00 PM", title: "Guests arrive", note: "Sparkling wine, light bites and a chance to meet everyone" },
+    { time: "2:30 PM", title: "Ceremony", note: "Witness the beginning of a new family — ours" },
+    { time: "4:00 PM", title: "Dinner", note: "Delicious food, kind words and dancing late into the night" },
+    { time: "10:00 PM", title: "Farewell", note: "Warm hugs and memories to take home" },
+  ] } },
+  { type: "TEXT", content: { v: 1, tag: "The details", title: "Gifts", text: "Your smiles and laughter are the best gift on this day, and a card with your wishes will help our dreams come true." } },
+  { type: "TEXT", content: { v: 1, tag: "The details", title: "Flowers", text: "Instead of a bouquet, a bottle of your favorite wine would be a lovely surprise — we’ll open it at our next celebration together." } },
+  { type: "DRESSCODE", content: { v: 1, tag: "Attire", title: "Dress code", text: "We’d be delighted if you chose evening wear in our palette: dusty blue, powder pink, olive and warm cream.", palette: ["#46627d", "#e3c3c5", "#cbb69a", "#7f9377", "#f3e7d8"], imageUrl: "" } },
+  { type: "PHOTOS", content: { v: 1, tag: "Us", title: "A little about us", items: [
+    { imageUrl: AQUARELLE_SAMPLE_IMAGES[0], caption: "Our evening" },
+    { imageUrl: AQUARELLE_SAMPLE_IMAGES[2], caption: "Under the veil" },
+    { imageUrl: AQUARELLE_SAMPLE_IMAGES[3], caption: "The bridal bouquet" },
+  ] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "RSVP", title: "Will you join us?", text: "Your answers will help us so much with planning the wedding. Please reply by October 15.", buttonLabel: "Reply" } },
+  { type: "TEXT", content: { v: 1, tag: "", title: "See you soon!", text: "With love, Emily & James." } },
+];

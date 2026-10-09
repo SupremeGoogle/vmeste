@@ -24,6 +24,7 @@ import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 import { TILI_SAMPLE_IMAGES } from "@/lib/invite-templates/tili-assets";
 import { uploadType } from "@/lib/upload-type";
 import { TUSCANY_SAMPLE_IMAGES } from "@/lib/invite-templates/tuscany-assets";
+import { useT } from "@/components/i18n-provider";
 
 export type PickerAsset = { id: string; url: string; alt: string };
 
@@ -50,9 +51,10 @@ export function ImagePicker({
   /** Показывать «Настроить кадр и цвет». Виш-листу это не нужно. */
   adjustable?: boolean;
 }) {
+  const t = useT();
   const [items, setItems] = useState<PickerAsset[]>(() =>
     value && !assets.some((asset) => asset.url === value)
-      ? [{ id: TEMPLATE_IMAGES.includes(value as (typeof TEMPLATE_IMAGES)[number]) ? "template-sample" : "current-image", url: value, alt: "Текущая фотография — можно заменить своей" }, ...assets]
+      ? [{ id: TEMPLATE_IMAGES.includes(value as (typeof TEMPLATE_IMAGES)[number]) ? "template-sample" : "current-image", url: value, alt: t("Текущая фотография — можно заменить своей", "Current photo — you can replace it with your own") }, ...assets]
       : assets,
   );
   const [chosen, setChosen] = useState(value);
@@ -79,7 +81,7 @@ export function ImagePicker({
         headers: { "content-type": uploadType(file) },
         body: file,
       });
-      if (!put.ok) throw new Error("Хранилище не приняло файл. Попробуйте ещё раз.");
+      if (!put.ok) throw new Error(t("Хранилище не приняло файл. Попробуйте ещё раз.", "The file couldn’t be uploaded to storage. Please try again."));
 
       const done = await fetch(`/api/app/events/${eventId}/assets/complete`, {
         method: "POST",
@@ -92,7 +94,7 @@ export function ImagePicker({
       setItems((current) => [done.asset, ...current]);
       setChosen(done.asset.url);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Не получилось загрузить.");
+      setError(cause instanceof Error ? cause.message : t("Не получилось загрузить.", "Upload failed."));
     } finally {
       setBusy(false);
       if (input.current) input.current.value = "";
@@ -112,7 +114,7 @@ export function ImagePicker({
             chosen === "" ? "border-stone-900" : "border-stone-200"
           }`}
         >
-          без фото
+          {t("без фото", "no photo")}
         </button>
 
         {items.map((asset) => (
@@ -135,7 +137,7 @@ export function ImagePicker({
             busy ? "opacity-50" : "hover:border-stone-500"
           }`}
         >
-          {busy ? "…" : "+ файл"}
+          {busy ? "…" : t("+ файл", "+ file")}
           <input
             ref={input}
             type="file"
@@ -151,7 +153,7 @@ export function ImagePicker({
       </div>
 
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-      {adjustable && chosen && <details className="mt-3 rounded-lg border border-stone-200 p-3"><summary className="cursor-pointer text-sm">Настроить кадр и цвет</summary><div className="mt-3"><PhotoControls src={chosen} value={settings} onChange={setSettings} /></div></details>}
+      {adjustable && chosen && <details className="mt-3 rounded-lg border border-stone-200 p-3"><summary className="cursor-pointer text-sm">{t("Настроить кадр и цвет", "Adjust framing and color")}</summary><div className="mt-3"><PhotoControls src={chosen} value={settings} onChange={setSettings} /></div></details>}
     </div>
   );
 }

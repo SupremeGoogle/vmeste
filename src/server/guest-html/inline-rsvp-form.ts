@@ -17,7 +17,7 @@ import type { BlockContentMap } from "@/lib/invite-blocks";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
 import { editAttrs } from "@/server/guest-html/inline-editor";
-import { L } from "@/server/guest-html/template-labels";
+import { guestText, L } from "@/server/guest-html/template-labels";
 import type { TiliRsvp } from "@/server/guest-html/tili/markup";
 
 type Rsvp = TiliRsvp & { plusOneAllowed?: boolean };
@@ -71,7 +71,7 @@ export function inlineRsvpForm(block: InviteBlockView): string {
   const r = current.rsvp;
   const action = r?.action ?? "";
   const plusOneAllowed = r ? r.plusOneAllowed ?? false : true;
-  const drinks = r ? r.drinks : SAMPLE_DRINKS;
+  const drinks = r ? r.drinks : SAMPLE_DRINKS.map((drink, i) => ({ ...drink, title: guestText(drink.title, ["Red wine", "White wine", "Sparkling wine", "Spirits", "Non-alcoholic"][i]) }));
   const hidden = (name: string, value: string | null) => (value ? `<input type="hidden" name="${name}" value="${esc(value)}">` : "");
   const keep = r
     ? [
@@ -83,29 +83,29 @@ export function inlineRsvpForm(block: InviteBlockView): string {
     : "";
   const answered = r && r.status !== "PENDING";
   const saved = r?.saved
-    ? `<p class="vm-rsvp-msg" role="status"${e.text("successText", { multiline: true })}>${esc(c.successText || "Спасибо! Ваш ответ получен.")}</p>`
+    ? `<p class="vm-rsvp-msg" role="status"${e.text("successText", { multiline: true })}>${esc(c.successText || guestText("Спасибо! Ваш ответ получен.", "Thank you! Your reply has been received."))}</p>`
     : current.editable
-      ? `<p class="vm-rsvp-msg"${e.text("successText", { multiline: true })}>${esc(c.successText || "Спасибо! Ваш ответ получен.")}</p>`
+      ? `<p class="vm-rsvp-msg"${e.text("successText", { multiline: true })}>${esc(c.successText || guestText("Спасибо! Ваш ответ получен.", "Thank you! Your reply has been received."))}</p>`
       : "";
-  const error = r?.error ? `<p class="vm-rsvp-msg vm-rsvp-error" role="alert">${esc(r.errorText ?? "Проверьте анкету: заполнены ли имя и ответ.")}</p>` : "";
+  const error = r?.error ? `<p class="vm-rsvp-msg vm-rsvp-error" role="alert">${esc(r.errorText ?? guestText("Проверьте анкету: заполнены ли имя и ответ.", "Please enter your name and attendance reply."))}</p>` : "";
   const status = r?.status ?? "PENDING";
   const choice = (value: string, label: string, checked: boolean, attrs = "") =>
     `<label class="vm-rsvp-choice"><input type="radio" name="status" value="${value}"${checked ? " checked" : ""}${value === "ACCEPTED" ? " required" : ""}> <span${attrs}>${esc(label)}</span></label>`;
 
   const drinkField = r?.drinksHidden
     ? ""
-    : `<fieldset><legend${e.text("drinksLabel")}>${esc(c.drinksLabel || "Что будете пить?")}</legend>${L("rsvp.drinks-hint", "Можно выбрать несколько вариантов", { tag: "span", className: "vm-rsvp-hint" })}<div class="vm-rsvp-drinks">${drinks
+    : `<fieldset><legend${e.text("drinksLabel")}>${esc(c.drinksLabel || guestText("Что будете пить?", "What would you like to drink?"))}</legend>${L("rsvp.drinks-hint", guestText("Можно выбрать несколько вариантов", "Choose as many as you like"), { tag: "span", className: "vm-rsvp-hint" })}<div class="vm-rsvp-drinks">${drinks
         .map((drink) => `<label class="vm-rsvp-choice"><input type="checkbox" name="drinkOptionIds" value="${esc(drink.id)}"${r?.chosenDrinks.includes(drink.id) ? " checked" : ""}> <span>${esc(drink.title)}</span></label>`)
         .join("")}</div></fieldset>`;
 
   return `<style>${INLINE_RSVP_FORM_CSS}</style>${saved}${error}<form class="vm-rsvp" method="post"${action ? ` action="${esc(action)}"` : ' data-demo="true" onsubmit="return false"'}>
 <input type="hidden" name="from" value="invite">${keep}
-<label class="vm-rsvp-field"><span class="vm-rsvp-label"${e.text("nameLabel")}>${esc(c.nameLabel || "Ваше имя и фамилия")}</span><input type="text" name="guestName" value="${esc(r?.guestName ?? "")}" placeholder="Имя и фамилия" maxlength="120" autocomplete="name" required></label>
-<fieldset><legend${e.text("attendanceLabel")}>${esc(c.attendanceLabel || "Сможете ли вы прийти?")}</legend>${choice("ACCEPTED", c.yesLabel || "Да, с радостью приду", status === "ACCEPTED", e.text("yesLabel"))}${choice("DECLINED", c.noLabel || "К сожалению, не смогу", status === "DECLINED", e.text("noLabel"))}</fieldset>
-${plusOneAllowed ? `<label class="vm-rsvp-field">${L("rsvp.plus-one", "Если придёте вдвоём — имя спутника", { tag: "span", className: "vm-rsvp-label" })}<input type="text" name="plusOneName" value="${esc(r?.keep.plusOneName ?? "")}" placeholder="Имя и фамилия" maxlength="120"></label>` : ""}
+<label class="vm-rsvp-field"><span class="vm-rsvp-label"${e.text("nameLabel")}>${esc(c.nameLabel || guestText("Ваше имя и фамилия", "Your full name"))}</span><input type="text" name="guestName" value="${esc(r?.guestName ?? "")}" placeholder="${guestText("Имя и фамилия", "Full name")}" maxlength="120" autocomplete="name" required></label>
+<fieldset><legend${e.text("attendanceLabel")}>${esc(c.attendanceLabel || guestText("Сможете ли вы прийти?", "Can you join us?"))}</legend>${choice("ACCEPTED", c.yesLabel || guestText("Да, с радостью приду", "Joyfully accepts"), status === "ACCEPTED", e.text("yesLabel"))}${choice("DECLINED", c.noLabel || guestText("К сожалению, не смогу", "Regretfully declines"), status === "DECLINED", e.text("noLabel"))}</fieldset>
+${plusOneAllowed ? `<label class="vm-rsvp-field">${L("rsvp.plus-one", guestText("Если придёте вдвоём — имя спутника", "Your companion’s full name, if you are coming together"), { tag: "span", className: "vm-rsvp-label" })}<input type="text" name="plusOneName" value="${esc(r?.keep.plusOneName ?? "")}" placeholder="${guestText("Имя и фамилия", "Full name")}" maxlength="120"></label>` : ""}
 ${drinkField}${r?.questionFields ?? r?.extraFields ?? ""}
-<button type="submit" class="vm-rsvp-submit"><span${answered ? "" : e.text("buttonLabel")}>${esc(answered ? "Изменить ответ" : c.buttonLabel || "Отправить ответ")}</span></button>
-${!action && !current.editable ? `<p class="vm-rsvp-note">${L("rsvp.demo-note", "Это образец анкеты — гости ответят по ссылке из приглашения.")}</p>` : ""}
+<button type="submit" class="vm-rsvp-submit"><span${answered ? "" : e.text("buttonLabel")}>${esc(answered ? guestText("Изменить ответ", "Update reply") : c.buttonLabel || guestText("Отправить ответ", "Send reply"))}</span></button>
+${!action && !current.editable ? `<p class="vm-rsvp-note">${L("rsvp.demo-note", guestText("Это образец анкеты — гости ответят по ссылке из приглашения.", "This is a sample form. Guests reply through their invitation link."))}</p>` : ""}
 </form>${current.editable ? `<button type="button" class="vm-rsvp-manage" data-editor-ui data-rsvp-builder>Настроить вопросы анкеты</button>` : ""}`;
 }
 
@@ -123,10 +123,10 @@ export function fallbackRsvpSection(blocks: InviteBlockView[]): string {
     visible: true,
     degraded: false,
     content: {
-      v: 1, tag: "", title: "Подтвердите присутствие", text: "", buttonLabel: "Отправить ответ",
+      v: 1, tag: "", title: guestText("Подтвердите присутствие", "Please RSVP"), text: "", buttonLabel: guestText("Отправить ответ", "Send reply"),
       nameLabel: "", attendanceLabel: "", yesLabel: "", noLabel: "", drinksLabel: "", musicLabel: "",
       musicPlaceholder: "", successText: "",
     },
   } as InviteBlockView;
-  return `<section class="vm-rsvp-fallback" id="rsvp" style="padding:2.5rem 1.5rem;text-align:center"><h2>Подтвердите присутствие</h2>${inlineRsvpForm(block)}</section>`;
+  return `<section class="vm-rsvp-fallback" id="rsvp" style="padding:2.5rem 1.5rem;text-align:center"><h2>${guestText("Подтвердите присутствие", "Please RSVP")}</h2>${inlineRsvpForm(block)}</section>`;
 }

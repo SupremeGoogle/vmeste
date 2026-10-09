@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { ANTIC_SAMPLE_IMAGES as IMG } from "@/lib/invite-templates/antic-assets";
 
 export const ANTIC_TEMPLATE: InviteTemplate = {
@@ -33,3 +33,25 @@ export const ANTIC_TEMPLATE: InviteTemplate = {
     { type: "TEXT", content: { v: 1, title: "Мы будем счастливы видеть вас!", text: "С любовью, Валерия и Давид" } },
   ],
 };
+
+/** English sample: same sections and pictures as `ANTIC_TEMPLATE.blocks`. */
+const ANTIC_MAP_EN = "https://www.google.com/maps/search/?api=1&query=Hartwell%20House%2C%20Oxford%20Road%2C%20Aylesbury";
+export const ANTIC_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, names: "Emily & James", title: "Dear friends and family,", dateText: "November 20, 2027", subtitle: "It would mean the world to us to have you by our side as our family begins. Nothing would make us happier than seeing each of you there.", imageUrl: IMG[0], photos: [{ imageUrl: IMG[3], caption: "" }] } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Counting down to our wedding", doneText: "Today is our wedding day!" } },
+  { type: "TIMELINE", content: { v: 1, title: "Order of the day", items: [
+    { time: "12:00 PM", title: "Guests arrive", note: "Hugs, introductions and a glass of something sparkling" },
+    { time: "12:30 PM", title: "Ceremony", note: "The moment our story as a family begins" },
+    { time: "2:00 PM", title: "Dinner", note: "Kind words, favorite people and music into the evening" },
+    { time: "11:00 PM", title: "Farewell", note: "One last toast to a beautiful day" },
+  ] } },
+  { type: "PHOTOS", content: { v: 1, title: "The mood", items: [{ imageUrl: IMG[2], caption: "" }] } },
+  { type: "VENUE", content: { v: 1, title: "The venue", name: "Hartwell House", address: "Oxford Road, Aylesbury, United Kingdom", note: "We’ll celebrate in a historic country house, where a sense of occasion meets the warmth of home.", imageUrl: IMG[1], mapUrl: ANTIC_MAP_EN, mapLabel: "Get directions" } },
+  { type: "MAP", content: { v: 1, title: "Getting there", note: "Tap the map to plan your route.", yandexUrl: ANTIC_MAP_EN } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Gifts", text: "Your presence is the greatest gift of all. If you’d like to treat us to something more, a card with your wishes would make us very happy." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Flowers", text: "We adore flowers, but we’re leaving on our honeymoon right after the wedding. Instead of a bouquet, a bottle of your favorite wine for our family cellar would be lovely." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "A small request", text: "We’d love the day to be full of genuine moments, so we’d be grateful if you could keep phones away during the ceremony." } },
+  { type: "DRESSCODE", content: { v: 1, title: "Dress code", text: "We’d be delighted if you joined in the mood of our day and chose outfits in the shades of this palette.", palette: ["#e8cabb", "#c9aa9b", "#849b9d", "#2d484b"] } },
+  { type: "RSVP_FORM", content: { v: 1, title: "Will you join us?", text: "Please let us know your plans by October 15, 2027. Your reply helps us prepare the day for every guest.", buttonLabel: "Send", attendanceLabel: "Will you be able to attend?", yesLabel: "Joyfully accepts", noLabel: "Regretfully declines", nameLabel: "Full name", drinksLabel: "Drink preferences", successText: "Thank you! We’ve received your reply." } },
+  { type: "TEXT", content: { v: 1, title: "We can’t wait to see you!", text: "With love, Emily & James" } },
+];

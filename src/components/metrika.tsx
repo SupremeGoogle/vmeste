@@ -5,9 +5,12 @@
  * вход и регистрация). В кабинет, на сброс пароля и на экран «введите
  * код» счётчик не ходит: там чужие данные и адреса почты в ссылках.
  *
- * Вебвизор выключен намеренно: запись экрана на форме входа поймала бы
- * адрес почты. Адрес отправляется без query-строки — по той же причине
- * (`/register?error=…&email=…`).
+ * Вебвизор (запись сессий) — только на открытых страницах. Поля входа и
+ * регистрации помечены `ym-hide-content`, и их содержимое в запись не
+ * попадает. Переход внутри Next из открытой части в кабинет запись бы
+ * продолжил — поэтому при входе в закрытый раздел после старта счётчика
+ * страница перезагружается: без счётчика, без записи. Адрес отправляется
+ * без query-строки (`/register?error=…&email=…`).
  *
  * Хиты шлём сами на каждую смену адреса (`defer: true`): переходы внутри
  * Next проходят без перезагрузки, и сам счётчик их не видит.
@@ -29,7 +32,12 @@ export function Metrika() {
   const allowed = !PRIVATE.test(pathname);
 
   useEffect(() => {
-    if (!allowed) return;
+    if (!allowed) {
+      // Счётчик уже пишет сессию с открытой страницы — закрытый раздел
+      // открываем заново, без него.
+      if (started) window.location.reload();
+      return;
+    }
     const w = window as unknown as { ym?: Ym };
     if (!w.ym) {
       // Очередь вызовов до загрузки tag.js — как в официальном коде счётчика.
@@ -41,7 +49,7 @@ export function Metrika() {
       w.ym = queue;
     }
     if (!started) {
-      w.ym(METRIKA_ID, "init", { defer: true, clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: false });
+      w.ym(METRIKA_ID, "init", { defer: true, clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: true });
       started = true;
     }
     const url = window.location.origin + pathname;

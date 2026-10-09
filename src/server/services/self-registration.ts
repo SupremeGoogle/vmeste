@@ -11,6 +11,7 @@
  */
 import { normalizeName } from "@/lib/name-normalize";
 import { expandGuestName } from "@/server/services/diminutives";
+import { makeT, type Lang } from "@/lib/i18n";
 
 /** Сколько гостей может добавиться сам на одно мероприятие. */
 export const SELF_REGISTRATION_CAP = 1500;
@@ -40,10 +41,11 @@ export function samePerson(known: string, typed: string): boolean {
  * Имя, которое можно завести гостем. Ссылки и адреса в имени — почти
  * всегда спам в общей ссылке, выложенной в открытый чат.
  */
-export function selfRegistrationNameProblem(name: string): string | null {
+export function selfRegistrationNameProblem(name: string, lang: Lang = "ru"): string | null {
+  const t = makeT(lang);
   const clean = name.trim();
-  if (!clean) return "Напишите, пожалуйста, своё имя — так пара поймёт, кто ответил.";
-  if (!/\p{L}/u.test(clean)) return "Напишите имя буквами.";
-  if (/https?:|www\.|\.(?:ru|com|net|org|io|me)\b|@|t\.me\//i.test(clean)) return "В имени не должно быть ссылок и адресов.";
+  if (!clean) return t("Напишите, пожалуйста, своё имя — так пара поймёт, кто ответил.", "Please enter your name so the couple knows who replied.");
+  if (!/\p{L}/u.test(clean)) return t("Напишите имя буквами.", "Please write your name in letters.");
+  if (/https?:|www\.|\.(?:ru|com|net|org|io|me)\b|@|t\.me\//i.test(clean)) return t("В имени не должно быть ссылок и адресов.", "Your name can’t include links or addresses.");
   return null;
 }

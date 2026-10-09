@@ -30,6 +30,12 @@ export const HALL_MAX: Hall = { width: 3000, height: 2000 };
 export const COUPLE_MIN_SEATS = 2;
 export const COUPLE_MAX_SEATS = 12;
 export const COUPLE_TABLE_LABEL = "Стол молодожёнов";
+export const COUPLE_TABLE_LABEL_EN = "Couple's table";
+
+/** Название стола молодожёнов на языке мероприятия (оно сохраняется и печатается). */
+export function coupleTableLabel(lang: "ru" | "en" = "ru"): string {
+  return lang === "en" ? COUPLE_TABLE_LABEL_EN : COUPLE_TABLE_LABEL;
+}
 
 /** Радиус кружка места в условных единицах. */
 export const SEAT_RADIUS = 11;
@@ -57,6 +63,13 @@ export const SHAPE_LABEL: Record<TableShape, string> = {
   RECT: "прямоугольный",
   OVAL: "овальный",
   HEAD: "президиум",
+};
+
+export const SHAPE_LABEL_EN: Record<TableShape, string> = {
+  ROUND: "round",
+  RECT: "rectangular",
+  OVAL: "oval",
+  HEAD: "head table",
 };
 
 export const SHAPES: readonly TableShape[] = ["ROUND", "RECT", "OVAL", "HEAD"];

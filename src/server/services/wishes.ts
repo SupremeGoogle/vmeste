@@ -13,6 +13,7 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { bus } from "@/server/events/bus";
 import { isBlockedWish } from "@/lib/wish-moderation";
+import { makeT, type Lang } from "@/lib/i18n";
 
 export const wishInputSchema = z.object({
   authorName: z.string().trim().min(1, "нужно имя").max(80),
@@ -33,10 +34,14 @@ const PER_GUEST_LIMIT = 3;
 export async function createWish(
   guest: { orgId: string; eventId: string; guestId: string },
   raw: unknown,
+  /** Язык мероприятия — на нём сообщения гостю. */
+  lang: Lang = "ru",
 ): Promise<WishResult> {
+  const t = makeT(lang);
   const parsed = wishInputSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, reason: "invalid", message: parsed.error.issues[0].message };
+    const message = parsed.error.issues[0].message;
+    return { ok: false, reason: "invalid", message: t(message, message === "нужно имя" ? "please add your name" : message === "напишите пару слов" ? "please write a few words" : "please check the form") };
   }
 
   const flagged = isBlockedWish(parsed.data.authorName, parsed.data.text);
@@ -46,7 +51,7 @@ export async function createWish(
     select: { wishesEnabled: true },
   });
   if (!event?.wishesEnabled) {
-    return { ok: false, reason: "disabled", message: "Приём пожеланий закрыт" };
+    return { ok: false, reason: "disabled", message: t("Приём пожеланий закрыт", "Wishes are closed") };
   }
 
   const mine = await db.wish.count({
@@ -56,7 +61,7 @@ export async function createWish(
     return {
       ok: false,
       reason: "limit",
-      message: `Больше ${PER_GUEST_LIMIT} пожеланий не принимаем — вы и так молодец`,
+      message: t(`Больше ${PER_GUEST_LIMIT} пожеланий не принимаем — вы и так молодец`, `You can send up to ${PER_GUEST_LIMIT} wishes. Thank you for all of them!`),
     };
   }
 

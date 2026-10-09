@@ -13,6 +13,7 @@ import Link, { useLinkStatus } from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { BrandMark } from "@/components/brand";
+import { useT } from "@/components/i18n-provider";
 
 /** Через сколько секунд предложить открыть страницу заново: переход мог
  *  оборваться (сервер перезапустился, пропала сеть), а заставка — остаться. */
@@ -21,6 +22,7 @@ const STUCK_AFTER_MS = 8000;
 function OpeningOverlay({ title, href }: { title: string; href: string }) {
   const { pending } = useLinkStatus();
   const [stuck, setStuck] = useState(false);
+  const t = useT();
   useEffect(() => {
     if (!pending) return;
     const timer = setTimeout(() => setStuck(true), STUCK_AFTER_MS);
@@ -41,20 +43,20 @@ function OpeningOverlay({ title, href }: { title: string; href: string }) {
       </div>
       <div>
         <p className="font-serif text-2xl text-stone-900">{title}</p>
-        <p className="mt-1 text-sm text-stone-500">Открываем мероприятие…</p>
+        <p className="mt-1 text-sm text-stone-500">{t("Открываем мероприятие…", "Opening your event…")}</p>
       </div>
       <div aria-hidden className="h-1 w-48 overflow-hidden rounded-full bg-stone-200">
         <div className="opening-progress h-full w-1/3 rounded-full bg-stone-800" />
       </div>
       {stuck && (
         <div className="flex flex-col items-center gap-2 text-sm text-stone-500">
-          <p>Открывается дольше обычного.</p>
+          <p>{t("Открывается дольше обычного.", "This is taking longer than usual.")}</p>
           <button
             type="button"
             onClick={(event) => { event.stopPropagation(); window.location.assign(href); }}
             className="min-h-10 rounded-lg bg-stone-900 px-4 font-medium text-white"
           >
-            Открыть заново
+            {t("Открыть заново", "Try again")}
           </button>
         </div>
       )}

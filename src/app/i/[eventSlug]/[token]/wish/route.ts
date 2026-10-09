@@ -9,6 +9,9 @@ import { html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import { wishPage } from "@/server/guest-html/wish-html";
 import { getInviteTheme } from "@/server/repositories/invites";
+import { gl, themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
+import { parseLang } from "@/lib/i18n";
+
 
 export const dynamic = "force-dynamic";
 
@@ -37,18 +40,18 @@ export async function GET(
   const mine = await listGuestWishes({ eventId: guest.eventId, guestId: guest.id });
 
   return html(
-    wishPage({
-      theme,
+    withGuestLang(guest.event.language, () => wishPage({
+      theme: themeInLang(theme, guest.event.language),
       eventTitle: guest.event.title,
       authorName: guest.displayName,
       enabled: guest.event.wishesEnabled,
       mine,
       action: `/i/${eventSlug}/${token}/wish`,
       backHref: `/i/${eventSlug}/${token}`,
-      backLabel: "Вернуться к приглашению",
+      backLabel: gl("Вернуться к приглашению", "Back to the invitation"),
       saved: url.searchParams.get("ok") === "1",
       error: url.searchParams.get("error"),
-    }),
+    })),
     { headers: { "cache-control": "private, no-store" } },
   );
 }
@@ -72,6 +75,7 @@ export async function POST(
       authorName: String(form.get("authorName") ?? ""),
       text: String(form.get("text") ?? ""),
     },
+    parseLang(guest.event.language) ?? "ru",
   );
 
   const query = result.ok ? "?ok=1" : `?error=${encodeURIComponent(result.message)}`;

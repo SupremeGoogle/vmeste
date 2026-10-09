@@ -7,6 +7,7 @@ import { esc } from "@/server/guest-html/layout";
 import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
 import { L } from "@/server/guest-html/template-labels";
 import { AQUARELLE_SAMPLE_IMAGES } from "@/lib/invite-templates/aquarelle-assets";
+import { gl } from "@/server/guest-html/guest-lang";
 
 function wrap(block: InviteBlockView, className: string, body: string, editable: boolean): string {
   const e = editAttrs(block.id, editable);
@@ -25,7 +26,7 @@ export function namesMarkup(names: string): string {
   if (!parts) return esc(names);
   return (
     `<span class="aq-groom">${esc(parts.groom)}</span> ` +
-    `<span class="aq-and">и</span> ` +
+    `<span class="aq-and">${gl("и", "&amp;")}</span> ` +
     `<span class="aq-bride">${esc(parts.bride)}</span>`
   );
 }
@@ -40,20 +41,20 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
       return wrap(
         block,
         "aq-cover",
-        `<div class="aq-cover-copy"><p class="aq-eyebrow">${L("aquarelle.t2", "Свадебное приглашение")}</p>` +
+        `<div class="aq-cover-copy"><p class="aq-eyebrow">${L("aquarelle.t2", gl("Свадебное приглашение", "Wedding invitation"))}</p>` +
           `<h1 class="aq-names"${e.text("names")}>${namesMarkup(c.names)}</h1>` +
           `<p class="aq-kicker"${e.text("title")}>${esc(c.title)}</p>` +
           (c.dateText || editable ? `<p class="aq-cover-date"${e.text("dateText")}>${esc(c.dateText)}</p>` : "") +
           (c.subtitle || editable ? `<p class="aq-copy"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p>` : "") +
           `</div><figure class="aq-cover-photo"><img src="${esc(imageUrl)}" alt="" decoding="async"${e.image("imageUrl")}></figure>` +
-          `<span class="aq-cover-index" aria-hidden="true">${L("aquarelle.t1", "01 / Приглашение")}</span>`,
+          `<span class="aq-cover-index" aria-hidden="true">${L("aquarelle.t1", gl("01 / Приглашение", "01 / Invitation"))}</span>`,
         editable,
       );
     }
 
     case "TEXT": {
       const c = block.content as BlockContentMap["TEXT"];
-      const closing = /встреч|любов/i.test(`${c.title} ${c.text}`);
+      const closing = /встреч|любов|see you|with love/i.test(`${c.title} ${c.text}`);
       return wrap(
         block,
         closing ? "aq-closing" : c.tag ? "aq-note aq-note-detail" : "aq-note aq-note-intro",
@@ -69,10 +70,10 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
       const photo = c.imageUrl
         ? `<figure class="aq-arch"><img src="${esc(c.imageUrl)}" alt="" loading="lazy" decoding="async"${e.image("imageUrl")}></figure>`
         : editable
-          ? `<figure class="aq-arch"><span class="ie-image-placeholder"${e.image("imageUrl")}>Фотография места</span></figure>`
+          ? `<figure class="aq-arch"><span class="ie-image-placeholder"${e.image("imageUrl")}>${gl("Фотография места", "Venue photo")}</span></figure>`
           : "";
       const map = c.mapUrl
-        ? `<a class="aq-button" href="${esc(c.mapUrl)}" target="_blank" rel="noreferrer noopener"${editable ? " data-editor-ui" : ""}>${esc(c.mapLabel || "Открыть карту")}</a>`
+        ? `<a class="aq-button" href="${esc(c.mapUrl)}" target="_blank" rel="noreferrer noopener"${editable ? " data-editor-ui" : ""}>${esc(c.mapLabel || gl("Открыть карту", "Open map"))}</a>`
         : "";
       return wrap(
         block,
@@ -99,7 +100,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
             `<div><strong${e.text(`items.${index}.title`)}>${esc(item.title)}</strong>` +
             `<small${e.text(`items.${index}.note`)}>${esc(item.note)}</small></div>` +
             (editable
-              ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить пункт">×</button>`
+              ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="${gl("Удалить пункт", "Remove item")}">×</button>`
               : "") +
             `</li>`,
         )
@@ -110,7 +111,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
         (c.tag || editable ? `<p class="aq-tag"${e.text("tag")}>${esc(c.tag)}</p>` : "") +
           `<h2${e.text("title")}>${esc(c.title)}</h2>` +
           `<ol class="aq-slots">${items}</ol>` +
-          (editable ? `<button type="button" class="aq-add" data-block-action="add-detail">+ Добавить пункт</button>` : ""),
+          (editable ? `<button type="button" class="aq-add" data-block-action="add-detail">${gl("+ Добавить пункт", "+ Add item")}</button>` : ""),
         editable,
       );
     }
@@ -147,7 +148,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
                 `<figure class="aq-arch" data-aq-rise>` +
                 (item.imageUrl
                   ? `<img src="${esc(item.imageUrl)}" alt="" loading="lazy" decoding="async"${e.image(`items.${index}.imageUrl`)}>`
-                  : `<span class="ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>Фотография</span>`) +
+                  : `<span class="ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>${gl("Фотография", "Photo")}</span>`) +
                 (item.caption || editable ? `<figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption>` : "") +
                 `</figure>`,
             )

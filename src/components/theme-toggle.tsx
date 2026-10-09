@@ -9,18 +9,22 @@
  */
 import { useSyncExternalStore } from "react";
 import { readThemeChoice, saveThemeChoice, subscribeTheme, type ThemeChoice } from "@/lib/theme";
+import { useT } from "@/components/i18n-provider";
+import type { T } from "@/lib/i18n";
 
 const NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
-const LABEL: Record<ThemeChoice, string> = {
-  system: "Тема: как в системе",
-  light: "Тема: светлая",
-  dark: "Тема: тёмная",
-};
+const LABEL = (t: T): Record<ThemeChoice, string> => ({
+  system: t("Тема: как в системе", "Theme: system"),
+  light: t("Тема: светлая", "Theme: light"),
+  dark: t("Тема: тёмная", "Theme: dark"),
+});
 
 export function ThemeToggle() {
   // Выбор живёт в localStorage. На сервере его нет — там «авто», чтобы
   // разметка совпала, а после гидратации React сам подставит настоящий.
   const choice = useSyncExternalStore(subscribeTheme, readThemeChoice, () => "system" as ThemeChoice);
+  const t = useT();
+  const label = LABEL(t)[choice];
 
   function toggle() {
     saveThemeChoice(NEXT[choice]);
@@ -30,8 +34,8 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      title={LABEL[choice]}
-      aria-label={`${LABEL[choice]}. Нажмите, чтобы сменить`}
+      title={label}
+      aria-label={`${label}. ${t("Нажмите, чтобы сменить", "Click to change")}`}
       className="grid size-8 place-items-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
     >
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

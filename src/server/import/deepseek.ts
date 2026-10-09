@@ -12,7 +12,12 @@
 import type { ZodType } from "zod";
 import { IMPORT_LIMITS as L } from "./limits";
 
-export class AiUnavailable extends Error {}
+/** Причина по-русски в `message`, по-английски — в `en`: её видит организатор в предпросмотре. */
+export class AiUnavailable extends Error {
+  constructor(message: string, readonly en: string = message) {
+    super(message);
+  }
+}
 
 export type AiBudget = { requests: number; tokens: number };
 
@@ -37,12 +42,12 @@ export async function deepseekJson<T>({
   budget: AiBudget;
 }): Promise<T> {
   const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) throw new AiUnavailable("нет ключа");
+  if (!key) throw new AiUnavailable("нет ключа", "no API key");
 
-  let lastError = "нет ответа";
+  let lastError: [string, string] = ["нет ответа", "no response"];
   for (let attempt = 0; attempt < 2; attempt++) {
     if (budget.requests >= L.aiRequests || budget.tokens + maxTokens > L.aiTokens) {
-      throw new AiUnavailable("исчерпан лимит запросов на один импорт");
+      throw new AiUnavailable("исчерпан лимит запросов на один импорт", "request limit for one import reached");
     }
     budget.requests++;
 
@@ -65,16 +70,18 @@ export async function deepseekJson<T>({
         signal: AbortSignal.timeout(L.aiTimeoutMs),
       });
     } catch (error) {
-      lastError = error instanceof Error && error.name === "TimeoutError" ? "не ответил вовремя" : "нет связи";
+      lastError = error instanceof Error && error.name === "TimeoutError" ? ["не ответил вовремя", "timed out"] : ["нет связи", "no connection"];
       continue;
     }
 
     if (response.status === 401 || response.status === 402 || response.status === 403) {
       // Ключ недействителен или кончились деньги — повторять бессмысленно.
-      throw new AiUnavailable(response.status === 402 ? "закончился баланс" : "ключ не подошёл");
+      throw response.status === 402
+        ? new AiUnavailable("закончился баланс", "out of balance")
+        : new AiUnavailable("ключ не подошёл", "API key rejected");
     }
     if (!response.ok) {
-      lastError = `ошибка ${response.status}`;
+      lastError = [`ошибка ${response.status}`, `error ${response.status}`];
       continue;
     }
 
@@ -84,12 +91,12 @@ export async function deepseekJson<T>({
     try {
       const parsed = schema.safeParse(JSON.parse(content));
       if (parsed.success) return parsed.data;
-      lastError = "ответ не по схеме";
+      lastError = ["ответ не по схеме", "response didn’t match the schema"];
     } catch {
-      lastError = "ответ не JSON";
+      lastError = ["ответ не JSON", "response wasn’t JSON"];
     }
   }
-  throw new AiUnavailable(lastError);
+  throw new AiUnavailable(...lastError);
 }
 
 /**

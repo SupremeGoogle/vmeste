@@ -6,6 +6,7 @@ import { invitePage } from "@/server/guest-html/invite-html";
 import { loadWishlist } from "@/server/guest-html/wishlist";
 import { wishlistPage } from "@/server/guest-html/wishlist-page";
 import { verifiedNote } from "@/server/guest-html/flash";
+import { themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,10 @@ export async function GET(
       message: verifiedNote(guest.event.guestLinkSecret, "gift", url.searchParams.get("gift"), url.searchParams.get("gsig")),
     }),
   ]);
-  const page = wishlistPage({
-    title: guest.event.title, theme, blocks, wishlist,
+  const page = withGuestLang(guest.event.language, () => wishlistPage({
+    title: guest.event.title, theme: themeInLang(theme, guest.event.language), blocks, wishlist,
     eventDate: guest.event.eventDate, timezone: guest.event.timezone,
     back: `/i/${eventSlug}/${token}`,
-  });
+  }));
   return page ? html(page, { headers: { "cache-control": "private, no-store" } }) : missing();
 }

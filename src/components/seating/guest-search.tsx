@@ -9,12 +9,21 @@
  * уходить заводить во вкладку «Гости» и возвращаться.
  */
 import { useId, useState } from "react";
-import { ROLE_LABEL } from "@/lib/couple-marks";
+import { ROLE_LABEL, ROLE_LABEL_EN } from "@/lib/couple-marks";
+import { useT } from "@/components/i18n-provider";
+import type { T } from "@/lib/i18n";
 import type { EditorGuest } from "./use-seating";
 
 /** Подписи статуса ответа из списка нерассаженных в поиске только мешают. */
 export function baseName(displayName: string): string {
   return displayName.replace(/ \((не придёт|не ответил)\)$/, "");
+}
+
+/** Имя для показа: подпись статуса ответа (её добавляет сервер по-русски) — на языке кабинета. */
+export function shownName(displayName: string, t: T): string {
+  return displayName.replace(/ \((не придёт|не ответил)\)$/, (_, status: string) =>
+    ` (${status === "не придёт" ? t("не придёт", "not coming") : t("не ответил", "no reply")})`,
+  );
 }
 
 const fold = (text: string) => text.toLowerCase().replace(/ё/g, "е").trim();
@@ -24,7 +33,7 @@ export function GuestSearch({
   onPick,
   onCreate,
   onCancel,
-  placeholder = "Имя гостя",
+  placeholder,
   autoFocus = false,
   busy = false,
 }: {
@@ -36,6 +45,7 @@ export function GuestSearch({
   autoFocus?: boolean;
   busy?: boolean;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const listId = useId();
 
@@ -74,7 +84,7 @@ export function GuestSearch({
           }
           if (e.key === "Escape") onCancel?.();
         }}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("Имя гостя", "Guest name")}
         autoFocus={autoFocus}
         maxLength={120}
         aria-controls={listId}
@@ -91,7 +101,7 @@ export function GuestSearch({
               onClick={submit}
               className="w-full rounded-lg bg-stone-900 px-3 py-2 text-left text-sm text-white disabled:opacity-50"
             >
-              + Добавить «{trimmed}» как нового гостя
+              {t(`+ Добавить «${trimmed}» как нового гостя`, `+ Add “${trimmed}” as a new guest`)}
             </button>
           </li>
         )}
@@ -106,15 +116,15 @@ export function GuestSearch({
               }}
               className="w-full rounded-lg border border-stone-200 bg-card px-3 py-2 text-left text-sm hover:border-stone-400"
             >
-              {guest.displayName}
+              {shownName(guest.displayName, t)}
               {guest.role && guest.role !== "GUEST" ? (
-                <span className="ml-2 text-xs text-stone-500">{ROLE_LABEL[guest.role]}</span>
+                <span className="ml-2 text-xs text-stone-500">{t(ROLE_LABEL[guest.role], ROLE_LABEL_EN[guest.role])}</span>
               ) : null}
             </button>
           </li>
         ))}
         {!trimmed && guests.length === 0 && (
-          <li className="px-1 text-xs text-stone-500">Все гости рассажены — впишите имя нового.</li>
+          <li className="px-1 text-xs text-stone-500">{t("Все гости рассажены — впишите имя нового.", "Everyone is seated — type a name to add a new guest.")}</li>
         )}
       </ul>
     </div>

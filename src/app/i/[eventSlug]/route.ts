@@ -20,6 +20,8 @@ import { fallbackRsvpSection, withInlineRsvp } from "@/server/guest-html/inline-
 import { RSVP_FIELDS_CSS } from "@/server/guest-html/rsvp-fields";
 import { readFlash } from "@/server/guest-html/flash";
 import { db } from "@/server/db";
+import { themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
+import { parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +41,9 @@ export async function GET(
   const url = new URL(request.url);
   const name = (url.searchParams.get("name") ?? "").trim().slice(0, 120);
   const joinHref = `/i/${eventSlug}/join${name ? `?name=${encodeURIComponent(name)}` : ""}`;
-  const when = formatEventDateTime(invite.event.eventDate, invite.event.timezone);
+  const lang = parseLang(invite.event.language) ?? "ru";
+  const theme = themeInLang(invite.theme, lang);
+  const when = formatEventDateTime(invite.event.eventDate, invite.event.timezone, lang);
   const [links, wishlist] = await Promise.all([
     guestFeatureLinks(invite.event.id),
     loadWishlist(invite.event.id, { pageHref: `/i/${eventSlug}/wishlist` }),
@@ -62,6 +66,7 @@ export async function GET(
         action: `/i/${eventSlug}/join`,
         saved: false,
         closed: Boolean(invite.event.rsvpDeadline && Date.now() > invite.event.rsvpDeadline.getTime()),
+        language: lang,
         // Точный текст ошибки — только подписанный (guest-html/flash.ts).
         flash: readFlash(url.searchParams, url.searchParams.has("msg")
           ? (await db.event.findUnique({ where: { id: invite.event.id }, select: { guestLinkSecret: true } }))?.guestLinkSecret ?? null
@@ -73,13 +78,13 @@ export async function GET(
   const greeting = name ? `<p class="who">${esc(name)}</p>` : "";
 
   return html(
-    invitePage({
+    withGuestLang(lang, () => invitePage({
       title: invite.event.title,
-      theme: invite.theme,
+      theme,
       extraCss: rsvp ? RSVP_FIELDS_CSS : undefined,
-      body: `${rsvp ? "" : greeting}${renderBlocks(invite.blocks, joinHref, null, invite.event.eventDate, invite.theme, invite.event.timezone, { rsvp, wishlist })}${rsvp ? withInlineRsvp(rsvp, false, () => fallbackRsvpSection(invite.blocks)) : ""}${links.length ? `<div class="links">${links.join("")}</div>` : ""}<p class="foot">${when}</p>`,
-      script: inviteScript(invite.blocks, invite.theme, coupleNames(invite.blocks, invite.event.title)),
-    }),
+      body: `${rsvp ? "" : greeting}${renderBlocks(invite.blocks, joinHref, null, invite.event.eventDate, theme, invite.event.timezone, { rsvp, wishlist })}${rsvp ? withInlineRsvp(rsvp, false, () => fallbackRsvpSection(invite.blocks)) : ""}${links.length ? `<div class="links">${links.join("")}</div>` : ""}<p class="foot">${when}</p>`,
+      script: inviteScript(invite.blocks, theme, coupleNames(invite.blocks, invite.event.title)),
+    })),
     {
       headers: {
         // С именем в адресе страница личная — в общий кеш её не кладём.

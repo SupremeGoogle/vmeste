@@ -18,8 +18,10 @@ import { formatDeadline } from "@/lib/format-datetime";
 import { esc } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import { getInviteTheme } from "@/server/repositories/invites";
+import type { InviteTheme } from "@/lib/invite-theme";
 import { RSVP_FIELDS_CSS, rsvpFieldsHtml } from "@/server/guest-html/rsvp-fields";
 import { parseStoredAnswers, readAnswers, type RsvpQuestion } from "@/lib/rsvp-form";
+import { gl, guestLang, themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
 
 export const RSVP_ERRORS: Record<string, string> = {
   deadline: "Срок ответа истёк. Напишите организатору — он отметит вас вручную.",
@@ -28,6 +30,20 @@ export const RSVP_ERRORS: Record<string, string> = {
   name: "Напишите, пожалуйста, своё имя — так пара поймёт, кто ответил.",
   limit: "Слишком много ответов подряд. Попробуйте через несколько минут.",
 };
+
+const RSVP_ERRORS_EN: Record<string, string> = {
+  deadline: "The RSVP deadline has passed. Please contact the organizer, who can mark your reply for you.",
+  invalid: "Please check the form.",
+  gone: "This invitation is no longer active.",
+  name: "Please enter your name so the couple knows who replied.",
+  limit: "Too many replies in a row. Please try again in a few minutes.",
+};
+
+/** Текст ошибки анкеты по коду — на языке мероприятия; неизвестный код — «invalid». */
+export function rsvpErrorText(code: string): string {
+  const known = code in RSVP_ERRORS ? code : "invalid";
+  return guestLang() === "en" ? RSVP_ERRORS_EN[known] : RSVP_ERRORS[known];
+}
 
 /** Докуда живёт гостевая сессия: месяц после свадьбы. Ответ может прийти
  *  и за полгода до неё, поэтому берём более поздний из двух сроков. */
@@ -75,7 +91,8 @@ export function readRsvpDraft(form: FormData, questions: RsvpQuestion[]): RsvpDr
  */
 export type RsvpSubject = {
   eventId: string;
-  event: { timezone: string; rsvpDeadline: Date | null; allowPlusOne: boolean };
+  /** `language` — язык мероприятия ("ru" | "en"); нет — русский. */
+  event: { timezone: string; rsvpDeadline: Date | null; allowPlusOne: boolean; language?: string | null };
   displayName: string;
   rsvpStatus: string;
   mealOptionId: string | null;
@@ -92,25 +109,40 @@ export type RsvpSubject = {
 const hidden = (name: string, value: string | null) =>
   value ? `<input type="hidden" name="${name}" value="${esc(value)}">` : "";
 
+type RsvpPageOptions = {
+  /** Куда отправлять форму. */
+  action: string;
+  /** Ссылка «вернуться к приглашению». */
+  back: string;
+  pageTitle: string;
+  error?: string | null;
+  message?: string | null;
+  draft?: RsvpDraft;
+};
+
 export async function renderRsvpPage(
   subject: RsvpSubject,
   questions: RsvpQuestion[],
-  opts: {
-    /** Куда отправлять форму. */
-    action: string;
-    /** Ссылка «вернуться к приглашению». */
-    back: string;
-    pageTitle: string;
-    error?: string | null;
-    message?: string | null;
-    draft?: RsvpDraft;
-  },
+  opts: RsvpPageOptions,
 ): Promise<string> {
   const [theme, meals, drinks] = await Promise.all([
     getInviteTheme(subject.eventId),
     listMealOptions(subject.eventId),
     listDrinkOptions(subject.eventId),
   ]);
+  // Сама страница — синхронно и на языке мероприятия.
+  const language = subject.event.language;
+  return withGuestLang(language, () => rsvpPageHtml(subject, questions, opts, themeInLang(theme, language), meals, drinks));
+}
+
+function rsvpPageHtml(
+  subject: RsvpSubject,
+  questions: RsvpQuestion[],
+  opts: RsvpPageOptions,
+  theme: InviteTheme,
+  meals: { id: string; title: string }[],
+  drinks: { id: string; title: string }[],
+): string {
   // Поле показывается, только если в анкете есть вопрос и есть из чего выбрать.
   const mealShown = questions.some((question) => question.type === "MEAL") && meals.length > 0;
   const drinksShown = questions.some((question) => question.type === "DRINKS") && drinks.length > 0;
@@ -175,30 +207,31 @@ ${drinks
   // Срок прошёл — говорим сразу, а не после того, как гость всё заполнит.
   const closed = Boolean(subject.event.rsvpDeadline && Date.now() > subject.event.rsvpDeadline.getTime());
   const errorText = opts.error
-    ? opts.message || (RSVP_ERRORS[opts.error] ?? RSVP_ERRORS.invalid)
-    : closed ? RSVP_ERRORS.deadline : null;
+    ? opts.message || rsvpErrorText(opts.error)
+    : closed ? rsvpErrorText("deadline") : null;
+  const timezone = subject.event.timezone;
 
   const body = `${subject.displayName ? `<p class="who">${esc(subject.displayName)}</p>` : ""}
 <section style="padding-bottom:0">
-<h1 class="center" style="font-size:1.5rem">${answered ? "Можно изменить ответ" : "Подтвердите присутствие"}</h1>
-${deadline ? `<p class="center small muted">до ${esc(formatDeadline(deadline, subject.event.timezone))}</p>` : ""}
+<h1 class="center" style="font-size:1.5rem">${answered ? gl("Можно изменить ответ", "You can update your reply") : gl("Подтвердите присутствие", "Please RSVP")}</h1>
+${deadline ? `<p class="center small muted">${esc(gl(`до ${formatDeadline(deadline, timezone)}`, formatDeadline(deadline, timezone, "en")))}</p>` : ""}
 </section>
 ${errorText ? `<p class="error">${esc(errorText)}</p>` : ""}
 <form method="post" action="${esc(opts.action)}">${kept}
-  <label class="field"><span>Ваше имя и фамилия</span>
-  <input name="guestName" maxlength="120" required autocomplete="name" value="${esc(name)}" placeholder="Имя и фамилия">
+  <label class="field"><span>${gl("Ваше имя и фамилия", "Your full name")}</span>
+  <input name="guestName" maxlength="120" required autocomplete="name" value="${esc(name)}" placeholder="${gl("Имя и фамилия", "Full name")}">
   </label>
 
   <fieldset>
-    <legend>Придёте?</legend>
-    ${choice("status", "ACCEPTED", "Да, будем", status === "ACCEPTED", true)}
-    ${choice("status", "DECLINED", "К сожалению, не сможем", status === "DECLINED")}
+    <legend>${gl("Придёте?", "Will you attend?")}</legend>
+    ${choice("status", "ACCEPTED", gl("Да, будем", "Yes, we’ll be there"), status === "ACCEPTED", true)}
+    ${choice("status", "DECLINED", gl("К сожалению, не сможем", "Sorry, we can’t make it"), status === "DECLINED")}
   </fieldset>
 
   ${
     plusOneAllowed
-      ? `<label class="field"><span>Имя спутника, если придёте вдвоём</span>
-<input name="plusOneName" maxlength="120" value="${esc(draft?.plusOneName ?? subject.plusOneName ?? "")}" placeholder="Имя и фамилия">
+      ? `<label class="field"><span>${gl("Имя спутника, если придёте вдвоём", "Your plus-one’s name, if you’re bringing one")}</span>
+<input name="plusOneName" maxlength="120" value="${esc(draft?.plusOneName ?? subject.plusOneName ?? "")}" placeholder="${gl("Имя и фамилия", "Full name")}">
 </label>`
       : ""
   }
@@ -209,26 +242,26 @@ ${errorText ? `<p class="error">${esc(errorText)}</p>` : ""}
     selectedDrinks: chosenDrinks,
     answers,
     musicWish: draft?.musicWish ?? subject.musicWish ?? "",
-    hint: "если придёте",
+    hint: gl("если придёте", "if attending"),
   })}
   ${
     plusOneAllowed && mealShown
-      ? mealFieldset("plusOneMealOptionId", "Что подать спутнику — если придёте вдвоём", plusOneMeal)
+      ? mealFieldset("plusOneMealOptionId", gl("Что подать спутнику — если придёте вдвоём", "Meal for your plus-one, if you’re bringing one"), plusOneMeal)
       : ""
   }
 
   ${
     plusOneAllowed && drinksShown
-      ? drinkFieldset("plusOneDrinkOptionIds", "Что будет пить спутник — если придёте вдвоём", plusOneDrinks)
+      ? drinkFieldset("plusOneDrinkOptionIds", gl("Что будет пить спутник — если придёте вдвоём", "Drinks for your plus-one, if you’re bringing one"), plusOneDrinks)
       : ""
   }
 
-  <label class="field"><span>Что-то ещё для организатора</span>
+  <label class="field"><span>${gl("Что-то ещё для организатора", "Anything else the organizer should know")}</span>
   <textarea name="comment" maxlength="500" rows="3">${esc(draft?.comment ?? subject.comment ?? "")}</textarea></label>
 
-  <button class="submit" type="submit">${answered ? "Сохранить ответ" : "Отправить"}</button>
+  <button class="submit" type="submit">${answered ? gl("Сохранить ответ", "Save reply") : gl("Отправить", "Send")}</button>
 </form>
-<p class="foot"><a href="${esc(opts.back)}">Вернуться к приглашению</a></p>`;
+<p class="foot"><a href="${esc(opts.back)}">${gl("Вернуться к приглашению", "Back to the invitation")}</a></p>`;
 
   return invitePage({ title: opts.pageTitle, theme, body, noindex: true, extraCss: RSVP_FIELDS_CSS });
 }

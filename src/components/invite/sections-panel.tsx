@@ -11,6 +11,7 @@
  * новый раздел ровно в это место.
  */
 import { useState } from "react";
+import { useLang, useT } from "@/components/i18n-provider";
 
 export type SectionItem = {
   id: string; type: string; label: string; hint: string; visible: boolean;
@@ -36,20 +37,38 @@ const TYPE_HINTS: Record<string, string> = {
   RSVP_FORM: "Анкета: придёт ли гость",
 };
 
+const TYPE_HINTS_EN: Record<string, string> = {
+  COVER: "Names, date and a photo on the first screen",
+  PHOTOS: "Up to four photos with captions",
+  CALENDAR: "The month with your wedding day marked",
+  COUNTDOWN: "Days, hours and minutes to the celebration",
+  TIMELINE: "The day plan, hour by hour",
+  VENUE: "Venue, address and map",
+  MAP: "Directions and map links",
+  DRESSCODE: "Color palette and what to wear",
+  TEXT: "A heading and your own text",
+  WISHLIST: "A button that opens your gift list",
+  RSVP_FORM: "RSVP form: will the guest attend",
+};
+
 export function TypePicker({
-  types, onPick, onClose, title = "Добавить раздел",
+  types, onPick, onClose, title,
 }: {
   types: BlockTypeOption[];
   onPick: (type: string) => void;
   onClose: () => void;
   title?: string;
 }) {
+  const t = useT();
+  const lang = useLang();
+  const hints = lang === "en" ? TYPE_HINTS_EN : TYPE_HINTS;
+  const heading = title ?? t("Добавить раздел", "Add section");
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="max-h-[86vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-5 shadow-2xl">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-serif text-2xl text-stone-900">{title}</p>
-          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-stone-500 hover:bg-stone-100" aria-label="Закрыть">✕</button>
+          <p className="font-serif text-2xl text-stone-900">{heading}</p>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-stone-500 hover:bg-stone-100" aria-label={t("Закрыть", "Close")}>✕</button>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {types.map((option) => (
@@ -60,7 +79,7 @@ export function TypePicker({
               className="rounded-xl border border-stone-200 p-3 text-left transition-colors hover:border-stone-400 hover:bg-stone-50"
             >
               <span className="block text-sm font-medium text-stone-900">{option.label}</span>
-              <span className="mt-0.5 block text-xs text-stone-500">{TYPE_HINTS[option.type] ?? ""}</span>
+              <span className="mt-0.5 block text-xs text-stone-500">{hints[option.type] ?? ""}</span>
             </button>
           ))}
         </div>
@@ -98,6 +117,7 @@ export function SectionsPanel({
   onComponentAction: (blockId: string, key: string, action: "remove" | "restore") => void;
   onScrollToComponent: (blockId: string, key: string) => void;
 }) {
+  const t = useT();
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -110,14 +130,14 @@ export function SectionsPanel({
   const controlClass = "flex h-8 w-8 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-amber-200 disabled:cursor-default disabled:opacity-25";
   const insertLine = (afterId: string | null) => (
     <button type="button" onClick={() => onInsertAfter(afterId)} disabled={busy}
-      className="group/insert flex h-5 w-full items-center gap-2 px-3 disabled:opacity-30" aria-label="Добавить раздел сюда">
+      className="group/insert flex h-5 w-full items-center gap-2 px-3 disabled:opacity-30" aria-label={t("Добавить раздел сюда", "Add a section here")}>
       <span className="h-px flex-1 bg-white/5 transition-colors group-hover/insert:bg-amber-200/40" />
       <span className="text-[11px] text-white/35 transition-colors group-hover/insert:text-amber-200">+</span>
       <span className="h-px flex-1 bg-white/5 transition-colors group-hover/insert:bg-amber-200/40" />
     </button>
   );
   const componentList = (id: string) => (
-    <ul className="space-y-1 border-t border-white/10 px-2 py-2" aria-label="Элементы раздела">
+    <ul className="space-y-1 border-t border-white/10 px-2 py-2" aria-label={t("Элементы раздела", "Section elements")}>
       {components.filter(component => component.blockId === id).map(component => (
         <li key={component.key} className="flex items-center gap-1 rounded-lg bg-black/10 pl-2">
           <button type="button" disabled={component.removed} onClick={() => onScrollToComponent(id, component.key)} title={component.label}
@@ -125,9 +145,9 @@ export function SectionsPanel({
             <span className="block truncate">{component.label}</span>
           </button>
           <button type="button" disabled={busy} onClick={() => onComponentAction(id, component.key, component.removed ? "restore" : "remove")}
-            title={component.removed ? "Вернуть элемент" : "Удалить элемент"} aria-label={`${component.removed ? "Вернуть" : "Удалить"}: ${component.label}`}
+            title={component.removed ? t("Вернуть элемент", "Restore element") : t("Удалить элемент", "Remove element")} aria-label={`${component.removed ? t("Вернуть", "Restore") : t("Удалить", "Remove")}: ${component.label}`}
             className={component.removed ? "shrink-0 rounded-lg px-2 py-2 text-[11px] text-amber-200 hover:bg-white/5 disabled:opacity-30" : `${controlClass} shrink-0 hover:text-red-200`}>
-            {component.removed ? "Вернуть" : <Icon name="trash" />}
+            {component.removed ? t("Вернуть", "Restore") : <Icon name="trash" />}
           </button>
         </li>
       ))}
@@ -138,10 +158,10 @@ export function SectionsPanel({
     <div className="flex h-full min-h-0 flex-col text-white">
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[15px] font-semibold tracking-tight">Разделы приглашения</p>
+          <p className="text-[15px] font-semibold tracking-tight">{t("Разделы приглашения", "Invitation sections")}</p>
           <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/60">{sections.filter(item => item.visible).length} / {sections.length}</span>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-white/45">Перетаскивайте разделы. Раскройте «Элементы», чтобы убрать отдельную кнопку, текст или фото.</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-white/45">{t("Перетаскивайте разделы. Раскройте «Элементы», чтобы убрать отдельную кнопку, текст или фото.", "Drag sections to reorder. Open “Elements” to remove a single button, text or photo.")}</p>
       </div>
       <ol className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
         {insertLine(null)}
@@ -154,27 +174,27 @@ export function SectionsPanel({
               className={`overflow-hidden rounded-xl border transition-colors ${over === index && dragging !== item.id ? "border-amber-200/70 bg-amber-200/10" : selected === item.id ? "border-amber-200/35 bg-amber-200/[0.06]" : "border-white/[0.09] bg-white/[0.025] hover:border-white/20"} ${dragging === item.id ? "opacity-40" : ""}`}>
               <div className="flex items-center gap-2 px-2.5 pt-3 pb-2">
                 <span draggable={!busy} onDragStart={event => { setDragging(item.id); event.dataTransfer.setData("text/plain", item.id); event.dataTransfer.effectAllowed = "move"; }}
-                  onDragEnd={() => { setDragging(null); setOver(null); }} title="Перетащить раздел" className="cursor-grab px-1 text-white/30 active:cursor-grabbing select-none">⠿</span>
+                  onDragEnd={() => { setDragging(null); setOver(null); }} title={t("Перетащить раздел", "Drag section")} className="cursor-grab px-1 text-white/30 active:cursor-grabbing select-none">⠿</span>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 text-[10px] tabular-nums text-white/45">{String(index + 1).padStart(2, "0")}</span>
-                <button type="button" onClick={() => { setSelected(item.id); onScrollTo(item.id); }} className="min-w-0 flex-1 text-left" title="Показать раздел на странице">
+                <button type="button" onClick={() => { setSelected(item.id); onScrollTo(item.id); }} className="min-w-0 flex-1 text-left" title={t("Показать раздел на странице", "Show section on the page")}>
                   <span className={`block truncate text-[13px] font-medium ${item.visible ? "text-white/90" : "text-white/40"}`}>{item.hint || item.label}</span>
-                  <span className="mt-0.5 block text-[10px] text-white/40">{item.label}{!item.visible ? " · скрыт" : ""}</span>
+                  <span className="mt-0.5 block text-[10px] text-white/40">{item.label}{!item.visible ? t(" · скрыт", " · hidden") : ""}</span>
                 </button>
                 <button type="button" disabled={busy || (item.permanent && item.visible)} onClick={() => onToggle(item.id, !item.visible)} className={controlClass}
-                  title={item.permanent ? "Обложку нельзя скрыть" : item.visible ? "Скрыть раздел" : "Показать раздел"} aria-label={item.visible ? "Скрыть раздел" : "Показать раздел"}>
+                  title={item.permanent ? t("Обложку нельзя скрыть", "The cover can’t be hidden") : item.visible ? t("Скрыть раздел", "Hide section") : t("Показать раздел", "Show section")} aria-label={item.visible ? t("Скрыть раздел", "Hide section") : t("Показать раздел", "Show section")}>
                   <Icon name={item.visible ? "eye" : "hidden"} />
                 </button>
               </div>
               <div className="flex items-center gap-1 px-2 pb-2">
                 <button type="button" disabled={!children.length} onClick={() => toggleExpanded(item.id)} aria-expanded={expanded.has(item.id)}
                   className="mr-auto flex min-h-8 items-center gap-1.5 rounded-lg px-2 text-[11px] text-white/55 hover:bg-white/5 hover:text-amber-100 disabled:opacity-30">
-                  <Icon name="layers" /><span>Элементы{children.length ? ` · ${children.length}` : ""}</span>
+                  <Icon name="layers" /><span>{t("Элементы", "Elements")}{children.length ? ` · ${children.length}` : ""}</span>
                   {removedCount > 0 && <span className="text-amber-200/70">−{removedCount}</span>}
                 </button>
-                <button type="button" disabled={busy || index === 0} onClick={() => onMove(item.id, index - 1)} className={controlClass} title="Поднять раздел" aria-label="Поднять раздел"><Icon name="up" /></button>
-                <button type="button" disabled={busy || index === sections.length - 1} onClick={() => onMove(item.id, index + 1)} className={controlClass} title="Опустить раздел" aria-label="Опустить раздел"><Icon name="down" /></button>
-                <button type="button" disabled={busy || item.single} onClick={() => onDuplicate(item.id)} className={controlClass} title="Копия раздела" aria-label="Копия раздела"><Icon name="copy" /></button>
-                <button type="button" disabled={busy || item.permanent} onClick={() => onDelete(item)} className={`${controlClass} hover:text-red-200`} title="Удалить раздел" aria-label="Удалить раздел"><Icon name="trash" /></button>
+                <button type="button" disabled={busy || index === 0} onClick={() => onMove(item.id, index - 1)} className={controlClass} title={t("Поднять раздел", "Move section up")} aria-label={t("Поднять раздел", "Move section up")}><Icon name="up" /></button>
+                <button type="button" disabled={busy || index === sections.length - 1} onClick={() => onMove(item.id, index + 1)} className={controlClass} title={t("Опустить раздел", "Move section down")} aria-label={t("Опустить раздел", "Move section down")}><Icon name="down" /></button>
+                <button type="button" disabled={busy || item.single} onClick={() => onDuplicate(item.id)} className={controlClass} title={t("Копия раздела", "Duplicate section")} aria-label={t("Копия раздела", "Duplicate section")}><Icon name="copy" /></button>
+                <button type="button" disabled={busy || item.permanent} onClick={() => onDelete(item)} className={`${controlClass} hover:text-red-200`} title={t("Удалить раздел", "Delete section")} aria-label={t("Удалить раздел", "Delete section")}><Icon name="trash" /></button>
               </div>
               {expanded.has(item.id) && componentList(item.id)}
             </div>
@@ -182,12 +202,12 @@ export function SectionsPanel({
           </li>;
         })}
         {components.some(component => component.blockId === "__template") && <li className="mt-2 overflow-hidden rounded-xl border border-white/10">
-          <button type="button" onClick={() => toggleExpanded("__template")} aria-expanded={expanded.has("__template")} className="flex w-full items-center gap-2 p-3 text-left text-xs text-white/60"><Icon name="layers" />Декор шаблона</button>
+          <button type="button" onClick={() => toggleExpanded("__template")} aria-expanded={expanded.has("__template")} className="flex w-full items-center gap-2 p-3 text-left text-xs text-white/60"><Icon name="layers" />{t("Декор шаблона", "Template decor")}</button>
           {expanded.has("__template") && componentList("__template")}
         </li>}
       </ol>
       <div className="border-t border-white/10 p-3">
-        <button type="button" disabled={busy} onClick={() => onInsertAfter(sections.at(-1)?.id ?? null)} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#ead8b9] px-3 py-2 text-xs font-semibold text-stone-900 transition-colors hover:bg-[#f5e5ca] disabled:opacity-50"><span className="text-lg font-normal">+</span>Добавить раздел</button>
+        <button type="button" disabled={busy} onClick={() => onInsertAfter(sections.at(-1)?.id ?? null)} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#ead8b9] px-3 py-2 text-xs font-semibold text-stone-900 transition-colors hover:bg-[#f5e5ca] disabled:opacity-50"><span className="text-lg font-normal">+</span>{t("Добавить раздел", "Add section")}</button>
       </div>
     </div>
   );

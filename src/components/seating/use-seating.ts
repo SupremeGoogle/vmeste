@@ -23,6 +23,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { SeatingOp } from "@/server/services/seating-ops";
 import { tableSize, type Hall } from "@/lib/seating-geometry";
+import { useT } from "@/components/i18n-provider";
 
 import type { GuestRole } from "@/generated/prisma/enums";
 
@@ -67,6 +68,7 @@ const mapTables = (prev: EditorPlanState, fn: (table: EditorTable) => EditorTabl
 });
 
 export function useSeating(eventId: string, initial: Plan) {
+  const t = useT();
   const [plan, setPlan] = useState<EditorPlanState>({
     tables: initial.tables,
     unseated: initial.unseated,
@@ -126,7 +128,7 @@ export function useSeating(eventId: string, initial: Plan) {
             return { ok: true };
           }
 
-          const message: string = data.message ?? "Не удалось сохранить";
+          const message: string = data.message ?? t("Не удалось сохранить", "Couldn't save");
           if (!adopt(data.plan) && pending.current === 0) setPlan(confirmed.current);
           setStatus(
             res.status === 409 ? { kind: "conflict", message } : { kind: "error", message },
@@ -135,7 +137,7 @@ export function useSeating(eventId: string, initial: Plan) {
         } catch {
           pending.current -= 1;
           if (pending.current === 0) setPlan(confirmed.current);
-          outcome = { ok: false, message: "Нет связи с сервером" };
+          outcome = { ok: false, message: t("Нет связи с сервером", "Can't reach the server") };
           setStatus({ kind: "error", message: outcome.message });
         }
         return outcome;
@@ -144,7 +146,7 @@ export function useSeating(eventId: string, initial: Plan) {
       queue.current = run;
       return run;
     },
-    [eventId, adopt],
+    [eventId, adopt, t],
   );
 
   const assign = useCallback(

@@ -1,8 +1,11 @@
+"use client";
+
 /**
  * Экран загрузки рассадки: панель, пустой зал с силуэтами столов
  * и список гостей справа — ровно там, где они появятся.
  */
 import { Bone, LoadingScreen } from "@/components/loading/skeleton";
+import { useT } from "@/components/i18n-provider";
 
 /** Силуэты столов в долях зала: круглые и один длинный — стол молодожёнов. */
 const TABLES = [
@@ -15,8 +18,9 @@ const TABLES = [
 ];
 
 export default function SeatingLoading() {
+  const t = useT();
   return (
-    <LoadingScreen label="Загружаем план зала">
+    <LoadingScreen label={t("Загружаем план зала", "Loading the floor plan")}>
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="min-w-0 lg:flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-2">

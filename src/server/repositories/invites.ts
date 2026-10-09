@@ -16,7 +16,8 @@ import { defaultContent, parseBlockContent, readBlockContent, PERMANENT_BLOCKS, 
 import { eventTag as eventCacheTag, inviteSlugTag as inviteCacheTag } from "@/lib/cache-tags";
 import type { AnyBlockContent } from "@/lib/invite-blocks";
 import { inviteThemeSchema, readTheme, type InviteTheme } from "@/lib/invite-theme";
-import { findTemplate, liveTheme } from "@/lib/invite-templates";
+import { findTemplate, liveTheme, templateBlocks, templateTheme } from "@/lib/invite-templates";
+import { parseLang } from "@/lib/i18n";
 import { refreshBlocksFromTemplate } from "@/lib/invite-template-merge";
 import { photoAdjustmentSchema, weddingSchema, type WeddingProfile } from "@/lib/invite-personalization";
 import { resolveVenueMapUrl } from "@/server/geocode";
@@ -452,6 +453,8 @@ export type PublicInvite = {
     venueAddr: string | null;
     rsvpDeadline: Date | null;
     allowPlusOne: boolean;
+    /** Язык гостевой части: "ru" | "en". */
+    language: string;
   };
   blocks: InviteBlockView[];
   /** Оформление. Читается терпимо: мусор в базе не должен ронять страницу. */
@@ -478,7 +481,7 @@ async function loadInviteBySlug(slug: string): Promise<PublicInvite | null> {
     select: {
       id: true, title: true, slug: true, eventDate: true, timezone: true,
       venueName: true, venueAddr: true, rsvpDeadline: true, allowPlusOne: true,
-      inviteTheme: true, publishedInvite: true,
+      language: true, inviteTheme: true, publishedInvite: true,
     },
   });
   if (!event) return null;
@@ -603,7 +606,7 @@ export async function saveTheme(ctx: EventContext, theme: InviteTheme): Promise<
  */
 /** Данные свадьбы по умолчанию — из того, что ввели при её создании. */
 function seedWedding(event: { title?: string | null; venueName?: string | null; venueAddr?: string | null }): WeddingProfile | undefined {
-  const names = String(event.title ?? "").replace(/\s*[—–-]\s*свадьба\s*$/i, "").trim().slice(0, 120);
+  const names = String(event.title ?? "").replace(/\s*[—–-]\s*(?:свадьба|wedding)\s*$/i, "").trim().slice(0, 120);
   const parsed = weddingSchema.safeParse({ names, city: "", venueName: event.venueName ?? "", venueAddress: event.venueAddr ?? "", mapUrl: "" });
   return parsed.success ? parsed.data : undefined;
 }
@@ -613,13 +616,16 @@ export async function applyTemplate(ctx: EventContext, templateId: string, reset
   if (!template) return false;
 
   await db.$transaction(async (tx) => {
-    const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true, title: true, venueName: true, venueAddr: true } });
+    const event = await tx.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { inviteTheme: true, title: true, venueName: true, venueAddr: true, language: true } });
     const current = readTheme(event?.inviteTheme);
+    // Образец — на языке гостей этой свадьбы: английской достаётся английский.
+    const lang = parseLang(event?.language) ?? current.language ?? "ru";
+    const sampleBlocks = templateBlocks(template, lang);
     const count = await tx.inviteBlock.count({ where: { eventId: ctx.eventId } });
     // Имена пары известны с создания свадьбы — с ними шаблон и открывается,
     // везде, включая заставку. Уточнить их можно в «Имена, дата и место».
     const wedding = current.wedding ?? (event ? seedWedding(event) : undefined);
-    const nextTheme = { ...template.theme, templateVersion: template.version ?? 1, musicUrl: current.musicUrl, ...(wedding ? { wedding } : {}), ...(!reset && current.removedComponents ? { removedComponents: current.removedComponents } : {}), previousTemplate: current.template };
+    const nextTheme = { ...templateTheme(template, lang), templateVersion: template.version ?? 1, musicUrl: current.musicUrl, ...(wedding ? { wedding } : {}), ...(!reset && current.removedComponents ? { removedComponents: current.removedComponents } : {}), previousTemplate: current.template };
     if (count && !reset) {
       // Блоки остаются, но места, где так и стоит пример прежнего шаблона,
       // получают пример нового — иначе выбранный дизайн открывается пустым
@@ -629,7 +635,7 @@ export async function applyTemplate(ctx: EventContext, templateId: string, reset
         orderBy: { order: "asc" },
         select: { id: true, type: true, content: true },
       });
-      for (const change of refreshBlocksFromTemplate(blocks, template)) {
+      for (const change of refreshBlocksFromTemplate(blocks, template, lang)) {
         await tx.inviteBlock.updateMany({
           where: { id: change.id, eventId: ctx.eventId, orgId: ctx.orgId },
           data: { content: change.content as object },
@@ -642,7 +648,7 @@ export async function applyTemplate(ctx: EventContext, templateId: string, reset
 
     // Порядок создаём явным, а не полагаемся на порядок вставки: на
     // `@@unique([eventId, order])` любая неожиданность стоит дорого.
-    for (const [index, block] of template.blocks.entries()) {
+    for (const [index, block] of sampleBlocks.entries()) {
       await tx.inviteBlock.create({
         data: {
           orgId: ctx.orgId,
@@ -658,7 +664,7 @@ export async function applyTemplate(ctx: EventContext, templateId: string, reset
     // Флаг виш-листа следует за его разделом: в новом приглашении он скрыт.
     await tx.event.updateMany({
       where: { id: ctx.eventId, orgId: ctx.orgId },
-      data: { inviteTheme: nextTheme, giftsEnabled: template.blocks.some((block) => block.type === "WISHLIST" && block.visible !== false) },
+      data: { inviteTheme: nextTheme, giftsEnabled: sampleBlocks.some((block) => block.type === "WISHLIST" && block.visible !== false) },
     });
   });
 

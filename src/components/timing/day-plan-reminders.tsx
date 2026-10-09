@@ -11,8 +11,9 @@
  * координатор отметил этап на другом телефоне. Но не тогда, когда человек
  * что-то правит: обновление сбросило бы раскрытую форму этапа.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { makeT, type Lang } from "@/lib/i18n";
 
 export type ReminderStep = { id: string; title: string; responsible: string; startsAt: string; reminderMinutes: number; status: string };
 
@@ -25,12 +26,15 @@ function isEditing(): boolean {
   return document.querySelector("details[open] form") !== null;
 }
 
-export function DayPlanReminders({ eventId, steps, initialNow, calendarHref }: {
+export function DayPlanReminders({ eventId, steps, initialNow, calendarHref, lang = "ru" }: {
   eventId: string;
   steps: ReminderStep[];
   initialNow: number;
   calendarHref: string;
+  /** Язык мероприятия: по командной ссылке план открывают ведущий и команда. */
+  lang?: Lang;
 }) {
+  const t = useMemo(() => makeT(lang), [lang]);
   const router = useRouter();
   const [now, setNow] = useState(initialNow);
   const [enabled, setEnabled] = useState(false);
@@ -75,31 +79,33 @@ export function DayPlanReminders({ eventId, steps, initialNow, calendarHref }: {
       } catch {
         // Приватный режим: помним только до закрытия страницы.
       }
-      const when = start > now ? `Через ${Math.ceil((start - now) / 60_000)} мин` : "Пора начинать";
+      const when = start > now
+        ? t(`Через ${Math.ceil((start - now) / 60_000)} мин`, `In ${Math.ceil((start - now) / 60_000)} min`)
+        : t("Пора начинать", "Time to start");
       try {
         new Notification(step.title, { body: [when, step.responsible].filter(Boolean).join(" · "), tag: key });
       } catch {
         // Поддержку проверили при включении; сюда попадаем только в редком случае.
       }
     }
-  }, [due, enabled, eventId, now]);
+  }, [due, enabled, eventId, now, t]);
 
   async function enable() {
     if (!("Notification" in window)) {
-      setMessage("Этот браузер не показывает уведомления — добавьте план в календарь.");
+      setMessage(t("Этот браузер не показывает уведомления — добавьте план в календарь.", "This browser doesn't show notifications — add the plan to your calendar."));
       return;
     }
     const permission = await Notification.requestPermission().catch(() => "denied" as const);
     if (permission !== "granted") {
-      setMessage("Уведомления не разрешены — добавьте план в календарь.");
+      setMessage(t("Уведомления не разрешены — добавьте план в календарь.", "Notifications aren't allowed — add the plan to your calendar."));
       return;
     }
     // Android Chrome разрешение даёт, а уведомление со страницы показать
     // не может. Пробное уведомление заодно подтверждает, что всё работает.
     try {
-      new Notification("Напоминания включены", { body: "Пока эта страница открыта, о каждом этапе придёт уведомление." });
+      new Notification(t("Напоминания включены", "Reminders are on"), { body: t("Пока эта страница открыта, о каждом этапе придёт уведомление.", "While this page is open, you'll get a notification for each step.") });
     } catch {
-      setMessage("Этот браузер не показывает уведомления со страницы — добавьте план в календарь.");
+      setMessage(t("Этот браузер не показывает уведомления со страницы — добавьте план в календарь.", "This browser can't show notifications from a page — add the plan to your calendar."));
       return;
     }
     setEnabled(true);
@@ -110,14 +116,14 @@ export function DayPlanReminders({ eventId, steps, initialNow, calendarHref }: {
     <div className="rounded-xl border border-stone-200 bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={enable} disabled={enabled} className="rounded-lg border border-stone-300 px-4 py-2 text-sm disabled:opacity-60">
-          {enabled ? "Напоминания включены" : "Напоминать на этом телефоне"}
+          {enabled ? t("Напоминания включены", "Reminders are on") : t("Напоминать на этом телефоне", "Remind me on this phone")}
         </button>
         <a href={calendarHref} className="rounded-lg border border-stone-300 px-4 py-2 text-sm">
-          Добавить в календарь
+          {t("Добавить в календарь", "Add to calendar")}
         </a>
       </div>
       <p className="mt-2 text-xs text-stone-500">
-        Календарь напомнит и при закрытом браузере. Время — по часовому поясу площадки.
+        {t("Календарь напомнит и при закрытом браузере. Время — по часовому поясу площадки.", "Your calendar will remind you even when the browser is closed. Times are in the venue's time zone.")}
       </p>
       {message ? <p role="status" className="mt-2 text-sm text-stone-600">{message}</p> : null}
       {due.length > 0 ? (
@@ -126,7 +132,7 @@ export function DayPlanReminders({ eventId, steps, initialNow, calendarHref }: {
             const start = Date.parse(step.startsAt);
             return (
               <li key={step.id} className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                <b className="font-medium">{step.title}</b> — {start > now ? `через ${Math.ceil((start - now) / 60_000)} мин` : "пора начинать"}
+                <b className="font-medium">{step.title}</b> — {start > now ? t(`через ${Math.ceil((start - now) / 60_000)} мин`, `in ${Math.ceil((start - now) / 60_000)} min`) : t("пора начинать", "time to start")}
                 {step.responsible ? `, ${step.responsible}` : ""}
               </li>
             );

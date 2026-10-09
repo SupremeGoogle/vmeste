@@ -34,6 +34,8 @@ import { FLORAL_GARDEN_CSS } from "@/server/guest-html/floral-garden/style";
 import { ISKRA_CSS } from "@/server/guest-html/iskra/style";
 import { RUBY_CSS } from "@/server/guest-html/ruby/style";
 import { TUSCANY_CSS } from "@/server/guest-html/tuscany/style";
+import { isCelebrationTemplate } from "@/lib/invite-templates/celebration";
+import { celebrationCss } from "@/server/guest-html/celebration/style";
 import {
   DECOR_CSS, ORNAMENT_CSS, PAPER_CSS, TIMELINE_ICON_CSS, ornamentBackground,
 } from "@/server/guest-html/invite-decor";
@@ -197,6 +199,7 @@ pointer-events:none;z-index:0}`
     theme.template === "roseraie" ? ROSERAIE_CSS : "",
     theme.template === "floral-garden" ? FLORAL_GARDEN_CSS : "",
     theme.template === "iskra" ? ISKRA_CSS : "",
+    isCelebrationTemplate(theme.template) ? celebrationCss(theme.template) : "",
   ];
 
   return rules.filter(Boolean).join("").replace(/\n/g, "");

@@ -8,6 +8,8 @@ import { html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import { photosPage } from "@/server/guest-html/photos-html";
 import { getInviteTheme } from "@/server/repositories/invites";
+import { gl, themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
+
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +40,8 @@ export async function GET(
   ]);
 
   return html(
-    photosPage({
-      theme,
+    withGuestLang(guest.language, () => photosPage({
+      theme: themeInLang(theme, guest.language),
       eventId: guest.eventId,
       eventTitle: guest.eventTitle,
       guestName: guest.displayName,
@@ -51,8 +53,8 @@ export async function GET(
       gallery,
       wishHref: guest.wishesEnabled ? `/i/${eventSlug}/wish` : null,
       backHref: `/i/${eventSlug}/wish`,
-      backLabel: "Написать пожелание",
-    }),
+      backLabel: gl("Написать пожелание", "Write a wish"),
+    })),
     { headers: { "cache-control": "private, no-store" } },
   );
 }

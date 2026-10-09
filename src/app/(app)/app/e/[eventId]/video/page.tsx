@@ -6,6 +6,7 @@
 import { notFound } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
+import { getT } from "@/server/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +19,18 @@ export default async function VideoPage({ params }: Props) {
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
+  const t = await getT();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <section className="rounded-xl border border-stone-200 bg-card px-6 py-10 text-center sm:px-10 sm:py-14">
-        <p className="text-xs tracking-[0.2em] text-stone-500 uppercase">Видео</p>
-        <h2 className="mt-3 font-serif text-2xl sm:text-3xl">Видео для вашей свадьбы</h2>
+        <p className="text-xs tracking-[0.2em] text-stone-500 uppercase">{t("Видео", "Video")}</p>
+        <h2 className="mt-3 font-serif text-2xl sm:text-3xl">{t("Видео для вашей свадьбы", "A video for your wedding")}</h2>
         <p className="mx-auto mt-3 max-w-md text-stone-600">
-          Хотите ролик-приглашение или видео для гостей? Напишите нам в Telegram — обсудим идею и сделаем его для вас.
+          {t(
+            "Хотите ролик-приглашение или видео для гостей? Напишите нам в Telegram — обсудим идею и сделаем его для вас.",
+            "Want a video invitation or a video for your guests? Message us on Telegram — we'll talk through the idea and make it for you.",
+          )}
         </p>
         <a
           href={TELEGRAM}
@@ -34,7 +39,7 @@ export default async function VideoPage({ params }: Props) {
           data-rybbit-event="video_contact"
           className="mt-7 inline-flex items-center gap-2 rounded-full bg-stone-900 px-6 py-3 text-sm text-white transition-transform hover:scale-[1.02]"
         >
-          Написать в Telegram
+          {t("Написать в Telegram", "Message us on Telegram")}
           <span aria-hidden="true">↗</span>
         </a>
         <p className="mt-3 text-sm text-stone-500">@supremeHn</p>

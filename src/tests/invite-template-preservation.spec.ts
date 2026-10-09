@@ -48,3 +48,24 @@ it("смена дизайна дополняет примером только �
   expect(call.data.content).toMatchObject({ names: "Аня и Миша", title: "Любовь в преломлении" });
   expect(call.data.content.imageUrl).toBeTruthy();
 });
+
+it("английская свадьба получает английский образец шаблона", async () => {
+  mocks.event.findFirst.mockResolvedValue({ inviteTheme: { ...defaultTheme() }, title: "Emily & James", language: "en" });
+  mocks.inviteBlock.count.mockResolvedValue(0);
+  expect(await applyTemplate(ctx, "roseraie")).toBe(true);
+  const created = mocks.inviteBlock.create.mock.calls.map(([arg]) => arg.data);
+  const cover = created.find((data) => data.type === "COVER");
+  expect(cover.content).toMatchObject({ names: "Emily & James", dateText: "June 12, 2027" });
+  // Ни одного русского слова в образце, включая добавленные стандартом таймер, анкету и виш-лист.
+  expect(JSON.stringify(created.map((data) => data.content))).not.toMatch(/[А-Яа-яЁё]/);
+  expect(created.map((data) => data.type)).toEqual(expect.arrayContaining(["COUNTDOWN", "RSVP_FORM", "WISHLIST"]));
+  expect(mocks.event.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ inviteTheme: expect.objectContaining({ template: "roseraie", language: "en" }) }) }));
+});
+
+it("русская свадьба по-прежнему получает русский образец", async () => {
+  mocks.event.findFirst.mockResolvedValue({ inviteTheme: { ...defaultTheme() }, title: "Аня и Миша", language: "ru" });
+  mocks.inviteBlock.count.mockResolvedValue(0);
+  await applyTemplate(ctx, "roseraie");
+  const cover = mocks.inviteBlock.create.mock.calls.map(([arg]) => arg.data).find((data) => data.type === "COVER");
+  expect(cover.content).toMatchObject({ names: "Валерия и Давид" });
+});

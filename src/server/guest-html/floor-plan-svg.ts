@@ -15,6 +15,7 @@ import { COUPLE_TABLE } from "@/lib/couple-table-style";
 import { MARK_RADIUS, markFor, hasCouple } from "@/lib/couple-marks";
 import { COLORS } from "@/server/guest-html/theme";
 import { esc } from "@/server/guest-html/layout";
+import { gl } from "@/server/guest-html/guest-lang";
 import type { GuestRole } from "@/generated/prisma/enums";
 
 export type PlanTable = {
@@ -35,8 +36,8 @@ export type PlanTable = {
 /** Легенда под планом: без неё букет и бабочка — просто два кружка. */
 function coupleLegend(): string {
   return `<p class="legend">
-<span>${coupleGlyph("BRIDE")} невеста</span>
-<span>${coupleGlyph("GROOM")} жених</span>
+<span>${coupleGlyph("BRIDE")} ${gl("невеста", "bride")}</span>
+<span>${coupleGlyph("GROOM")} ${gl("жених", "groom")}</span>
 </p>`;
 }
 
@@ -149,10 +150,10 @@ export function floorPlanSvg(
   const focus = tables.find((table) => table.id === highlightTableId);
   const focusAttr = focus ? ` data-focus="${n(focus.x / hall.width)}"` : "";
 
-  return `<div class="plan-scroll"${focusAttr}><svg viewBox="0 0 ${n(hall.width)} ${n(hall.height)}" class="plan" style="min-width:${minWidth}px" role="img" aria-label="План зала">
+  return `<div class="plan-scroll"${focusAttr}><svg viewBox="0 0 ${n(hall.width)} ${n(hall.height)}" class="plan" style="min-width:${minWidth}px" role="img" aria-label="${gl("План зала", "Floor plan")}">
 <rect x="0" y="0" width="${n(hall.width)}" height="${n(hall.height)}" fill="${COLORS.card}"/>
 ${shapes}
-</svg></div><p class="plan-swipe" hidden>Листайте план в сторону</p>${hasCouple(roles) ? coupleLegend() : ""}`;
+</svg></div><p class="plan-swipe" hidden>${gl("Листайте план в сторону", "Swipe sideways to see the whole plan")}</p>${hasCouple(roles) ? coupleLegend() : ""}`;
 }
 
 /**

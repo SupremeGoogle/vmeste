@@ -26,8 +26,9 @@ import {
   Document, Font, G, Page, Path, Polygon, StyleSheet, Svg, Circle, Ellipse, Rect,
   Text as SvgText, Text, View,
 } from "@react-pdf/renderer";
-import { MARK_RADIUS, ROLE_LABEL, markFor } from "@/lib/couple-marks";
+import { MARK_RADIUS, ROLE_LABEL, ROLE_LABEL_EN, markFor } from "@/lib/couple-marks";
 import type { GuestRole } from "@/generated/prisma/enums";
+import { countWord, localeOf, makeT, type Lang, type T } from "@/lib/i18n";
 
 const FONT_DIR = path.join(process.cwd(), "public", "fonts");
 
@@ -68,6 +69,8 @@ export type PdfInput = {
   /** Размер зала; без него — прежние 1000×700. */
   hall?: Hall;
   generatedAt: Date;
+  /** Язык мероприятия: распечатку читают координатор и гости. По умолчанию — русский. */
+  lang?: Lang;
 };
 
 /**
@@ -246,8 +249,8 @@ function FloorPlanPdf({ tables, hall }: { tables: PdfTable[]; hall: Hall }) {
 }
 
 
-function Footer({ generatedAt, title }: { generatedAt: Date; title: string }) {
-  const stamp = new Intl.DateTimeFormat("ru-RU", {
+function Footer({ generatedAt, title, lang, t }: { generatedAt: Date; title: string; lang: Lang; t: T }) {
+  const stamp = new Intl.DateTimeFormat(localeOf(lang), {
     dateStyle: "short", timeStyle: "short",
   }).format(generatedAt);
   return (
@@ -256,7 +259,7 @@ function Footer({ generatedAt, title }: { generatedAt: Date; title: string }) {
       {/* Отметка времени обязательна: рассадка меняется до последнего дня,
           и на руках у координатора не должно быть версии недельной давности. */}
       <Text render={({ pageNumber, totalPages }) =>
-        `Выгружено ${stamp} · стр. ${pageNumber} из ${totalPages}`} />
+        t(`Выгружено ${stamp} · стр. ${pageNumber} из ${totalPages}`, `Exported ${stamp} · page ${pageNumber} of ${totalPages}`)} />
     </View>
   );
 }
@@ -269,40 +272,44 @@ function splitColumns<T>(rows: T[]): [T[], T[]] {
 }
 
 export function SeatingDocument({
-  eventTitle, eventDate, venueName, tables, hall = DEFAULT_HALL, generatedAt,
+  eventTitle, eventDate, venueName, tables, hall = DEFAULT_HALL, generatedAt, lang = "ru",
 }: PdfInput) {
+  const t = makeT(lang);
   const seated = tables.flatMap((table) =>
     table.seats
       .filter((seat) => seat.guest)
       .map((seat) => ({ name: seat.guest!.displayName, table: table.label })),
   );
-  const alphabetical = [...seated].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  const alphabetical = [...seated].sort((a, b) => a.name.localeCompare(b.name, lang));
 
-  const dateLabel = new Intl.DateTimeFormat("ru-RU", { dateStyle: "long" }).format(eventDate);
+  const dateLabel = new Intl.DateTimeFormat(localeOf(lang), { dateStyle: "long" }).format(eventDate);
   const subtitle = [dateLabel, venueName].filter(Boolean).join(" · ");
 
   return (
-    <Document title={`${eventTitle} — рассадка`} author="Вместе">
+    <Document title={t(`${eventTitle} — рассадка`, `${eventTitle} — seating`)} author={t("Вместе", "Vmeste")}>
       {/* 1. Схема зала */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.h1}>{eventTitle}</Text>
         <Text style={styles.meta}>
-          {subtitle} · {seated.length} гостей за {tables.length} столами
+          {t(
+            `${subtitle} · ${seated.length} гостей за ${tables.length} столами`,
+            `${subtitle} · ${countWord("en", seated.length, ["гость", "гостя", "гостей"], ["guest", "guests"])} at ${countWord("en", tables.length, ["стол", "стола", "столов"], ["table", "tables"])}`,
+          )}
         </Text>
         <FloorPlanPdf tables={tables} hall={hall} />
         {tables.some((table) =>
           table.seats.some((seat) => seat.guest?.role && seat.guest.role !== "GUEST"),
         ) ? (
           <Text style={styles.legend}>
-            Значками на схеме отмечены места невесты и жениха.
+            {t("Значками на схеме отмечены места невесты и жениха.", "Icons on the plan mark the bride's and groom's seats.")}
           </Text>
         ) : null}
-        <Footer generatedAt={generatedAt} title={`${eventTitle} — схема зала`} />
+        <Footer generatedAt={generatedAt} title={t(`${eventTitle} — схема зала`, `${eventTitle} — floor plan`)} lang={lang} t={t} />
       </Page>
 
       {/* 2. Кто за каким столом */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.h1}>Кто за каким столом</Text>
+        <Text style={styles.h1}>{t("Кто за каким столом", "Who sits where")}</Text>
         <Text style={styles.meta}>{subtitle}</Text>
 
         <View style={styles.tablesGrid}>
@@ -315,7 +322,7 @@ export function SeatingDocument({
                   <Text style={seat.guest ? styles.seatName : styles.empty}>
                     {seat.guest ? seat.guest.displayName : "—"}
                     {seat.guest?.role && seat.guest.role !== "GUEST"
-                      ? ` — ${ROLE_LABEL[seat.guest.role]}`
+                      ? ` — ${t(ROLE_LABEL[seat.guest.role], ROLE_LABEL_EN[seat.guest.role])}`
                       : ""}
                   </Text>
                 </View>
@@ -323,14 +330,17 @@ export function SeatingDocument({
             </View>
           ))}
         </View>
-        <Footer generatedAt={generatedAt} title={`${eventTitle} — по столам`} />
+        <Footer generatedAt={generatedAt} title={t(`${eventTitle} — по столам`, `${eventTitle} — by table`)} lang={lang} t={t} />
       </Page>
 
       {/* 3. Алфавитный указатель — рабочий инструмент координатора на входе */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.h1}>Гости по алфавиту</Text>
+        <Text style={styles.h1}>{t("Гости по алфавиту", "Guests A–Z")}</Text>
         <Text style={styles.meta}>
-          Список для встречи гостей: имя и его стол. {alphabetical.length} человек.
+          {t(
+            `Список для встречи гостей: имя и его стол. ${alphabetical.length} человек.`,
+            `Welcome list for greeting guests: name and table. ${countWord("en", alphabetical.length, ["человек", "человека", "человек"], ["person", "people"])}.`,
+          )}
         </Text>
 
         <View style={styles.indexGrid}>
@@ -347,9 +357,9 @@ export function SeatingDocument({
         </View>
 
         {alphabetical.length === 0 && (
-          <Text style={styles.empty}>Пока никто не рассажен.</Text>
+          <Text style={styles.empty}>{t("Пока никто не рассажен.", "No one is seated yet.")}</Text>
         )}
-        <Footer generatedAt={generatedAt} title={`${eventTitle} — по алфавиту`} />
+        <Footer generatedAt={generatedAt} title={t(`${eventTitle} — по алфавиту`, `${eventTitle} — A–Z`)} lang={lang} t={t} />
       </Page>
     </Document>
   );

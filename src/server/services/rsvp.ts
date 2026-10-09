@@ -26,6 +26,7 @@ import { expandGuestName } from "@/server/services/diminutives";
 import { generateLinkToken, ONLY_GUESTS } from "@/server/repositories/guests";
 import { effectiveRsvpQuestions } from "@/server/repositories/rsvp-questions";
 import { checkAnswers, parseStoredAnswers, type RsvpQuestion } from "@/lib/rsvp-form";
+import { makeT, parseLang, type Lang } from "@/lib/i18n";
 
 export const rsvpInputSchema = z.object({
   /**
@@ -58,6 +59,17 @@ export const rsvpInputSchema = z.object({
 
 export type RsvpInput = z.infer<typeof rsvpInputSchema>;
 
+/** Сообщения проверки ответов (`lib/rsvp-form.ts`) — по-английски, для английской свадьбы. */
+function answerProblemEn(message: string): string {
+  const label = message.match(/«(.*)»/)?.[1];
+  const q = label === undefined ? "" : ` “${label}”`;
+  if (message.startsWith("Ответьте на вопрос")) return `Please answer${q || " the question"}`;
+  if (message.startsWith("Такого варианта нет")) return `That option isn’t available${q ? ` for${q}` : ""}`;
+  if (message.startsWith("Оценка в вопросе")) return `The rating${q ? ` for${q}` : ""} must be from 1 to 5`;
+  if (message.startsWith("Проверьте дату")) return `Please check the date${q ? ` in${q}` : ""}`;
+  return "Please check the form";
+}
+
 export type RsvpResult =
   | { ok: true; status: "PENDING" | "ACCEPTED" | "DECLINED"; plusOneName: string | null }
   | { ok: false; reason: "gone" | "deadline" | "invalid"; message: string };
@@ -70,10 +82,13 @@ export async function submitRsvp(
   raw: unknown,
   /** Поля анкеты, если вызывающий их уже загрузил. */
   preloaded?: RsvpQuestion[],
+  /** Язык мероприятия, если вызывающий его знает; дальше берётся из самого мероприятия гостя. */
+  lang?: Lang,
 ): Promise<RsvpResult> {
+  let t = makeT(lang ?? "ru");
   const parsed = rsvpInputSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, reason: "invalid", message: "Проверьте заполнение формы" };
+    return { ok: false, reason: "invalid", message: t("Проверьте заполнение формы", "Please check the form") };
   }
   const input = parsed.data;
 
@@ -88,19 +103,20 @@ export async function submitRsvp(
         where: { archivedAt: null }, orderBy: { createdAt: "asc" }, take: 1,
         select: { mealOptionId: true, drinks: { select: { drinkOptionId: true } } },
       },
-      event: { select: { allowPlusOne: true, rsvpDeadline: true } },
+      event: { select: { allowPlusOne: true, rsvpDeadline: true, language: true } },
     },
   });
   if (!guest || guest.archivedAt) {
-    return { ok: false, reason: "gone", message: "Приглашение не найдено" };
+    return { ok: false, reason: "gone", message: t("Приглашение не найдено", "Invitation not found") };
   }
+  t = makeT(parseLang(guest.event.language) ?? lang ?? "ru");
 
   const deadline = guest.event.rsvpDeadline;
   if (deadline && Date.now() > deadline.getTime()) {
     return {
       ok: false,
       reason: "deadline",
-      message: "Срок ответа истёк — напишите организатору, он изменит вручную",
+      message: t("Срок ответа истёк — напишите организатору, он изменит вручную", "The RSVP deadline has passed. Please contact the organizer, who can update your reply"),
     };
   }
 
@@ -121,12 +137,12 @@ export async function submitRsvp(
   const plusOneNow = guest.plusOnes[0] ?? null;
   const mealOptionId = await pickMeal(input.mealOptionId, guest.mealOptionId);
   if (mealOptionId === "invalid") {
-    return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
+    return { ok: false, reason: "invalid", message: t("Такого блюда нет в меню", "That meal isn’t on the menu") };
   }
 
   const plusOneMealOptionId = await pickMeal(input.plusOneMealOptionId, plusOneNow?.mealOptionId ?? null);
   if (plusOneMealOptionId === "invalid") {
-    return { ok: false, reason: "invalid", message: "Такого блюда нет в меню" };
+    return { ok: false, reason: "invalid", message: t("Такого блюда нет в меню", "That meal isn’t on the menu") };
   }
 
   // Напитки проверяются так же, как блюдо: только включённые и только своего бара.
@@ -149,7 +165,7 @@ export async function submitRsvp(
     plusOneNow?.drinks.map((row) => row.drinkOptionId) ?? [],
   );
   if (drinkOptionIds === "invalid" || plusOneDrinkOptionIds === "invalid") {
-    return { ok: false, reason: "invalid", message: "Такого напитка нет в баре" };
+    return { ok: false, reason: "invalid", message: t("Такого напитка нет в баре", "That drink isn’t on the list") };
   }
 
   // Поля конструктора анкеты. Обязательность — только для тех, кто придёт.
@@ -157,7 +173,7 @@ export async function submitRsvp(
   let rsvpAnswers: ReturnType<typeof parseStoredAnswers> | undefined;
   if (input.answers !== undefined) {
     const checked = checkAnswers(questions, input.answers, input.status, parseStoredAnswers(guest.rsvpAnswers));
-    if (!checked.ok) return { ok: false, reason: "invalid", message: checked.message };
+    if (!checked.ok) return { ok: false, reason: "invalid", message: t(checked.message, answerProblemEn(checked.message)) };
     rsvpAnswers = checked.answers;
   }
   if (input.status === "ACCEPTED") {
@@ -165,13 +181,13 @@ export async function submitRsvp(
     const needDrinks = questions.some((question) => question.type === "DRINKS" && question.required);
     const needMusic = questions.some((question) => question.type === "MUSIC" && question.required);
     if (needMusic && input.musicWish !== undefined && !input.musicWish.trim()) {
-      return { ok: false, reason: "invalid", message: "Предложите песню для диджея" };
+      return { ok: false, reason: "invalid", message: t("Предложите песню для диджея", "Please suggest a song for the DJ") };
     }
     if (needMeal && !mealOptionId && (await db.mealOption.count({ where: { eventId: guest.eventId, active: true } })) > 0) {
-      return { ok: false, reason: "invalid", message: "Выберите блюдо" };
+      return { ok: false, reason: "invalid", message: t("Выберите блюдо", "Please choose a meal") };
     }
     if (needDrinks && drinkOptionIds.length === 0 && (await db.drinkOption.count({ where: { eventId: guest.eventId, active: true } })) > 0) {
-      return { ok: false, reason: "invalid", message: "Отметьте, что будете пить" };
+      return { ok: false, reason: "invalid", message: t("Отметьте, что будете пить", "Please choose your drinks") };
     }
   }
 

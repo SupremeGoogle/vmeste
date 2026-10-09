@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LayoutGroup, motion } from "motion/react";
 import { SPRING } from "@/components/motion/motion";
+import { useT } from "@/components/i18n-provider";
 
 /**
  * Нажатую вкладку видно сразу, пока раздел ещё грузится: под ней бежит
@@ -46,20 +47,21 @@ export function EventTabs({ eventId }: { eventId: string }) {
   const [overflow, setOverflow] = useState({ left: false, right: false });
   // Под курсором едет подложка — от вкладки к вкладке, а не мигает.
   const [hovered, setHovered] = useState<string | null>(null);
+  const t = useT();
 
   const base = `/app/e/${eventId}`;
   const tabs = [
-    { href: base, label: "Обзор" },
-    { href: `${base}/guests`, label: "Гости" },
-    { href: `${base}/seating`, label: "Рассадка" },
-    { href: `${base}/invite`, label: "Приглашение" },
-    { href: `${base}/timing`, label: "Тайминг" },
-    { href: `${base}/photos`, label: "Фото" },
-    { href: `${base}/wishes`, label: "Пожелания" },
-    { href: `${base}/raffle`, label: "Розыгрыш" },
-    { href: `${base}/video`, label: "Видео" },
-    { href: `${base}/print`, label: "QR-код" },
-    { href: `${base}/settings`, label: "Настройки" },
+    { href: base, label: t("Обзор", "Overview") },
+    { href: `${base}/guests`, label: t("Гости", "Guests") },
+    { href: `${base}/seating`, label: t("Рассадка", "Seating") },
+    { href: `${base}/invite`, label: t("Приглашение", "Invitation") },
+    { href: `${base}/timing`, label: t("Тайминг", "Day plan") },
+    { href: `${base}/photos`, label: t("Фото", "Photos") },
+    { href: `${base}/wishes`, label: t("Пожелания", "Wishes") },
+    { href: `${base}/raffle`, label: t("Розыгрыш", "Raffle") },
+    { href: `${base}/video`, label: t("Видео", "Video") },
+    { href: `${base}/print`, label: t("QR-код", "QR code") },
+    { href: `${base}/settings`, label: t("Настройки", "Settings") },
   ];
 
   /**
@@ -103,7 +105,7 @@ export function EventTabs({ eventId }: { eventId: string }) {
         onMouseLeave={() => setHovered(null)}
         ref={scroller}
         onScroll={syncOverflow}
-        aria-label="Разделы мероприятия"
+        aria-label={t("Разделы мероприятия", "Event sections")}
         // На телефоне лента прокручивается (с растушёвкой по краям), а на
         // компьютере переносится на вторую строку: растушёвки там нет,
         // полосы прокрутки тоже, и разделы за краем просто не находили.

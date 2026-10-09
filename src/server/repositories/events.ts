@@ -93,7 +93,7 @@ export async function findEventByShortCode(shortCode: string) {
     select: {
       id: true, orgId: true, title: true, slug: true, shortCode: true,
       status: true, eventDate: true, timezone: true, venueName: true,
-      photosEnabled: true, wishesEnabled: true, qrEntryOpen: true,
+      photosEnabled: true, wishesEnabled: true, qrEntryOpen: true, language: true,
     },
   });
 
@@ -171,6 +171,8 @@ export type EventSettingsInput = {
   raffleEnabled: boolean;
   qrEntryOpen?: boolean;
   photoLimitPerGuest: number;
+  /** Язык всего, что видят гости. Не передан — не меняется. */
+  language?: "ru" | "en";
 };
 
 /** Настройки мероприятия из одной формы: всё, что организатор меняет руками. */
@@ -193,6 +195,7 @@ export async function updateEventSettings(
       raffleEnabled: input.raffleEnabled,
       qrEntryOpen: input.qrEntryOpen,
       photoLimitPerGuest: input.photoLimitPerGuest,
+      language: input.language,
     },
   });
   return updated.count === 1;

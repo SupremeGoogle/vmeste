@@ -6,6 +6,7 @@
 import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
+import { gl } from "@/server/guest-html/guest-lang";
 import { coupleNames, invitePage, inviteScript, renderBlocks } from "@/server/guest-html/invite-html";
 import type { WishlistData } from "@/server/guest-html/wishlist";
 
@@ -20,11 +21,11 @@ export function wishlistPage(opts: {
 }): string | null {
   const block = opts.blocks.find((item) => item.type === "WISHLIST" && item.visible);
   if (!block) return null;
-  const body = `<div class="links" style="margin:0;padding-top:1.25rem"><a href="${esc(opts.back)}">← К приглашению</a></div>${renderBlocks(
+  const body = `<div class="links" style="margin:0;padding-top:1.25rem"><a href="${esc(opts.back)}">← ${gl("К приглашению", "Invitation")}</a></div>${renderBlocks(
     [block], null, null, opts.eventDate, opts.theme, opts.timezone, { wishlist: opts.wishlist, wishlistPage: true },
-  )}<div class="links" style="margin:1.5rem 0 3rem"><a href="${esc(opts.back)}">Вернуться к приглашению</a></div>`;
+  )}<div class="links" style="margin:1.5rem 0 3rem"><a href="${esc(opts.back)}">${gl("Вернуться к приглашению", "Back to the invitation")}</a></div>`;
   return invitePage({
-    title: `Виш-лист — ${opts.title}`,
+    title: `${gl("Виш-лист", "Gift list")} — ${opts.title}`,
     theme: opts.theme,
     noindex: true,
     body,

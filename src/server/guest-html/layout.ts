@@ -13,6 +13,7 @@
  */
 
 import { BASE_CSS } from "@/server/guest-html/theme";
+import { guestLang } from "@/server/guest-html/guest-lang";
 
 /** Экранирование: в HTML попадают имена гостей, введённые организатором. */
 export function esc(value: string): string {
@@ -109,7 +110,7 @@ button:active,.claim:active,.matches a:active{transform:none}}
 `).replace(/\n/g, "");
 
 export function page(opts: { title: string; body: string; script?: string }): string {
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${guestLang()}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f8f5f0">

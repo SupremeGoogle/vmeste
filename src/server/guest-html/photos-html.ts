@@ -13,6 +13,7 @@
 import { esc } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import type { InviteTheme } from "@/lib/invite-theme";
+import { gl } from "@/server/guest-html/guest-lang";
 
 export const PHOTO_SCRIPT = `
 (function(){
@@ -25,6 +26,9 @@ export const PHOTO_SCRIPT = `
   var left = Number(form.dataset.left);
   var limit = Number(form.dataset.limit);
   var auth = form.dataset.token ? {token: form.dataset.token} : {eventId: form.dataset.event};
+  /* Язык — страницы, то есть мероприятия (<html lang>). */
+  var EN = document.documentElement.lang === 'en';
+  function T(ru, en){ return EN ? en : ru; }
 
   function row(name){
     var li = document.createElement('li');
@@ -36,7 +40,7 @@ export const PHOTO_SCRIPT = `
     title.textContent = name;
     var state = document.createElement('span');
     state.className = 'muted small';
-    state.textContent = 'в очереди';
+    state.textContent = T('в очереди', 'queued');
     box.appendChild(title); box.appendChild(document.createElement('br')); box.appendChild(state);
     li.appendChild(img); li.appendChild(box);
     list.insertBefore(li, list.firstChild);
@@ -90,39 +94,39 @@ export const PHOTO_SCRIPT = `
 
   function failed(res){
     return res.json().catch(function(){ return {}; })
-      .then(function(b){ throw new Error(b.error || 'не получилось'); });
+      .then(function(b){ throw new Error(b.error || T('не получилось', 'failed')); });
   }
 
   function upload(file, ui){
-    ui.state.textContent = 'готовим';
+    ui.state.textContent = T('готовим', 'preparing');
     return shrink(file).then(function(prepared){
       if (prepared.preview) ui.thumb.style.backgroundImage = 'url(' + prepared.preview + ')';
       return post('/api/guest/photos/presign', {contentType: prepared.type, bytes: prepared.blob.size})
         .then(function(res){ return res.ok ? res.json() : failed(res); })
         .then(function(ticket){
-          ui.state.textContent = 'отправляем';
+          ui.state.textContent = T('отправляем', 'uploading');
           return fetch(ticket.uploadUrl, {method:'PUT', headers:{'content-type': prepared.type}, body: prepared.blob})
             .then(function(put){
-              if (!put.ok) throw new Error('файл не долетел — попробуйте ещё раз');
-              ui.state.textContent = 'обрабатываем';
+              if (!put.ok) throw new Error(T('файл не долетел — попробуйте ещё раз', 'upload failed. Please try again'));
+              ui.state.textContent = T('обрабатываем', 'processing');
               return post('/api/guest/photos/complete', {storageKey: ticket.storageKey});
             });
         })
         .then(function(res){ return res.ok ? res.json() : failed(res); })
         .then(function(done){
           left = done.left;
-          counter.textContent = left > 0 ? 'Осталось ' + left + ' из ' + limit
-                                         : 'Вы прислали все ' + limit;
+          counter.textContent = left > 0 ? T('Осталось ' + left + ' из ' + limit, left + ' of ' + limit + ' left')
+                                         : T('Вы прислали все ' + limit, 'You’ve sent all ' + limit);
           /* Заголовок тоже меняем: «Выбрать фотографии» над
              выключенным полем выглядит как поломка. */
-          if (title) title.textContent = left > 0 ? 'Выбрать фотографии'
-                                                  : 'Больше фотографий не принимаем';
-          ui.state.textContent = 'отправлено';
+          if (title) title.textContent = left > 0 ? T('Выбрать фотографии', 'Choose photos')
+                                                  : T('Больше фотографий не принимаем', 'Photo limit reached');
+          ui.state.textContent = T('отправлено', 'sent');
           if (!prepared.preview) ui.thumb.style.backgroundImage =
             'url(/api/media/' + form.dataset.event + '/' + done.photoId + ')';
         });
     }).catch(function(error){
-      ui.state.textContent = error.message || 'не получилось';
+      ui.state.textContent = error.message || T('не получилось', 'failed');
       ui.state.className = 'err small';
     });
   }
@@ -135,8 +139,8 @@ export const PHOTO_SCRIPT = `
     var accepted = files.slice(0, Math.max(0, left));
     if (files.length > accepted.length) {
       /* Молча обрезать нельзя: гость решит, что ушло всё. */
-      row('Ещё ' + (files.length - accepted.length) + ' фото не приняты').state.textContent =
-        'больше ' + limit + ' не принимаем';
+      row(T('Ещё ' + (files.length - accepted.length) + ' фото не приняты', (files.length - accepted.length) + ' more not accepted')).state.textContent =
+        T('больше ' + limit + ' не принимаем', 'the limit is ' + limit);
     }
 
     input.disabled = true;
@@ -172,10 +176,10 @@ border-radius:.75rem;margin-bottom:.5rem;font-size:.9375rem}
 
 export type MyPhoto = { id: string; status: string };
 
-const STATUS: Record<string, string> = {
-  PENDING: "на модерации",
-  APPROVED: "опубликовано",
-  REJECTED: "не подошло",
+const STATUS: Record<string, () => string> = {
+  PENDING: () => gl("на модерации", "awaiting review"),
+  APPROVED: () => gl("опубликовано", "published"),
+  REJECTED: () => gl("не подошло", "not approved"),
 };
 
 export type PhotoSectionsOpts = {
@@ -199,32 +203,32 @@ data-token="${esc(opts.token ?? "")}" data-event="${esc(opts.eventId)}">
   <input id="files" type="file" accept="image/*,.heic,.heif" multiple${
     opts.left <= 0 ? " disabled" : ""
   }>
-  <b>${opts.left > 0 ? "Выбрать фотографии" : "Больше фотографий не принимаем"}</b>
+  <b>${opts.left > 0 ? gl("Выбрать фотографии", "Choose photos") : gl("Больше фотографий не принимаем", "Photo limit reached")}</b>
   <span class="muted small" id="left">${
-    opts.left > 0 ? `Осталось ${opts.left} из ${opts.limit}` : `Вы прислали все ${opts.limit}`
+    opts.left > 0 ? gl(`Осталось ${opts.left} из ${opts.limit}`, `${opts.left} of ${opts.limit} left`) : gl(`Вы прислали все ${opts.limit}`, `You’ve sent all ${opts.limit}`)
   }</span>
 </label>
 <ul class="queue" id="queue"></ul>
-<noscript><p class="error">Для загрузки фотографий нужен включённый JavaScript:
-браузер сам готовит уменьшенную копию и отправляет файл в хранилище.</p></noscript>`
-    : `<section><p class="center small muted">Загрузка фотографий закрыта организатором.</p></section>`;
+<noscript><p class="error">${gl(`Для загрузки фотографий нужен включённый JavaScript:
+браузер сам готовит уменьшенную копию и отправляет файл в хранилище.`, "Uploading photos requires JavaScript: your browser prepares a smaller copy and sends the file to storage.")}</p></noscript>`
+    : `<section><p class="center small muted">${gl("Загрузка фотографий закрыта организатором.", "The organizer has closed photo uploads.")}</p></section>`;
 
   const mine =
     opts.mine.length === 0
       ? ""
-      : `<section><h2>Ваши фотографии</h2><ul class="grid">
+      : `<section><h2>${gl("Ваши фотографии", "Your photos")}</h2><ul class="grid">
 ${opts.mine
   .map(
     (photo) => `<li><figure style="margin:0"><img src="${media(photo.id)}" alt="" loading="lazy">
-<figcaption>${esc(STATUS[photo.status] ?? photo.status)}</figcaption></figure></li>`,
+<figcaption>${esc(STATUS[photo.status]?.() ?? photo.status)}</figcaption></figure></li>`,
   )
   .join("")}</ul></section>`;
 
   const gallery =
     opts.gallery.length === 0
-      ? `<section><h2>Общая галерея</h2><p class="center small muted">Пока пусто. Здесь
-появятся снимки гостей.</p></section>`
-      : `<section><h2>Общая галерея</h2><ul class="grid">
+      ? `<section><h2>${gl("Общая галерея", "Shared gallery")}</h2><p class="center small muted">${gl(`Пока пусто. Здесь
+появятся снимки гостей.`, "Nothing here yet. Guests’ photos will appear here.")}</p></section>`
+      : `<section><h2>${gl("Общая галерея", "Shared gallery")}</h2><ul class="grid">
 ${opts.gallery
   .map(
     (photo) =>
@@ -257,18 +261,18 @@ export function photosPage(opts: {
   const { picker, mine, gallery } = photoSections(opts);
   return invitePage({
     theme: opts.theme,
-    title: "Фотографии",
+    title: gl("Фотографии", "Photos"),
     noindex: true,
     extraCss: PHOTO_CSS,
     script: opts.enabled ? PHOTO_SCRIPT : undefined,
     body: `<section style="padding-bottom:1rem">
-<h1 class="center" style="font-size:1.5rem">Фотографии</h1>
+<h1 class="center" style="font-size:1.5rem">${gl("Фотографии", "Photos")}</h1>
 <p class="center small muted">${esc(opts.guestName)} · ${esc(opts.eventTitle)}</p>
 </section>
 ${picker}
 ${mine}
 ${gallery}
-${opts.wishHref ? `<div class="links"><a href="${esc(opts.wishHref)}">Написать пожелание</a></div>` : ""}
+${opts.wishHref ? `<div class="links"><a href="${esc(opts.wishHref)}">${gl("Написать пожелание", "Write a wish")}</a></div>` : ""}
 <p class="foot"><a href="${esc(opts.backHref)}">${esc(opts.backLabel)}</a></p>`,
   });
 }

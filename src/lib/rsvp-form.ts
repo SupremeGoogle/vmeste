@@ -10,6 +10,7 @@
  * кухня и бар и собирается список для диджея. Остальные ответы хранятся
  * снимком в `Guest.rsvpAnswers`.
  */
+import type { Lang } from "@/lib/i18n";
 
 export const RSVP_QUESTION_TYPES = [
   "SHORT_TEXT", "LONG_TEXT", "SINGLE_CHOICE", "MULTIPLE_CHOICE", "DROPDOWN", "RATING", "DATE", "MEAL", "DRINKS", "MUSIC",
@@ -29,6 +30,24 @@ export const RSVP_TYPE_LABEL: Record<RsvpQuestionType, string> = {
   DRINKS: "Что будете пить (бар)",
   MUSIC: "Песня для диджея",
 };
+
+/** Те же названия типов для кабинета на английском. */
+export const RSVP_TYPE_LABEL_EN: Record<RsvpQuestionType, string> = {
+  SHORT_TEXT: "Short answer",
+  LONG_TEXT: "Long answer",
+  SINGLE_CHOICE: "Single choice",
+  MULTIPLE_CHOICE: "Multiple choice",
+  DROPDOWN: "Dropdown",
+  RATING: "Rating 1–5",
+  DATE: "Date",
+  MEAL: "Meal choice (menu)",
+  DRINKS: "Drinks (bar)",
+  MUSIC: "Song for the DJ",
+};
+
+export function rsvpTypeLabel(type: RsvpQuestionType, lang: Lang): string {
+  return lang === "en" ? RSVP_TYPE_LABEL_EN[type] : RSVP_TYPE_LABEL[type];
+}
 
 /** Поля, у которых организатор задаёт свои варианты ответа. */
 export const WITH_OPTIONS: ReadonlySet<RsvpQuestionType> = new Set(["SINGLE_CHOICE", "MULTIPLE_CHOICE", "DROPDOWN"]);
@@ -64,6 +83,16 @@ export const DEFAULT_QUESTIONS: Omit<RsvpQuestion, "id">[] = [
   { type: "MEAL", title: "Что подать на ужин", description: "", required: false, options: [] },
   { type: "DRINKS", title: "Что будете пить — можно отметить несколько", description: "", required: false, options: [] },
 ];
+
+/** Те же поля для мероприятия на английском: их видят гости, язык — `Event.language`. */
+export const DEFAULT_QUESTIONS_EN: Omit<RsvpQuestion, "id">[] = [
+  { type: "MEAL", title: "What would you like for dinner?", description: "", required: false, options: [] },
+  { type: "DRINKS", title: "What would you like to drink? Pick as many as you like", description: "", required: false, options: [] },
+];
+
+export function defaultQuestions(lang: Lang): Omit<RsvpQuestion, "id">[] {
+  return lang === "en" ? DEFAULT_QUESTIONS_EN : DEFAULT_QUESTIONS;
+}
 
 export function isRsvpQuestionType(value: string): value is RsvpQuestionType {
   return (RSVP_QUESTION_TYPES as readonly string[]).includes(value);

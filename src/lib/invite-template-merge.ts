@@ -15,7 +15,8 @@
  */
 import type { BlockType } from "@/generated/prisma/enums";
 import { defaultContent, parseBlockContent, type AnyBlockContent } from "@/lib/invite-blocks";
-import { INVITE_TEMPLATES, type InviteTemplate } from "@/lib/invite-templates";
+import { INVITE_TEMPLATES, templateBlocks, type InviteTemplate } from "@/lib/invite-templates";
+import type { Lang } from "@/lib/i18n";
 import { REMOVED_TEMPLATE_SAMPLES } from "@/lib/invite-templates/removed-samples";
 
 type Json = unknown;
@@ -37,7 +38,8 @@ function sampleStrings(): Samples {
     else if (value && typeof value === "object") Object.values(value).forEach((v) => collect(type, v));
   };
   for (const template of INVITE_TEMPLATES) {
-    for (const block of template.blocks) {
+    // Английский образец — тоже пример: его меняют при смене шаблона так же.
+    for (const block of [...template.blocks, ...(template.blocksEn ?? [])]) {
       collect(block.type, block.content);
       collect(block.type, defaultContent(block.type));
     }
@@ -90,18 +92,21 @@ function merge(type: BlockType, current: Json, sample: Json, samples: Samples): 
  * Новое содержимое блоков при смене шаблона. Блок сопоставляется с блоком
  * того же типа в образце по порядку появления (первый «Фото» — с первым и
  * т. д.). Возвращает только те блоки, содержимое которых изменилось.
+ * `lang` — язык свадьбы: у английской пример берётся из английского образца.
  */
 export function refreshBlocksFromTemplate<T extends { id: string; type: BlockType; content: Json }>(
   blocks: T[],
   template: InviteTemplate,
+  lang: Lang = "ru",
 ): { id: string; content: AnyBlockContent }[] {
+  const sampleBlocks = templateBlocks(template, lang);
   const samples = sampleStrings();
   const seen = new Map<BlockType, number>();
   const changes: { id: string; content: AnyBlockContent }[] = [];
   for (const block of blocks) {
     const nth = seen.get(block.type) ?? 0;
     seen.set(block.type, nth + 1);
-    const sample = template.blocks.filter((b) => b.type === block.type)[nth];
+    const sample = sampleBlocks.filter((b) => b.type === block.type)[nth];
     if (!sample) continue;
     const merged = merge(block.type, block.content ?? {}, sample.content, samples);
     if (JSON.stringify(merged) === JSON.stringify(block.content)) continue;

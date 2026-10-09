@@ -8,17 +8,18 @@ import {
 } from "@/lib/seating-geometry";
 import { MARK_RADIUS, markFor } from "@/lib/couple-marks";
 import type { GuestRole } from "@/generated/prisma/enums";
+import type { Lang } from "@/lib/i18n";
 
 /**
  * Значок молодожёнов у места. Фигуры описаны в `lib/couple-marks.ts`,
  * чтобы план в панели, план для гостя и PDF рисовали их одинаково.
  */
-function CoupleMark({ role, x, y }: { role: GuestRole; x: number; y: number }) {
+function CoupleMark({ role, x, y, lang }: { role: GuestRole; x: number; y: number; lang: Lang }) {
   const mark = markFor(role);
   if (!mark) return null;
 
   return (
-    <g transform={`translate(${x} ${y})`} aria-label={mark.label}>
+    <g transform={`translate(${x} ${y})`} aria-label={lang === "en" ? mark.labelEn : mark.label}>
       <circle r={MARK_RADIUS} fill="#8b6f47" stroke="#fffdf9" strokeWidth={1.5} />
       {mark.shapes.map((shape, index) => {
         const fill = shape.tone === "hole" ? "#8b6f47" : "#fffdf9";
@@ -57,17 +58,20 @@ export function FloorPlan({
   tables,
   highlightGuestId,
   hall = DEFAULT_HALL,
+  lang = "ru",
 }: {
   tables: PlanTable[];
   highlightGuestId?: string;
   hall?: Hall;
+  /** Язык мероприятия: план видят гости и он уходит в печать. */
+  lang?: Lang;
 }) {
   return (
     <svg
       viewBox={`0 0 ${hall.width} ${hall.height}`}
       className="w-full rounded-xl border border-stone-200 bg-card"
       role="img"
-      aria-label="План зала"
+      aria-label={lang === "en" ? "Floor plan" : "План зала"}
     >
       {tables.map((table) => {
         const round = isRound(table.shape);
@@ -113,7 +117,7 @@ export function FloorPlan({
                     // Место молодожёнов рисуется значком вместо кружка:
                     // «где сидят молодые» — второй вопрос гостя после
                     // «где сижу я», и искать его глазами не должно быть нужно.
-                    <CoupleMark role={role} x={x} y={y} />
+                    <CoupleMark role={role} x={x} y={y} lang={lang} />
                   )}
                   {seat.guest && (
                     <text

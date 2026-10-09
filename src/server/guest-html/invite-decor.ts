@@ -119,21 +119,21 @@ export function timelineIcon(title: string, color: string): string {
 
   let art: string | null = null;
 
-  if (has("церемони", "роспис", "регистрац", "венчан", "клятв")) {
+  if (has("церемони", "роспис", "регистрац", "венчан", "клятв", "ceremony", "vows")) {
     art = `<circle cx="9" cy="12" r="5" ${line}/><circle cx="15" cy="12" r="5" ${line}/>`;
-  } else if (has("сбор", "фуршет", "welcome", "велком", "аперитив", "встреч")) {
+  } else if (has("сбор", "фуршет", "welcome", "велком", "аперитив", "встреч", "cocktail", "drinks")) {
     art = `<path d="M7 5h5l-1 6a1.5 1.5 0 0 1-3 0z" ${line}/><path d="M9.5 11v7M7.5 18h4" ${line}/>` +
       `<path d="M14 5h5l-1 6a1.5 1.5 0 0 1-3 0z" ${line}/><path d="M16.5 11v7M14.5 18h4" ${line}/>`;
-  } else if (has("ужин", "банкет", "обед", "стол", "угощ")) {
+  } else if (has("ужин", "банкет", "обед", "стол", "угощ", "dinner", "reception", "lunch")) {
     art = `<path d="M4 15a8 5 0 0 1 16 0z" ${line}/><path d="M3 18h18" ${line}/><circle cx="12" cy="7" r="1" ${line}/>`;
-  } else if (has("танец", "танцы", "дискотек", "первый танец")) {
+  } else if (has("танец", "танцы", "дискотек", "первый танец", "danc", "party")) {
     art = `<circle cx="9" cy="6" r="2" ${line}/><path d="M9 8v6l-2 6M9 14l3 6" ${line}/>` +
       `<circle cx="16" cy="6" r="2" ${line}/><path d="M16 8v6l2 6M16 14l-2 6" ${line}/>`;
-  } else if (has("торт", "десерт", "сладк")) {
+  } else if (has("торт", "десерт", "сладк", "cake", "dessert")) {
     art = `<path d="M5 20v-6h14v6z" ${line}/><path d="M7 14v-3h10v3" ${line}/><path d="M12 11V7" ${line}/>`;
-  } else if (has("фото", "съём", "съем")) {
+  } else if (has("фото", "съём", "съем", "photo")) {
     art = `<rect x="4" y="8" width="16" height="11" rx="2" ${line}/><circle cx="12" cy="13.5" r="3.5" ${line}/>`;
-  } else if (has("салют", "фейерверк", "заверш", "оконч", "финал")) {
+  } else if (has("салют", "фейерверк", "заверш", "оконч", "финал", "firework", "farewell", "send-off")) {
     art = `<path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3 3M18 18l-3-3M18 6l-3 3M6 18l3-3" ${line}/>`;
   }
 

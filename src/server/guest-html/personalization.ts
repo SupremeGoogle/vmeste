@@ -3,10 +3,11 @@ import type { InviteTheme } from "@/lib/invite-theme";
 import { initials, photoAdjustmentSchema } from "@/lib/invite-personalization";
 import { esc } from "@/server/guest-html/layout";
 import { editAttrs } from "@/server/guest-html/inline-editor";
+import { guestText, templateLanguage } from "@/server/guest-html/template-labels";
 
 /** Шаблоны, у которых снимки обложки уже стоят в самой обложке: полоса
  *  «из детства» под ней повторила бы те же кадры второй раз. */
-const COVER_OWNS_PHOTOS = new Set(["iskra", "tili", "vinyl", "kraski", "odnazhdy", "little-happiness", "priznanie", "zefir", "crayon", "gazette", "protokol", "postcard"]);
+const COVER_OWNS_PHOTOS = new Set(["iskra", "tili", "vinyl", "kraski", "odnazhdy", "little-happiness", "priznanie", "zefir", "crayon", "gazette", "protokol", "postcard", "gravure", "disco", "coral", "chrome"]);
 
 /** Шаблоны, которые сами рисуют карту в блоке «Как добраться»: вторая
  *  карта под адресом была бы повтором. */
@@ -24,8 +25,14 @@ const MAP_PLACEHOLDER = /^Добавьте ссылку на карту/;
  * и адресу — карта сама переедет, когда организатор впишет своё место.
  */
 export function yandexMapEmbed(mapUrl: string, name: string, address: string): string {
+  const localized = (src: string) => {
+    if (!src || templateLanguage() !== "en") return src;
+    const url = new URL(src);
+    url.searchParams.set("lang", "en_US");
+    return url.toString();
+  };
   const own = mapUrl.match(/^https?:\/\/(?:www\.)?yandex\.(ru|com|kz|by|uz|com\.tr)\/(?:maps|map-widget\/v1)(\/[^#]*)?$/i);
-  if (own) return `https://yandex.${own[1]}/map-widget/v1${own[2] ?? "/"}`;
+  if (own) return localized(`https://yandex.${own[1]}/map-widget/v1${own[2] ?? "/"}`);
   // Ссылка из Google Карт тоже годится как «своя точка», если в ней есть
   // координаты: …/@55.94,38.08,15z или …!3d55.94!4d38.08.
   const google = /google\.[a-z.]+\/maps|goo\.gl\/maps/i.test(mapUrl)
@@ -33,10 +40,10 @@ export function yandexMapEmbed(mapUrl: string, name: string, address: string): s
     : null;
   if (google) {
     const point = `${google[2]},${google[1]}`;
-    return `https://yandex.ru/map-widget/v1/?ll=${point}&z=16&pt=${point},pm2rdm`;
+    return localized(`https://yandex.ru/map-widget/v1/?ll=${point}&z=16&pt=${point},pm2rdm`);
   }
   const query = [name, address].map((part) => part.trim()).filter(Boolean).join(", ");
-  return query ? `https://yandex.ru/map-widget/v1/?text=${encodeURIComponent(query)}&z=16` : "";
+  return query ? localized(`https://yandex.ru/map-widget/v1/?text=${encodeURIComponent(query)}&z=16`) : "";
 }
 
 const VOID_TAGS = new Set(["img", "br", "hr", "input", "source", "meta", "link", "wbr", "area", "col", "embed", "track"]);
@@ -116,18 +123,18 @@ export function personalizeMarkup(html: string, blocks: InviteBlockView[], theme
     const e = editAttrs(block.id, editable);
     const c = block.content;
     if ((block.type === "VENUE" || block.type === "DRESSCODE") && "imageUrl" in c && !section.includes(`data-media-path="imageUrl"`)) {
-      const photo = c.imageUrl ? `<div class="personal-photo"><img src="${esc(c.imageUrl)}" alt="${block.type === "VENUE" ? "Место торжества" : "Примеры нарядов"}" loading="lazy"${e.image("imageUrl")}></div>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>${block.type === "VENUE" ? "Добавить фотографию площадки" : "Добавить примеры нарядов"}</span>` : "";
+      const photo = c.imageUrl ? `<div class="personal-photo"><img src="${esc(c.imageUrl)}" alt="${block.type === "VENUE" ? guestText("Место торжества", "Wedding venue") : guestText("Примеры нарядов", "Outfit ideas")}" loading="lazy"${e.image("imageUrl")}></div>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>${block.type === "VENUE" ? "Добавить фотографию площадки" : "Добавить примеры нарядов"}</span>` : "";
       section = section.replace("</section>", `${photo}</section>`);
     }
     if (block.type === "VENUE" && "mapUrl" in c && !section.includes('data-link-edit') && !section.includes('target="_blank"') && !routeInMapBlock) {
-      section = section.replace("</section>", `${c.mapUrl ? `<p class="center"><a href="${esc(c.mapUrl)}" target="_blank" rel="noopener noreferrer">${esc(c.mapLabel || "Как добраться")} ↗</a></p>` : ""}${editable ? e.link("mapUrl", c.mapUrl) : ""}</section>`);
+      section = section.replace("</section>", `${c.mapUrl ? `<p class="center"><a href="${esc(c.mapUrl)}" target="_blank" rel="noopener noreferrer">${esc(c.mapLabel || guestText("Как добраться", "Get directions"))} ↗</a></p>` : ""}${editable ? e.link("mapUrl", c.mapUrl) : ""}</section>`);
     }
     if (block.type === "VENUE" && "mapUrl" in c && !section.includes("data-venue-map") && !OWN_MAP.has(theme.template ?? "")) {
       const src = yandexMapEmbed(c.mapUrl, c.name, c.address);
       // Ленивая загрузка: карта тянет сторонние скрипты, и гость, который
       // не долистал до места, не должен за них платить.
       if (src) {
-        const map = `<div class="venue-map" data-venue-map><iframe src="${esc(src)}" title="Карта: ${esc(c.name || c.address)}" loading="lazy" allowfullscreen></iframe></div>`;
+        const map = `<div class="venue-map" data-venue-map><iframe src="${esc(src)}" title="${guestText("Карта", "Map")}: ${esc(c.name || c.address)}" loading="lazy" allowfullscreen></iframe></div>`;
         // Карта — сразу под адресом (или названием, если адреса нет): у
         // каждого шаблона своя разметка, поэтому ищем строку по тексту и
         // ставим карту после закрывающего тега её абзаца.
@@ -138,7 +145,7 @@ export function personalizeMarkup(html: string, blocks: InviteBlockView[], theme
     }
     if (block.type === "COVER" && "photos" in c && !COVER_OWNS_PHOTOS.has(theme.template ?? "") && !supplementedCovers.has(block.id) && c.photos.some((p) => p.imageUrl)) {
       supplementedCovers.add(block.id);
-      const photos = c.photos.map((photo, index) => photo.imageUrl && !result.includes(`data-media-block="${esc(block.id)}" data-media-path="photos.${index}.imageUrl"`) ? `<figure><div class="personal-photo"><img src="${esc(photo.imageUrl)}" alt="Фотография из детства"${e.image(`photos.${index}.imageUrl`)}></div><figcaption${e.text(`photos.${index}.caption`)}>${esc(photo.caption)}</figcaption></figure>` : "").join("");
+      const photos = c.photos.map((photo, index) => photo.imageUrl && !result.includes(`data-media-block="${esc(block.id)}" data-media-path="photos.${index}.imageUrl"`) ? `<figure><div class="personal-photo"><img src="${esc(photo.imageUrl)}" alt="${guestText("Фотография из детства", "Childhood photo")}"${e.image(`photos.${index}.imageUrl`)}></div><figcaption${e.text(`photos.${index}.caption`)}>${esc(photo.caption)}</figcaption></figure>` : "").join("");
       if (photos) section += `<section class="personal-childhood">${photos}</section>`;
     }
     return section;

@@ -25,6 +25,7 @@ import { peekImportDraft, replaceImportDraft, takeImportDraft } from "@/server/s
 import { rebuildImport } from "@/server/import/analyze";
 import { COLUMN_ROLES, type ColumnRole } from "@/server/import/structure";
 import { IMPORT_LIMITS } from "@/server/import/limits";
+import { getT, getUiLang } from "@/server/i18n";
 
 const str = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
 const guestsPath = (eventId: string) => `/app/e/${eventId}/guests`;
@@ -36,12 +37,13 @@ export type AddGuestState = { ok: boolean; message: string; at: number } | null;
 export async function addGuestAction(_prev: AddGuestState, form: FormData): Promise<AddGuestState> {
   const eventId = str(form, "eventId");
   const ctx = await requireEventContext(eventId);
+  const t = await getT();
   const displayName = str(form, "displayName").replace(/\s+/g, " ").slice(0, 120);
-  if (displayName.length < 2) return { ok: false, message: "Имя — хотя бы две буквы", at: Date.now() };
+  if (displayName.length < 2) return { ok: false, message: t("Имя — хотя бы две буквы", "Name must be at least 2 letters"), at: Date.now() };
   const phone = str(form, "phone").slice(0, 40) || null;
   await createGuest(ctx, { displayName, phone, plusOneAllowed: form.get("plusOneAllowed") === "on" });
   revalidatePath(guestsPath(eventId));
-  return { ok: true, message: `${displayName} в списке`, at: Date.now() };
+  return { ok: true, message: t(`${displayName} в списке`, `${displayName} added to the list`), at: Date.now() };
 }
 
 export async function togglePlusOneAction(form: FormData) {
@@ -86,8 +88,9 @@ export async function remapImportAction(form: FormData) {
   const eventId = str(form, "eventId");
   const draftId = str(form, "draftId");
   const ctx = await requireEventContext(eventId);
+  const lang = await getUiLang();
   const workspace = peekImportDraft(ctx, draftId);
-  if (!workspace) redirect(`${guestsPath(eventId)}?importError=${encodeURIComponent("Черновик устарел — загрузите файл снова.")}`);
+  if (!workspace) redirect(`${guestsPath(eventId)}?importError=${encodeURIComponent(lang === "en" ? "This draft has expired — please upload the file again." : "Черновик устарел — загрузите файл снова.")}`);
 
   const sheetRaw = form.get("sheetIndex");
   const sheetIndex = sheetRaw === null ? undefined : Number(sheetRaw);
@@ -102,6 +105,7 @@ export async function remapImportAction(form: FormData) {
     workspace,
     sheetChanged ? { sheetIndex } : { columns },
     await existingGuestNames(ctx),
+    lang,
   );
   replaceImportDraft(ctx, draftId, next);
   redirect(`${guestsPath(eventId)}?draft=${draftId}`);
@@ -128,7 +132,8 @@ export async function confirmImportAction(form: FormData) {
   const draftId = str(form, "draftId");
   const workspace = takeImportDraft(ctx, draftId);
   if (!workspace) {
-    redirect(`${guestsPath(eventId)}?importError=${encodeURIComponent("Этот импорт уже выполнен или черновик устарел.")}`);
+    const t = await getT();
+    redirect(`${guestsPath(eventId)}?importError=${encodeURIComponent(t("Этот импорт уже выполнен или черновик устарел.", "This import is already done or the draft has expired."))}`);
   }
 
   const orNull = (value: string) => value || null;
@@ -170,11 +175,15 @@ export async function undoImportAction(form: FormData) {
   const ctx = await requireEventContext(eventId);
   const result = await undoImport(ctx, str(form, "batchId"));
   revalidatePath(guestsPath(eventId));
+  const t = await getT();
   const message = result.expired
-    ? "Отменить уже нельзя: прошло больше 15 минут."
+    ? t("Отменить уже нельзя: прошло больше 15 минут.", "It’s too late to undo: more than 15 minutes have passed.")
     : result.kept > 0
-      ? `Убрали ${result.archived}. ${result.kept} оставили — они уже открыли ссылку, ответили или сидят за столом.`
-      : `Импорт отменён: убрали ${result.archived}.`;
+      ? t(
+        `Убрали ${result.archived}. ${result.kept} оставили — они уже открыли ссылку, ответили или сидят за столом.`,
+        `Removed ${result.archived}. Kept ${result.kept} — they’ve already opened their link, RSVPed or been seated.`,
+      )
+      : t(`Импорт отменён: убрали ${result.archived}.`, `Import undone: removed ${result.archived}.`);
   redirect(`${guestsPath(eventId)}?notice=${encodeURIComponent(message)}`);
 }
 
@@ -191,10 +200,11 @@ export async function inviteByNameAction(
   name: string,
 ): Promise<{ ok: true; path: string; existing: boolean; name: string } | { ok: false; message: string }> {
   const ctx = await requireEventContext(eventId);
+  const t = await getT();
   const displayName = String(name ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
-  if (displayName.length < 2) return { ok: false, message: "Имя — хотя бы две буквы" };
+  if (displayName.length < 2) return { ok: false, message: t("Имя — хотя бы две буквы", "Name must be at least 2 letters") };
   const event = await getEvent(ctx, eventId);
-  if (!event) return { ok: false, message: "Мероприятие не найдено" };
+  if (!event) return { ok: false, message: t("Мероприятие не найдено", "Event not found") };
   // Такой гость уже в списке — даём его ссылку, а не заводим двойника:
   // ссылку «для Маши» часто делают дважды, второй раз — забыв про первый.
   const existing = await db.guest.findFirst({

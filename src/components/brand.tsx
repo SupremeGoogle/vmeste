@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { Lang } from "@/lib/i18n";
 
 /** Пропорции файлов логотипа: ширина к высоте. */
 const LOGO_RATIO = 552 / 256;
@@ -11,6 +12,8 @@ type Props = {
    * Титульной странице это не нужно: у неё всегда светлый фон.
    */
   adaptive?: boolean;
+  /** Язык подписи логотипа для читалок: «Вместе» / «Vmeste». */
+  lang?: Lang;
 };
 
 /**
@@ -39,7 +42,7 @@ export function BrandMark({ size = 44, adaptive = true }: Props) {
 }
 
 /** Логотип целиком: монограмма и надпись «Вместе» — одна картинка, текстом надпись не дублируется. */
-export function BrandLogo({ size = 44, adaptive = true }: Props) {
+export function BrandLogo({ size = 44, adaptive = true, lang = "ru" }: Props) {
   const width = Math.round(size * LOGO_RATIO);
-  return <BrandImage src="/media/brand/vmeste-logo.webp" light="/media/brand/vmeste-logo-light.webp" alt="Вместе" width={width} height={size} adaptive={adaptive} priority />;
+  return <BrandImage src="/media/brand/vmeste-logo.webp" light="/media/brand/vmeste-logo-light.webp" alt={lang === "en" ? "Vmeste" : "Вместе"} width={width} height={size} adaptive={adaptive} priority />;
 }

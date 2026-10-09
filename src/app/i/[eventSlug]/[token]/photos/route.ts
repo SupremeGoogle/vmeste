@@ -7,6 +7,8 @@ import { html } from "@/server/guest-html/layout";
 import { invitePage } from "@/server/guest-html/invite-html";
 import { photosPage } from "@/server/guest-html/photos-html";
 import { getInviteTheme } from "@/server/repositories/invites";
+import { gl, themeInLang, withGuestLang } from "@/server/guest-html/guest-lang";
+
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +38,8 @@ export async function GET(
   ]);
 
   return html(
-    photosPage({
-      theme,
+    withGuestLang(guest.event.language, () => photosPage({
+      theme: themeInLang(theme, guest.event.language),
       eventId: guest.eventId,
       eventTitle: guest.event.title,
       guestName: guest.displayName,
@@ -49,8 +51,8 @@ export async function GET(
       gallery,
       wishHref: guest.event.wishesEnabled ? `/i/${eventSlug}/${token}/wish` : null,
       backHref: `/i/${eventSlug}/${token}`,
-      backLabel: "Вернуться к приглашению",
-    }),
+      backLabel: gl("Вернуться к приглашению", "Back to the invitation"),
+    })),
     { headers: { "cache-control": "private, no-store" } },
   );
 }

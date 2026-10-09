@@ -19,6 +19,16 @@ import {
 import { isSimpleCell, splitByRules, type SplitResult } from "./people";
 import { AiUnavailable, aiConfigured, newBudget } from "./deepseek";
 import { aiSplitCells, aiStructure } from "./ai";
+import { makeT, type Lang } from "@/lib/i18n";
+import { getUiLang } from "@/server/i18n";
+
+/** Сомнения правил (people.ts) и частое сомнение ИИ — по-английски для предпросмотра. */
+const DOUBT_EN: Record<string, string> = {
+  "Семья без имён — уточните, кто придёт": "Family with no names — check who’s coming",
+  "Не нашли имени": "No name found",
+  "Разделили автоматически — проверьте": "Split automatically — please check",
+  "уточните имена": "check the names",
+};
 
 export type ImportStage = "read" | "structure" | "people" | "duplicates";
 
@@ -64,7 +74,7 @@ export type ImportWorkspace = ImportAnalysis & {
 };
 
 export async function analyzeImport({
-  buffer, fileName, smart, existingNames, onStage,
+  buffer, fileName, smart, existingNames, onStage, lang: langArg,
 }: {
   buffer: ArrayBuffer;
   fileName: string;
@@ -72,15 +82,19 @@ export async function analyzeImport({
   /** Ключи поиска гостей, которые уже есть в мероприятии → имя. */
   existingNames: Map<string, string>;
   onStage?: (stage: ImportStage) => void;
+  /** Язык организатора для текстов предпросмотра. Не передан — из cookie кабинета, вне запроса — русский. */
+  lang?: Lang;
 }): Promise<ImportWorkspace> {
+  const lang: Lang = langArg ?? (await getUiLang().catch((): Lang => "ru"));
+  const t = makeT(lang);
   onStage?.("read");
-  const workbook = readWorkbook(buffer, fileName);
+  const workbook = readWorkbook(buffer, fileName, lang);
   const usable = workbook.sheets.some((sheet) => sheet.rows.some((row) => row.some(Boolean)));
-  if (!usable) throw new ImportError("empty", "В файле нет заполненных ячеек.");
+  if (!usable) throw new ImportError("empty", t("В файле нет заполненных ячеек.", "The file has no filled cells."));
 
   const aiEnabled = smart && aiConfigured();
   const budget = newBudget();
-  let failure: string | null = smart && !aiConfigured() ? "умный разбор не настроен" : null;
+  let failure: string | null = smart && !aiConfigured() ? t("умный разбор не настроен", "smart parsing isn’t set up") : null;
 
   onStage?.("structure");
   const sheetIndex = pickSheet(workbook.sheets);
@@ -91,9 +105,9 @@ export async function analyzeImport({
       const aiPlan = await aiStructure(sheet, sheetIndex, budget);
       // ИИ не нашёл столбца с именем — его схеме не верим целиком.
       if (aiPlan.columns.some((col) => ["name", "last_name", "first_name"].includes(col.role))) plan = aiPlan;
-      else failure = "не узнал столбец с именами";
+      else failure = t("не узнал столбец с именами", "couldn’t find the name column");
     } catch (error) {
-      failure = error instanceof AiUnavailable ? error.message : "ошибка разбора";
+      failure = error instanceof AiUnavailable ? t(error.message, error.en) : t("ошибка разбора", "parsing error");
     }
   }
 
@@ -106,17 +120,19 @@ export async function analyzeImport({
       const found = await aiSplitCells(complex, budget);
       for (const [text, split] of found) splits[text] = split;
     } catch (error) {
-      failure = error instanceof AiUnavailable ? `делил пары правилами: ${error.message}` : "делил пары правилами";
+      failure = error instanceof AiUnavailable
+        ? t(`делил пары правилами: ${error.message}`, `split couples by rules: ${error.en}`)
+        : t("делил пары правилами", "split couples by rules");
     }
   }
 
   onStage?.("duplicates");
-  const built = buildGuests(sheet, plan, candidates, splits, existingNames);
+  const built = buildGuests(sheet, plan, candidates, splits, existingNames, lang);
   if (built.guests.length === 0) {
-    throw new ImportError("no-guests", "Не нашли в файле ни одного гостя. Проверьте, что в таблице есть столбец с именами.");
+    throw new ImportError("no-guests", t("Не нашли в файле ни одного гостя. Проверьте, что в таблице есть столбец с именами.", "We didn’t find any guests in the file. Make sure the table has a column with names."));
   }
   if (built.guests.length > L.guests) {
-    throw new ImportError("too-many-rows", `В файле ${built.guests.length} гостей, а за один раз можно до ${L.guests}. Разбейте список на части.`);
+    throw new ImportError("too-many-rows", t(`В файле ${built.guests.length} гостей, а за один раз можно до ${L.guests}. Разбейте список на части.`, `The file has ${built.guests.length} guests, and you can import up to ${L.guests} at a time. Split the list into parts.`));
   }
 
   return {
@@ -138,6 +154,7 @@ export function rebuildImport(
   workspace: ImportWorkspace,
   change: { sheetIndex?: number; columns?: ColumnPlan[] },
   existingNames: Map<string, string>,
+  lang: Lang = "ru",
 ): ImportWorkspace {
   let plan = workspace.plan;
   if (change.sheetIndex !== undefined && change.sheetIndex !== plan.sheetIndex) {
@@ -156,7 +173,7 @@ export function rebuildImport(
   }
   const sheet = workspace.workbookSheets[plan.sheetIndex];
   const candidates = applyStructure(sheet, plan);
-  const built = buildGuests(sheet, plan, candidates, workspace.splits, existingNames);
+  const built = buildGuests(sheet, plan, candidates, workspace.splits, existingNames, lang);
   return { ...workspace, plan, ...built };
 }
 
@@ -170,7 +187,9 @@ export function buildGuests(
   candidates: RowCandidate[],
   splits: Record<string, SplitResult>,
   existingNames: Map<string, string>,
+  lang: Lang = "ru",
 ): { guests: DraftGuest[]; skippedRows: number; warnings: string[] } {
+  const t = makeT(lang);
   const guests: DraftGuest[] = [];
   const warnings: string[] = [];
   let skippedRows = 0;
@@ -185,15 +204,15 @@ export function buildGuests(
 
     const notes = (index: number): string | null => {
       const parts: string[] = [];
-      if (candidate.side) parts.push(`Сторона: ${candidate.side}`);
+      if (candidate.side) parts.push(t(`Сторона: ${candidate.side}`, `Side: ${candidate.side}`));
       if (candidate.group) parts.push(candidate.group);
-      if (candidate.table) parts.push(`Стол: ${candidate.table}`);
-      if (people.length > 1) parts.push(`Вместе с: ${people.filter((_, i) => i !== index).join(", ")}`);
+      if (candidate.table) parts.push(t(`Стол: ${candidate.table}`, `Table: ${candidate.table}`));
+      if (people.length > 1) parts.push(t(`Вместе с: ${people.filter((_, i) => i !== index).join(", ")}`, `Together with: ${people.filter((_, i) => i !== index).join(", ")}`));
       const size = split.partySize ?? candidate.partySize;
-      if (size && size > people.length) parts.push(`${size} чел.`);
-      if (split.childrenMentioned) parts.push("с детьми");
-      if (candidate.rsvp) parts.push(`В списке: ${candidate.rsvp}`);
-      if (candidate.extraPhones.length && index === 0) parts.push(`Ещё телефон: ${candidate.extraPhones.join(", ")}`);
+      if (size && size > people.length) parts.push(t(`${size} чел.`, `party of ${size}`));
+      if (split.childrenMentioned) parts.push(t("с детьми", "with children"));
+      if (candidate.rsvp) parts.push(t(`В списке: ${candidate.rsvp}`, `On the list: ${candidate.rsvp}`));
+      if (candidate.extraPhones.length && index === 0) parts.push(t(`Ещё телефон: ${candidate.extraPhones.join(", ")}`, `Other phone: ${candidate.extraPhones.join(", ")}`));
       if (candidate.note) parts.push(candidate.note);
       const text = parts.join(" · ");
       return text ? text.slice(0, 500) : null;
@@ -204,11 +223,11 @@ export function buildGuests(
       const single = people.length === 1;
       const companion = single ? candidate.companion ?? split.companionName : null;
       const size = split.partySize ?? candidate.partySize;
-      let review = split.doubt;
-      if (!review && displayName.length < 3) review = "Слишком короткое имя";
-      if (!review && /\d/.test(displayName)) review = "В имени есть цифры";
+      let review = split.doubt && lang === "en" ? DOUBT_EN[split.doubt] ?? split.doubt : split.doubt;
+      if (!review && displayName.length < 3) review = t("Слишком короткое имя", "Name is too short");
+      if (!review && /\d/.test(displayName)) review = t("В имени есть цифры", "Name contains digits");
       if (!review && plan.source === "rules" && plan.columns.find((c) => c.role === "name")?.confidence === 0.3) {
-        review = "Не уверены, что это столбец с именами";
+        review = t("Не уверены, что это столбец с именами", "Not sure this is the name column");
       }
 
       guests.push({
@@ -249,10 +268,10 @@ export function buildGuests(
     seen.add(key);
   }
 
-  if (existing > 0) warnings.push(`${existing} уже есть в списке гостей — по умолчанию не добавляем.`);
-  if (duplicates > 0) warnings.push(`${duplicates} повторяются в файле — повторы сняты.`);
+  if (existing > 0) warnings.push(t(`${existing} уже есть в списке гостей — по умолчанию не добавляем.`, `${existing} already on your guest list — not added by default.`));
+  if (duplicates > 0) warnings.push(t(`${duplicates} повторяются в файле — повторы сняты.`, `${duplicates} repeated in the file — duplicates unchecked.`));
   const hiddenSkipped = sheet.hidden ? 1 : 0;
-  if (hiddenSkipped) warnings.push("Выбран скрытый лист файла.");
+  if (hiddenSkipped) warnings.push(t("Выбран скрытый лист файла.", "A hidden sheet is selected."));
 
   return { guests, skippedRows, warnings };
 }

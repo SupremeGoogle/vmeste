@@ -14,12 +14,12 @@ const TEXT = {
   },
 };
 
-function preview(id: string) {
-  return `/media/template-previews/${id}.webp`;
+function preview(id: string, lang: "ru" | "en") {
+  return `/media/template-previews/${id}${lang === "en" && ["gravure", "disco", "coral", "chrome"].includes(id) ? "-en" : ""}.webp`;
 }
 
 /** Витрина и полный каталог всегда используют актуальный список шаблонов. */
-export function InviteShowcase({ lang = "ru" }: { lang?: "ru" | "en" }) {
+export function InviteShowcase({ lang = "ru", expanded = false }: { lang?: "ru" | "en"; expanded?: boolean }) {
   const t = TEXT[lang];
   // Порядок случайный при каждом показе — один и тот же для ленты и каталога.
   // По-английски названия и описания — из своего словаря (шаблоны сами русские).
@@ -33,15 +33,15 @@ export function InviteShowcase({ lang = "ru" }: { lang?: "ru" | "en" }) {
         {[...PICKABLE_TEMPLATES, ...PICKABLE_TEMPLATES].map((template, index) => {
           const copy = index >= PICKABLE_TEMPLATES.length;
           return <li key={`${template.id}-${index}`} className="home-phone-item" aria-hidden={copy || undefined}>
-            <a href={`/templates/${template.id}`} target="_blank" rel="noopener noreferrer" className="home-phone" tabIndex={copy ? -1 : undefined} aria-label={copy ? undefined : t.open(template.name)}>
-              <span className="home-phone-screen"><Image src={preview(template.id)} alt={copy ? "" : t.alt(template.name)} fill unoptimized sizes="(max-width: 560px) 156px, 250px" /></span>
+            <a href={`/templates/${template.id}${lang === "en" ? "?lang=en" : ""}`} target="_blank" rel="noopener noreferrer" className="home-phone" tabIndex={copy ? -1 : undefined} aria-label={copy ? undefined : t.open(template.name)}>
+              <span className="home-phone-screen"><Image src={preview(template.id, lang)} alt={copy ? "" : t.alt(template.name)} fill unoptimized sizes="(max-width: 560px) 156px, 250px" /></span>
             </a>
           </li>;
         })}
       </ul>
     </Reveal>
     <div className="home-container">
-      <details className="home-invite-catalog">
+      <details className="home-invite-catalog" open={expanded || undefined}>
         <summary className="home-button home-button--light">
           <span className="invite-catalog-open">{t.all}</span>
           <span className="invite-catalog-close">{t.collapse}</span>
@@ -49,8 +49,8 @@ export function InviteShowcase({ lang = "ru" }: { lang?: "ru" | "en" }) {
           <span className="invite-catalog-arrow" aria-hidden="true">↓</span>
         </summary>
         <div className="invite-catalog-grid" aria-label={t.catalog}>
-          {PICKABLE_TEMPLATES.map(template => <a key={template.id} className="invite-catalog-card" href={`/templates/${template.id}`} target="_blank" rel="noopener noreferrer">
-            <span className="invite-catalog-preview"><Image src={preview(template.id)} alt={t.first(template.name)} width={400} height={810} unoptimized sizes="(max-width: 560px) 40vw, (max-width: 860px) 28vw, 230px" /></span>
+          {PICKABLE_TEMPLATES.map(template => <a key={template.id} className="invite-catalog-card" href={`/templates/${template.id}${lang === "en" ? "?lang=en" : ""}`} target="_blank" rel="noopener noreferrer">
+            <span className="invite-catalog-preview"><Image src={preview(template.id, lang)} alt={t.first(template.name)} width={400} height={810} unoptimized sizes="(max-width: 560px) 40vw, (max-width: 860px) 28vw, 230px" /></span>
             <span className="invite-catalog-name">{template.name}<span aria-hidden="true">↗</span></span>
             <span className="invite-catalog-mood">{template.mood}</span>
           </a>)}

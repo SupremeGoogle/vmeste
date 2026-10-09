@@ -48,6 +48,7 @@ export type Mark = {
   shapes: MarkShape[];
   /** Подпись для доступности и легенды. */
   label: string;
+  labelEn: string;
 };
 
 /**
@@ -62,6 +63,7 @@ export function markFor(role: GuestRole): Mark | null {
   if (role === "BRIDE") {
     return {
       label: "невеста",
+      labelEn: "bride",
       shapes: [
         // Фата: накидка вокруг головы, спадающая до подола. Рисуется
         // первой и полупрозрачной — иначе она съедает силуэт платья.
@@ -84,6 +86,7 @@ export function markFor(role: GuestRole): Mark | null {
   if (role === "GROOM") {
     return {
       label: "жених",
+      labelEn: "groom",
       shapes: [
         // Пиджак: прямые плечи и ровный низ — противоположность колоколу.
         {
@@ -110,6 +113,12 @@ export const ROLE_LABEL: Record<GuestRole, string> = {
   GUEST: "гость",
   BRIDE: "невеста",
   GROOM: "жених",
+};
+
+export const ROLE_LABEL_EN: Record<GuestRole, string> = {
+  GUEST: "guest",
+  BRIDE: "bride",
+  GROOM: "groom",
 };
 
 /** Есть ли на плане кто-то из молодожёнов: легенда рисуется только тогда. */
