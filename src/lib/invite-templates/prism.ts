@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { PRISM_SAMPLE_IMAGES } from "@/lib/invite-templates/prism-assets";
 
 /** Авторский glass-editorial шаблон с преломлениями света и объёмными карточками. */
@@ -55,3 +55,24 @@ export const PRISM_TEMPLATE: InviteTemplate = {
   ],
 };
 
+/** English sample: same sections and pictures as `PRISM_TEMPLATE.blocks`. */
+export const PRISM_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "Love, refracted", names: "Emily & James", dateText: "August 2, 2027 · The Glasshouse", subtitle: "One light. A thousand shades. And our new chapter.", imageUrl: PRISM_SAMPLE_IMAGES[0] } },
+  { type: "TEXT", content: { v: 1, tag: "Manifesto", title: "The light changes when we’re together", text: "We want to spend this day without needless formality — among glass, water, music and the people who reflect our story in the warmest colors." } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Until everything starts to shine", doneText: "Today our light becomes one!" } },
+  { type: "VENUE", content: { v: 1, tag: "Glasshouse 01", title: "A space made of light", name: "Prism Glasshouse", address: "Lake Como, Italy", note: "The ceremony, dinner and party will all take place in a single glasshouse.", imageUrl: PRISM_SAMPLE_IMAGES[1], mapUrl: "", mapLabel: "Get directions" } },
+  { type: "PHOTOS", content: { v: 1, tag: "Moments", title: "Three facets of one evening", items: [
+    { imageUrl: PRISM_SAMPLE_IMAGES[0], caption: "Closeness" },
+    { imageUrl: PRISM_SAMPLE_IMAGES[1], caption: "Space" },
+    { imageUrl: PRISM_SAMPLE_IMAGES[2], caption: "Light" },
+  ] } },
+  { type: "TIMELINE", content: { v: 1, tag: "The rhythm of light", title: "How the evening will unfold", items: [
+    { time: "5:30 PM", title: "Soft light", note: "Welcome and aperitivo" },
+    { time: "6:30 PM", title: "Refraction", note: "Ceremony by the water" },
+    { time: "8:00 PM", title: "Warm spectrum", note: "Dinner in the glasshouse" },
+    { time: "11:00 PM", title: "After midnight", note: "Music and dancing" },
+  ] } },
+  { type: "DRESSCODE", content: { v: 1, tag: "Palette", title: "Color in motion", text: "Choose evening looks in rich natural tones: graphite, smoky mint, pearl, lilac and warm champagne.", palette: ["#182023", "#7f9f99", "#d9ded9", "#b9a9c5", "#d6b083"] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "Your reply", title: "Will you be part of this light?", text: "Please send your reply in advance — we’ll thoughtfully prepare a place for every guest.", buttonLabel: "Send reply" } },
+  { type: "TEXT", content: { v: 1, tag: "08 · 02 · 27", title: "See you inside the light", text: "With love, Emily & James." } },
+];

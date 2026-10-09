@@ -17,6 +17,7 @@ import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
 import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
 import { L } from "@/server/guest-html/template-labels";
+import { gl, guestLang } from "@/server/guest-html/guest-lang";
 
 /** Трилистник между разделами — как ✤ на бумажных приглашениях. */
 const MARK = `<i class="vinyl-mark" aria-hidden="true"></i>`;
@@ -36,7 +37,7 @@ function tile(url: string, index: number, attrs: string, editable: boolean): str
   const inner = url
     ? `<img src="${esc(url)}" alt="" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" data-vinyl-parallax${attrs}>`
     : editable
-      ? `<span class="ie-image-placeholder"${attrs}>Фотография</span>`
+      ? `<span class="ie-image-placeholder"${attrs}>${gl("Фотография", "Photo")}</span>`
       : "";
   if (!inner) return "";
   return `<figure class="vinyl-tile vinyl-tile-${index + 1}">${inner}</figure>`;
@@ -77,7 +78,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
       const c = block.content as BlockContentMap["TEXT"];
       // Последний блок — прощание: он другой по форме, и узнаём мы его по
       // тому же признаку, по которому его узнаёт человек, — по смыслу.
-      const closing = /встреч|любов|ждём|ждем/i.test(`${c.title} ${c.text}`);
+      const closing = /встреч|любов|ждём|ждем/i.test(`${c.title} ${c.text}`) || (guestLang() === "en" && /see you|with love|can’t wait/i.test(`${c.title} ${c.text}`));
       if (closing) {
         return wrap(
           block,
@@ -109,7 +110,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
             `<strong${e.text(`items.${index}.title`)}>${esc(item.title)}</strong>` +
             `<small${e.text(`items.${index}.note`)}>${esc(item.note)}</small>` +
             (editable
-              ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить пункт">×</button>`
+              ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="${gl("Удалить пункт", "Remove item")}">×</button>`
               : "") +
             `</li>`,
         )
@@ -120,7 +121,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
         `${MARK}<p class="vinyl-tag"${e.text("tag")}>${esc(c.tag)}</p>` +
           `<h2${e.text("title")}>${esc(c.title)}</h2>` +
           `<ol class="vinyl-slots">${items}</ol>` +
-          (editable ? `<button type="button" class="vinyl-add" data-block-action="add-detail">+ Добавить пункт</button>` : ""),
+          (editable ? `<button type="button" class="vinyl-add" data-block-action="add-detail">${gl("+ Добавить пункт", "+ Add item")}</button>` : ""),
         editable,
       );
     }
@@ -162,7 +163,7 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
                 `<figure data-vinyl-rise>` +
                 (item.imageUrl
                   ? `<img src="${esc(item.imageUrl)}" alt="" loading="lazy" decoding="async"${e.image(`items.${index}.imageUrl`)}>`
-                  : `<span class="ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>Фотография</span>`) +
+                  : `<span class="ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>${gl("Фотография", "Photo")}</span>`) +
                 (item.caption || editable ? `<figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption>` : "") +
                 `</figure>`,
             )
@@ -177,10 +178,10 @@ function renderBlock(block: InviteBlockView, rsvpHref: string | null, answered: 
       const photo = c.imageUrl
         ? `<img src="${esc(c.imageUrl)}" alt="" loading="lazy" decoding="async" data-vinyl-parallax${e.image("imageUrl")}>`
         : editable
-          ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Фотография места</span>`
+          ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>${gl("Фотография места", "Venue photo")}</span>`
           : "";
       const map = c.mapUrl
-        ? `<a class="vinyl-button" href="${esc(c.mapUrl)}" target="_blank" rel="noreferrer noopener"${editable ? " data-editor-ui" : ""}>${esc(c.mapLabel || "Открыть карту")}</a>`
+        ? `<a class="vinyl-button" href="${esc(c.mapUrl)}" target="_blank" rel="noreferrer noopener"${editable ? " data-editor-ui" : ""}>${esc(c.mapLabel || gl("Открыть карту", "Open map"))}</a>`
         : "";
       return wrap(
         block,
@@ -231,13 +232,13 @@ export function renderVinylBlocks(
   // у того, кто его так и не включит.
   const music = theme.musicUrl
     ? `<audio id="vinyl-audio" src="${esc(theme.musicUrl)}" preload="none" loop></audio>` +
-      `<button type="button" class="vinyl-music" aria-pressed="false" aria-label="Музыка"${editable ? " data-editor-ui" : ""}><i aria-hidden="true"></i></button>`
+      `<button type="button" class="vinyl-music" aria-pressed="false" aria-label="${gl("Музыка", "Music")}"${editable ? " data-editor-ui" : ""}><i aria-hidden="true"></i></button>`
     : "";
   // Подпись заставки — подпись шаблона: гостю её берёт скрипт пластинки,
   // в редакторе она видна в превью заставки над обложкой.
-  const copy = L("vinyl.intro", "Нажмите на пластинку,\nчтобы открыть приглашение", { tag: "p", multiline: true, attrs: editable ? "" : ' id="vinyl-intro-copy" hidden' });
+  const copy = L("vinyl.intro", gl("Нажмите на пластинку,\nчтобы открыть приглашение", "Tap the record\nto open the invitation"), { tag: "p", multiline: true, attrs: editable ? "" : ' id="vinyl-intro-copy" hidden' });
   const intro = theme.introOff ? "" : editable
-    ? `<div class="vinyl-intro-preview"><span class="vinyl-disc" aria-hidden="true"><i class="vinyl-disc-hole"></i></span>${copy}<small>Заставка — гость видит её при открытии</small></div>`
+    ? `<div class="vinyl-intro-preview"><span class="vinyl-disc" aria-hidden="true"><i class="vinyl-disc-hole"></i></span>${copy}<small>${gl("Заставка — гость видит её при открытии", "Intro screen — guests see it when they open the invitation")}</small></div>`
     : copy;
   return music + intro + blocks.map((block) => renderBlock(block, rsvpHref, answered, editable) || standard(block)).join("");
 }

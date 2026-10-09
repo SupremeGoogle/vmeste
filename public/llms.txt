@@ -1,21 +1,48 @@
 # Вместе
 
-> «Вместе» (vvvmeste.com) — российский онлайн-сервис для организации свадьбы: электронные приглашения по именной ссылке, сбор ответов гостей (RSVP), рассадка по столам на плане зала, вход гостей по QR-коду, общий фотоальбом с ИИ-модерацией и список подарков. Работает в браузере, гостям ничего не нужно устанавливать.
+> «Вместе» (vvvmeste.com) — российский онлайн-сервис для организации свадьбы: электронные приглашения по именной ссылке, сбор ответов гостей (RSVP), рассадка по столам на плане зала, вход гостей по QR-коду, общий фотоальбом с ИИ-модерацией и список подарков. Работает в браузере, гостям ничего не нужно устанавливать. Есть английская версия (Vmeste).
 
 ## Главное
 
 - [Главная страница](https://vvvmeste.com/): возможности сервиса, примеры приглашений, демо рассадки, частые вопросы
 - [Создать свадьбу](https://vvvmeste.com/register): регистрация организатора по почте или через Google
+- [English version](https://vvvmeste.com/en): the same service in English
+
+## Возможности подробно
+
+- [Электронное приглашение на свадьбу](https://vvvmeste.com/elektronnoe-priglashenie-na-svadbu): 30+ дизайнов, именная ссылка для каждого гостя, редактор, анкета, программа, карта и подарки на одной странице
+- [Рассадка гостей онлайн](https://vvvmeste.com/rassadka-gostej-onlajn): план зала, столы разной формы, перетаскивание гостей, печать плана и табличек в PDF, поиск стола по QR-коду
+- [Анкета гостя на свадьбу (RSVP)](https://vvvmeste.com/anketa-gostya-na-svadbu): присутствие, спутник, блюда и напитки, свои вопросы, заказ песен, срок ответа, выгрузка в CSV
+
+## Статьи
+
+- [Все статьи](https://vvvmeste.com/blog)
+- [Текст приглашения на свадьбу: 36 примеров](https://vvvmeste.com/blog/tekst-priglasheniya-na-svadbu)
+- [Как рассадить гостей на свадьбе](https://vvvmeste.com/blog/kak-rassadit-gostej-na-svadbe)
+- [Как собрать ответы гостей на свадьбу](https://vvvmeste.com/blog/kak-sobrat-otvety-gostej)
+- [Список гостей на свадьбу: как составить и сократить](https://vvvmeste.com/blog/spisok-gostej-na-svadbu)
+- [Тайминг свадьбы: план дня по часам](https://vvvmeste.com/blog/tajming-svadby)
+- [Электронное или бумажное приглашение](https://vvvmeste.com/blog/elektronnoe-ili-bumazhnoe-priglashenie)
 
 ## Что умеет сервис
 
-- Электронное приглашение на свадьбу: более 20 дизайнов, у каждого гостя своя ссылка, редактор текста и фотографий
+- Электронное приглашение на свадьбу: более 30 дизайнов, у каждого гостя своя ссылка, редактор текста и фотографий
 - Ответы гостей (RSVP): придёт или нет, с кем, выбор блюд и напитков, вопросы анкеты, заказ песен
 - Рассадка гостей: план зала, перетаскивание гостей по столам, печать плана и табличек в PDF
 - День свадьбы: вход по QR-коду, гость сам находит свой стол, экран с рассадкой, тайминг для ведущего и диджея
 - Фотографии: гости загружают снимки с телефона, ИИ-фильтр скрывает сомнительные до одобрения, после свадьбы — общий альбом
 - Подарки: список без повторов и конверт с реквизитами для денежного подарка
 - Импорт списка гостей из Excel (.xlsx) и CSV
+
+## English pages
+
+- [Online wedding invitations](https://vvvmeste.com/en/wedding-invitations): 30+ designs, a personal link for every guest, built-in RSVP, schedule, map and gift list
+- [Wedding seating chart maker](https://vvvmeste.com/en/wedding-seating-chart): your floor plan, tables of any shape, drag and drop, PDF printing, QR seat finder
+- [Online wedding RSVP](https://vvvmeste.com/en/wedding-rsvp): attendance, plus-ones, meals and drinks, custom questions, song requests, CSV export
+- [Blog](https://vvvmeste.com/en/blog)
+- [Wedding invitation wording: 30 examples](https://vvvmeste.com/en/blog/wedding-invitation-wording)
+- [How to make a wedding seating chart](https://vvvmeste.com/en/blog/how-to-make-a-wedding-seating-chart)
+- [How to collect wedding RSVPs online](https://vvvmeste.com/en/blog/how-to-collect-wedding-rsvps-online)
 
 ## Данные и приватность
 

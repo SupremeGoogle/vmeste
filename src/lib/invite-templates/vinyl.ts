@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { VINYL_SAMPLE_IMAGES } from "@/lib/invite-templates/vinyl-assets";
 
 /**
@@ -163,3 +163,122 @@ export const VINYL_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** Образец для английской свадьбы: те же разделы и снимки. */
+export const VINYL_BLOCKS_EN: TemplateBlock[] = [
+  {
+    type: "COVER",
+    content: {
+      v: 1,
+      title: "You’re invited to our wedding",
+      names: "Emily & James",
+      dateText: "November 20, 2027",
+      subtitle: "Expect lots of dancing, hugs and love!",
+      imageUrl: VINYL_SAMPLE_IMAGES[0],
+      photos: [
+        { imageUrl: VINYL_SAMPLE_IMAGES[1], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[2], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[5], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[6], caption: "" },
+      ],
+      footer: "With love, Emily & James",
+    },
+  },
+  {
+    type: "TEXT",
+    content: {
+      v: 1,
+      tag: "Dear friends",
+      title: "We’re getting married!",
+      text: "With so much excitement and joy, we invite you to share this special day with us. It’s going to be an unforgettable night, and we really want you to be part of it.",
+    },
+  },
+  {
+    type: "COUNTDOWN",
+    content: { v: 1, title: "The party starts in", doneText: "Today’s the day — we can’t wait to see you!" },
+  },
+  {
+    type: "TIMELINE",
+    content: {
+      v: 1,
+      tag: "Schedule",
+      title: "The day",
+      items: [
+        { time: "3:30 PM", title: "Guests arrive", note: "Time will fly with bubbly, light bites and good company" },
+        { time: "4:00 PM", title: "Ceremony", note: "Bring a tissue or two, just in case" },
+        { time: "4:30 PM", title: "Reception", note: "Great food, a packed dance floor and plenty of fun" },
+        { time: "12:00 AM", title: "Last dance", note: "Warm hugs and memories to take home" },
+      ],
+    },
+  },
+  {
+    type: "DRESSCODE",
+    content: {
+      v: 1,
+      tag: "What to wear",
+      title: "Dress code",
+      text: "Having you there is what matters most! But we’d be thrilled if you joined in the vibe of the night and wore something from our palette.",
+      palette: ["#d8557f", "#b98a92", "#ddc98a", "#dfa13c", "#5d5a2a"],
+      imageUrl: "",
+    },
+  },
+  {
+    type: "PHOTOS",
+    content: {
+      v: 1,
+      tag: "",
+      title: "",
+      items: [
+        { imageUrl: VINYL_SAMPLE_IMAGES[9], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[10], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[11], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[12], caption: "" },
+      ],
+    },
+  },
+  {
+    type: "PHOTOS",
+    content: {
+      v: 1,
+      tag: "",
+      title: "",
+      items: [
+        { imageUrl: VINYL_SAMPLE_IMAGES[7], caption: "" },
+        { imageUrl: VINYL_SAMPLE_IMAGES[8], caption: "" },
+      ],
+    },
+  },
+  {
+    type: "VENUE",
+    content: {
+      v: 1,
+      tag: "Location",
+      title: "Where it all happens",
+      name: "Cherry Orchard Estate",
+      address: "7 Orchard Lane, Hudson, New York",
+      note: "Come a little early — we’ll meet you at the door.",
+      imageUrl: VINYL_SAMPLE_IMAGES[4],
+      mapUrl: "",
+      mapLabel: "Open map",
+    },
+  },
+  {
+    type: "RSVP_FORM",
+    content: {
+      v: 1,
+      tag: "RSVP",
+      title: "Will you join us?",
+      text: "Your answers will really help us plan. Please reply by October 15.",
+      buttonLabel: "Reply",
+    },
+  },
+  {
+    type: "TEXT",
+    content: {
+      v: 1,
+      tag: "11 · 20 · 27",
+      title: "See you on the dance floor!",
+      text: "With love, Emily & James.",
+    },
+  },
+];

@@ -6,6 +6,8 @@ import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
 import { countdownCells } from "@/server/guest-html/countdown";
 import { esc } from "@/server/guest-html/layout";
 import { initialsOf, L } from "@/server/guest-html/template-labels";
+import { gl, guestLang } from "@/server/guest-html/guest-lang";
+import { localeOf } from "@/lib/i18n";
 
 type Context = { eventDate?: Date; timezone: string; editable: boolean };
 type Design = "zefir" | "crayon";
@@ -28,20 +30,20 @@ const heading = (value: string, e: EditAttrs) => `<h2${e.text("title")}>${esc(va
 const paragraph = (value: string, path: string, e: EditAttrs) => value || e.enabled ? `<p${e.text(path, { multiline: true })}>${text(value)}</p>` : "";
 
 function photo(url: string, path: string, e: EditAttrs, cls = "", lazy = true): string {
-  if (!url) return e.enabled ? `<span class="ie-image-placeholder"${e.image(path)}>Добавить фотографию</span>` : "";
+  if (!url) return e.enabled ? `<span class="ie-image-placeholder"${e.image(path)}>${gl("Добавить фотографию", "Add a photo")}</span>` : "";
   return `<div class="sb-photo ${cls}"><img src="${esc(url)}" alt=""${lazy ? ' loading="lazy"' : ' fetchpriority="high"'}${e.image(path)}></div>`;
 }
 
 function intro(c: BlockContentMap["COVER"], e: EditAttrs, design: Design, names: string): string {
   const monogram = initialsOf(names).join(" + ");
-  const labels = `${L(`${design}.intro-title`, design === "zefir" ? "Кто будет моей женой?" : "Вам письмо из детства", { tag: "h2" })}${L(`${design}.intro-hint`, design === "zefir" ? "Нажмите на карточку, чтобы узнать" : "Внутри — наша самая счастливая история", { tag: "p" })}`;
-  if (e.enabled) return `<details class="sb-intro-settings" data-editor-ui><summary>Надписи заставки</summary>${labels}${L(`${design}.seal`, monogram)}${design === "zefir" ? `<p>${L("zefir.flip", "Кто же?")}</p><p>${L("zefir.flip-answer", "Это любовь!")}</p>` : ""}${L(`${design}.intro-open`, "Открыть приглашение")}</details>`;
+  const labels = `${L(`${design}.intro-title`, design === "zefir" ? gl("Кто будет моей женой?", "Who will be my wife?") : gl("Вам письмо из детства", "A letter from our childhood"), { tag: "h2" })}${L(`${design}.intro-hint`, design === "zefir" ? gl("Нажмите на карточку, чтобы узнать", "Tap the card to find out") : gl("Внутри — наша самая счастливая история", "Inside is our happiest story"), { tag: "p" })}`;
+  if (e.enabled) return `<details class="sb-intro-settings" data-editor-ui><summary>${gl("Надписи заставки", "Intro text")}</summary>${labels}${L(`${design}.seal`, monogram)}${design === "zefir" ? `<p>${L("zefir.flip", gl("Кто же?", "Who could it be?"))}</p><p>${L("zefir.flip-answer", gl("Это любовь!", "It’s love!"))}</p>` : ""}${L(`${design}.intro-open`, gl("Открыть приглашение", "Open the invitation"))}</details>`;
   const children = c.photos.filter(p => p.imageUrl);
   const envelope = design === "crayon"
     ? `<div class="sb-envelope sb-envelope-art"><img src="/media/invite-scrapbook/crayon-envelope.webp" width="1100" height="825" alt="" aria-hidden="true" fetchpriority="high"><span class="sb-seal">${L(`${design}.seal`, monogram)}</span></div>`
     : `<div class="sb-envelope">${doodle("heart")}<span class="sb-seal">${L(`${design}.seal`, monogram)}</span></div>`;
-  const cards = design === "zefir" && children.length ? `<div class="sb-intro-pair"><figure>${photo(children[0].imageUrl, `photos.${c.photos.indexOf(children[0])}.imageUrl`, e, "", false)}<figcaption>${esc(children[0].caption)}</figcaption></figure><button class="sb-flip" type="button" aria-pressed="false"><span class="sb-flip-front">${doodle("heart")}${L("zefir.flip", "Кто же?")}</span><span class="sb-flip-back">${children[1] ? photo(children[1].imageUrl, `photos.${c.photos.indexOf(children[1])}.imageUrl`, e, "", false) : photo(c.imageUrl, "imageUrl", e, "", false)}${L("zefir.flip-answer", "Это любовь!")}</span></button></div>` : envelope;
-  return `<div class="sb-intro" hidden><div class="sb-intro-card">${labels}${cards}<button class="sb-open" type="button">${L(`${design}.intro-open`, "Открыть приглашение")}</button></div></div>`;
+  const cards = design === "zefir" && children.length ? `<div class="sb-intro-pair"><figure>${photo(children[0].imageUrl, `photos.${c.photos.indexOf(children[0])}.imageUrl`, e, "", false)}<figcaption>${esc(children[0].caption)}</figcaption></figure><button class="sb-flip" type="button" aria-pressed="false"><span class="sb-flip-front">${doodle("heart")}${L("zefir.flip", gl("Кто же?", "Who could it be?"))}</span><span class="sb-flip-back">${children[1] ? photo(children[1].imageUrl, `photos.${c.photos.indexOf(children[1])}.imageUrl`, e, "", false) : photo(c.imageUrl, "imageUrl", e, "", false)}${L("zefir.flip-answer", gl("Это любовь!", "It’s love!"))}</span></button></div>` : envelope;
+  return `<div class="sb-intro" hidden><div class="sb-intro-card">${labels}${cards}<button class="sb-open" type="button">${L(`${design}.intro-open`, gl("Открыть приглашение", "Open the invitation"))}</button></div></div>`;
 }
 
 function calendar(date: Date, timezone: string, design: Design): string {
@@ -50,8 +52,8 @@ function calendar(date: Date, timezone: string, design: Design): string {
   const day = n("day"), month = n("month"), year = n("year");
   const start = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
   const count = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const monthText = new Intl.DateTimeFormat("ru-RU", { timeZone: timezone, month: "long", year: "numeric" }).format(date);
-  return `<div class="sb-calendar-paper"><p class="sb-month">${esc(monthText)}</p><div class="sb-calendar">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((v, i) => L(`${design}.weekday-${i}`, v, { className: "sb-weekday" })).join("")}${'<span aria-hidden="true"></span>'.repeat(start)}${Array.from({ length: count }, (_, i) => `<span${i + 1 === day ? ' class="sb-selected" aria-current="date"' : ""}>${i + 1}${i + 1 === day ? doodle("heart") : ""}</span>`).join("")}</div></div>`;
+  const monthText = new Intl.DateTimeFormat(localeOf(guestLang()), { timeZone: timezone, month: "long", year: "numeric" }).format(date);
+  return `<div class="sb-calendar-paper"><p class="sb-month">${esc(monthText)}</p><div class="sb-calendar">${(guestLang() === "en" ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]).map((v, i) => L(`${design}.weekday-${i}`, v, { className: "sb-weekday" })).join("")}${'<span aria-hidden="true"></span>'.repeat(start)}${Array.from({ length: count }, (_, i) => `<span${i + 1 === day ? ' class="sb-selected" aria-current="date"' : ""}>${i + 1}${i + 1 === day ? doodle("heart") : ""}</span>`).join("")}</div></div>`;
 }
 
 export function renderScrapbookBlocks(blocks: InviteBlockView[], theme: InviteTheme, ctx: Context): string {
@@ -63,9 +65,9 @@ export function renderScrapbookBlocks(blocks: InviteBlockView[], theme: InviteTh
     switch (block.type) {
       case "COVER": {
         const c = block.content as BlockContentMap["COVER"];
-        const date = ctx.eventDate ? [new Intl.DateTimeFormat("ru-RU", { timeZone: ctx.timezone, day: "2-digit", month: "2-digit", year: "numeric" }).format(ctx.eventDate), theme.wedding?.city].filter(Boolean).join(" · ") : c.dateText;
+        const date = ctx.eventDate ? [new Intl.DateTimeFormat(localeOf(guestLang()), { timeZone: ctx.timezone, day: "2-digit", month: "2-digit", year: "numeric" }).format(ctx.eventDate), theme.wedding?.city].filter(Boolean).join(" · ") : c.dateText;
         const children = c.photos.map((p, i) => p.imageUrl || ctx.editable ? `<figure class="sb-child">${photo(p.imageUrl, `photos.${i}.imageUrl`, e)}<figcaption${e.text(`photos.${i}.caption`)}>${esc(p.caption)}</figcaption></figure>` : "").join("");
-        return frame("sb-cover", `${intro(c, e, design, names)}${theme.musicUrl ? `<audio class="sb-music" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="sb-music-toggle" type="button" aria-pressed="false">${L(`${design}.music`, "Музыка ♫")}</button>` : ""}<div class="sb-cover-title"><p${e.text("title")}>${esc(c.title)}</p>${doodle("star")}</div><div class="sb-hero-frame">${photo(c.imageUrl, "imageUrl", e, "sb-hero-photo", false)}${doodle("heart")}${L(`${design}.photo-note`, "это мы ♡", { className: "sb-photo-note" })}</div><div class="sb-cover-heading"><h1 class="sb-names"${e.text("names")}>${esc(c.names).replace(/\s+(?:и|&)\s+/i, '<i> &amp;<wbr> </i>')}</h1><p class="sb-date"${e.text("dateText")}>${esc(date)}</p></div>${paragraph(c.subtitle, "subtitle", e)}${children ? `<div class="sb-childhood"><p class="sb-hand">${L(`${design}.childhood-title`, "А начиналось всё вот так…")}</p><div class="sb-child-grid">${children}</div>${doodle("flower")}</div>` : ""}`);
+        return frame("sb-cover", `${intro(c, e, design, names)}${theme.musicUrl ? `<audio class="sb-music" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="sb-music-toggle" type="button" aria-pressed="false">${L(`${design}.music`, gl("Музыка ♫", "Music ♫"))}</button>` : ""}<div class="sb-cover-title"><p${e.text("title")}>${esc(c.title)}</p>${doodle("star")}</div><div class="sb-hero-frame">${photo(c.imageUrl, "imageUrl", e, "sb-hero-photo", false)}${doodle("heart")}${L(`${design}.photo-note`, gl("это мы ♡", "that’s us ♡"), { className: "sb-photo-note" })}</div><div class="sb-cover-heading"><h1 class="sb-names"${e.text("names")}>${esc(c.names).replace(/\s+(?:и|&amp;|&|and)\s+/i, '<i> &amp;<wbr> </i>')}</h1><p class="sb-date"${e.text("dateText")}>${esc(date)}</p></div>${paragraph(c.subtitle, "subtitle", e)}${children ? `<div class="sb-childhood"><p class="sb-hand">${L(`${design}.childhood-title`, gl("А начиналось всё вот так…", "And this is how it all began…"))}</p><div class="sb-child-grid">${children}</div>${doodle("flower")}</div>` : ""}`);
       }
       case "CALENDAR": {
         const c = block.content as BlockContentMap["CALENDAR"];
@@ -78,15 +80,15 @@ export function renderScrapbookBlocks(blocks: InviteBlockView[], theme: InviteTh
       case "TIMELINE": {
         const c = block.content as BlockContentMap["TIMELINE"];
         const icons = ["glasses", "rings", "flower", "cake", "star"] as const;
-        return frame("sb-timeline", `${heading(c.title, e)}<ol>${c.items.map((item, i) => `<li>${item.icon ? photo(item.icon, `items.${i}.icon`, e, "sb-timing-icon") : doodle(icons[i % icons.length])}<time${e.text(`items.${i}.time`)}>${esc(item.time)}</time><div><h3${e.text(`items.${i}.title`)}>${esc(item.title)}</h3>${paragraph(item.note, `items.${i}.note`, e)}</div>${ctx.editable ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${i}" title="Удалить пункт">×</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? '<button type="button" class="sb-add" data-block-action="add-detail">+ Добавить пункт</button>' : ""}`);
+        return frame("sb-timeline", `${heading(c.title, e)}<ol>${c.items.map((item, i) => `<li>${item.icon ? photo(item.icon, `items.${i}.icon`, e, "sb-timing-icon") : doodle(icons[i % icons.length])}<time${e.text(`items.${i}.time`)}>${esc(item.time)}</time><div><h3${e.text(`items.${i}.title`)}>${esc(item.title)}</h3>${paragraph(item.note, `items.${i}.note`, e)}</div>${ctx.editable ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${i}" title="${gl("Удалить пункт", "Remove item")}">×</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? `<button type="button" class="sb-add" data-block-action="add-detail">${gl("+ Добавить пункт", "+ Add item")}</button>` : ""}`);
       }
       case "VENUE": {
         const c = block.content as BlockContentMap["VENUE"];
-        return frame("sb-venue", `${heading(c.title, e)}${photo(c.imageUrl, "imageUrl", e, "sb-venue-photo")}<h3${e.text("name")}>${esc(c.name)}</h3>${paragraph(c.address, "address", e)}${paragraph(c.note, "note", e)}${c.mapUrl ? `<a class="sb-button" href="${esc(c.mapUrl)}" target="_blank" rel="noopener noreferrer"><span${e.text("mapLabel")}>${esc(c.mapLabel || "Построить маршрут")}</span> ↗</a>` : ""}${e.link("mapUrl", c.mapUrl)}`);
+        return frame("sb-venue", `${heading(c.title, e)}${photo(c.imageUrl, "imageUrl", e, "sb-venue-photo")}<h3${e.text("name")}>${esc(c.name)}</h3>${paragraph(c.address, "address", e)}${paragraph(c.note, "note", e)}${c.mapUrl ? `<a class="sb-button" href="${esc(c.mapUrl)}" target="_blank" rel="noopener noreferrer"><span${e.text("mapLabel")}>${esc(c.mapLabel || gl("Построить маршрут", "Get directions"))}</span> ↗</a>` : ""}${e.link("mapUrl", c.mapUrl)}`);
       }
       case "MAP": {
         const c = block.content as BlockContentMap["MAP"];
-        return frame("sb-map", `${heading(c.title, e)}${paragraph(c.note, "note", e)}${["yandexUrl", "googleUrl"].map(key => { const url = c[key as "yandexUrl" | "googleUrl"]; return `${url ? `<a class="sb-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${L(`${design}.${key}`, key === "yandexUrl" ? "Яндекс Карты" : "Google Maps")}</a>` : ""}${e.link(key, url)}`; }).join("")}`);
+        return frame("sb-map", `${heading(c.title, e)}${paragraph(c.note, "note", e)}${["yandexUrl", "googleUrl"].map(key => { const url = c[key as "yandexUrl" | "googleUrl"]; return `${url ? `<a class="sb-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${L(`${design}.${key}`, key === "yandexUrl" ? gl("Яндекс Карты", "Yandex Maps") : "Google Maps")}</a>` : ""}${e.link(key, url)}`; }).join("")}`);
       }
       case "DRESSCODE": {
         const c = block.content as BlockContentMap["DRESSCODE"];

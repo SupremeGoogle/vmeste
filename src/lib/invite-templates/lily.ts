@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { LILY_SAMPLE_IMAGES } from "@/lib/invite-templates/lily-assets";
 
 /**
@@ -184,3 +184,29 @@ export const LILY_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** Образец для английской свадьбы: те же разделы и снимки. */
+export const LILY_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "invite you to their wedding", names: "Emily & James", dateText: "November 20, 2027", subtitle: "", imageUrl: LILY_SAMPLE_IMAGES[0], photos: [], footer: "" } },
+  { type: "TEXT", content: { v: 1, tag: "", title: "Our story", text: "We both reached for the last bag of popcorn at the movie theater at the very same moment. “Share or fight for it?” he smiled. I chose to share — and it turned out we were seeing the same film, too. That’s how our evening began, and then something much bigger." } },
+  { type: "TEXT", content: { v: 1, tag: "", title: "Dear friends and family,", text: "We want to share the most important day of our lives with you, and we’d be honored to have you at our wedding.\nWe can’t wait to see you and celebrate the beginning of our journey together." } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Counting down to the big day", doneText: "Today is the day!" } },
+  { type: "VENUE", content: { v: 1, tag: "", title: "Location", name: "The Sunny Veranda", address: "36 Lakeview Road, Lake Geneva, Wisconsin", note: "The map will help you find the venue quickly and arrive on time.", imageUrl: LILY_SAMPLE_IMAGES[1], mapUrl: "", mapLabel: "Open map" } },
+  { type: "TIMELINE", content: { v: 1, tag: "", title: "Order of the day", items: [
+    { time: "2:00 PM", title: "Guests arrive", note: "Time will fly with bubbly, light bites and catching up with other guests" },
+    { time: "2:30 PM", title: "Ceremony", note: "You’ll witness the start of a new family — ours" },
+    { time: "3:00 PM", title: "Dinner", note: "Great food, a lively dance floor and plenty of fun" },
+    { time: "10:00 PM", title: "Farewell", note: "Warm hugs and lots of happy memories!" },
+  ] } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Gifts", text: "If you’d like to give us something meaningful, a contribution to our honeymoon would make us very grateful." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Flowers", text: "Please don’t bring flowers — we won’t be able to keep them. A bottle of your favorite wine would be the loveliest compliment." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Adults only", text: "Our celebration is adults only, so please plan ahead for childcare." } },
+  { type: "DRESSCODE", content: { v: 1, tag: "", title: "Dress code", text: "It would mean a lot to us if you chose an outfit in the shades of our wedding.", palette: ["#4e5744", "#8c9b7c", "#c9c2ac", "#e4ded0", "#013131"], imageUrl: "" } },
+  { type: "PHOTOS", content: { v: 1, tag: "", title: "", items: [
+    { imageUrl: LILY_SAMPLE_IMAGES[2], caption: "For her" },
+    { imageUrl: LILY_SAMPLE_IMAGES[3], caption: "For him" },
+  ] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "", title: "RSVP", text: "Your answers will really help us plan the wedding. Please reply by October 15.", buttonLabel: "Reply" } },
+  { type: "TEXT", content: { v: 1, tag: "", title: "Contacts", text: "If you have any questions on the day, please call our wedding planner, Kate: +1 555 000 0000." } },
+  { type: "TEXT", content: { v: 1, tag: "", title: "See you soon!", text: "With love, Emily & James." } },
+];

@@ -38,7 +38,7 @@ if(toggle&&audio)toggle.addEventListener('click',function(){music(audio.paused)}
 
 var intro=d.createElement('div');intro.id='vinyl-intro';
 intro.setAttribute('role','button');intro.setAttribute('tabindex','0');
-intro.setAttribute('aria-label','Открыть приглашение');
+intro.setAttribute('aria-label',d.documentElement.lang==='en'?'Open the invitation':'Открыть приглашение');
 intro.innerHTML='<i class="vinyl-spark vinyl-spark-a"></i><i class="vinyl-spark vinyl-spark-b"></i><i class="vinyl-spark vinyl-spark-c"></i>'+
 '<span class="vinyl-disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 14.2a2 2 0 1 0 1.4 1.9V8.4l6-1.3v5.1a2 2 0 1 0 1.4 1.9V4l-8.8 2z" fill="#fff"/></svg><i class="vinyl-disc-hole"></i></span>'+
 '<p>'+(d.getElementById('vinyl-intro-copy')?d.getElementById('vinyl-intro-copy').innerHTML:'Нажмите на пластинку,<br>чтобы открыть приглашение')+'</p>';

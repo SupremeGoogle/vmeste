@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { SILK_SAMPLE_IMAGES } from "@/lib/invite-templates/silk-assets";
 
 /** Romantic destination-wedding invitation inspired by silk and pressed flowers. */
@@ -128,3 +128,25 @@ export const SILK_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** English sample: same sections and pictures as `SILK_TEMPLATE.blocks`. */
+export const SILK_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "You’re invited to our wedding", names: "Emily & James", dateText: "October 14, 2027 · Amalfi, Italy", subtitle: "One love. A new chapter. A whole life together.", imageUrl: SILK_SAMPLE_IMAGES[0] } },
+  { type: "TEXT", content: { v: 1, tag: "Different places · one love", title: "Our story", text: "Different cities, one road and endless reasons to smile at each other. We want to spend this new day with the people who mean the most to us." } },
+  { type: "PHOTOS", content: { v: 1, tag: "One beautiful day", title: "The feel of our day", items: [
+    { imageUrl: SILK_SAMPLE_IMAGES[1], caption: "A ceremony on the terrace above the sea" },
+    { imageUrl: SILK_SAMPLE_IMAGES[2], caption: "Candlelit dinner in the villa garden" },
+    { imageUrl: SILK_SAMPLE_IMAGES[0], caption: "One day we’ll carry with us" },
+  ] } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Until we meet by the sea", doneText: "Our celebration starts today!" } },
+  { type: "VENUE", content: { v: 1, tag: "One venue", title: "One venue", name: "Villa Celestina", address: "Amalfi Coast, Italy", note: "The ceremony, dinner and evening party will all take place here.", imageUrl: SILK_SAMPLE_IMAGES[1] } },
+  { type: "TIMELINE", content: { v: 1, tag: "The big day", title: "The big day", items: [
+    { time: "4:00 PM", title: "Guests arrive", note: "Lemonade and aperitivo on the terrace" },
+    { time: "5:00 PM", title: "Ceremony", note: "Sunset and the most important words" },
+    { time: "6:30 PM", title: "Dinner", note: "Toasts, candles and Italian cuisine" },
+    { time: "9:00 PM", title: "First dance", note: "Music late into the night" },
+  ] } },
+  { type: "DRESSCODE", content: { v: 1, tag: "Dress code", title: "The evening palette", text: "We’d love to see light evening looks in shades of rosé, blush and warm sand.", palette: ["#6f292d", "#a84f49", "#d49a91", "#ead0c8", "#f6ebe5"] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "RSVP", title: "Will you join us?", text: "Please let us know in advance whether you can come. We want to prepare this day with every guest in mind.", buttonLabel: "Send reply" } },
+  { type: "TEXT", content: { v: 1, tag: "With love", title: "With gratitude and love", text: "Making beautiful memories together with you." } },
+];

@@ -14,6 +14,7 @@
  * Без данных (витрина, редактор) форма показывается как образец.
  */
 import type { BlockContentMap } from "@/lib/invite-blocks";
+import { gl } from "@/server/guest-html/guest-lang";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
 import { editAttrs } from "@/server/guest-html/inline-editor";
@@ -106,7 +107,7 @@ ${plusOneAllowed ? `<label class="vm-rsvp-field">${L("rsvp.plus-one", guestText(
 ${drinkField}${r?.questionFields ?? r?.extraFields ?? ""}
 <button type="submit" class="vm-rsvp-submit"><span${answered ? "" : e.text("buttonLabel")}>${esc(answered ? guestText("Изменить ответ", "Update reply") : c.buttonLabel || guestText("Отправить ответ", "Send reply"))}</span></button>
 ${!action && !current.editable ? `<p class="vm-rsvp-note">${L("rsvp.demo-note", guestText("Это образец анкеты — гости ответят по ссылке из приглашения.", "This is a sample form. Guests reply through their invitation link."))}</p>` : ""}
-</form>${current.editable ? `<button type="button" class="vm-rsvp-manage" data-editor-ui data-rsvp-builder>Настроить вопросы анкеты</button>` : ""}`;
+</form>${current.editable ? `<button type="button" class="vm-rsvp-manage" data-editor-ui data-rsvp-builder>${gl("Настроить вопросы анкеты", "Edit RSVP questions")}</button>` : ""}`;
 }
 
 /**

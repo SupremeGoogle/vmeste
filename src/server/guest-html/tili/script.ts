@@ -86,7 +86,7 @@ if(!editing&&window.matchMedia('(hover: hover)').matches){d.addEventListener('mo
 var form=d.getElementById('rsvpForm'),again=d.getElementById('rsvpAgain'),success=d.getElementById('rsvpSuccess');
 if(form&&!editing){form.addEventListener('submit',function(e){
  if(form.getAttribute('data-no-link')){e.preventDefault();var n=d.getElementById('rsvpNoLink');if(n)n.hidden=false;return}
- var b=d.getElementById('submitBtn');if(b){b.disabled=true;b.textContent='Отправка...'}})}
+ var b=d.getElementById('submitBtn');if(b){b.disabled=true;b.textContent=root.lang==='en'?'Sending…':'Отправка...'}})}
 if(again&&form&&success){again.addEventListener('click',function(){success.classList.remove('show');form.style.display='';})}
 
 var canvases=editing?[]:d.querySelectorAll('.msg-canvas');

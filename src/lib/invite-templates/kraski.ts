@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { KRASKI_SAMPLE_IMAGES } from "@/lib/invite-templates/kraski-assets";
 
 export const KRASKI_TEMPLATE: InviteTemplate = {
@@ -33,3 +33,25 @@ export const KRASKI_TEMPLATE: InviteTemplate = {
     { type: "TEXT", content: { v: 1, title: "Мы будем счастливы видеть вас!", text: "20 ✦ 11 ✦ 2027" } },
   ],
 };
+
+const KRASKI_MAP_EN = "https://www.google.com/maps/search/?api=1&query=Laguna%20Beach%2C%20California";
+
+/** Образец для английской свадьбы: те же разделы и снимки. */
+export const KRASKI_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, names: "Emily & James", title: "Dear friends and family,", dateText: "11/20/2027", subtitle: "We’re so happy to invite you to our wedding. May this day become one of the brightest memories for all of us.", imageUrl: KRASKI_SAMPLE_IMAGES[0], photos: [{ imageUrl: KRASKI_SAMPLE_IMAGES[1], caption: "" }] } },
+  { type: "TIMELINE", content: { v: 1, title: "Order of the day", items: [
+    { time: "12:00 PM", title: "Guests arrive", note: "Hugs, hellos and getting into the celebration mood" },
+    { time: "12:30 PM", title: "Ceremony", note: "Share the most important and moving moment with us" },
+    { time: "2:00 PM", title: "Reception", note: "Dinner, music, dancing and lots of happy conversations" },
+    { time: "11:00 PM", title: "Farewell", note: "We’ll send off this beautiful day with warm hugs" },
+  ] } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Counting down to our wedding:", doneText: "Today is our wedding day!" } },
+  { type: "VENUE", content: { v: 1, title: "The venue", name: "Seaside Resort", address: "1800 Coast Highway, Laguna Beach, California", note: "We’ll be waiting for you by the ocean, in the bright hall of the Seaside Resort.", imageUrl: KRASKI_SAMPLE_IMAGES[2], mapUrl: KRASKI_MAP_EN, mapLabel: "Open map" } },
+  { type: "MAP", content: { v: 1, title: "Getting there", yandexUrl: KRASKI_MAP_EN, googleUrl: "", note: "Check the route ahead of time so you can easily find us." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Gifts", text: "Your presence is the most precious gift. If you’d like to support our dreams, a card with your wishes would mean so much to us." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "Flowers", text: "Instead of a bouquet, feel free to bring a bottle of a wine you love. We’ll open it one evening and think of you with a smile." } },
+  { type: "TEXT", content: { v: 1, tag: "Details", title: "A small request", text: "Let’s keep this day gentle and natural: no clinking glasses for kisses — we’ll let those happen on their own." } },
+  { type: "DRESSCODE", content: { v: 1, title: "Dress code", text: "We can’t wait to see you, and we’d love it if you joined the mood of the day in the soft shades of our palette.", palette: ["#f1e7dd", "#e7d7e8", "#bda2b4", "#b9cfda", "#85838c"] } },
+  { type: "RSVP_FORM", content: { v: 1, title: "Will you join us?", text: "Your reply helps us get everything ready. Please let us know your plans by October 15, 2027.", buttonLabel: "Send", attendanceLabel: "Will you be able to attend?", yesLabel: "I’ll be there / We’ll be there", noLabel: "Sadly, can’t make it", nameLabel: "Full name", drinksLabel: "Drink preferences", successText: "Thank you! We’ve received your reply." } },
+  { type: "TEXT", content: { v: 1, title: "We can’t wait to see you!", text: "11 ✦ 20 ✦ 2027" } },
+];

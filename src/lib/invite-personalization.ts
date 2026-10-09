@@ -59,7 +59,7 @@ export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme,
       c.names = wedding.names;
       c.dateText = [date ? formatEventDate(date, timezone, theme.language) : c.dateText, wedding.city].filter(Boolean).join(" · ");
       if (!wedding.childhood && theme.template !== "protokol") c.photos = [];
-      if (theme.template === "serdce") c.footer = `С любовью, ${wedding.names}`;
+      if (theme.template === "serdce") c.footer = `${theme.language === "en" ? "With love" : "С любовью"}, ${wedding.names}`;
     }
     if (block.type === "VENUE") Object.assign(c, { name: wedding.venueName, address: wedding.venueAddress, mapUrl: wedding.mapUrl });
     if (block.type === "MAP") Object.assign(c, { yandexUrl: wedding.mapUrl, googleUrl: "" });
@@ -67,6 +67,7 @@ export function personalizeBlocks(blocks: InviteBlockView[], theme: InviteTheme,
     if (block.type === "RSVP_FORM" && !wedding.deadline && /\d{1,2}\s+[а-я]+\s+20\d{2}/i.test(String(c.title))) c.title = "Подтвердите присутствие";
     if (block.type === "TEXT" && /^С любовью, .+\.$/.test(String(c.text))) c.text = `С любовью, ${wedding.names}.`;
     if (theme.template === "serdce" && block.type === "TEXT" && c.title === "До встречи!") c.text = `С любовью, ${wedding.names}`;
+    if (theme.template === "serdce" && theme.language === "en" && block.type === "TEXT" && c.title === "See you soon!") c.text = `With love, ${wedding.names}`;
     if (theme.template === "roseraie" && block.type === "TEXT" && c.title === "Себастьян и София") c.title = wedding.names;
     // Подпись в заголовке прощания («С любовью, Элеонора и Джеймс») —
     // те же имена из образца, только в другом поле.

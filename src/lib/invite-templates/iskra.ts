@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 
 const IMG = "/media/invite-iskra";
 
@@ -46,3 +46,34 @@ export const ISKRA_TEMPLATE: InviteTemplate = {
     { type: "TEXT", content: { v: 1, tag: "С любовью", title: "До встречи!", text: "Спасибо, что вы — часть нашей истории.\nЕсли остались вопросы, напишите организатору: укажите здесь его контакт." } },
   ],
 };
+
+/** Образец для английской свадьбы: те же разделы и снимки. */
+export const ISKRA_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: {
+    v: 1, names: "Emily & James", title: "We’re getting married", dateText: "July 11, 2027",
+    subtitle: "One meeting. One spark.\nAnd a whole life together.", imageUrl: `${IMG}/couple.webp`,
+    photos: [{ imageUrl: `${IMG}/portrait.webp`, caption: "You and me" }, { imageUrl: `${IMG}/kiss.webp`, caption: "Forever" }],
+  } },
+  { type: "CALENDAR", content: { v: 1, tag: "Save the date", title: "Our day", message: "We’d be so happy to share it with you." } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Until we meet", doneText: "Today is the day!" } },
+  { type: "TIMELINE", content: { v: 1, tag: "Every moment", title: "Our day, hour by hour", items: [
+    { time: "4:00 PM", title: "Guests arrive", note: "Hugs, smiles and a glass of bubbly" },
+    { time: "4:30 PM", title: "Ceremony", note: "When we say “I do”" },
+    { time: "5:30 PM", title: "Dinner", note: "Warm words among our dearest people" },
+    { time: "8:00 PM", title: "Dancing and cake", note: "An evening to remember" },
+  ] } },
+  { type: "VENUE", content: { v: 1, tag: "Where to find us", title: "Where we’ll be", name: "The Sunny Veranda",
+    address: "36 Lakeview Drive, Lake Arrowhead, California", note: "The ceremony and dinner will both be at the same venue. Just bring your best mood — we’ll take care of the rest.",
+    imageUrl: `${IMG}/venue.webp`, mapUrl: "https://www.google.com/maps/search/?api=1&query=Lake%20Arrowhead%2C%20California", mapLabel: "View on map" } },
+  { type: "DRESSCODE", content: { v: 1, tag: "A small request", title: "In the colors of love", text: "Help set the mood of the evening with outfits in the shades of our palette. Let’s leave white for the bride — and the most beautiful colors for you.",
+    palette: ["#750e1c", "#ad4a55", "#d1a2a0", "#dcc6b0", "#322827"], imageUrl: `${IMG}/dress.webp` } },
+  { type: "PHOTOS", content: { v: 1, tag: "Our little movie", title: "You, me and a whole life", items: [
+    { imageUrl: `${IMG}/couple.webp`, caption: "Happiness is being together" },
+    { imageUrl: `${IMG}/portrait.webp`, caption: "Our favorite story" },
+    { imageUrl: `${IMG}/kiss.webp`, caption: "To be continued…" },
+  ] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "RSVP", title: "Will you join us?", text: "Please fill out the form so we can prepare the warmest evening for you.",
+    nameLabel: "Your full name", attendanceLabel: "Will you share this day with us?", yesLabel: "Yes, I’d love to!", noLabel: "Sadly, I can’t make it", drinksLabel: "What drinks do you prefer?",
+    buttonLabel: "Send reply", successText: "Thank you for your reply! It means a lot to know your plans." } },
+  { type: "TEXT", content: { v: 1, tag: "With love", title: "See you soon!", text: "Thank you for being part of our story.\nIf you have any questions, reach out to our planner: add their contact here." } },
+];

@@ -1,0 +1,76 @@
+import type { Landing } from "../../types";
+
+export const rsvpEn: Landing = {
+  lang: "en",
+  path: "/en/wedding-rsvp",
+  alternate: "/anketa-gostya-na-svadbu",
+  metaTitle: "Online Wedding RSVP: Meals, Plus-Ones, Songs — Vmeste",
+  description: "Collect wedding RSVPs online inside your invitation: attendance, plus-ones, meal and drink choices, custom questions and song requests in one table.",
+  crumb: "Online wedding RSVP",
+  kicker: "RSVP",
+  title: "Online wedding RSVP — every reply in one table",
+  lead:
+    "A wedding RSVP is the short form where guests confirm whether they’re coming and answer your questions. In Vmeste it’s built into the online invitation: each guest opens **their own link**, says whether they’ll come and with whom, picks a meal and drinks, and the reply shows up in your dashboard straight away — no chasing, no manual spreadsheet.",
+  highlights: [
+    "Attendance, plus-one, meal and drinks — the basics are ready to go",
+    "Custom questions: text, choices, dropdowns, ratings, dates",
+    "Song requests your DJ sees through their own link",
+    "An RSVP deadline: the form closes after the date you set",
+  ],
+  primary: { label: "Start collecting RSVPs", href: "/register?lang=en" },
+  secondary: { label: "See the invitations", href: "/en/wedding-invitations" },
+  image: { src: "/media/feature-screens/rsvp.webp", alt: "The Vmeste dashboard: RSVPs, meal counts and the guest list", width: 1264, height: 1100 },
+  sections: [
+    {
+      kind: "cards",
+      id: "questions",
+      kicker: "RSVP questions",
+      title: "What you can ask your guests",
+      intro: "Start with the ready-made set and add only what actually affects your planning. The shorter the form, the faster people reply.",
+      cards: [
+        { title: "Attendance", text: "“Joyfully accept” or “regretfully decline” — the answer your menu, seating and headcount depend on." },
+        { title: "Plus-one", text: "If you’ve allowed a guest to bring someone, the form asks for their companion’s name. The companion is added to your guest list." },
+        { title: "Meals and drinks", text: "Guests choose a main course from your menu and tick their drinks. Your dashboard shows how many portions of each dish to order." },
+        { title: "Custom questions", text: "Short or long text, single or multiple choice, dropdowns, ratings and dates. Any question can be made required." },
+        { title: "Song requests", text: "Guests name the song that will get them dancing. Your MC and DJ see the list through their own link — with no access to your account." },
+        { title: "Comments", text: "A free-text field for everything else: allergies, a high chair, arriving late." },
+      ],
+    },
+    {
+      kind: "steps",
+      id: "how-to",
+      kicker: "How it works",
+      title: "How to collect wedding RSVPs online",
+      steps: [
+        { title: "Set up the form", text: "Keep the questions you need from the ready-made set, add your own and set an RSVP deadline." },
+        { title: "Send personal links", text: "Every guest gets their own link to the invitation with the RSVP form. Their reply lands in their row on your list." },
+        { title: "Track replies", text: "Your dashboard shows who’s coming, who declined, who hasn’t replied and who hasn’t even opened the link — so you know exactly whom to remind." },
+        { title: "Export the table", text: "Download replies as a CSV file that opens in Excel or Google Sheets — handy for sending meal counts to the caterer and the list to your planner." },
+      ],
+    },
+    {
+      kind: "table",
+      id: "comparison",
+      kicker: "Comparison",
+      title: "RSVP in the invitation vs. a separate form or texts",
+      head: ["", "Vmeste RSVP", "Separate online form", "Texts and calls"],
+      rows: [
+        ["Who replied", "Tied to the guest via their personal link", "Guests type their own name — duplicates and typos happen", "You match them up by hand"],
+        ["Who hasn’t opened the invitation", "Shown in your dashboard", "Not visible", "Not visible"],
+        ["Meal counts", "Counted automatically", "Needs a summary sheet", "By hand"],
+        ["Link to seating", "Same guest list", "Copy across by hand", "Copy across by hand"],
+        ["Changing a reply", "Same link, while the form is open", "Depends on the form settings", "Another message"],
+      ],
+    },
+  ],
+  faq: [
+    { q: "What does RSVP mean?", a: "RSVP stands for the French “répondez s’il vous plaît” — “please reply”. On a wedding invitation it’s the request to confirm whether you’re coming, and the reply itself." },
+    { q: "What questions should a wedding RSVP ask?", a: "The essentials are whether the guest is coming and whether they’re bringing a plus-one. Beyond that, only ask what changes your planning: meal choice, drinks, allergies, transport or accommodation, a favourite song. See [how to collect wedding RSVPs online](/en/blog/how-to-collect-wedding-rsvps-online)." },
+    { q: "When should the RSVP deadline be?", a: "Three to four weeks before the wedding usually works — enough time to give the venue final numbers and meal choices and to finish the seating chart. Check the exact date your venue needs." },
+    { q: "Can guests change their reply?", a: "Yes, through the same link while the form is open. After the deadline the form closes, and any further changes are made by you in the dashboard." },
+    { q: "What if a guest doesn’t reply?", a: "Check in your dashboard whether they’ve opened the invitation. If not, the message may have been missed, so resend the link. If they opened it but didn’t reply, send a friendly personal reminder a few days before the deadline." },
+    { q: "Can I export RSVPs to Excel?", a: "Yes. Replies download as a CSV file that opens in Excel or Google Sheets with proper columns." },
+  ],
+  articles: ["how-to-collect-wedding-rsvps-online", "wedding-invitation-wording", "how-to-make-a-wedding-seating-chart"],
+  final: { title: "Collect RSVPs without the chasing", text: "An RSVP form inside your invitation, a personal link for every guest and every reply in one table." },
+};

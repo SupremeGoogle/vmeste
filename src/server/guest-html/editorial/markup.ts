@@ -7,6 +7,8 @@ import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
 import { countdownCells } from "@/server/guest-html/countdown";
 import { initialsOf, L } from "@/server/guest-html/template-labels";
 import { esc } from "@/server/guest-html/layout";
+import { gl, guestLang } from "@/server/guest-html/guest-lang";
+import { localeOf } from "@/lib/i18n";
 
 type Context = { eventDate?: Date; timezone: string; editable: boolean };
 const rich = (value: string) => esc(value).replace(/\n/g, "<br>");
@@ -14,45 +16,45 @@ const paragraph = (value: string, path: string, e: EditAttrs, cls = "") => value
 const heading = (value: string, e: EditAttrs) => `<h2 class="ed-heading"${e.text("title")}>${esc(value)}</h2>`;
 
 function photo(url: string, path: string, e: EditAttrs, cls = "", eager = false): string {
-  if (!url) return e.enabled ? `<div class="ed-photo ed-placeholder ${cls}"${e.image(path)}>Добавить фотографию</div>` : "";
+  if (!url) return e.enabled ? `<div class="ed-photo ed-placeholder ${cls}"${e.image(path)}>${gl("Добавить фотографию", "Add a photo")}</div>` : "";
   return `<div class="ed-photo ${cls}"><img src="${esc(url)}" alt=""${eager ? ' fetchpriority="high"' : ' loading="lazy"'}${e.image(path)}></div>`;
 }
 
 /** Editable stationery, not text baked into the generated artwork. */
 function intro(design: EditorialDesign, names: string, e: EditAttrs): string {
-  const title = { gazette: "Для вас — особенный выпуск", protokol: "Вам передано секретное дело", postcard: "Открытка для самых близких" }[design];
+  const title = guestLang() === "en" ? { gazette: "A special edition, just for you", protokol: "A classified case file for you", postcard: "A postcard for our nearest and dearest" }[design] : { gazette: "Для вас — особенный выпуск", protokol: "Вам передано секретное дело", postcard: "Открытка для самых близких" }[design];
   const titleLabel = L(`${design}.intro-title`, title, { tag: "h2" });
-  const hint = L(`${design}.intro-hint`, "Наша история начинается здесь", { tag: "p" });
+  const hint = L(`${design}.intro-hint`, gl("Наша история начинается здесь", "Our story starts here"), { tag: "p" });
   const seal = L(`${design}.seal`, initialsOf(names).join(" & "));
-  const open = L(`${design}.intro-open`, design === "gazette" ? "Читать выпуск" : design === "protokol" ? "Открыть дело" : "Открыть открытку");
-  const paperTitle = L(`${design}.intro-paper`, design === "gazette" ? "Свадебная газета" : design === "protokol" ? "Дело о взаимной любви" : "С любовью");
-  if (e.enabled) return `<details class="ed-intro-settings" data-editor-ui><summary>Надписи заставки</summary>${titleLabel}${hint}<p>${paperTitle}</p><p>${seal}</p><p>${open}</p></details>`;
+  const open = L(`${design}.intro-open`, design === "gazette" ? gl("Читать выпуск", "Read the issue") : design === "protokol" ? gl("Открыть дело", "Open the file") : gl("Открыть открытку", "Open the postcard"));
+  const paperTitle = L(`${design}.intro-paper`, design === "gazette" ? gl("Свадебная газета", "The Wedding Gazette") : design === "protokol" ? gl("Дело о взаимной любви", "The case of mutual love") : gl("С любовью", "With love"));
+  if (e.enabled) return `<details class="ed-intro-settings" data-editor-ui><summary>${gl("Надписи заставки", "Intro text")}</summary>${titleLabel}${hint}<p>${paperTitle}</p><p>${seal}</p><p>${open}</p></details>`;
   const art = design === "postcard" ? '<img class="ed-intro-art" src="/media/invite-editorial/postcard-heart.webp" width="400" height="500" alt="" aria-hidden="true">' : '<span class="ed-intro-lines" aria-hidden="true"></span>';
   return `<div class="ed-intro" hidden><div class="ed-intro-content">${titleLabel}${hint}<div class="ed-intro-paper">${paperTitle}${art}<div class="ed-seal">${seal}</div></div><button class="ed-open" type="button">${open}</button></div></div>`;
 }
 
 function nameFields(design: EditorialDesign, who: "groom" | "bride", name: string): string {
   return `<div class="ed-form-lines">${[
-    { key: "surname", value: who === "groom" ? "Волков" : "Лебедева", hint: "фамилия" },
-    { key: "name", value: name, hint: "имя" },
-    { key: "patronymic", value: who === "groom" ? "Сергеевич" : "Андреевна", hint: "отчество" },
+    { key: "surname", value: who === "groom" ? gl("Волков", "Walker") : gl("Лебедева", "Swan"), hint: gl("фамилия", "last name") },
+    { key: "name", value: name, hint: gl("имя", "first name") },
+    { key: "patronymic", value: who === "groom" ? gl("Сергеевич", "Michael") : gl("Андреевна", "Rose"), hint: gl("отчество", "middle name") },
   ].map(({ key, value, hint }) => `<div class="ed-form-line"><div class="ed-letter-boxes">${L(`${design}.${who}-${key}`, value, { className: "ed-written" })}</div>${L(`${design}.field-${key}`, hint, { className: "ed-field-hint" })}</div>`).join("")}</div>`;
 }
 
 function cover(c: BlockContentMap["COVER"], design: EditorialDesign, e: EditAttrs, ctx: Context, theme: InviteTheme): string {
-  const names = `<h1 class="ed-names"${e.text("names")}>${esc(c.names).replace(/\s+(?:и|&)\s+/i, '<i> &amp;<wbr> </i>')}</h1>`;
-  const date = ctx.eventDate ? new Intl.DateTimeFormat("ru-RU", { timeZone: ctx.timezone, day: "2-digit", month: "2-digit", year: "numeric" }).format(ctx.eventDate) : c.dateText;
+  const names = `<h1 class="ed-names"${e.text("names")}>${esc(c.names).replace(/\s+(?:и|&amp;|&|and)\s+/i, '<i> &amp;<wbr> </i>')}</h1>`;
+  const date = ctx.eventDate ? new Intl.DateTimeFormat(localeOf(guestLang()), { timeZone: ctx.timezone, day: "2-digit", month: "2-digit", year: "numeric" }).format(ctx.eventDate) : c.dateText;
   const dateMarkup = `<p class="ed-date"${e.text("dateText")}>${esc(date)}</p>`;
   const extraPhotos = c.photos.map((p, i) => `<figure>${photo(p.imageUrl, `photos.${i}.imageUrl`, e)}<figcaption${e.text(`photos.${i}.caption`)}>${esc(p.caption)}</figcaption></figure>`).join("");
-  if (design === "gazette") return `<header class="ed-masthead"><p${e.text("title")}>${esc(c.title)}</p><div class="ed-edition">${dateMarkup}${L("gazette.city", theme.wedding?.city || "г. Казань", { tag: "p" })}</div></header><div class="ed-cover-copy">${L("gazette.story-kicker", "История одной любви", { tag: "p", className: "ed-script" })}${names}</div><figure class="ed-lead-photo">${photo(c.imageUrl, "imageUrl", e, "ed-cover-image", true)}${L("gazette.photo-caption", "Двое. Одна история. Целая жизнь впереди.", { tag: "figcaption" })}</figure>${paragraph(c.subtitle, "subtitle", e, "ed-editorial-note")}${extraPhotos ? `<div class="ed-gallery">${extraPhotos}</div>` : ""}`;
-  if (design === "postcard") return `<p class="ed-post-kicker"${e.text("title")}>${esc(c.title)}</p>${names}${dateMarkup}<div class="ed-post-art">${photo(c.imageUrl, "imageUrl", e, "ed-cover-image", true)}<span class="ed-post-seal">${L("postcard.monogram", initialsOf(c.names).join(" & "))}</span></div>${paragraph(c.subtitle, "subtitle", e)}${L("postcard.scroll", "Листайте нашу историю ↓", { tag: "p", className: "ed-script ed-scroll" })}${extraPhotos ? `<div class="ed-gallery">${extraPhotos}</div>` : ""}`;
+  if (design === "gazette") return `<header class="ed-masthead"><p${e.text("title")}>${esc(c.title)}</p><div class="ed-edition">${dateMarkup}${L("gazette.city", theme.wedding?.city || gl("г. Казань", "Boston"), { tag: "p" })}</div></header><div class="ed-cover-copy">${L("gazette.story-kicker", gl("История одной любви", "A love story"), { tag: "p", className: "ed-script" })}${names}</div><figure class="ed-lead-photo">${photo(c.imageUrl, "imageUrl", e, "ed-cover-image", true)}${L("gazette.photo-caption", gl("Двое. Одна история. Целая жизнь впереди.", "Two people. One story. A whole life ahead."), { tag: "figcaption" })}</figure>${paragraph(c.subtitle, "subtitle", e, "ed-editorial-note")}${extraPhotos ? `<div class="ed-gallery">${extraPhotos}</div>` : ""}`;
+  if (design === "postcard") return `<p class="ed-post-kicker"${e.text("title")}>${esc(c.title)}</p>${names}${dateMarkup}<div class="ed-post-art">${photo(c.imageUrl, "imageUrl", e, "ed-cover-image", true)}<span class="ed-post-seal">${L("postcard.monogram", initialsOf(c.names).join(" & "))}</span></div>${paragraph(c.subtitle, "subtitle", e)}${L("postcard.scroll", gl("Листайте нашу историю ↓", "Scroll through our story ↓"), { tag: "p", className: "ed-script ed-scroll" })}${extraPhotos ? `<div class="ed-gallery">${extraPhotos}</div>` : ""}`;
   const pair = c.names.split(/\s+(?:и|&|and|\+)\s+/i);
   const portraits = (["groom", "bride"] as const).map((who, index) => {
     const p = c.photos[index];
     const image = p ? photo(p.imageUrl, `photos.${index}.imageUrl`, e, "ed-id-photo", true) : photo("", `photos.${index}.imageUrl`, e, "ed-id-photo");
-    return `<div class="ed-person">${L(`protokol.${who}-statement`, who === "groom" ? "Гражданин, действуя по велению сердца:" : "Гражданка, ответившая взаимностью:", { tag: "p", className: "ed-statement" })}${nameFields(design, who, pair[index === 0 ? 1 : 0] ?? pair[0] ?? "")}<figure class="ed-evidence">${image}<figcaption>${p ? `<span${e.text(`photos.${index}.caption`)}>${esc(p.caption)}</span>` : L(`protokol.${who}-role`, who === "groom" ? "Жених" : "Невеста")}${L(`protokol.${who}-photo-note`, "Фото 3 × 4. Особые приметы: влюблённость.", { tag: "small" })}</figcaption></figure></div>`;
+    return `<div class="ed-person">${L(`protokol.${who}-statement`, who === "groom" ? gl("Гражданин, действуя по велению сердца:", "The citizen, acting at the heart’s command:") : gl("Гражданка, ответившая взаимностью:", "The citizen who returned the feeling:"), { tag: "p", className: "ed-statement" })}${nameFields(design, who, pair[index === 0 ? 1 : 0] ?? pair[0] ?? "")}<figure class="ed-evidence">${image}<figcaption>${p ? `<span${e.text(`photos.${index}.caption`)}>${esc(p.caption)}</span>` : L(`protokol.${who}-role`, who === "groom" ? gl("Жених", "The groom") : gl("Невеста", "The bride"))}${L(`protokol.${who}-photo-note`, gl("Фото 3 × 4. Особые приметы: влюблённость.", "ID photo. Distinguishing features: madly in love."), { tag: "small" })}</figcaption></figure></div>`;
   }).join("");
-  return `<h2 class="ed-document-title"${e.text("title")}>${esc(c.title)}</h2>${L("protokol.document-subtitle", "о добровольном задержании сердца", { tag: "p", className: "ed-document-subtitle" })}${portraits}${names}<div class="ed-ruling">${L("protokol.ruling", "Решение принято: стать семьёй", { tag: "p" })}${dateMarkup}</div>${paragraph(c.subtitle, "subtitle", e)}${photo(c.imageUrl, "imageUrl", e, "ed-couple-proof")}${L("protokol.stamp", "Любовь подтверждена", { tag: "div", className: "ed-stamp" })}`;
+  return `<h2 class="ed-document-title"${e.text("title")}>${esc(c.title)}</h2>${L("protokol.document-subtitle", gl("о добровольном задержании сердца", "on the voluntary arrest of a heart"), { tag: "p", className: "ed-document-subtitle" })}${portraits}${names}<div class="ed-ruling">${L("protokol.ruling", gl("Решение принято: стать семьёй", "Ruling: to become a family"), { tag: "p" })}${dateMarkup}</div>${paragraph(c.subtitle, "subtitle", e)}${photo(c.imageUrl, "imageUrl", e, "ed-couple-proof")}${L("protokol.stamp", gl("Любовь подтверждена", "Love confirmed"), { tag: "div", className: "ed-stamp" })}`;
 }
 
 function calendar(date: Date, timezone: string, design: EditorialDesign): string {
@@ -61,8 +63,8 @@ function calendar(date: Date, timezone: string, design: EditorialDesign): string
   const day = part("day"), month = part("month"), year = part("year");
   const start = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
   const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const label = new Intl.DateTimeFormat("ru-RU", { timeZone: timezone, month: "long", year: "numeric" }).format(date);
-  return `<div class="ed-calendar-paper"><p class="ed-month">${esc(label)}</p><div class="ed-calendar">${["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((v, i) => L(`${design}.weekday-${i}`, v, { className: "ed-weekday" })).join("")}${'<span aria-hidden="true"></span>'.repeat(start)}${Array.from({ length: days }, (_, i) => `<span${i + 1 === day ? ' class="ed-selected" aria-current="date"' : ""}>${i + 1}</span>`).join("")}</div></div>`;
+  const label = new Intl.DateTimeFormat(localeOf(guestLang()), { timeZone: timezone, month: "long", year: "numeric" }).format(date);
+  return `<div class="ed-calendar-paper"><p class="ed-month">${esc(label)}</p><div class="ed-calendar">${(guestLang() === "en" ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]).map((v, i) => L(`${design}.weekday-${i}`, v, { className: "ed-weekday" })).join("")}${'<span aria-hidden="true"></span>'.repeat(start)}${Array.from({ length: days }, (_, i) => `<span${i + 1 === day ? ' class="ed-selected" aria-current="date"' : ""}>${i + 1}</span>`).join("")}</div></div>`;
 }
 
 export function renderEditorialBlocks(blocks: InviteBlockView[], theme: InviteTheme, ctx: Context): string {
@@ -73,7 +75,7 @@ export function renderEditorialBlocks(blocks: InviteBlockView[], theme: InviteTh
     switch (block.type) {
       case "COVER": {
         const c = block.content as BlockContentMap["COVER"];
-        return frame("ed-cover", `${intro(design, c.names, e)}${theme.musicUrl ? `<audio class="ed-music" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="ed-music-toggle" type="button" aria-pressed="false">${L(`${design}.music`, "Музыка ♫")}</button>` : ""}${cover(c, design, e, ctx, theme)}`);
+        return frame("ed-cover", `${intro(design, c.names, e)}${theme.musicUrl ? `<audio class="ed-music" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="ed-music-toggle" type="button" aria-pressed="false">${L(`${design}.music`, gl("Музыка ♫", "Music ♫"))}</button>` : ""}${cover(c, design, e, ctx, theme)}`);
       }
       case "CALENDAR": {
         const c = block.content as BlockContentMap["CALENDAR"];
@@ -85,7 +87,7 @@ export function renderEditorialBlocks(blocks: InviteBlockView[], theme: InviteTh
       }
       case "TIMELINE": {
         const c = block.content as BlockContentMap["TIMELINE"];
-        return frame("ed-timing", `${heading(c.title, e)}<ol class="ed-program">${c.items.map((p, i) => `<li><time${e.text(`items.${i}.time`)}>${esc(p.time)}</time><div><h3${e.text(`items.${i}.title`)}>${esc(p.title)}</h3>${paragraph(p.note, `items.${i}.note`, e)}</div>${ctx.editable ? `<button type="button" data-editor-ui data-block-action="remove-detail" data-item-index="${i}">Удалить пункт</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? '<button type="button" data-editor-ui data-block-action="add-detail">+ Пункт программы</button>' : ""}`);
+        return frame("ed-timing", `${heading(c.title, e)}<ol class="ed-program">${c.items.map((p, i) => `<li><time${e.text(`items.${i}.time`)}>${esc(p.time)}</time><div><h3${e.text(`items.${i}.title`)}>${esc(p.title)}</h3>${paragraph(p.note, `items.${i}.note`, e)}</div>${ctx.editable ? `<button type="button" data-editor-ui data-block-action="remove-detail" data-item-index="${i}">${gl("Удалить пункт", "Remove item")}</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? `<button type="button" data-editor-ui data-block-action="add-detail">${gl("+ Пункт программы", "+ Add item")}</button>` : ""}`);
       }
       case "VENUE": {
         const c = block.content as BlockContentMap["VENUE"];
@@ -93,7 +95,7 @@ export function renderEditorialBlocks(blocks: InviteBlockView[], theme: InviteTh
       }
       case "MAP": {
         const c = block.content as BlockContentMap["MAP"];
-        return frame("ed-map", `${heading(c.title, e)}${paragraph(c.note, "note", e)}${(["yandexUrl", "googleUrl"] as const).map(key => `${c[key] ? `<a class="ed-button" href="${esc(c[key])}" target="_blank" rel="noopener noreferrer">${L(`${design}.map-${key}`, key === "yandexUrl" ? "Яндекс Карты" : "Google Maps")} ↗</a>` : ""}${e.link(key, c[key])}`).join("")}`);
+        return frame("ed-map", `${heading(c.title, e)}${paragraph(c.note, "note", e)}${(["yandexUrl", "googleUrl"] as const).map(key => `${c[key] ? `<a class="ed-button" href="${esc(c[key])}" target="_blank" rel="noopener noreferrer">${L(`${design}.map-${key}`, key === "yandexUrl" ? gl("Яндекс Карты", "Yandex Maps") : "Google Maps")} ↗</a>` : ""}${e.link(key, c[key])}`).join("")}`);
       }
       case "DRESSCODE": {
         const c = block.content as BlockContentMap["DRESSCODE"];

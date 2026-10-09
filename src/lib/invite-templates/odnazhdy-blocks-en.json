@@ -1,0 +1,303 @@
+[
+  {
+    "type": "COVER",
+    "content": {
+      "v": 1,
+      "names": "Emily & James",
+      "title": "the Wedding day",
+      "subtitle": "",
+      "dateText": "",
+      "imageUrl": "/media/invite-odnazhdy/d3c28892-splash_1706897790.0968.webp",
+      "photos": []
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Welcome",
+      "title": "We",
+      "text": "If you’re reading this, it means that very soon you’ll see one of us in a wedding dress — and we think you can guess which one…"
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Story",
+      "title": "A story",
+      "text": "It all started in college. We were just acquaintances who passed each other every day but never really talked.\nThen one night, at a campus party, we happened to end up in the same group. We started talking and instantly felt at ease, as if we understood each other. It was easy and fun, like we’d known each other our whole lives.\nFrom then on, we spent more and more time together. We wandered around the city, watched movies, went to concerts and talked until late at night. Soon we realized we’d become an essential part of each other’s lives. We were always there for each other, cheering each other on and sharing our dreams and plans for the future."
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Moments",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/1afc8591-main_gallery_items_1706893868.7715.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/4503d434-main_gallery_items_1707820882.2334.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/0508e268-main_gallery_items_1706897831.8639.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/8766adf7-main_gallery_items_1706893623.6948.webp",
+          "caption": ""
+        }
+      ],
+      "title": "MOMENTS"
+    }
+  },
+  {
+    "type": "CALENDAR",
+    "content": {
+      "v": 1,
+      "title": "Can’t wait to see",
+      "message": ""
+    }
+  },
+  {
+    "type": "VENUE",
+    "content": {
+      "v": 1,
+      "name": "Hide",
+      "address": "Address: Muir Woods, Mill Valley, California",
+      "note": "",
+      "imageUrl": "/media/invite-odnazhdy/87adf131-location_photo_items_1706897568.0111.webp",
+      "mapUrl": "https://www.google.com/maps/search/?api=1&query=Muir%20Woods%2C%20Mill%20Valley%2C%20California",
+      "mapLabel": "Get directions",
+      "title": "Location"
+    }
+  },
+  {
+    "type": "TIMELINE",
+    "content": {
+      "v": 1,
+      "items": [
+        {
+          "time": "4:00 PM",
+          "title": "Guests arrive",
+          "note": ""
+        },
+        {
+          "time": "4:30 PM",
+          "title": "Ceremony",
+          "note": ""
+        },
+        {
+          "time": "5:00 PM",
+          "title": "Dinner",
+          "note": ""
+        },
+        {
+          "time": "11:00 PM",
+          "title": "Farewell",
+          "note": ""
+        }
+      ],
+      "title": "Order"
+    }
+  },
+  {
+    "type": "DRESSCODE",
+    "content": {
+      "v": 1,
+      "palette": [
+        "#e4d5be",
+        "#eed8d9",
+        "#a3b9ad",
+        "#6e8b88",
+        "#e58859"
+      ],
+      "imageUrl": "",
+      "title": "Dress code",
+      "text": "We’re counting down and getting ready for our unforgettable day! Join in with your smiles and hugs — and with beautiful outfits in the colors of our celebration"
+    }
+  },
+  {
+    "type": "COUNTDOWN",
+    "content": {
+      "v": 1,
+      "doneText": "Today is our wedding day!",
+      "title": "Counting down to our wedding"
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Wishes",
+      "title": "A few wishes",
+      "text": "We’d be grateful if you skipped clinking glasses to make us kiss. A kiss is a way to show our feelings, and it can’t happen on demand."
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Contacts",
+      "title": "Our",
+      "text": "If you have any questions about the day, feel free to reach out to us:"
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Together",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/069409fd-splash_1706894711.4661.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "RSVP_FORM",
+    "content": {
+      "v": 1,
+      "title": "We’d love to see",
+      "text": "Please let us know if you’ll be at our wedding by:",
+      "attendanceLabel": "Are you planning to attend our wedding?",
+      "yesLabel": "Wouldn’t miss it!",
+      "noLabel": "Sadly, I can’t make it",
+      "drinksLabel": "Your preferences",
+      "buttonLabel": "Send",
+      "nameLabel": "Your full name",
+      "successText": "Thank you! We’ve received your reply."
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Farewell",
+      "title": "See you soon!",
+      "text": "With love"
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Welcome · photos",
+      "title": "Welcome",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/b8a96d9b-about-img.jpg",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Story · photos",
+      "title": "Story",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/7fde3a63-history-img.png",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "More moments",
+      "title": "Moments",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/b9e2c6f3-main_gallery_items_1706893604.3384.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/f885537f-main_gallery_items_1707820658.9427.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Outfits for her",
+      "title": "Outfits for her",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/73b0a1ce-dresscode_girls_gallery_items_1706894265.3662.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/3b708fc3-dresscode_girls_gallery_items_1706894304.8567.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/06268b0b-dresscode_girls_gallery_items_1706894310.4852.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/de7a1b0f-dresscode_girls_gallery_items_1706894328.4668.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "PHOTOS",
+    "content": {
+      "v": 1,
+      "tag": "Outfits for him",
+      "title": "Outfits for him",
+      "items": [
+        {
+          "imageUrl": "/media/invite-odnazhdy/b43990ee-dresscode_guys_gallery_items_1706894355.3152.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/8a5843da-dresscode_guys_gallery_items_1706894363.7975.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/5df0f404-dresscode_guys_gallery_items_1706894371.7801.webp",
+          "caption": ""
+        },
+        {
+          "imageUrl": "/media/invite-odnazhdy/36ecba86-dresscode_guys_gallery_items_1706894383.5532.webp",
+          "caption": ""
+        }
+      ]
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Wish 2",
+      "title": "",
+      "text": "Did you know we collect wine? Instead of the traditional bouquet, we’d love a nice bottle for our family wine cellar."
+    }
+  },
+  {
+    "type": "TEXT",
+    "content": {
+      "v": 1,
+      "tag": "Wish 3",
+      "title": "",
+      "text": "We adore our friends’ kids and our nieces and nephews. We’d be happy to have them at our wedding."
+    }
+  }
+]

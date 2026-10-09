@@ -24,6 +24,7 @@
  * а сохраняет редактор через серверное действие с проверкой прав и схемы.
  */
 import { esc } from "@/server/guest-html/layout";
+import { gl } from "@/server/guest-html/guest-lang";
 
 export type EditAttrs = {
   /** Устойчивый ключ самостоятельного элемента, включая календарь и декор. */
@@ -67,7 +68,7 @@ export function editAttrs(blockId: string, editable: boolean): EditAttrs {
       }${component(`field:${path}`)}`,
     image: (path) => target("image-edit", path) + media(path) + component(`field:${path}`),
     link: (path, current) =>
-      `<button type="button" class="ie-link" data-editor-ui${target("link-edit", path)} data-current="${esc(current)}">${current ? "изменить ссылку" : "добавить ссылку"}</button>`,
+      `<button type="button" class="ie-link" data-editor-ui${target("link-edit", path)} data-current="${esc(current)}">${current ? gl("изменить ссылку", "edit link") : gl("добавить ссылку", "add link")}</button>`,
     color: (path) => target("color-edit", path) + component(`field:${path}`),
     tools: () =>
       `<div class="ie-tools" data-editor-ui aria-label="Действия с разделом"><button type="button" data-block-action="up" title="Поднять раздел">↑</button><button type="button" data-block-action="down" title="Опустить раздел">↓</button><button type="button" data-block-action="hide" title="Скрыть раздел">Скрыть</button><button type="button" data-block-action="duplicate" title="Сделать копию раздела">Копия</button><button type="button" data-block-action="delete" title="Удалить раздел">Удалить</button></div><button type="button" class="ie-insert" data-editor-ui data-block-action="insert-after" title="Добавить раздел ниже">+ Раздел</button>`,

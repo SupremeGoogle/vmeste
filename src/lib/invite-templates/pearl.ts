@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { PEARL_SAMPLE_IMAGES } from "@/lib/invite-templates/pearl-assets";
 
 /** Светлое приглашение с жемчужной палитрой и ботанической графикой. */
@@ -121,3 +121,20 @@ export const PEARL_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** English sample: same sections and pictures as `PEARL_TEMPLATE.blocks`. */
+export const PEARL_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "Please join us as we celebrate this day", names: "Emily & James", dateText: "June 14, 2027 · Lake Como, Italy", subtitle: "Two souls. One story. A new chapter together.", imageUrl: PEARL_SAMPLE_IMAGES[0] } },
+  { type: "TEXT", content: { v: 1, tag: "Our story", title: "Where forever begins", text: "In each other we found a home, support and a thousand reasons to smile. Now we want to gather the people closest to us and open a new chapter of our story together." } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Until we meet", doneText: "Today our family story begins!" } },
+  { type: "VENUE", content: { v: 1, tag: "One venue", title: "Where we’ll meet", name: "Villa Serena", address: "Lake Como, Italy", note: "The ceremony, dinner and evening party will all take place on the villa grounds.", imageUrl: PEARL_SAMPLE_IMAGES[1], mapUrl: "", mapLabel: "View on map" } },
+  { type: "TIMELINE", content: { v: 1, tag: "The wedding day", title: "What matters most", items: [
+    { time: "4:00 PM", title: "Guests arrive", note: "Aperitivo in the villa garden" },
+    { time: "5:00 PM", title: "Ceremony", note: "The most important words by the lake" },
+    { time: "6:30 PM", title: "Dinner", note: "Toasts, music and Italian cuisine" },
+    { time: "9:00 PM", title: "First dance", note: "Celebrating under the stars" },
+  ] } },
+  { type: "DRESSCODE", content: { v: 1, tag: "Dress code", title: "The colors of our day", text: "We’d love to see elegant looks in calm, natural tones. Think of the palette as a gentle hint, not a strict rule.", palette: ["#e4ded2", "#c8cac7", "#9ea69c", "#6d786b"] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "Your reply", title: "Will you join us?", text: "Please let us know in advance whether you can come — it helps us take care of every guest.", buttonLabel: "Reply to the invitation" } },
+  { type: "TEXT", content: { v: 1, tag: "With love", title: "See you by the lake", text: "We can’t wait for the day we get to hug each one of you." } },
+];

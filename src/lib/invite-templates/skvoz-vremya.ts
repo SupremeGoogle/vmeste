@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 
 const IMG = "/media/invite-skvoz-vremya";
 
@@ -34,3 +34,24 @@ export const SKVOZ_VREMYA_TEMPLATE: InviteTemplate = {
     { type: "TEXT", content: { v: 1, tag: "До встречи", title: "С любовью, Валерия и Давид", text: "20 июня 2027" } },
   ],
 };
+
+/** Образец для английской свадьбы: те же разделы и снимки. */
+export const SKVOZ_VREMYA_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, names: "Emily & James", title: "Dear friends and family,", dateText: "06/20/2027", subtitle: "We’re so happy to invite you to our wedding — a day we want to share with the people closest to us.", imageUrl: `${IMG}/hero.webp` } },
+  { type: "TEXT", content: { v: 1, tag: "Our story", title: "Recognize us?", text: "Back then, we could never have imagined all the wonderful things ahead. Time went by, we grew up, changed — and one day we found each other.\nNow we want to begin a new chapter with you, the people who have been part of our story." } },
+  { type: "PHOTOS", content: { v: 1, title: "Through the years", items: [{ imageUrl: `${IMG}/childhood.webp`, caption: "Where our stories began" }, { imageUrl: `${IMG}/couple.webp`, caption: "And our story today" }] } },
+  { type: "COUNTDOWN", content: { v: 1, title: "Until we see you", doneText: "Today is our day!" } },
+  { type: "TIMELINE", content: { v: 1, title: "Order of the day", items: [
+    { time: "3:00 PM", title: "Guests arrive", note: "Hugs all around and a first toast" },
+    { time: "4:00 PM", title: "Ceremony", note: "The beginning of our story as a family" },
+    { time: "5:00 PM", title: "Dinner", note: "Warm words, music and dancing" },
+    { time: "10:00 PM", title: "Cake", note: "A sweet ending to a beautiful evening" },
+  ] } },
+  { type: "VENUE", content: { v: 1, title: "Where to find us", name: "The Country Garden", address: "22 Garden Lane, Charleston, South Carolina", note: "We’ll be waiting for you in a garden full of light and summer flowers.", imageUrl: `${IMG}/venue.webp`, mapUrl: "https://www.google.com/maps/search/?api=1&query=22%20Garden%20Lane%2C%20Charleston%2C%20SC", mapLabel: "Get directions" } },
+  { type: "TEXT", content: { v: 1, tag: "A few wishes", title: "Gifts", text: "Your presence is the most precious gift to us. If you’d like to treat us to something more, a contribution to our future together would mean a lot." } },
+  { type: "TEXT", content: { v: 1, tag: "A few wishes", title: "Flowers", text: "We’re leaving on a trip right after the wedding, so please don’t bring flowers. Instead of a bouquet, a bottle of wine for our family collection would be lovely." } },
+  { type: "TEXT", content: { v: 1, tag: "A few wishes", title: "A small request", text: "Let every kiss that evening come straight from the heart — no need to clink glasses for them." } },
+  { type: "DRESSCODE", content: { v: 1, title: "Dress code", text: "Help us set the mood with outfits in soft, natural shades. We’ve put together a small palette for inspiration.", palette: ["#e8d8a1", "#d8b2b1", "#b6c9d6", "#e9c1a9", "#a9b9a4"] } },
+  { type: "RSVP_FORM", content: { v: 1, title: "Will you join us?", text: "Please reply by May 20, 2027, so we can prepare a cozy evening for every guest.", buttonLabel: "Send reply", attendanceLabel: "Will you be able to attend?", yesLabel: "Joyfully accepts", noLabel: "Regretfully declines", nameLabel: "Your name", drinksLabel: "Favorite drinks", successText: "Thank you! We’ve received your reply." } },
+  { type: "TEXT", content: { v: 1, tag: "See you soon", title: "With love, Emily & James", text: "June 20, 2027" } },
+];

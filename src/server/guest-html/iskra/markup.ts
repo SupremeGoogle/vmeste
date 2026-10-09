@@ -3,6 +3,8 @@ import type { InviteBlockView } from "@/server/repositories/invites";
 import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
 import { L } from "@/server/guest-html/template-labels";
+import { gl, guestLang } from "@/server/guest-html/guest-lang";
+import { localeOf } from "@/lib/i18n";
 import { initials } from "@/lib/invite-personalization";
 import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
 import { countdownCells } from "@/server/guest-html/countdown";
@@ -15,7 +17,7 @@ const LILY = '<svg class="ik-lily" viewBox="0 0 85 160" fill="none" aria-hidden=
 
 function image(url: string, path: string, alt: string, e: EditAttrs, cls = "", lazy = true) {
   return url ? `<img class="${cls}" src="${esc(url)}" alt="${esc(alt)}"${lazy ? ' loading="lazy"' : ' fetchpriority="high"'}${e.image(path)}>`
-    : e.enabled ? `<span class="ie-image-placeholder ${cls}"${e.image(path)}>Добавить фотографию</span>` : "";
+    : e.enabled ? `<span class="ie-image-placeholder ${cls}"${e.image(path)}>${gl("Добавить фотографию", "Add a photo")}</span>` : "";
 }
 
 function section(block: InviteBlockView, cls: string, body: string, editable: boolean) {
@@ -33,8 +35,8 @@ function calendar(date: Date, timezone: string) {
   const [day, month, year] = [get("day"), get("month"), get("year")];
   const start = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
   const count = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, 1)));
-  return `<div class="ik-calendar"><h3>${esc(monthName)}</h3><div class="ik-calendar-grid">${["пн", "вт", "ср", "чт", "пт", "сб", "вс"].map((d, i) => `<small>${L(`iskra.weekday.${i}`, d)}</small>`).join("")}${Array.from({ length: Math.ceil((start + count) / 7) * 7 }, (_, i) => {
+  const monthName = new Intl.DateTimeFormat(localeOf(guestLang()), { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, 1)));
+  return `<div class="ik-calendar"><h3>${esc(monthName)}</h3><div class="ik-calendar-grid">${(guestLang() === "en" ? ["mo", "tu", "we", "th", "fr", "sa", "su"] : ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]).map((d, i) => `<small>${L(`iskra.weekday.${i}`, d)}</small>`).join("")}${Array.from({ length: Math.ceil((start + count) / 7) * 7 }, (_, i) => {
     const n = i - start + 1;
     return n < 1 || n > count ? '<span aria-hidden="true"></span>' : `<span class="${n === day ? "ik-wedding-day" : ""}"${n === day ? ' aria-current="date"' : ""}>${n === day ? HEART : ""}<b>${n}</b></span>`;
   }).join("")}</div></div>`;
@@ -50,16 +52,16 @@ export function renderIskraBlocks(blocks: InviteBlockView[], ctx: Context): stri
         const c = block.content as BlockContentMap["COVER"];
         const pictures = [{ imageUrl: c.imageUrl, caption: "", path: "imageUrl" }, ...c.photos.map((p, i) => ({ ...p, path: `photos.${i}.imageUrl` }))].filter((p) => p.imageUrl || ctx.editable);
         return section(block, "ik-cover", `
-          ${!ctx.editable ? `<div class="ik-intro" hidden><div class="ik-intro-inner"><p class="ik-kicker">${L("iskra.for-you", "Для самых близких")}</p>
+          ${!ctx.editable ? `<div class="ik-intro" hidden><div class="ik-intro-inner"><p class="ik-kicker">${L("iskra.for-you", gl("Для самых близких", "For our dearest"))}</p>
             <div class="ik-closed-box"><div class="ik-box-cover">${HEART}<span class="ik-save">${L("iskra.save", "Save the Date")}</span><span class="ik-box-date">${esc(c.dateText)}</span><span class="ik-stamp">${L("iskra.monogram", initials(c.names))}</span></div></div>
-            <p class="ik-intro-names">${esc(c.names)}</p><button type="button" class="ik-button ik-open">${L("iskra.open", "Открыть нашу историю")}</button></div></div>` : ""}
+            <p class="ik-intro-names">${esc(c.names)}</p><button type="button" class="ik-button ik-open">${L("iskra.open", gl("Открыть нашу историю", "Open our story"))}</button></div></div>` : ""}
           <p class="ik-kicker"${e.text("title")}>${esc(c.title)}</p>
-          <div class="ik-open-box"><div class="ik-letter-mini">${LILY}<span class="ik-mini-script">${L("iskra.mini-letter", "Однажды\nи навсегда", { multiline: true })}</span><span class="ik-mini-mark">${L("iskra.monogram", initials(c.names))}</span></div>
-            ${pictures.length ? `<div class="ik-filmstrip">${pictures.map((p) => image(p.imageUrl, p.path, p.caption || c.names, e, "ik-film-photo", false)).join("")}<span class="ik-film-caption">${L("iskra.film", "Наша история любви")}</span></div>` : ""}
+          <div class="ik-open-box"><div class="ik-letter-mini">${LILY}<span class="ik-mini-script">${L("iskra.mini-letter", gl("Однажды\nи навсегда", "Once\nand forever"), { multiline: true })}</span><span class="ik-mini-mark">${L("iskra.monogram", initials(c.names))}</span></div>
+            ${pictures.length ? `<div class="ik-filmstrip">${pictures.map((p) => image(p.imageUrl, p.path, p.caption || c.names, e, "ik-film-photo", false)).join("")}<span class="ik-film-caption">${L("iskra.film", gl("Наша история любви", "Our love story"))}</span></div>` : ""}
             <span class="ik-box-edge" aria-hidden="true"></span></div>
-          <div class="ik-cover-copy"><h1${e.text("names", { join: " и " })}>${esc(c.names).replace(/\s+(и|&amp;|and)\s+/i, '<i> &amp;<wbr> </i>')}</h1><p class="ik-cover-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="ik-cover-subtitle"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div>
-          ${ctx.editable ? `<div class="ik-intro-labels">${L("iskra.for-you", "Для самых близких")} · ${L("iskra.save", "Save the Date")} · ${L("iskra.open", "Открыть нашу историю")}</div><div class="ik-editor-add">${c.photos.length < 4 ? '<button type="button" data-block-action="add-photo">+ Добавить фото</button>' : ""}${c.photos.map((_, i) => `<button type="button" data-block-action="remove-photo" data-item-index="${i}">Убрать фото ${i + 1}</button>`).join("")}</div>` : ""}
-          ${ctx.musicUrl && !ctx.editable ? `<audio class="ik-music" src="${esc(ctx.musicUrl)}" preload="none" loop></audio><button class="ik-music-toggle" type="button" aria-label="Музыка" aria-pressed="false">♫</button>` : ""}`, ctx.editable);
+          <div class="ik-cover-copy"><h1${e.text("names", { join: gl(" и ", " & ") })}>${esc(c.names).replace(/\s+(и|&amp;|and)\s+/i, '<i> &amp;<wbr> </i>')}</h1><p class="ik-cover-date"${e.text("dateText")}>${esc(c.dateText)}</p><p class="ik-cover-subtitle"${e.text("subtitle", { multiline: true })}>${esc(c.subtitle)}</p></div>
+          ${ctx.editable ? `<div class="ik-intro-labels">${L("iskra.for-you", gl("Для самых близких", "For our dearest"))} · ${L("iskra.save", "Save the Date")} · ${L("iskra.open", gl("Открыть нашу историю", "Open our story"))}</div><div class="ik-editor-add">${c.photos.length < 4 ? `<button type="button" data-block-action="add-photo">${gl("+ Добавить фото", "+ Add photo")}</button>` : ""}${c.photos.map((_, i) => `<button type="button" data-block-action="remove-photo" data-item-index="${i}">${gl("Убрать фото", "Remove photo")} ${i + 1}</button>`).join("")}</div>` : ""}
+          ${ctx.musicUrl && !ctx.editable ? `<audio class="ik-music" src="${esc(ctx.musicUrl)}" preload="none" loop></audio><button class="ik-music-toggle" type="button" aria-label="${gl("Музыка", "Music")}" aria-pressed="false">♫</button>` : ""}`, ctx.editable);
       }
       case "CALENDAR": {
         const c = block.content as BlockContentMap["CALENDAR"];
@@ -67,25 +69,25 @@ export function renderIskraBlocks(blocks: InviteBlockView[], ctx: Context): stri
       }
       case "COUNTDOWN": {
         const c = block.content as BlockContentMap["COUNTDOWN"];
-        const clock = ctx.eventDate ? countdownCells(c, ctx.eventDate, e).replace(/<span data-word="(days|hours|minutes|seconds)">[^<]*<\/span>/g, (_match, unit: string) => L(`iskra.clock.${unit}`, ({ days: "дней", hours: "часов", minutes: "минут", seconds: "секунд" } as Record<string, string>)[unit])) : "";
+        const clock = ctx.eventDate ? countdownCells(c, ctx.eventDate, e).replace(/<span data-word="(days|hours|minutes|seconds)">[^<]*<\/span>/g, (_match, unit: string) => L(`iskra.clock.${unit}`, (guestLang() === "en" ? { days: "days", hours: "hours", minutes: "minutes", seconds: "seconds" } : { days: "дней", hours: "часов", minutes: "минут", seconds: "секунд" } as Record<string, string>)[unit])) : "";
         return section(block, "ik-countdown", `${heading(c, e)}${clock}${ctx.editable && ctx.eventDate && ctx.eventDate.getTime() > Date.now() ? `<p class="ik-copy"${e.text("doneText")}>${esc(c.doneText)}</p>` : ""}`, ctx.editable);
       }
       case "TIMELINE": {
         const c = block.content as BlockContentMap["TIMELINE"];
-        return section(block, "ik-program", `${heading(c, e)}<ol class="ik-timeline">${c.items.map((item, i) => `<li><time${e.text(`items.${i}.time`)}>${esc(item.time)}</time><span class="ik-event-heart" aria-hidden="true">♡</span><div><h3${e.text(`items.${i}.title`)}>${esc(item.title)}</h3><p${e.text(`items.${i}.note`, { multiline: true })}>${esc(item.note)}</p></div>${ctx.editable ? `<button class="ie-remove-detail" type="button" data-block-action="remove-detail" data-item-index="${i}" title="Удалить пункт">×</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? '<button class="ik-button" type="button" data-block-action="add-detail">+ Добавить пункт</button>' : ""}`, ctx.editable);
+        return section(block, "ik-program", `${heading(c, e)}<ol class="ik-timeline">${c.items.map((item, i) => `<li><time${e.text(`items.${i}.time`)}>${esc(item.time)}</time><span class="ik-event-heart" aria-hidden="true">♡</span><div><h3${e.text(`items.${i}.title`)}>${esc(item.title)}</h3><p${e.text(`items.${i}.note`, { multiline: true })}>${esc(item.note)}</p></div>${ctx.editable ? `<button class="ie-remove-detail" type="button" data-block-action="remove-detail" data-item-index="${i}" title="${gl("Удалить пункт", "Remove item")}">×</button>` : ""}</li>`).join("")}</ol>${ctx.editable ? `<button class="ik-button" type="button" data-block-action="add-detail">${gl("+ Добавить пункт", "+ Add item")}</button>` : ""}`, ctx.editable);
       }
       case "VENUE": {
         const c = block.content as BlockContentMap["VENUE"];
-        return section(block, "ik-venue", `${heading(c, e)}<figure class="ik-venue-photo">${image(c.imageUrl, "imageUrl", c.name, e)}<figcaption${e.text("name")}>${esc(c.name)}</figcaption></figure><p class="ik-address"${e.text("address", { multiline: true })}>${esc(c.address)}</p><p class="ik-copy"${e.text("note", { multiline: true })}>${esc(c.note)}</p>${c.mapUrl ? `<a class="ik-button" href="${esc(c.mapUrl)}" target="_blank" rel="noopener noreferrer"><span${e.text("mapLabel")}>${esc(c.mapLabel)}</span> ↗</a><div class="ik-map"><iframe src="${esc(yandexMapEmbed(c.mapUrl, c.name, c.address))}" title="Карта места торжества" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>` : ""}${ctx.editable ? e.link("mapUrl", c.mapUrl) : ""}`, ctx.editable);
+        return section(block, "ik-venue", `${heading(c, e)}<figure class="ik-venue-photo">${image(c.imageUrl, "imageUrl", c.name, e)}<figcaption${e.text("name")}>${esc(c.name)}</figcaption></figure><p class="ik-address"${e.text("address", { multiline: true })}>${esc(c.address)}</p><p class="ik-copy"${e.text("note", { multiline: true })}>${esc(c.note)}</p>${c.mapUrl ? `<a class="ik-button" href="${esc(c.mapUrl)}" target="_blank" rel="noopener noreferrer"><span${e.text("mapLabel")}>${esc(c.mapLabel)}</span> ↗</a><div class="ik-map"><iframe src="${esc(yandexMapEmbed(c.mapUrl, c.name, c.address))}" title="${gl("Карта места торжества", "Venue map")}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>` : ""}${ctx.editable ? e.link("mapUrl", c.mapUrl) : ""}`, ctx.editable);
       }
       case "DRESSCODE": {
         const c = block.content as BlockContentMap["DRESSCODE"];
-        return section(block, "ik-dress", `${heading(c, e)}<p class="ik-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="ik-palette">${c.palette.map((color, i) => `<span style="background:${esc(color)}" aria-label="Цвет ${i + 1}"${e.color(`palette.${i}`)}></span>`).join("")}</div>${image(c.imageUrl, "imageUrl", "Примеры праздничных образов", e, "ik-dress-photo")}`, ctx.editable);
+        return section(block, "ik-dress", `${heading(c, e)}<p class="ik-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p><div class="ik-palette">${c.palette.map((color, i) => `<span style="background:${esc(color)}" aria-label="${gl("Цвет", "Color")} ${i + 1}"${e.color(`palette.${i}`)}></span>`).join("")}</div>${image(c.imageUrl, "imageUrl", gl("Примеры праздничных образов", "Outfit ideas"), e, "ik-dress-photo")}`, ctx.editable);
       }
       case "PHOTOS": {
         const c = block.content as BlockContentMap["PHOTOS"];
         const photos = c.items.map((p, i) => ({ ...p, i })).filter((p) => p.imageUrl || ctx.editable);
-        return section(block, "ik-photos", `${heading(c, e)}<div class="ik-memories">${photos.map((p) => `<figure>${image(p.imageUrl, `items.${p.i}.imageUrl`, p.caption, e)}<figcaption${e.text(`items.${p.i}.caption`)}>${esc(p.caption)}</figcaption>${ctx.editable ? `<button class="ie-remove-detail" type="button" data-block-action="remove-photo" data-item-index="${p.i}" title="Убрать фото">×</button>` : ""}</figure>`).join("")}</div>${ctx.editable && c.items.length < 4 ? '<button class="ik-button" type="button" data-block-action="add-photo">+ Добавить фото</button>' : ""}`, ctx.editable);
+        return section(block, "ik-photos", `${heading(c, e)}<div class="ik-memories">${photos.map((p) => `<figure>${image(p.imageUrl, `items.${p.i}.imageUrl`, p.caption, e)}<figcaption${e.text(`items.${p.i}.caption`)}>${esc(p.caption)}</figcaption>${ctx.editable ? `<button class="ie-remove-detail" type="button" data-block-action="remove-photo" data-item-index="${p.i}" title="${gl("Убрать фото", "Remove photo")}">×</button>` : ""}</figure>`).join("")}</div>${ctx.editable && c.items.length < 4 ? `<button class="ik-button" type="button" data-block-action="add-photo">${gl("+ Добавить фото", "+ Add photo")}</button>` : ""}`, ctx.editable);
       }
       case "RSVP_FORM": {
         const c = block.content as BlockContentMap["RSVP_FORM"];
@@ -98,7 +100,7 @@ export function renderIskraBlocks(blocks: InviteBlockView[], ctx: Context): stri
       }
       case "MAP": {
         const c = block.content as BlockContentMap["MAP"];
-        return section(block, "ik-route", `${heading(c, e)}<p class="ik-copy"${e.text("note", { multiline: true })}>${esc(c.note)}</p>${[["yandexUrl", c.yandexUrl], ["googleUrl", c.googleUrl]].map(([path, url]) => `${url ? `<a class="ik-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${L(`iskra.map.${path}`, path === "yandexUrl" ? "Яндекс Карты" : "Google Карты")}</a>` : ""}${ctx.editable ? e.link(path, url) : ""}`).join("")}`, ctx.editable);
+        return section(block, "ik-route", `${heading(c, e)}<p class="ik-copy"${e.text("note", { multiline: true })}>${esc(c.note)}</p>${[["yandexUrl", c.yandexUrl], ["googleUrl", c.googleUrl]].map(([path, url]) => `${url ? `<a class="ik-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${L(`iskra.map.${path}`, path === "yandexUrl" ? gl("Яндекс Карты", "Yandex Maps") : gl("Google Карты", "Google Maps"))}</a>` : ""}${ctx.editable ? e.link(path, url) : ""}`).join("")}`, ctx.editable);
       }
       default: return "";
     }

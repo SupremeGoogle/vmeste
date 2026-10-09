@@ -123,7 +123,7 @@ export function personalizeMarkup(html: string, blocks: InviteBlockView[], theme
     const e = editAttrs(block.id, editable);
     const c = block.content;
     if ((block.type === "VENUE" || block.type === "DRESSCODE") && "imageUrl" in c && !section.includes(`data-media-path="imageUrl"`)) {
-      const photo = c.imageUrl ? `<div class="personal-photo"><img src="${esc(c.imageUrl)}" alt="${block.type === "VENUE" ? guestText("Место торжества", "Wedding venue") : guestText("Примеры нарядов", "Outfit ideas")}" loading="lazy"${e.image("imageUrl")}></div>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>${block.type === "VENUE" ? "Добавить фотографию площадки" : "Добавить примеры нарядов"}</span>` : "";
+      const photo = c.imageUrl ? `<div class="personal-photo"><img src="${esc(c.imageUrl)}" alt="${block.type === "VENUE" ? guestText("Место торжества", "Wedding venue") : guestText("Примеры нарядов", "Outfit ideas")}" loading="lazy"${e.image("imageUrl")}></div>` : editable ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>${block.type === "VENUE" ? guestText("Добавить фотографию площадки", "Add a venue photo") : guestText("Добавить примеры нарядов", "Add outfit ideas")}</span>` : "";
       section = section.replace("</section>", `${photo}</section>`);
     }
     if (block.type === "VENUE" && "mapUrl" in c && !section.includes('data-link-edit') && !section.includes('target="_blank"') && !routeInMapBlock) {

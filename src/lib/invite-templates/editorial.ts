@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { EDITORIAL_SAMPLE_IMAGES as A } from "./editorial-assets";
 
 export const EDITORIAL_IDS = ["gazette", "protokol", "postcard"] as const;
@@ -43,6 +43,45 @@ export function editorialTemplate(id: EditorialDesign): InviteTemplate {
     ],
   };
 }
+
+const CONFIG_EN = {
+  gazette: { date: "August 14, 2027", venue: "The Panorama", address: "25 Harbor Street, Boston, MA", title: "The Wedding Gazette", calendar: "Mark the big day", countdown: "Until our happiest issue hits the stands", timing: "Chronicle of our day", dress: "This issue’s wardrobe", rsvp: "Write to the editors", farewell: "See you on the front page!" },
+  protokol: { date: "July 18, 2027", venue: "Garnet Loft", address: "31 Riverwalk Drive, Chicago, IL", title: "Case File", calendar: "Exhibit A. The calendar", countdown: "Until the operation begins", timing: "Schedule of proceedings", dress: "Dress code for witnesses", rsvp: "Confirm your appearance", farewell: "Case closed" },
+  postcard: { date: "September 12, 2027", venue: "Meadowbrook Country Club", address: "15 Meadow Lane, Rhinebeck, NY", title: "We’re getting married", calendar: "Our day on the calendar", countdown: "Counting down to our warmest day", timing: "Order of the day", dress: "Our postcard palette", rsvp: "RSVP", farewell: "We can’t wait to see you!" },
+};
+
+/** English sample: same sections and pictures as `editorialTemplate(id).blocks`. */
+export function editorialBlocksEn(id: EditorialDesign): TemplateBlock[] {
+  const c = CONFIG_EN[id];
+  const protocol = id === "protokol";
+  return [
+    { type: "COVER", content: { v: 1, names: "Emily & James", title: c.title, dateText: c.date,
+      subtitle: protocol ? "A joint investigation has established: both hearts are taken, intentions are serious, and the wedding is on. We invite you to witness our happiest decision." : id === "gazette" ? "A special edition about two people who decided to become a family. Breaking news: we’re getting married, and you’re invited to share the day with us!" : "We’re gathering our favorite people, hugs and happy moments into one postcard — and we’d love for you to be in it too.",
+      imageUrl: id === "postcard" ? A[3] : A[0], photos: protocol ? [{ imageUrl: A[1], caption: "The groom" }, { imageUrl: A[2], caption: "The bride" }] : [], footer: "With love" } },
+    { type: "CALENDAR", content: { v: 1, title: c.calendar, message: protocol ? "On the appointed day, please report with a smile and in high spirits." : "Save the date — we can’t wait to celebrate with you." } },
+    { type: "COUNTDOWN", content: { v: 1, title: c.countdown, doneText: "Today is our wedding day!" } },
+    { type: "TIMELINE", content: { v: 1, title: c.timing, items: [
+      { time: "3:00 PM", title: protocol ? "Witnesses assemble" : "Guests arrive", note: protocol ? "Introductions and first joint statements over a glass of bubbly" : "Hugs, introductions and the first glasses raised" },
+      { time: "4:00 PM", title: "Ceremony", note: protocol ? "Official confirmation of mutual feelings and the exchange of rings" : "The most important words, surrounded by the people closest to us" },
+      { time: "5:00 PM", title: protocol ? "Celebratory session" : "Dinner", note: "Heartfelt stories, favorite songs and dancing" },
+      { time: "9:00 PM", title: "Wedding cake", note: "A sweet reason to raise our glasses to love once more" },
+      { time: "11:00 PM", title: protocol ? "Case filed in the family archive" : "Farewell", note: "We’ll keep the memories and take the good mood home with us" },
+    ] } },
+    { type: "VENUE", content: { v: 1, title: protocol ? "Scene of the operation" : "Where we’ll meet", name: c.venue, address: c.address, note: "A cozy atmosphere, a festive dinner and an evening with the people closest to us are waiting for you here.", imageUrl: "/media/invite-skvoz-vremya/venue.webp", mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}`, mapLabel: protocol ? "Directions" : "Get directions" } },
+    { type: "DRESSCODE", content: { v: 1, title: c.dress, text: protocol ? "Formal attire is encouraged. Pick one of the shades below and wear comfortable shoes: dancing is part of the schedule." : id === "gazette" ? "This issue’s palette is calm: ivory, sand, gray and graphite. We’d love for it to inspire your look." : "Cream, sky blue, terracotta and sage — the colors of our warm celebration. Choose the one you feel most at home in.", palette: protocol ? ["#454549", "#7c3438", "#e9dfcc", "#242424"] : id === "gazette" ? ["#eee9dd", "#b7aa92", "#848580", "#333632"] : ["#f0e6cd", "#9bb5c5", "#b7502f", "#8e9b81"], imageUrl: "/media/invite-tili/dresscode.webp" } },
+    { type: "PHOTOS", content: { v: 1, title: protocol ? "Case evidence" : id === "gazette" ? "From the family chronicle" : "Our happy moments", items: [
+      { imageUrl: A[0], caption: protocol ? "Proof of mutual feelings" : "Where our story begins" },
+      { imageUrl: "/media/invite-skvoz-vremya/hero.webp", caption: "A whole life ahead" },
+    ] } },
+    { type: "TEXT", content: { v: 1, tag: protocol ? "Special orders" : "A small request", title: "Instead of flowers", text: protocol ? "Bouquets need not be entered into evidence. A bottle of your favorite wine for our family collection would be most welcome." : "Your presence is the best gift. If you’d like to bring something instead of a bouquet, a bottle of wine for our future family evenings would be lovely." } },
+    { type: "RSVP_FORM", content: { v: 1, title: c.rsvp, text: "Please let us know in advance whether you can come. It will help us plan the celebration for each of you.", nameLabel: protocol ? "Witness’s full name" : "Your full name", attendanceLabel: protocol ? "Attendance record" : "Will you be able to come?", yesLabel: protocol ? "Will appear with pleasure" : "Joyfully accepts", noLabel: protocol ? "Please consider my absence excused" : "Regretfully declines", drinksLabel: "What shall we pour for you?", buttonLabel: protocol ? "Sign the report" : "Send reply", successText: protocol ? "Statement received! See you at the celebration." : "Thank you! See you at our wedding." } },
+    { type: "TEXT", content: { v: 1, tag: "With love", title: c.farewell, text: protocol ? "The case of mutual love is hereby transferred to the family archive for permanent safekeeping. We look forward to seeing you as our guests of honor!" : "May this day become a warm memory we share with you.\nIf you have any questions, just send us a message." } },
+  ];
+}
+
+export const GAZETTE_BLOCKS_EN = editorialBlocksEn("gazette");
+export const PROTOKOL_BLOCKS_EN = editorialBlocksEn("protokol");
+export const POSTCARD_BLOCKS_EN = editorialBlocksEn("postcard");
 
 export const GAZETTE_TEMPLATE = editorialTemplate("gazette");
 export const PROTOKOL_TEMPLATE = editorialTemplate("protokol");

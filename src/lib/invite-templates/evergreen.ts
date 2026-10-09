@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { EVERGREEN_SAMPLE_IMAGES } from "@/lib/invite-templates/evergreen-assets";
 
 /** Dark editorial invitation based on the supplied mobile reference. */
@@ -130,3 +130,25 @@ export const EVERGREEN_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** English sample: same sections and pictures as `EVERGREEN_TEMPLATE.blocks`. */
+export const EVERGREEN_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "Together, forever", names: "Emily & James", dateText: "October 18, 2027", subtitle: "Join us for the day our family begins", imageUrl: EVERGREEN_SAMPLE_IMAGES[0] } },
+  { type: "TEXT", content: { v: 1, title: "Life’s biggest moments are even more beautiful with loved ones close", text: "We would be so happy to have you among our guests. Let’s make this evening one to remember — warm, heartfelt and full of love." } },
+  { type: "PHOTOS", content: { v: 1, tag: "The venue", title: "Where we’ll meet", items: [{ imageUrl: EVERGREEN_SAMPLE_IMAGES[1], caption: "A villa above the sea · ceremony at sunset" }] } },
+  { type: "VENUE", content: { v: 1, title: "The venue", name: "Villa Santa Lucia", address: "Amalfi Coast, Italy", note: "Guests arrive at 4:00 PM. We’ll send exact directions closer to the day." } },
+  { type: "TIMELINE", content: { v: 1, tag: "Wedding day details", title: "The day", items: [
+    { time: "4:00 PM", title: "Guests arrive", note: "Aperitivo on the terrace" },
+    { time: "4:30 PM", title: "Ceremony", note: "The most important words" },
+    { time: "6:00 PM", title: "Dinner", note: "Toasts and love stories" },
+    { time: "8:30 PM", title: "First dance", note: "Celebrating under the stars" },
+  ] } },
+  { type: "DRESSCODE", content: { v: 1, tag: "Dress code", title: "Dress code", text: "We’d love to see evening attire in a calm, natural palette.", palette: ["#172018", "#344637", "#857358", "#c1b7a5", "#eee8dc"] } },
+  { type: "PHOTOS", content: { v: 1, tag: "Our story in pictures", title: "The moments our story is made of", items: [
+    { imageUrl: EVERGREEN_SAMPLE_IMAGES[2], caption: "A touch that says more than words" },
+    { imageUrl: EVERGREEN_SAMPLE_IMAGES[3], caption: "Candlelit dinner above the sea" },
+    { imageUrl: EVERGREEN_SAMPLE_IMAGES[4], caption: "And may the music never stop" },
+  ] } },
+  { type: "RSVP_FORM", content: { v: 1, tag: "RSVP", title: "We’ll be waiting for you", text: "Please let us know in advance whether you can come — it helps us take care of every guest.", buttonLabel: "Reply to the invitation" } },
+  { type: "TEXT", content: { v: 1, tag: "With love", title: "See you soon, with love", text: "Thank you for being part of our lives. Our most beautiful evening is just ahead." } },
+];

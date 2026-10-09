@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth/session";
@@ -10,6 +11,12 @@ import { getUiLang } from "@/server/i18n";
 import { makeT } from "@/lib/i18n";
 import { I18nProvider } from "@/components/i18n-provider";
 import { LangSwitch } from "@/components/lang-switch";
+
+/** Заголовок вкладки кабинета — на языке организатора. */
+export async function generateMetadata(): Promise<Metadata> {
+  const t = makeT(await getUiLang());
+  return { title: { default: t("Вместе — панель организатора", "Vmeste — wedding dashboard"), template: t("%s — Вместе", "%s — Vmeste") } };
+}
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();

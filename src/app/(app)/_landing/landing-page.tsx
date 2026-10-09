@@ -360,6 +360,12 @@ export async function LandingPage({ lang }: { lang: Lang }) {
               <ul>
                 <li><a href="#vozmozhnosti">{t.footer.featuresLink}</a></li>
                 <li><a href="#demo">{t.footer.seatingLink}</a></li>
+                {(lang === "en"
+                  ? [["/en/wedding-invitations", "Online invitations"], ["/en/wedding-seating-chart", "Seating chart maker"], ["/en/wedding-rsvp", "Online RSVP"], ["/en/blog", "Blog"]]
+                  : [["/elektronnoe-priglashenie-na-svadbu", "Электронные приглашения"], ["/rassadka-gostej-onlajn", "Рассадка гостей онлайн"], ["/anketa-gostya-na-svadbu", "Анкета гостя"], ["/blog", "Статьи"]]
+                ).map(([href, label]) => (
+                  <li key={href}><Link href={href}>{label}</Link></li>
+                ))}
               </ul>
             </div>
             <div>

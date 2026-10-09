@@ -18,6 +18,7 @@ import type { InviteTheme } from "@/lib/invite-theme";
 import type { InviteBlockView } from "@/server/repositories/invites";
 import { esc } from "@/server/guest-html/layout";
 import { L } from "@/server/guest-html/template-labels";
+import { gl, guestLang } from "@/server/guest-html/guest-lang";
 import { editAttrs, type EditAttrs } from "@/server/guest-html/inline-editor";
 import { TILI_ENVELOPE } from "@/lib/invite-templates/tili-assets";
 
@@ -62,6 +63,11 @@ const MONTHS = [
   "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
 ];
 
+const MONTHS_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 /** Части даты на площадке: календарь и большая дата — по её времени, а не сервера. */
 function localParts(date: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -82,7 +88,7 @@ function tag(text: string, e: EditAttrs, className = "section-tag"): string {
 }
 
 function img(src: string, alt: string, attrs: string, extra = ""): string {
-  if (!src) return attrs.includes("data-image-edit") ? `<span class="ie-image-placeholder"${attrs}>Добавить фотографию</span>` : "";
+  if (!src) return attrs.includes("data-image-edit") ? `<span class="ie-image-placeholder"${attrs}>${gl("Добавить фотографию", "Add a photo")}</span>` : "";
   return `<img src="${esc(src)}" alt="${esc(alt)}"${attrs}${extra}>`;
 }
 
@@ -103,7 +109,7 @@ function cover(block: InviteBlockView, e: EditAttrs): string {
     Array.from({ length: 9 }, (_, index) => `<span class="flag f${index + 1}"></span>`).join("")
   }</div>
 ${c.title.trim() || e.enabled ? `<p class="hero-rhyme fade-in-hero"${e.text("title")}>${esc(c.title)}</p>` : ""}
-${!c.photos.length ? `<div class="polaroids fade-in-hero delay-1"><div class="polaroid"><div class="polaroid-img">${img(c.imageUrl, "Наша фотография", e.image("imageUrl"))}</div></div></div>` : `<div class="polaroids fade-in-hero delay-1">${photos
+${!c.photos.length ? `<div class="polaroids fade-in-hero delay-1"><div class="polaroid"><div class="polaroid-img">${img(c.imageUrl, gl("Наша фотография", "Our photo"), e.image("imageUrl"))}</div></div></div>` : `<div class="polaroids fade-in-hero delay-1">${photos
     .map((photo, index) =>
       photo.imageUrl || e.enabled
         ? `<div class="polaroid ${side[index]}"><div class="polaroid-img">${img(
@@ -117,7 +123,7 @@ ${intro.length > 0 || e.enabled
         .map((line, index) => `<p${index === 0 ? ' class="intro-ital"' : ""}>${esc(line)}</p>`)
         .join("")}</div>`
     : ""}
-<div class="hero-names fade-in-hero delay-3"${e.text("names", { join: " и " })}><div class="hero-name"><span class="name-cap">${esc(first)}</span></div>${
+<div class="hero-names fade-in-hero delay-3"${e.text("names", { join: gl(" и ", " & ") })}><div class="hero-name"><span class="name-cap">${esc(first)}</span></div>${
     second ? `<div class="hero-name hero-name-right"><span class="name-cap">${esc(second)}</span></div>` : ""
   }</div>
 </section>`;
@@ -146,7 +152,7 @@ function calendar(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): strin
   const shift = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
   const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const cells = [
-    ...["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((name) => `<div class="dn">${name}</div>`),
+    ...(guestLang() === "en" ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]).map((name) => `<div class="dn">${name}</div>`),
     ...Array.from({ length: shift }, () => '<div class="d d-empty"></div>'),
     ...Array.from({ length: days }, (_, index) =>
       `<div class="d${index + 1 === day ? " d-marked" : ""}">${index + 1}</div>`,
@@ -155,7 +161,7 @@ function calendar(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): strin
   const big = `${String(day).padStart(2, "0")} / ${String(month).padStart(2, "0")} / ${String(year).slice(-2)}`;
 
   return `<section class="calendar-section" id="when"${e.section()}>${e.tools()}${tag(c.tag, e)}
-<div class="cal-card reveal"><h2 class="cal-title"${e.text("title")}>${esc(c.title)}</h2><div class="cal-month">${MONTHS[month - 1]} ${year}</div><div class="cal-grid">${cells}</div>${
+<div class="cal-card reveal"><h2 class="cal-title"${e.text("title")}>${esc(c.title)}</h2><div class="cal-month">${(guestLang() === "en" ? MONTHS_EN : MONTHS)[month - 1]} ${year}</div><div class="cal-grid">${cells}</div>${
     c.message.trim() || e.enabled ? `<p class="cal-message"${e.text("message", { multiline: true })}>${lines(c.message)}</p>` : ""
   }</div>
 <div class="big-date-wrap reveal"><div class="big-date">${big}</div></div></section>`;
@@ -166,8 +172,8 @@ function countdown(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): stri
   if (!ctx.eventDate) return "";
   const unit = (id: string, label: string) =>
     `<div class="cd-item"><span class="cd-num" data-cd="${id}">00</span><span class="cd-unit">${label}</span></div>`;
-  return `<section class="countdown-section reveal"${e.section()}>${e.tools()}<p class="countdown-label"${e.text("title")}>${esc(c.title)}</p><div class="countdown" id="countdown" data-target="${ctx.eventDate.toISOString()}" data-done="${esc(c.doneText)}">${unit("days", "дней")}<span class="cd-colon">:</span>${unit("hours", "часов")}<span class="cd-colon">:</span>${unit("mins", "минут")}<span class="cd-colon">:</span>${unit("secs", "секунд")}</div>${
-    e.enabled ? `<p class="cd-unit" style="margin-top:18px">Когда день наступит: <span${e.text("doneText")}>${esc(c.doneText)}</span></p>` : ""
+  return `<section class="countdown-section reveal"${e.section()}>${e.tools()}<p class="countdown-label"${e.text("title")}>${esc(c.title)}</p><div class="countdown" id="countdown" data-target="${ctx.eventDate.toISOString()}" data-done="${esc(c.doneText)}">${unit("days", gl("дней", "days"))}<span class="cd-colon">:</span>${unit("hours", gl("часов", "hours"))}<span class="cd-colon">:</span>${unit("mins", gl("минут", "minutes"))}<span class="cd-colon">:</span>${unit("secs", gl("секунд", "seconds"))}</div>${
+    e.enabled ? `<p class="cd-unit" style="margin-top:18px">${gl("Когда день наступит:", "When the day comes:")} <span${e.text("doneText")}>${esc(c.doneText)}</span></p>` : ""
   }</section>`;
 }
 
@@ -179,7 +185,7 @@ function venue(block: InviteBlockView, e: EditAttrs): string {
     c.note.trim() || e.enabled ? `<p class="loc-note"${e.text("note", { multiline: true })}>${esc(c.note)}</p>` : ""
   }${
     c.mapUrl || e.enabled
-      ? `<a class="map-btn" href="${esc(c.mapUrl || "#")}" target="_blank" rel="noopener"><span${e.text("mapLabel")}>${esc(c.mapLabel || "посмотреть на карте")}</span></a>${e.enabled ? `<div>${e.link("mapUrl", c.mapUrl)}</div>` : ""}`
+      ? `<a class="map-btn" href="${esc(c.mapUrl || "#")}" target="_blank" rel="noopener"><span${e.text("mapLabel")}>${esc(c.mapLabel || gl("посмотреть на карте", "view on map"))}</span></a>${e.enabled ? `<div>${e.link("mapUrl", c.mapUrl)}</div>` : ""}`
       : ""
   }</div></div></section>`;
 }
@@ -187,7 +193,7 @@ function venue(block: InviteBlockView, e: EditAttrs): string {
 function mapBlock(block: InviteBlockView, e: EditAttrs): string {
   const c = block.content as BlockContentMap["MAP"];
   const links = [
-    c.yandexUrl ? `<a class="map-btn" href="${esc(c.yandexUrl)}" target="_blank" rel="noopener">${L("tili.t2", "Яндекс Карты")}</a>` : "",
+    c.yandexUrl ? `<a class="map-btn" href="${esc(c.yandexUrl)}" target="_blank" rel="noopener">${L("tili.t2", gl("Яндекс Карты", "Yandex Maps"))}</a>` : "",
     c.googleUrl ? `<a class="map-btn" href="${esc(c.googleUrl)}" target="_blank" rel="noopener">Google Maps</a>` : "",
   ].filter(Boolean);
   return `<section class="location-section"${e.section()}>${e.tools()}<div class="section-tag reveal"${e.text("title")}>${esc(c.title)}</div>${
@@ -206,9 +212,9 @@ function timeline(block: InviteBlockView, e: EditAttrs): string {
           item.icon || e.enabled ? `<div class="tl-icon">${img(item.icon, item.title, e.image(`items.${index}.icon`), ' class="tl-img" loading="lazy"')}</div>` : ""
         }<div class="tl-time"${e.text(`items.${index}.time`)}>${esc(item.time)}</div><p class="tl-label"${e.text(`items.${index}.title`)}>${esc(item.title)}</p>${
           item.note.trim() || e.enabled ? `<p class="tl-note"${e.text(`items.${index}.note`)}>${esc(item.note)}</p>` : ""
-        }${e.enabled ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить деталь">×</button>` : ""}</div>`,
+        }${e.enabled ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="${gl("Удалить деталь", "Remove detail")}">×</button>` : ""}</div>`,
     )
-    .join("")}</div>${e.enabled ? '<button type="button" class="map-btn" data-block-action="add-detail">+ Добавить деталь дня</button>' : ""}</section>`;
+    .join("")}</div>${e.enabled ? `<button type="button" class="map-btn" data-block-action="add-detail">${gl("+ Добавить деталь дня", "+ Add a detail")}</button>` : ""}</section>`;
 }
 
 function dresscode(block: InviteBlockView, e: EditAttrs): string {
@@ -220,7 +226,7 @@ function dresscode(block: InviteBlockView, e: EditAttrs): string {
     .map((color, index) => `<div class="swatch" style="background:${color}" data-color="${color}"${e.color(`palette.${index}`)}></div>`)
     .join("")}</div>${
     c.imageUrl || e.enabled
-      ? `<div class="dc-reference reveal">${img(c.imageUrl, "Примеры нарядов", e.image("imageUrl"), ' class="dc-ref-img" loading="lazy" decoding="async"')}</div>`
+      ? `<div class="dc-reference reveal">${img(c.imageUrl, gl("Примеры нарядов", "Outfit ideas"), e.image("imageUrl"), ' class="dc-ref-img" loading="lazy" decoding="async"')}</div>`
       : ""
   }</section>`;
 }
@@ -252,9 +258,26 @@ const RSVP_ERRORS: Record<string, string> = {
   gone: "Приглашение больше не действует.",
 };
 
+const RSVP_DEFAULTS_EN: typeof RSVP_DEFAULTS = {
+  nameLabel: "Your full name",
+  attendanceLabel: "Will you be there?",
+  yesLabel: "Wouldn’t miss it 🎉",
+  noLabel: "Sadly, I can’t make it 😔",
+  drinksLabel: "Drink preferences",
+  musicLabel: "What music do you love?",
+  musicPlaceholder: "Fleetwood Mac",
+  successText: "Thank you! We’ve got your reply.\nWe can’t wait to see you!",
+};
+
+const RSVP_ERRORS_EN: Record<string, string> = {
+  deadline: "The RSVP deadline has passed. Please message the hosts and they’ll mark your reply.",
+  invalid: "Please check your answers.",
+  gone: "This invitation is no longer active.",
+};
+
 function rsvpForm(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): string {
   const c = block.content as BlockContentMap["RSVP_FORM"];
-  const label = (key: keyof typeof RSVP_DEFAULTS) => c[key] || RSVP_DEFAULTS[key];
+  const label = (key: keyof typeof RSVP_DEFAULTS) => c[key] || (guestLang() === "en" ? RSVP_DEFAULTS_EN : RSVP_DEFAULTS)[key];
   const r = ctx.rsvp;
   const answered = r && r.status !== "PENDING";
   const showSuccess = Boolean(r?.saved) && !e.enabled;
@@ -274,7 +297,7 @@ function rsvpForm(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): strin
       ...r.keep.plusOneDrinkOptionIds.map((id) => hidden("plusOneDrinkOptionIds", id)),
     ].join("") : ""
   }
-<div class="fg"><label class="fl" for="guestName"${e.text("nameLabel")}>${esc(label("nameLabel"))}</label><input class="fi" type="text" id="guestName" name="guestName" placeholder="Иван Петров"${
+<div class="fg"><label class="fl" for="guestName"${e.text("nameLabel")}>${esc(label("nameLabel"))}</label><input class="fi" type="text" id="guestName" name="guestName" placeholder="${gl("Иван Петров", "Jane Smith")}"${
     ` value="${esc(r?.guestName ?? "")}" required`
   }></div>
 <div class="fg"><span class="fl"${e.text("attendanceLabel")}>${esc(label("attendanceLabel"))}</span><div class="radio-group">
@@ -289,25 +312,25 @@ function rsvpForm(block: InviteBlockView, e: EditAttrs, ctx: TiliContext): strin
                   r?.chosenDrinks.includes(drink.id) ? " checked" : ""
                 }><span class="cc"></span>${esc(drink.title)}</label>`)
                 .join("")
-            : '<span class="rsvp-note">Напитки берутся из раздела «Бар» в настройках мероприятия.</span>'
+            : `<span class="rsvp-note">${gl("Напитки берутся из раздела «Бар» в настройках мероприятия.", "Drinks come from the Bar section of your event settings.")}</span>`
         }</div></div>`
       : ""
   }
 <div class="fg"><label class="fl" for="music"${e.text("musicLabel")}>${esc(label("musicLabel"))}</label><input class="fi" type="text" id="music" name="musicWish" maxlength="200" placeholder="${esc(label("musicPlaceholder"))}" value="${esc(r?.musicWish ?? "")}">${
-    e.enabled ? `<span class="rsvp-note">Подсказка в поле: <span${e.text("musicPlaceholder")}>${esc(label("musicPlaceholder"))}</span></span>` : ""
+    e.enabled ? `<span class="rsvp-note">${gl("Подсказка в поле:", "Field hint:")} <span${e.text("musicPlaceholder")}>${esc(label("musicPlaceholder"))}</span></span>` : ""
   }</div>
-${r?.error ? `<p class="rsvp-note" role="alert">${esc(r.errorText ?? RSVP_ERRORS[r.error] ?? RSVP_ERRORS.invalid)}</p>` : ""}
+${r?.error ? `<p class="rsvp-note" role="alert">${esc(r.errorText ?? (guestLang() === "en" ? RSVP_ERRORS_EN : RSVP_ERRORS)[r.error] ?? gl(RSVP_ERRORS.invalid, RSVP_ERRORS_EN.invalid))}</p>` : ""}
 ${r?.questionFields ?? r?.extraFields ?? ""}
-<p class="rsvp-note" id="rsvpNoLink" hidden>Ответить можно по именной ссылке из вашего приглашения.</p>
-<button class="submit-btn" type="submit" id="submitBtn"><span${e.text("buttonLabel")}>${esc(answered ? "Изменить ответ" : c.buttonLabel)}</span></button>
+<p class="rsvp-note" id="rsvpNoLink" hidden>${gl("Ответить можно по именной ссылке из вашего приглашения.", "You can reply using the personal link from your invitation.")}</p>
+<button class="submit-btn" type="submit" id="submitBtn"><span${e.text("buttonLabel")}>${esc(answered ? gl("Изменить ответ", "Change reply") : c.buttonLabel)}</span></button>
 </form>`;
 
   return `<section class="rsvp-section" id="rsvp"${e.section()}>${e.tools()}${tag(c.tag, e)}${
     c.title.trim() || e.enabled ? `<p class="rsvp-intro reveal"${e.text("title")}>${esc(c.title)}</p>` : ""
   }${c.text.trim() || e.enabled ? `<p class="rsvp-sub reveal"${e.text("text", { multiline: true })}>${esc(c.text)}</p>` : ""}${form}
 <div class="rsvp-success${showSuccess ? " show" : ""}" id="rsvpSuccess"><div class="success-emoji">🎊</div><p${e.text("successText", { multiline: true })}>${esc(label("successText"))}</p>${
-    showSuccess ? `<button type="button" class="rsvp-again" id="rsvpAgain">${L("tili.t1", "Изменить ответ")}</button>` : ""
-  }</div>${e.enabled ? `<p class="rsvp-note">Текст после отправки: <span${e.text("successText", { multiline: true })}>${esc(label("successText"))}</span></p>` : ""}</section>`;
+    showSuccess ? `<button type="button" class="rsvp-again" id="rsvpAgain">${L("tili.t1", gl("Изменить ответ", "Change reply"))}</button>` : ""
+  }</div>${e.enabled ? `<p class="rsvp-note">${gl("Текст после отправки:", "Message after sending:")} <span${e.text("successText", { multiline: true })}>${esc(label("successText"))}</span></p>` : ""}</section>`;
 }
 
 function renderBlock(block: InviteBlockView, ctx: TiliContext): string {
@@ -339,10 +362,10 @@ export function renderTiliBlocks(blocks: InviteBlockView[], theme: InviteTheme, 
 
   const envelope = ctx.editable
     ? ""
-    : `<div class="cover" id="cover" role="button" tabindex="0" aria-label="Открыть приглашение"><div class="cover-inner"><div class="cover-env"><img class="cover-envelope" src="${TILI_ENVELOPE}" alt="" fetchpriority="high"><span class="cover-names" aria-hidden="true">${esc(envelopeFirst)}${envelopeSecond ? `<br>${esc(envelopeSecond)}` : ""}</span></div><p class="cover-hint">${L("tili.t3", "нажмите, чтобы открыть")}</p></div></div>`;
+    : `<div class="cover" id="cover" role="button" tabindex="0" aria-label="${gl("Открыть приглашение", "Open the invitation")}"><div class="cover-inner"><div class="cover-env"><img class="cover-envelope" src="${TILI_ENVELOPE}" alt="" fetchpriority="high"><span class="cover-names" aria-hidden="true">${esc(envelopeFirst)}${envelopeSecond ? `<br>${esc(envelopeSecond)}` : ""}</span></div><p class="cover-hint">${L("tili.t3", gl("нажмите, чтобы открыть", "tap to open"))}</p></div></div>`;
 
   const music = theme.musicUrl
-    ? `<audio id="weddingMusic" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="music-toggle" id="musicToggle" type="button" aria-label="Музыка"><span>🎵</span></button>`
+    ? `<audio id="weddingMusic" src="${esc(theme.musicUrl)}" preload="none" loop></audio><button class="music-toggle" id="musicToggle" type="button" aria-label="${gl("Музыка", "Music")}"><span>🎵</span></button>`
     : "";
 
   return `${envelope}<div class="main-content" id="mainContent">

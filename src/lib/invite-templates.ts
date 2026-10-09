@@ -24,28 +24,28 @@
 import type { BlockType } from "@/generated/prisma/enums";
 import type { InviteTheme } from "@/lib/invite-theme";
 import type { Lang } from "@/lib/i18n";
-import { ZEFIR_TEMPLATE, CRAYON_TEMPLATE } from "@/lib/invite-templates/scrapbook";
-import { GAZETTE_TEMPLATE, PROTOKOL_TEMPLATE, POSTCARD_TEMPLATE } from "@/lib/invite-templates/editorial";
+import { ZEFIR_TEMPLATE, CRAYON_TEMPLATE, ZEFIR_BLOCKS_EN, CRAYON_BLOCKS_EN } from "@/lib/invite-templates/scrapbook";
+import { GAZETTE_TEMPLATE, PROTOKOL_TEMPLATE, POSTCARD_TEMPLATE, GAZETTE_BLOCKS_EN, PROTOKOL_BLOCKS_EN, POSTCARD_BLOCKS_EN } from "@/lib/invite-templates/editorial";
 import { CONSTELLATION_TEMPLATE, CONSTELLATION_BLOCKS_EN } from "@/lib/invite-templates/constellation";
-import { EVERGREEN_TEMPLATE } from "@/lib/invite-templates/evergreen";
-import { PEARL_TEMPLATE } from "@/lib/invite-templates/pearl";
-import { PRISM_TEMPLATE } from "@/lib/invite-templates/prism";
-import { RUBY_TEMPLATE } from "@/lib/invite-templates/ruby";
-import { SILK_TEMPLATE } from "@/lib/invite-templates/silk";
-import { TILI_TEMPLATE } from "@/lib/invite-templates/tili";
-import { TUSCANY_TEMPLATE } from "@/lib/invite-templates/tuscany";
-import { VINYL_TEMPLATE } from "@/lib/invite-templates/vinyl";
+import { EVERGREEN_TEMPLATE, EVERGREEN_BLOCKS_EN } from "@/lib/invite-templates/evergreen";
+import { PEARL_TEMPLATE, PEARL_BLOCKS_EN } from "@/lib/invite-templates/pearl";
+import { PRISM_TEMPLATE, PRISM_BLOCKS_EN } from "@/lib/invite-templates/prism";
+import { RUBY_TEMPLATE, RUBY_BLOCKS_EN } from "@/lib/invite-templates/ruby";
+import { SILK_TEMPLATE, SILK_BLOCKS_EN } from "@/lib/invite-templates/silk";
+import { TILI_TEMPLATE, TILI_BLOCKS_EN } from "@/lib/invite-templates/tili";
+import { TUSCANY_TEMPLATE, TUSCANY_BLOCKS_EN } from "@/lib/invite-templates/tuscany";
+import { VINYL_TEMPLATE, VINYL_BLOCKS_EN } from "@/lib/invite-templates/vinyl";
 import { AQUARELLE_TEMPLATE, AQUARELLE_BLOCKS_EN } from "@/lib/invite-templates/aquarelle";
-import { LILY_TEMPLATE } from "@/lib/invite-templates/lily";
+import { LILY_TEMPLATE, LILY_BLOCKS_EN } from "@/lib/invite-templates/lily";
 import { BOHEMA_TEMPLATE, BOHEMA_BLOCKS_EN } from "@/lib/invite-templates/bohema";
-import { KRASKI_TEMPLATE } from "@/lib/invite-templates/kraski";
-import { SERDCE_TEMPLATE } from "@/lib/invite-templates/serdce";
+import { KRASKI_TEMPLATE, KRASKI_BLOCKS_EN } from "@/lib/invite-templates/kraski";
+import { SERDCE_TEMPLATE, SERDCE_BLOCKS_EN } from "@/lib/invite-templates/serdce";
 import { ANTIC_TEMPLATE, ANTIC_BLOCKS_EN } from "@/lib/invite-templates/antic";
-import { SKVOZ_VREMYA_TEMPLATE } from "@/lib/invite-templates/skvoz-vremya";
+import { SKVOZ_VREMYA_TEMPLATE, SKVOZ_VREMYA_BLOCKS_EN } from "@/lib/invite-templates/skvoz-vremya";
 import { BURGUNDY_TEMPLATE, BURGUNDY_BLOCKS_EN } from "@/lib/invite-templates/burgundy";
 import { ROSERAIE_TEMPLATE, ROSERAIE_BLOCKS_EN } from "@/lib/invite-templates/roseraie";
-import { FLORAL_GARDEN_TEMPLATE } from "@/lib/invite-templates/floral-garden";
-import { ISKRA_TEMPLATE } from "@/lib/invite-templates/iskra";
+import { FLORAL_GARDEN_TEMPLATE, FLORAL_GARDEN_BLOCKS_EN } from "@/lib/invite-templates/floral-garden";
+import { ISKRA_TEMPLATE, ISKRA_BLOCKS_EN } from "@/lib/invite-templates/iskra";
 import { WEDWED_TEMPLATES } from "@/lib/invite-templates/wedwed";
 import { CELEBRATION_TEMPLATES, celebrationTemplate, isCelebrationTemplate } from "@/lib/invite-templates/celebration";
 
@@ -193,31 +193,31 @@ function standardBlocks(source: TemplateBlock[], standard: typeof STANDARD_RU): 
 const ALL_TEMPLATES: InviteTemplate[] = [
   // Образцы «праздничного» семейства сами умеют английский.
   ...CELEBRATION_TEMPLATES.map((template) => isCelebrationTemplate(template.id) ? { ...template, blocksEn: celebrationTemplate(template.id, "en").blocks } : template),
-  GAZETTE_TEMPLATE,
-  PROTOKOL_TEMPLATE,
-  POSTCARD_TEMPLATE,
-  ZEFIR_TEMPLATE,
-  CRAYON_TEMPLATE,
-  EVERGREEN_TEMPLATE,
-  SILK_TEMPLATE,
-  PEARL_TEMPLATE,
-  TUSCANY_TEMPLATE,
-  RUBY_TEMPLATE,
+  { ...GAZETTE_TEMPLATE, blocksEn: GAZETTE_BLOCKS_EN },
+  { ...PROTOKOL_TEMPLATE, blocksEn: PROTOKOL_BLOCKS_EN },
+  { ...POSTCARD_TEMPLATE, blocksEn: POSTCARD_BLOCKS_EN },
+  { ...ZEFIR_TEMPLATE, blocksEn: ZEFIR_BLOCKS_EN },
+  { ...CRAYON_TEMPLATE, blocksEn: CRAYON_BLOCKS_EN },
+  { ...EVERGREEN_TEMPLATE, blocksEn: EVERGREEN_BLOCKS_EN },
+  { ...SILK_TEMPLATE, blocksEn: SILK_BLOCKS_EN },
+  { ...PEARL_TEMPLATE, blocksEn: PEARL_BLOCKS_EN },
+  { ...TUSCANY_TEMPLATE, blocksEn: TUSCANY_BLOCKS_EN },
+  { ...RUBY_TEMPLATE, blocksEn: RUBY_BLOCKS_EN },
   { ...CONSTELLATION_TEMPLATE, blocksEn: CONSTELLATION_BLOCKS_EN },
-  PRISM_TEMPLATE,
-  TILI_TEMPLATE,
-  VINYL_TEMPLATE,
+  { ...PRISM_TEMPLATE, blocksEn: PRISM_BLOCKS_EN },
+  { ...TILI_TEMPLATE, blocksEn: TILI_BLOCKS_EN },
+  { ...VINYL_TEMPLATE, blocksEn: VINYL_BLOCKS_EN },
   { ...AQUARELLE_TEMPLATE, blocksEn: AQUARELLE_BLOCKS_EN },
-  LILY_TEMPLATE,
+  { ...LILY_TEMPLATE, blocksEn: LILY_BLOCKS_EN },
   { ...BOHEMA_TEMPLATE, blocksEn: BOHEMA_BLOCKS_EN },
-  KRASKI_TEMPLATE,
-  SERDCE_TEMPLATE,
+  { ...KRASKI_TEMPLATE, blocksEn: KRASKI_BLOCKS_EN },
+  { ...SERDCE_TEMPLATE, blocksEn: SERDCE_BLOCKS_EN },
   { ...ANTIC_TEMPLATE, blocksEn: ANTIC_BLOCKS_EN },
-  SKVOZ_VREMYA_TEMPLATE,
+  { ...SKVOZ_VREMYA_TEMPLATE, blocksEn: SKVOZ_VREMYA_BLOCKS_EN },
   { ...BURGUNDY_TEMPLATE, blocksEn: BURGUNDY_BLOCKS_EN },
   { ...ROSERAIE_TEMPLATE, blocksEn: ROSERAIE_BLOCKS_EN },
-  FLORAL_GARDEN_TEMPLATE,
-  ISKRA_TEMPLATE,
+  { ...FLORAL_GARDEN_TEMPLATE, blocksEn: FLORAL_GARDEN_BLOCKS_EN },
+  { ...ISKRA_TEMPLATE, blocksEn: ISKRA_BLOCKS_EN },
   ...WEDWED_TEMPLATES,
 ];
 

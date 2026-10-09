@@ -1,0 +1,350 @@
+/*
+ * Лендинги и блог. Палитра, шрифты, кнопки и подвал — из _landing/home.css
+ * и clay.css (обёртка `.home.home--clay`); здесь только своё: шапка без
+ * JS, крошки, герой, карточки, типографика статьи, вопросы-ответы.
+ * Сначала телефон: столбцы раскладываются шире на больших экранах.
+ */
+
+.seo { min-height: 100vh; overflow-x: clip; }
+
+/* ── Шапка ─────────────────────────────────────────────────── */
+.seo-nav { position: sticky; top: 0; z-index: 40; padding: 10px 10px 0; }
+.seo-nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+  column-gap: 16px;
+  max-width: 1192px;
+  padding: 8px 14px;
+  border: 1px solid #ffffffd9;
+  border-radius: 22px;
+  background: #fffaf6f2;
+  box-shadow: 5px 8px 20px #cdbbc62e, inset 1px 2px 2px #fff, inset -2px -3px 6px #dbc8d226;
+  -webkit-backdrop-filter: saturate(1.3) blur(12px);
+  backdrop-filter: saturate(1.3) blur(12px);
+}
+.seo-nav-bar .home-brand img { width: auto; height: 34px; }
+.seo-nav-links {
+  order: 3;
+  display: flex;
+  gap: 18px;
+  width: 100%;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.seo-nav-links::-webkit-scrollbar { display: none; }
+.seo-nav-links a { padding-block: 4px; transition: color .2s ease; }
+.seo-nav-links a:hover { color: var(--wine); }
+.seo-nav-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.seo-lang {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+.seo-lang:hover { color: var(--wine); border-color: var(--gold-soft); }
+.home--clay .seo-nav-cta { min-height: 40px; padding: 0 14px; border-radius: 14px; font-size: 12px; }
+
+@media (min-width: 861px) {
+  .seo-nav { padding: 16px 24px 0; }
+  .seo-nav-bar { flex-wrap: nowrap; min-height: 70px; padding: 10px 14px 10px 24px; border-radius: 28px; }
+  .seo-nav-links { order: 0; width: auto; margin-left: auto; padding: 0; gap: 26px; overflow: visible; }
+  .seo-nav-actions { margin-left: 18px; }
+  .home--clay .seo-nav-cta { min-height: 44px; padding: 0 20px; border-radius: 16px; }
+}
+
+/* ── Крошки ────────────────────────────────────────────────── */
+.seo-crumbs ol { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 12.5px; }
+.seo-crumbs li + li::before { content: "›"; margin-right: 8px; color: var(--gold-soft); }
+.seo-crumbs a { transition: color .2s ease; }
+.seo-crumbs a:hover { color: var(--wine); }
+.seo-crumbs [aria-current] { color: var(--text); }
+
+/* ── Общие ─────────────────────────────────────────────────── */
+.home .seo-h1 {
+  margin-top: 18px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: clamp(34px, 8.6vw, 60px);
+  font-weight: 750;
+  line-height: 1.08;
+  letter-spacing: -.05em;
+  text-wrap: balance;
+}
+.home .seo-h2 {
+  margin-top: 16px;
+  font-size: clamp(30px, 6.6vw, 50px);
+  line-height: 1.08;
+}
+.seo-lead { margin-top: 20px; color: var(--text); font-size: 16px; line-height: 1.8; }
+.seo-lead a,
+.seo-answer a,
+.seo-prose a,
+.seo-faq a,
+.seo-card a { color: var(--wine); text-decoration: underline; text-decoration-color: var(--gold-soft); text-underline-offset: 3px; }
+.seo-lead a:hover,
+.seo-answer a:hover,
+.seo-prose a:hover,
+.seo-faq a:hover,
+.seo-card a:hover { text-decoration-color: var(--wine); }
+.seo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 28px; }
+.seo-actions .home-button { min-height: 54px; padding-inline: 24px; font-size: 14px; }
+.seo-head { max-width: 720px; margin-bottom: clamp(30px, 5vw, 52px); }
+.seo-head .home-lead { margin-top: 18px; }
+
+/* ── Лендинг: первый экран ─────────────────────────────────── */
+.seo-hero { padding: 28px 0 clamp(52px, 8vw, 96px); background: var(--mascot-ground, var(--ivory)); }
+.seo-hero-grid { display: grid; gap: 36px; margin-top: 26px; }
+.seo-hero-copy .home-kicker { margin-top: 4px; }
+.seo-highlights { display: grid; gap: 10px; margin: 26px 0 0; padding: 0; list-style: none; font-size: 14.5px; line-height: 1.55; }
+.seo-highlights li { position: relative; padding-left: 28px; color: var(--text); }
+.seo-highlights li::before {
+  content: "";
+  position: absolute;
+  top: .2em;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 7px;
+  background: #ead8e2 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.4l2.6 2.5L13 6.3' fill='none' stroke='%23824d69' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 18px no-repeat;
+  box-shadow: inset 1px 1px 2px #fff;
+}
+.seo-hero-figure { margin: 0; }
+.seo-hero-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #fff;
+  border-radius: 28px;
+  box-shadow: 12px 14px 30px #d8c9cf66, -9px -9px 24px #ffffffba;
+}
+.seo-hero-figure figcaption { margin-top: 12px; color: var(--muted); font-size: 12.5px; text-align: center; }
+
+@media (min-width: 961px) {
+  .seo-hero-grid { grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); align-items: center; gap: 56px; }
+}
+
+/* ── Секции лендинга ───────────────────────────────────────── */
+.seo-section { padding-block: clamp(56px, 9vw, 104px); }
+.seo-section--sand { background: #f4edf0; }
+.seo-cards { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.seo-card {
+  padding: 24px 22px;
+  border: 1px solid #fff;
+  border-radius: 26px;
+  background: var(--clay-surface);
+  box-shadow: 5px 7px 15px #ccb8c233, inset 1px 2px 3px #fff, inset -2px -3px 6px #ceb6c233;
+}
+.home .seo-card h3 { color: var(--ink); font-family: var(--font-sans); font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.seo-card p { margin-top: 10px; font-size: 14.5px; line-height: 1.75; }
+@media (min-width: 640px) { .seo-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; } }
+@media (min-width: 1024px) { .seo-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.seo-steps { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.seo-steps li {
+  position: relative;
+  padding: 22px 22px 22px 76px;
+  border: 1px solid #fff;
+  border-radius: 24px;
+  background: #fffaf6;
+  box-shadow: 5px 8px 20px #cdbbc62e;
+  counter-increment: step;
+}
+.seo-steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  color: #906780;
+  background: #e8dbe4;
+  box-shadow: inset 2px 2px 3px #fff, inset -2px -3px 4px #c1a4b440;
+  font-family: var(--font-serif);
+  font-size: 22px;
+}
+.home .seo-steps h3 { color: var(--ink); font-family: var(--font-sans); font-size: 17px; font-weight: 650; }
+.seo-steps p { margin-top: 8px; font-size: 14.5px; line-height: 1.75; }
+@media (min-width: 900px) { .seo-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.seo-text { max-width: 760px; }
+.seo-text p { margin-top: 16px; font-size: 16px; line-height: 1.85; }
+
+/* ── Таблицы ───────────────────────────────────────────────── */
+.seo-table-wrap { overflow-x: auto; margin: 1.4em 0; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); -webkit-overflow-scrolling: touch; }
+.seo-table-wrap table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 14.5px; line-height: 1.6; }
+.seo-table-wrap caption { padding: 12px 16px 0; color: var(--muted); font-size: 13px; text-align: left; caption-side: top; }
+.seo-table-wrap th,
+.seo-table-wrap td { padding: 12px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.seo-table-wrap th { color: var(--ink); background: #f6eef1; font-weight: 650; }
+.seo-table-wrap tr:last-child td { border-bottom: 0; }
+
+/* ── Вопросы и ответы ──────────────────────────────────────── */
+.seo-faq-list { display: grid; gap: 12px; }
+.seo-faq details {
+  padding-inline: 20px;
+  border: 1px solid #fff;
+  border-radius: 22px;
+  background: var(--clay-surface);
+  box-shadow: 5px 7px 15px #ccb8c233, inset 1px 2px 3px #fff, inset -2px -3px 6px #ceb6c233;
+}
+.seo-faq summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  color: var(--ink);
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  list-style: none;
+  cursor: pointer;
+}
+.seo-faq summary::-webkit-details-marker { display: none; }
+.seo-faq summary::after { content: "+"; flex-shrink: 0; color: var(--gold); font-size: 22px; font-weight: 300; line-height: 1; transition: transform .25s ease; }
+.seo-faq details[open] summary::after { transform: rotate(45deg); }
+.seo-faq details p { margin: 0; padding-bottom: 18px; font-size: 15px; line-height: 1.75; }
+.seo-faq summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 8px; }
+
+/* ── Список статей (карточки) ──────────────────────────────── */
+.seo-posts { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; }
+.seo-post {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 22px;
+  border: 1px solid #fff;
+  border-radius: 26px;
+  background: var(--clay-surface);
+  box-shadow: 5px 7px 15px #ccb8c233, inset 1px 2px 3px #fff;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.seo-post:hover { transform: translateY(-3px); box-shadow: 8px 12px 24px #ccb8c255, inset 1px 2px 3px #fff; }
+.seo-post-topic { color: #9a6b84; font-size: 10.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+.home .seo-post-title { display: block; margin-top: 12px; color: var(--ink); font-family: var(--font-serif); font-size: 25px; line-height: 1.15; }
+.seo-post p { margin-top: 12px; font-size: 14.5px; line-height: 1.7; }
+.seo-post-meta { margin-top: auto; padding-top: 16px; color: var(--muted); font-size: 12.5px; }
+@media (min-width: 640px) { .seo-posts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .seo-posts--three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ── Статья ────────────────────────────────────────────────── */
+.seo-article-wrap { padding-top: 26px; padding-bottom: clamp(56px, 8vw, 88px); }
+.seo-article { max-width: 760px; margin: 0 auto; }
+.seo-article-head { margin-top: 26px; }
+.home .seo-article h1 {
+  margin-top: 16px;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 8vw, 56px);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -.015em;
+}
+.seo-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 16px; color: var(--muted); font-size: 13px; }
+.seo-answer {
+  margin-top: 26px;
+  padding: 20px 22px;
+  border: 1px solid #fff;
+  border-radius: 22px;
+  color: var(--ink);
+  background: #f4e8ec;
+  box-shadow: inset 1px 2px 3px #fff, 4px 6px 14px #ccb8c22e;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.seo-answer-label { display: block; margin-bottom: 6px; color: #9a6b84; font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.seo-toc { margin-top: 26px; padding: 18px 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); }
+.seo-toc-title { color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.seo-toc ol { display: grid; gap: 8px; margin: 12px 0 0; padding-left: 1.4em; list-style: decimal; font-size: 14.5px; line-height: 1.5; }
+.seo-toc li::marker { color: var(--gold); }
+.seo-toc a:hover { color: var(--wine); }
+
+.seo-prose { margin-top: 12px; color: var(--text); font-size: 16.5px; line-height: 1.8; }
+.home .seo-prose h2,
+.home .seo-faq-title {
+  margin: 1.9em 0 .5em;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 6vw, 38px);
+  font-weight: 500;
+  line-height: 1.15;
+  scroll-margin-top: 140px;
+}
+.home .seo-prose h3 { margin: 1.5em 0 .3em; color: var(--ink); font-family: var(--font-sans); font-size: 18.5px; font-weight: 650; line-height: 1.4; letter-spacing: -.01em; }
+.seo-prose p,
+.seo-prose ul,
+.seo-prose ol { margin: .8em 0; }
+.seo-prose ul { padding-left: 1.3em; list-style: disc; }
+.seo-prose ol { padding-left: 1.4em; list-style: decimal; }
+.seo-prose li { margin: .4em 0; padding-left: .2em; }
+.seo-prose li::marker { color: var(--gold); }
+.seo-prose strong { color: var(--ink); font-weight: 650; }
+
+.seo-prose .seo-examples { display: grid; gap: 14px; margin: 1.2em 0; padding: 0; list-style: none; }
+.seo-example { padding: 20px 22px; border: 1px solid var(--line); border-radius: 22px; background: var(--paper); }
+.seo-example-label { color: #9a6b84; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.seo-example-text { margin-top: 10px; color: var(--ink); font-family: var(--font-serif); font-size: 19.5px; line-height: 1.5; white-space: pre-line; }
+
+.seo-tip { margin: 1.4em 0; padding: 18px 22px; border-left: 3px solid var(--gold-soft); border-radius: 0 18px 18px 0; background: #f7eff3; font-size: 15.5px; line-height: 1.75; }
+.seo-tip-title { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 650; }
+
+.seo-cta {
+  margin: 2em 0;
+  padding: 26px 24px;
+  border-radius: 28px;
+  color: #eadbe5;
+  background: linear-gradient(135deg, #655064, #493347);
+  box-shadow: inset 4px 5px 10px #aa80a047, inset -8px -9px 20px #291b3040, 10px 12px 22px #a387972b;
+}
+.seo-cta-title { color: #fffaf3; font-family: var(--font-serif); font-size: 26px; line-height: 1.2; }
+.seo-cta p { margin: 10px 0 18px; font-size: 15px; line-height: 1.7; }
+.home--clay .seo-cta .home-button { min-height: 48px; font-size: 13px; }
+
+.seo-faq { margin-top: 12px; }
+.seo-related { margin-top: clamp(48px, 7vw, 72px); }
+.home .seo-related-title { color: var(--ink); font-family: var(--font-serif); font-size: clamp(26px, 5vw, 34px); }
+.seo-related .seo-posts { margin-top: 20px; }
+
+/* ── Финальный призыв ──────────────────────────────────────── */
+.seo-final {
+  margin: 0 12px 24px;
+  padding: clamp(48px, 8vw, 80px) 0;
+  border-radius: 36px;
+  background: linear-gradient(135deg, #e7d5e7, #f0dce0);
+  box-shadow: inset 4px 5px 12px #fff5, inset -8px -9px 20px #ad89a332;
+  text-align: center;
+}
+.home .seo-final h2 { color: #4c3448; font-size: clamp(32px, 7vw, 56px); line-height: 1.08; }
+.seo-final p { max-width: 560px; margin: 16px auto 0; color: #70586a; font-size: 15.5px; line-height: 1.75; }
+.seo-final .seo-actions { justify-content: center; }
+@media (min-width: 861px) { .seo-final { margin: 0 24px 24px; border-radius: 52px; } }
+
+/* ── Подвал ────────────────────────────────────────────────── */
+.home--clay.seo-footer,
+.seo-footer { border: 0; }
+.home .seo-footer-h { margin: 0 0 18px; color: var(--ink); font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
+.home .seo-footer-h--spaced { margin-top: 28px; }
+.seo-footer .home-brand img { width: auto; }
+
+@media (max-width: 560px) {
+  .seo-actions .home-button { width: 100%; }
+  .seo-steps li { padding: 70px 18px 20px; }
+  .seo-steps li::before { top: 18px; left: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seo-post,
+  .seo-faq summary::after { transition: none; }
+}

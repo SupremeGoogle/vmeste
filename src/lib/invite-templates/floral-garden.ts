@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 
 const IMG = "/media/invite-floral-garden";
 
@@ -39,3 +39,29 @@ export const FLORAL_GARDEN_TEMPLATE: InviteTemplate = {
     { type: "COUNTDOWN", content: { v: 1, title: "До скорой встречи!", doneText: "Сегодня наш праздник!" } },
   ],
 };
+
+/** Образец для английской свадьбы: те же разделы и снимки; служебные теги (wishes, contacts) — те же. */
+export const FLORAL_GARDEN_BLOCKS_EN: TemplateBlock[] = [
+  { type: "COVER", content: { v: 1, title: "You’re invited to our wedding", names: "Emily & James", dateText: "September 28, 2027", subtitle: "We’d be so happy to share this day with you", imageUrl: `${IMG}/garden.webp` } },
+  { type: "TEXT", content: { v: 1, title: "Dear friends and family,", text: "We want to be surrounded by the people closest and dearest to us, and we would be truly delighted to see you among the guests at our wedding." } },
+  { type: "CALENDAR", content: { v: 1, title: "September 2027", message: "With love, Emily & James" } },
+  { type: "TIMELINE", content: { v: 1, title: "Order of the day", items: [
+    { time: "3:00 PM", title: "Guests arrive", note: "Welcome drinks and soft music" },
+    { time: "4:00 PM", title: "Ceremony", note: "We say our vows" },
+    { time: "5:00 PM", title: "Photos", note: "A garden stroll and group pictures" },
+    { time: "6:00 PM", title: "Dinner", note: "Dinner, toasts and dancing" },
+    { time: "10:00 PM", title: "Party", note: "Music into the night" },
+  ] } },
+  { type: "VENUE", content: { v: 1, title: "Where it all happens", name: "Villa Rotonda", address: "127 Lakeshore Drive, Lake Geneva, Wisconsin", note: "There is free guest parking next to the venue. The entrance is by the main gate.", imageUrl: `${IMG}/venue.webp`, mapUrl: "https://www.google.com/maps/search/?api=1&query=Lake%20Geneva%2C%20Wisconsin", mapLabel: "View on map" } },
+  { type: "TEXT", content: { v: 1, title: "A few important details", text: "Please arrive 15–20 minutes early so you have time to say hello, drop off your coat and find your seat." } },
+  { type: "DRESSCODE", content: { v: 1, title: "Dress code", text: "We’d love it if you joined the elegant style of the evening and chose outfits from this palette.", palette: ["#f4ede6", "#dcc2a4", "#e7ceca"] } },
+  { type: "TEXT", content: { v: 1, tag: "wishes", title: "A few wishes", text: "The best gift is having you with us on this day.\nIf you’d like to bring flowers, we’ll be so happy.\nYou can leave a few kind words in the RSVP form below.\nShare your photos and videos from the day — we’ll keep them as memories." } },
+  { type: "PHOTOS", content: { v: 1, title: "Our story", items: [
+    { imageUrl: `${IMG}/story.webp`, caption: "Together, forever" },
+    { imageUrl: "/media/invite-roseraie/portrait.webp", caption: "Moments of happiness" },
+    { imageUrl: "/media/invite-roseraie/hero.webp", caption: "Our story" },
+  ] } },
+  { type: "RSVP_FORM", content: { v: 1, title: "RSVP", text: "Please answer a few quick questions", nameLabel: "Your name", attendanceLabel: "Will you come?", yesLabel: "Yes, I’ll be there", noLabel: "Sorry, I can’t", drinksLabel: "Drinks", buttonLabel: "Send reply", successText: "Thank you! We’ve received your reply." } },
+  { type: "TEXT", content: { v: 1, tag: "contacts", title: "Any questions?", text: "For anything about the day, reach out to Anna\n+1 555 000 0000\n@anna" } },
+  { type: "COUNTDOWN", content: { v: 1, title: "See you soon!", doneText: "Today is the day!" } },
+];

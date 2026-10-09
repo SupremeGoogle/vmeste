@@ -1,5 +1,5 @@
 import { defaultTheme } from "@/lib/invite-theme";
-import type { InviteTemplate } from "@/lib/invite-templates";
+import type { InviteTemplate, TemplateBlock } from "@/lib/invite-templates";
 import { TILI_MEDIA, TILI_TIMELINE_ICONS } from "@/lib/invite-templates/tili-assets";
 
 /**
@@ -150,3 +150,115 @@ export const TILI_TEMPLATE: InviteTemplate = {
     },
   ],
 };
+
+/** Образец для английской свадьбы: те же разделы и фотографии. */
+export const TILI_BLOCKS_EN: TemplateBlock[] = [
+  {
+    type: "COVER",
+    content: {
+      v: 1,
+      title: "first comes love ~ then comes marriage",
+      names: "Emily & James",
+      dateText: "",
+      subtitle:
+        "Recognize these two little ones?\nYes, it’s us! Time really does fly, doesn’t it?\nWell, we’ve grown up — and we’ve decided it’s time to get married!\nWe’d love for you to join our very first celebration as a family — our wedding!\nIt would mean the world to share this day with you.",
+      imageUrl: "",
+      photos: [
+        { imageUrl: `${TILI_MEDIA}/bride-child.webp`, caption: "— I wonder who\nI’ll marry when\nI grow up?" },
+        { imageUrl: `${TILI_MEDIA}/groom-child.webp`, caption: "— that’ll be me 🤍" },
+      ],
+      footer: "With love,",
+    },
+  },
+  {
+    type: "PHOTOS",
+    content: {
+      v: 1,
+      title: "",
+      items: [
+        { imageUrl: `${TILI_MEDIA}/couple-1.webp`, caption: "Happy moments" },
+        { imageUrl: `${TILI_MEDIA}/couple-2.webp`, caption: "Into the future" },
+      ],
+    },
+  },
+  {
+    type: "CALENDAR",
+    content: {
+      v: 1,
+      tag: "WHEN",
+      title: "SAVE THE DATE",
+      message: "Don’t miss the biggest day of our summer — our wedding day!",
+    },
+  },
+  {
+    type: "COUNTDOWN",
+    content: { v: 1, title: "Counting down to our wedding", doneText: "Today is the day! 🎊" },
+  },
+  {
+    type: "VENUE",
+    content: {
+      v: 1,
+      tag: "LOCATION",
+      title: "THE VENUE",
+      name: "Willow Creek Farm",
+      address: "Sonoma, California",
+      note: "",
+      imageUrl: `${TILI_MEDIA}/venue.webp`,
+      mapUrl: "https://www.google.com/maps/search/?api=1&query=Sonoma%2C%20California",
+      mapLabel: "view on map",
+    },
+  },
+  {
+    type: "TIMELINE",
+    content: {
+      v: 1,
+      tag: "THE DAY",
+      title: "SCHEDULE",
+      items: [
+        { time: "12:30 PM", title: "CEREMONY", note: "", icon: TILI_TIMELINE_ICONS[0] },
+        { time: "4:00 PM", title: "COCKTAIL HOUR", note: "", icon: TILI_TIMELINE_ICONS[1] },
+        { time: "5:00 PM", title: "DINNER", note: "", icon: TILI_TIMELINE_ICONS[2] },
+        { time: "12:00 AM", title: "GRAND FINALE", note: "fireworks", icon: TILI_TIMELINE_ICONS[3] },
+      ],
+    },
+  },
+  {
+    type: "DRESSCODE",
+    content: {
+      v: 1,
+      tag: "DRESS CODE",
+      title: "Dressed in color",
+      text: "We’d love to see you dressed up\nin the colors of our wedding",
+      palette: ["#e8dbc8", "#d4b896", "#e8c4c0", "#8b6914", "#9ead80", "#5e7a40", "#3d5a28"],
+      imageUrl: `${TILI_MEDIA}/dresscode.webp`,
+    },
+  },
+  {
+    type: "TEXT",
+    content: {
+      v: 1,
+      tag: "A FEW WISHES",
+      title: "",
+      text:
+        "Please don’t bring us flowers —\nwe won’t have time to enjoy them as much as they deserve.\n\nInstead of flowers, we’d be grateful\nfor a bottle of your favorite drink.\n\nAnd if you’d like to help make our travel dreams come true,\na card with your wishes would mean so much.",
+    },
+  },
+  {
+    type: "RSVP_FORM",
+    content: {
+      v: 1,
+      tag: "RSVP",
+      title: "Kindly reply by June 20",
+      text: "",
+      buttonLabel: "Send",
+      nameLabel: "Your full name",
+      attendanceLabel: "Will you be there?",
+      yesLabel: "Wouldn’t miss it 🎉",
+      noLabel: "Sadly, I can’t make it 😔",
+      drinksLabel: "Drink preferences",
+      musicLabel: "What music do you love?",
+      musicPlaceholder: "Fleetwood Mac",
+      successText: "Thank you! We’ve got your reply.\nWe can’t wait to see you!",
+    },
+  },
+];

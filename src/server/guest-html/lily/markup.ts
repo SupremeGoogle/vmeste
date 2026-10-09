@@ -11,6 +11,7 @@ import type { InviteBlockView } from "@/server/repositories/invites";
 import { editAttrs } from "@/server/guest-html/inline-editor";
 import { esc } from "@/server/guest-html/layout";
 import { L } from "@/server/guest-html/template-labels";
+import { gl, guestLang } from "@/server/guest-html/guest-lang";
 import { inlineRsvpForm } from "@/server/guest-html/inline-rsvp-form";
 
 type Band = "green" | "light";
@@ -32,14 +33,15 @@ function lily(className: string): string {
 }
 
 function isDetail(block: InviteBlockView): boolean {
-  return block.type === "TEXT" && /^детали$/i.test((block.content as BlockContentMap["TEXT"]).tag?.trim() ?? "");
+  const tag = (block.content as BlockContentMap["TEXT"]).tag?.trim() ?? "";
+  return block.type === "TEXT" && (/^детали$/i.test(tag) || (guestLang() === "en" && /^details$/i.test(tag)));
 }
 
 /** Small line drawings remain crisp at any size; they are decorative only. */
 function detailIcon(title: string): string {
-  const path = /подар/i.test(title)
+  const path = /подар|gift/i.test(title)
     ? '<path d="M4 11h24v17H4zM2 7h28v5H2zM16 7v21M16 7C8 7 7 1 11 2c3 0 5 5 5 5zm0 0c8 0 9-6 5-5-3 0-5 5-5 5z"/>'
-    : /цвет/i.test(title)
+    : /цвет|flower/i.test(title)
       ? '<path d="M16 29V15m0 6c-6 0-9-4-9-4 6-1 9 4 9 4zm0 4c6 0 9-4 9-4-6-1-9 4-9 4zM16 15c-9 0-12-8-9-10 4-1 9 6 9 10zm0 0c9 0 12-8 9-10-4-1-9 6-9 10zm0 0C12 9 13 2 16 2s4 7 0 13z"/>'
       : '<path d="M16 27S3 19 3 10a7 7 0 0 1 13-3 7 7 0 0 1 13 3c0 9-13 17-13 17z"/>';
   return `<svg class="lily-detail-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`;
@@ -59,7 +61,7 @@ function namesMarkup(names: string): string {
   if (!match) return esc(names);
   return (
     `<span class="lily-groom">${esc(match[1].trim())}</span>` +
-    `<span class="lily-amp">и</span>` +
+    `<span class="lily-amp">${gl("и", "&")}</span>` +
     `<span class="lily-bride">${esc(match[2].trim())}</span>`
   );
 }
@@ -73,7 +75,7 @@ function renderBlock(block: InviteBlockView, band: Band, rsvpHref: string | null
       const photo = c.imageUrl
         ? `<img src="${esc(c.imageUrl)}" alt="" fetchpriority="high"${e.image("imageUrl")}>`
         : editable
-          ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>Фотография пары</span>`
+          ? `<span class="ie-image-placeholder"${e.image("imageUrl")}>${gl("Фотография пары", "Photo of the couple")}</span>`
           : "";
       return wrap(
         block,
@@ -101,7 +103,7 @@ function renderBlock(block: InviteBlockView, band: Band, rsvpHref: string | null
           `<h3 class="lily-detail-title"${e.text("title")}>${esc(c.title)}</h3>` +
           `<p class="lily-copy"${e.text("text", { multiline: true })}>${esc(c.text)}</p>`, editable);
       }
-      const closing = /встреч|любов/i.test(`${c.title} ${c.text}`);
+      const closing = /встреч|любов/i.test(`${c.title} ${c.text}`) || (guestLang() === "en" && /see you soon|with love/i.test(`${c.title} ${c.text}`));
       return wrap(
         block,
         band,
@@ -119,10 +121,10 @@ function renderBlock(block: InviteBlockView, band: Band, rsvpHref: string | null
       const photo = c.imageUrl
         ? `<figure class="lily-photo"><img src="${esc(c.imageUrl)}" alt="" loading="lazy" decoding="async"${e.image("imageUrl")}></figure>`
         : editable
-          ? `<figure class="lily-photo"><span class="ie-image-placeholder"${e.image("imageUrl")}>Фотография места</span></figure>`
+          ? `<figure class="lily-photo"><span class="ie-image-placeholder"${e.image("imageUrl")}>${gl("Фотография места", "Venue photo")}</span></figure>`
           : "";
       const map = c.mapUrl
-        ? `<a class="lily-button" href="${esc(c.mapUrl)}" target="_blank" rel="noreferrer noopener"${editable ? " data-editor-ui" : ""}>${esc(c.mapLabel || "Открыть карту")}</a>`
+        ? `<a class="lily-button" href="${esc(c.mapUrl)}" target="_blank" rel="noreferrer noopener"${editable ? " data-editor-ui" : ""}>${esc(c.mapLabel || gl("Открыть карту", "Open map"))}</a>`
         : "";
       return wrap(
         block,
@@ -152,7 +154,7 @@ function renderBlock(block: InviteBlockView, band: Band, rsvpHref: string | null
             `<small${e.text(`items.${index}.note`)}>${esc(item.note)}</small>` +
             `</div>` +
             (editable
-              ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="Удалить пункт">×</button>`
+              ? `<button type="button" class="ie-remove-detail" data-block-action="remove-detail" data-item-index="${index}" title="${gl("Удалить пункт", "Remove item")}">×</button>`
               : "") +
             `</li>`,
         )
@@ -162,11 +164,11 @@ function renderBlock(block: InviteBlockView, band: Band, rsvpHref: string | null
         band,
         "lily-timing",
         lily("lily-flower-side") +
-          `<p class="lily-tag">${L("lily.timeline.tag", "Вместе, минута за минутой")}</p>` +
+          `<p class="lily-tag">${L("lily.timeline.tag", gl("Вместе, минута за минутой", "Together, minute by minute"))}</p>` +
           `<h2 class="lily-script"${e.text("title")}>${esc(c.title)}</h2>` +
           (c.tag || editable ? `<p class="lily-copy"${e.text("tag")}>${esc(c.tag)}</p>` : "") +
           `<ol class="lily-slots">${items}</ol>` +
-          (editable ? `<button type="button" class="lily-add" data-block-action="add-detail">+ Добавить пункт</button>` : ""),
+          (editable ? `<button type="button" class="lily-add" data-block-action="add-detail">${gl("+ Добавить пункт", "+ Add item")}</button>` : ""),
         editable,
       );
     }
@@ -207,7 +209,7 @@ function renderBlock(block: InviteBlockView, band: Band, rsvpHref: string | null
                 `<figure class="lily-photo" data-lily-rise>` +
                 (item.imageUrl
                   ? `<img src="${esc(item.imageUrl)}" alt="" loading="lazy" decoding="async"${e.image(`items.${index}.imageUrl`)}>`
-                  : `<span class="ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>Фотография</span>`) +
+                  : `<span class="ie-image-placeholder"${e.image(`items.${index}.imageUrl`)}>${gl("Фотография", "Photo")}</span>`) +
                 (item.caption || editable ? `<figcaption${e.text(`items.${index}.caption`)}>${esc(item.caption)}</figcaption>` : "") +
                 `</figure>`,
             )
@@ -262,7 +264,7 @@ export function renderLilyBlocks(
   const editable = options.editable === true;
   const music = theme.musicUrl
     ? `<audio id="lily-audio" src="${esc(theme.musicUrl)}" preload="none" loop></audio>` +
-      `<button type="button" class="lily-music" aria-pressed="false" aria-label="Музыка"${editable ? " data-editor-ui" : ""}>` +
+      `<button type="button" class="lily-music" aria-pressed="false" aria-label="${gl("Музыка", "Music")}"${editable ? " data-editor-ui" : ""}>` +
       `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19.5a2.5 2.5 0 1 1-2-2.45V6.2l10-2.2v9.5a2.5 2.5 0 1 1-2-2.45V6.6L9 8.1z" fill="currentColor"/></svg>` +
       `</button>`
     : "";
@@ -278,7 +280,7 @@ export function renderLilyBlocks(
         index++;
       } while (index < blocks.length && isDetail(blocks[index]));
       index--;
-      parts.push(`<div class="lily-details"><div class="lily-details-intro"><p class="lily-tag">${L("lily.details.tag", "Чтобы нам всем было хорошо")}</p><h2>${L("lily.details.title", "Маленькие пожелания")}</h2></div><div class="lily-details-grid">${cards.join("")}</div></div>`);
+      parts.push(`<div class="lily-details"><div class="lily-details-intro"><p class="lily-tag">${L("lily.details.tag", gl("Чтобы нам всем было хорошо", "So everyone has a wonderful time"))}</p><h2>${L("lily.details.title", gl("Маленькие пожелания", "A few small wishes"))}</h2></div><div class="lily-details-grid">${cards.join("")}</div></div>`);
       previous = "light";
       continue;
     }
