@@ -56,7 +56,7 @@ export async function isSlugTaken(ctx: OrgContext, slug: string): Promise<boolea
  */
 export async function createEvent(
   ctx: OrgContext,
-  input: { title: string; slug: string; eventDate: Date; venueName?: string; timezone?: string },
+  input: { title: string; slug: string; eventDate: Date; venueName?: string; timezone?: string; language?: "ru" | "en" },
 ) {
   if (await isSlugTaken(ctx, input.slug)) return null;
 
@@ -69,6 +69,7 @@ export async function createEvent(
       eventDate: input.eventDate,
       venueName: input.venueName,
       timezone: input.timezone ?? "Europe/Moscow",
+      language: input.language ?? "ru",
       shortCode: await uniqueShortCode(),
     },
     });

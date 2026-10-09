@@ -7,13 +7,20 @@
  * площадки для всех троих. Поэтому пояс берётся из `Event.timezone`,
  * а не из браузера, и форматирование всегда идёт через Intl с `timeZone`.
  */
+import type { Lang } from "@/lib/i18n";
+
 const MONTHS_GENITIVE = [
   "января", "февраля", "марта", "апреля", "мая", "июня",
   "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ];
 
-function parts(date: Date, timezone: string) {
-  const formatter = new Intl.DateTimeFormat("ru-RU", {
+const MONTHS_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function parts(date: Date, timezone: string, lang: Lang = "ru") {
+  const formatter = new Intl.DateTimeFormat(lang === "en" ? "en-US" : "ru-RU", {
     timeZone: timezone,
     year: "numeric",
     month: "numeric",
@@ -33,20 +40,21 @@ function parts(date: Date, timezone: string) {
   };
 }
 
-/** «12 сентября 2026» — Intl по-русски даёт «12 сент. 2026 г.», а это заголовок. */
-export function formatEventDate(date: Date, timezone: string): string {
-  const p = parts(date, timezone);
-  return `${p.day} ${MONTHS_GENITIVE[p.month - 1]} ${p.year}`;
+/** «12 сентября 2026» / «September 12, 2026» — Intl по-русски даёт «12 сент. 2026 г.», а это заголовок. */
+export function formatEventDate(date: Date, timezone: string, lang: Lang = "ru"): string {
+  const p = parts(date, timezone, lang);
+  return lang === "en" ? `${MONTHS_EN[p.month - 1]} ${p.day}, ${p.year}` : `${p.day} ${MONTHS_GENITIVE[p.month - 1]} ${p.year}`;
 }
 
 /** «суббота, 12 сентября 2026, 16:00» — для строки под заголовком. */
-export function formatEventDateTime(date: Date, timezone: string): string {
-  const p = parts(date, timezone);
-  return `${p.weekday}, ${formatEventDate(date, timezone)}, ${p.hour}:${p.minute}`;
+export function formatEventDateTime(date: Date, timezone: string, lang: Lang = "ru"): string {
+  const p = parts(date, timezone, lang);
+  return `${p.weekday}, ${formatEventDate(date, timezone, lang)}, ${p.hour}:${p.minute}`;
 }
 
-/** «до 1 сентября» — срок ответа. */
-export function formatDeadline(date: Date, timezone: string): string {
-  const p = parts(date, timezone);
+/** «до 1 сентября» / «by September 1» — срок ответа. */
+export function formatDeadline(date: Date, timezone: string, lang: Lang = "ru"): string {
+  const p = parts(date, timezone, lang);
+  if (lang === "en") return `by ${MONTHS_EN[p.month - 1]} ${p.day}`;
   return `${p.day} ${MONTHS_GENITIVE[p.month - 1]}`;
 }

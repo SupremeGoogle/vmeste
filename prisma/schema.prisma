@@ -311,6 +311,10 @@ model Event {
 
   eventDate DateTime
   timezone  String   @default("Europe/Moscow")
+  /// Язык гостевой части: приглашение, анкета, страница гостя, экран,
+  /// письма гостям. "ru" | "en". Кабинет организатора — на языке самого
+  /// организатора (cookie vm_lang), а не мероприятия.
+  language  String   @default("ru")
   venueName String?
   venueAddr String?
   venueLat  Float?
