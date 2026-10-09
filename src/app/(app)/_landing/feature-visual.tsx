@@ -25,13 +25,13 @@ const VISUALS_EN: typeof VISUALS_RU = {
 const TEXT = {
   ru: {
     gallery: "Пример галереи свадебных фотографий", heading: "Фотографии свадьбы", badge: "Фото гостей",
-    photos: ["Первый танец молодожёнов вечером во дворе", "Улыбающиеся жених и невеста с букетом у моря", "Пара обнимается на закате среди холмов", "Молодожёны идут по пирсу над морем"],
+    photos: ["Жених и невеста под фатой в поле на закате", "Жених целует невесту в лоб вечером под гирляндами", "Поцелуй молодожёнов на лужайке в лучах закатного солнца", "Пара с букетом на деревянной пристани у озера"],
     inviteLink: "Открыть приглашение «Признание»", inviteAlt: "Настоящее приглашение Валерии и Давида на экране телефона",
     zoom: "Рассмотреть скриншот: ", enlarge: "Увеличить ↗", dialog: "Скриншот: ", close: "Закрыть скриншот",
   },
   en: {
     gallery: "Sample gallery of wedding photos", heading: "Wedding photos", badge: "Guest photos",
-    photos: ["The newlyweds’ first dance in a courtyard at dusk", "A smiling bride and groom with a bouquet by the sea", "A couple embracing at sunset among the hills", "Newlyweds walking along a pier over the sea"],
+    photos: ["A bride and groom under her veil in a field at sunset", "A groom kissing his bride’s forehead under string lights", "Newlyweds kissing on a lawn in the golden sunset light", "A couple with a bouquet on a wooden dock by a lake"],
     inviteLink: "Open the “Love Confession” invitation", inviteAlt: "Valeria and David’s real invitation on a phone screen",
     zoom: "Enlarge screenshot: ", enlarge: "Enlarge ↗", dialog: "Screenshot: ", close: "Close screenshot",
   },
@@ -47,10 +47,10 @@ export function FeatureVisual({ kind, onOpen, lang = "ru" }: { kind: keyof typeo
           одном формате 4:5: на телефоне и на компьютере кадр режется
           одинаково, и пара в центре снимка остаётся целой. */}
       <div className="feature-photo-grid">
-        <Image src="/media/invite-evergreen/dance.webp" alt={t.photos[0]} width={1122} height={1402} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
-        <Image src="/media/invite-promise/couple.webp" alt={t.photos[1]} width={1000} height={1250} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
-        <Image src="/media/invite-tuscany/couple.webp" alt={t.photos[2]} width={1024} height={1536} unoptimized sizes="(max-width: 560px) 42vw, 240px" style={{ objectPosition: "50% 35%" }} />
-        <Image src="/media/invite-kraski/hero.webp" alt={t.photos[3]} width={1122} height={1402} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
+        <Image src="/media/landing-real/veil.webp" alt={t.photos[0]} width={960} height={1200} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
+        <Image src="/media/landing-real/lights.webp" alt={t.photos[1]} width={960} height={1200} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
+        <Image src="/media/landing-real/sunset.webp" alt={t.photos[2]} width={960} height={1200} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
+        <Image src="/media/landing-real/dock.webp" alt={t.photos[3]} width={960} height={1200} unoptimized sizes="(max-width: 560px) 42vw, 240px" />
       </div>
     </div>;
   }
