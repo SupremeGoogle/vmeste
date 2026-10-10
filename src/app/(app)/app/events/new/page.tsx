@@ -12,7 +12,8 @@
 import { notifyEventCreated } from "@/server/notify/events";
 import { redirect } from "next/navigation";
 import { getOrgContext } from "@/server/context";
-import { createEvent } from "@/server/repositories/events";
+import { DEFAULT_TIMEZONE, createEvent } from "@/server/repositories/events";
+import { localTimeToUtc } from "@/lib/wedding-day";
 import { slugify } from "@/lib/slugify";
 import { getUiLang } from "@/server/i18n";
 import { makeT, parseLang } from "@/lib/i18n";
@@ -47,12 +48,20 @@ export default async function NewEventPage({ searchParams }: Props) {
       redirect("/app/events/new?error=" + encodeURIComponent(t("Не удалось составить адрес — задайте его вручную", "Couldn’t build a link from the names — please set it manually")));
     }
 
+    // Дата и время — по часам площадки, а не сервера: `new Date("…T16:00")`
+    // на сервере в UTC давал 16:00 UTC, то есть 19:00 в Москве. Пояс
+    // уточняется в настройках; по умолчанию — Москва, как у большинства площадок.
+    const timezone = DEFAULT_TIMEZONE;
+    const eventDate = localTimeToUtc(`${dateRaw}T${timeRaw}`, timezone);
+    if (!eventDate) {
+      redirect("/app/events/new?error=" + encodeURIComponent(t("Проверьте дату и время", "Please check the date and time")));
+    }
+
     const event = await createEvent(ctx, {
       title,
       slug,
-      // Дата и время площадки. Часовой пояс уточняется в настройках;
-      // по умолчанию — Москва, как у большинства площадок.
-      eventDate: new Date(`${dateRaw}T${timeRaw}:00`),
+      eventDate,
+      timezone,
       venueName: String(formData.get("venueName") ?? "").trim() || undefined,
       // Язык всего, что видят гости: приглашение, анкета, страница гостя.
       language: parseLang(String(formData.get("language") ?? "")) ?? (await getUiLang()),

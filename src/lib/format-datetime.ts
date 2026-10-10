@@ -27,6 +27,8 @@ function parts(date: Date, timezone: string, lang: Lang = "ru") {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    // Часы 0–23 при любом языке: en-US иначе даёт 12-часовые «01» без PM.
+    hourCycle: "h23",
     weekday: "long",
   });
   const map = new Map(formatter.formatToParts(date).map((part) => [part.type, part.value]));
@@ -46,10 +48,18 @@ export function formatEventDate(date: Date, timezone: string, lang: Lang = "ru")
   return lang === "en" ? `${MONTHS_EN[p.month - 1]} ${p.day}, ${p.year}` : `${p.day} ${MONTHS_GENITIVE[p.month - 1]} ${p.year}`;
 }
 
-/** «суббота, 12 сентября 2026, 16:00» — для строки под заголовком. */
+/**
+ * «суббота, 12 сентября 2026, 16:00» / «Saturday, September 12, 2026, 4:00 PM» —
+ * для строки под заголовком. По-английски время 12-часовое с AM/PM, как
+ * привычно читателю; раньше от него оставались только часы, и 13:00
+ * превращалось в «01:00».
+ */
 export function formatEventDateTime(date: Date, timezone: string, lang: Lang = "ru"): string {
   const p = parts(date, timezone, lang);
-  return `${p.weekday}, ${formatEventDate(date, timezone, lang)}, ${p.hour}:${p.minute}`;
+  const time = lang === "en"
+    ? new Intl.DateTimeFormat("en-US", { timeZone: timezone, hour: "numeric", minute: "2-digit" }).format(date)
+    : `${p.hour}:${p.minute}`;
+  return `${p.weekday}, ${formatEventDate(date, timezone, lang)}, ${time}`;
 }
 
 /** «до 1 сентября» / «by September 1» — срок ответа. */

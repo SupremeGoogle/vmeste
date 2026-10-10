@@ -24,6 +24,7 @@ import { testDb, resetDb } from "./helpers/db";
 import { GUEST_PHOTO, INVITE_ASSET, convertImage } from "@/server/images/convert";
 import { completeUpload, startUpload } from "@/server/services/photos";
 import { completeAssetUpload, startAssetUpload } from "@/server/services/assets";
+import { deleteEvent } from "@/server/repositories/events";
 import {
   assetKey, deletePrefix, getObject, headObject, photoKeys, readObject,
 } from "@/server/storage/s3";
@@ -226,6 +227,12 @@ async function uploadPhoto(world: World, body: Buffer, contentType: string) {
 let a: World;
 let b: World;
 
+/** Ключ, под которым фото лежит после проверки, — из базы. */
+async function storedKey(world: World) {
+  const photo = await testDb.photo.findFirstOrThrow({ where: { eventId: world.ref.eventId }, select: { storageKey: true } });
+  return photo.storageKey;
+}
+
 beforeAll(async () => {
   const health = await fetch("http://localhost:9000/minio/health/live").catch(() => null);
   if (!health?.ok) throw new Error("Хранилище не отвечает на :9000 — поднимите MinIO");
@@ -251,16 +258,37 @@ describe("загрузка целиком: сквозь хранилище и б
     const key = await uploadPhoto(a, fixture("photo.heic"), "application/octet-stream");
     const result = await completeUpload(a.ref, { storageKey: key });
     expect(result.ok).toBe(true);
-    expect((await headObject(key)).contentType).toBe("image/webp");
+    expect((await headObject(await storedKey(a))).contentType).toBe("image/webp");
   });
 
   it("исходник заменяется, а не лежит рядом: в хранилище только WebP и превью", async () => {
     const key = await uploadPhoto(a, await phoneShot(3000, 2000), "image/jpeg");
     const result = await completeUpload(a.ref, { storageKey: key });
     if (!result.ok) throw new Error(result.message);
-    const stored = await sharp(await readObject(key)).metadata();
+    const stored = await sharp(await readObject(await storedKey(a))).metadata();
     expect(stored.format).toBe("webp");
+    await expect(headObject(key)).rejects.toThrow();
     expect(await testDb.photo.count({ where: { eventId: a.ref.eventId } })).toBe(1);
+  });
+
+  it("повторный PUT по той же ссылке не подменяет уже принятое фото", async () => {
+    // Подписанная ссылка живёт 15 минут. Раньше готовое фото лежало по ключу
+    // загрузки, и второй PUT заменял его в обход перекодирования и фильтра.
+    const body = await solid(300, 200).jpeg().toBuffer();
+    const started = await startUpload(a.ref, { contentType: "image/jpeg", bytes: body.byteLength });
+    if (!started.ok) throw new Error(started.message);
+    expect((await put(started.ticket.uploadUrl, body, "image/jpeg")).ok).toBe(true);
+    const result = await completeUpload(a.ref, { storageKey: started.ticket.storageKey });
+    if (!result.ok) throw new Error(result.message);
+    const key = await storedKey(a);
+    expect(key).not.toBe(started.ticket.storageKey);
+    const before = await readObject(key);
+
+    const swap = await solid(300, 200, "#f00").jpeg().toBuffer();
+    expect((await put(started.ticket.uploadUrl, swap, "image/jpeg")).ok).toBe(true);
+    expect(Buffer.compare(await readObject(key), before)).toBe(0);
+    expect(await completeUpload(a.ref, { storageKey: started.ticket.storageKey })).toMatchObject({ reason: "duplicate" });
+    await expect(headObject(started.ticket.storageKey)).rejects.toThrow();
   });
 
   it("хранилище не примет файл с другим типом, чем подписан", async () => {
@@ -375,5 +403,28 @@ describe("картинки организатора", () => {
     const key = await uploadAsset(randomBytes(3000), "image/png");
     expect((await completeAssetUpload(a.ctx, key, "")).ok).toBe(false);
     expect(await getObject(key)).toBeNull();
+  });
+});
+
+describe("удаление свадьбы", () => {
+  it("уносит из хранилища фото, превью и брошенные загрузки, а не только строки", async () => {
+    const key = await uploadPhoto(a, await solid(300, 200).jpeg().toBuffer(), "image/jpeg");
+    const done = await completeUpload(a.ref, { storageKey: key });
+    if (!done.ok) throw new Error(done.message);
+    await uploadPhoto(a, await solid(300, 200).jpeg().toBuffer(), "image/jpeg"); // загрузка без подтверждения
+    const stored = await storedKey(a);
+
+    const ok = await deleteEvent({ kind: "org", userId: "u", orgId: a.ref.orgId, role: "OWNER" }, a.ref.eventId);
+    expect(ok).toBe(true);
+    expect(await testDb.event.count({ where: { id: a.ref.eventId } })).toBe(0);
+    await expect(headObject(stored)).rejects.toThrow();
+    expect(await deletePrefix(`events/${a.ref.eventId}/`)).toBe(0);
+  });
+
+  it("чужая организация не удаляет ни строки, ни файлы", async () => {
+    const key = await uploadPhoto(a, await solid(300, 200).jpeg().toBuffer(), "image/jpeg");
+    expect(await deleteEvent({ kind: "org", userId: "u", orgId: b.ref.orgId, role: "OWNER" }, a.ref.eventId)).toBe(false);
+    expect((await headObject(key)).bytes).toBeGreaterThan(0);
+    expect(await testDb.event.count({ where: { id: a.ref.eventId } })).toBe(1);
   });
 });

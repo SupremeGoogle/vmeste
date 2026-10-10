@@ -384,7 +384,10 @@ model Event {
   daySteps      DayStep[]
 
   @@unique([orgId, id])
-  @@unique([orgId, slug])
+  // Адрес /i/{slug} публичный и общий на весь сайт: уникальность внутри
+  // организации пускала две свадьбы с одним адресом, и ответы гостей
+  // могли уйти не той паре.
+  @@unique([slug])
   @@unique([shortCode])
   @@index([orgId, status])
   @@map("events")

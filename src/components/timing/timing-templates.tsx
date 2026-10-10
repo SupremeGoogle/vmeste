@@ -38,7 +38,7 @@ export async function TimingTemplates({ apply, hasSteps, eventLang = "ru" }: { a
           </article>
         ))}
       </div>
-      {hasSteps ? <p className="timing-template-hint">{t("Новые этапы дополнят ваш план. Уже добавленные этапы этого сценария не повторятся.", "New steps will be added to your plan. Steps from this schedule that you already have won't be duplicated.")}</p> : <p className="timing-template-hint">{t("Все этапы будут добавлены на дату вашей свадьбы, по времени площадки.", "All steps will be added on your wedding date, in the venue's time zone.")}</p>}
+      {hasSteps ? <p className="timing-template-hint">{t("Новые этапы дополнят ваш план. Пропускаются только этапы, которые совпадают по названию и времени; если вы переименовали этап или сдвинули его время, он добавится ещё раз.", "New steps will be added to your plan. Only steps with the same name and time are skipped; if you renamed a step or moved its time, it will be added again.")}</p> : <p className="timing-template-hint">{t("Все этапы будут добавлены на дату вашей свадьбы, по времени площадки.", "All steps will be added on your wedding date, in the venue's time zone.")}</p>}
     </details>
   );
 }

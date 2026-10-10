@@ -69,9 +69,8 @@ export async function identifyByToken(token: string): Promise<GuestIdentity | nu
  * у него нет, зато есть cookie, выданная после «это я» (PLAN.md §1.3).
  */
 export async function identifyBySlugSession(slug: string): Promise<GuestIdentity | null> {
-  const event = await db.event.findFirst({
+  const event = await db.event.findUnique({
     where: { slug, status: { not: "ARCHIVED" } },
-    orderBy: { eventDate: "asc" },
     select: {
       id: true, orgId: true, title: true, guestLinkSecret: true,
       photosEnabled: true, wishesEnabled: true, language: true,

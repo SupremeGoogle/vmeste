@@ -34,7 +34,7 @@ export async function POST(
   // превращается в способ раздавать себе чужие сессии перебором.
   const address = clientAddress(request);
   if (!rateLimit(`claim:${address}:${event.id}`, 60, 60_000).ok) {
-    return new Response("Слишком часто", { status: 429 });
+    return new Response("Слишком часто · Too many requests", { status: 429 });
   }
 
   const form = await request.formData();

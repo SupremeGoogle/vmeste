@@ -10,10 +10,16 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { EASE_OUT, SPRING } from "@/components/motion/motion";
+import { useT } from "@/components/i18n-provider";
+import type { T } from "@/lib/i18n";
 
 type Item = { key: string; name: string; preview: string | null; state: string; error: boolean; done: boolean };
 
-const STATUS: Record<string, string> = { PENDING: "на проверке", APPROVED: "опубликовано", REJECTED: "не подошло" };
+const photoStatus = (t: T): Record<string, string> => ({
+  PENDING: t("на проверке", "in review"),
+  APPROVED: t("опубликовано", "published"),
+  REJECTED: t("не подошло", "not approved"),
+});
 const MAX_SIDE = 2560;
 
 async function shrink(file: File): Promise<{ blob: Blob; type: string; preview: string | null }> {
@@ -45,14 +51,16 @@ async function shrink(file: File): Promise<{ blob: Blob; type: string; preview: 
   });
 }
 
-async function post(url: string, payload: object) {
+async function post(url: string, payload: object, fallback: string) {
   const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || "не получилось");
+  if (!res.ok) throw new Error(body.error || fallback);
   return body;
 }
 
 export function PhotoUploader({ eventId, left: initialLeft, limit, mine }: { eventId: string; left: number; limit: number; mine: { id: string; status: string }[] }) {
+  const t = useT();
+  const failed = t("не получилось", "didn’t work");
   const [left, setLeft] = useState(initialLeft);
   const [items, setItems] = useState<Item[]>([]);
   const [busy, setBusy] = useState(false);
@@ -62,19 +70,19 @@ export function PhotoUploader({ eventId, left: initialLeft, limit, mine }: { eve
 
   async function upload(file: File, key: string) {
     try {
-      patch(key, { state: "готовим" });
+      patch(key, { state: t("готовим", "preparing") });
       const prepared = await shrink(file);
       if (prepared.preview) patch(key, { preview: prepared.preview });
-      const ticket = await post("/api/guest/photos/presign", { eventId, contentType: prepared.type, bytes: prepared.blob.size });
-      patch(key, { state: "отправляем" });
+      const ticket = await post("/api/guest/photos/presign", { eventId, contentType: prepared.type, bytes: prepared.blob.size }, failed);
+      patch(key, { state: t("отправляем", "uploading") });
       const put = await fetch(ticket.uploadUrl, { method: "PUT", headers: { "content-type": prepared.type }, body: prepared.blob });
-      if (!put.ok) throw new Error("файл не долетел — попробуйте ещё раз");
-      patch(key, { state: "обрабатываем" });
-      const done = await post("/api/guest/photos/complete", { eventId, storageKey: ticket.storageKey });
+      if (!put.ok) throw new Error(t("файл не долетел — попробуйте ещё раз", "the upload didn’t finish — please try again"));
+      patch(key, { state: t("обрабатываем", "processing") });
+      const done = await post("/api/guest/photos/complete", { eventId, storageKey: ticket.storageKey }, failed);
       setLeft(done.left);
-      patch(key, { state: "отправлено", done: true, preview: prepared.preview ?? `/api/media/${eventId}/${done.photoId}` });
+      patch(key, { state: t("отправлено", "sent"), done: true, preview: prepared.preview ?? `/api/media/${eventId}/${done.photoId}` });
     } catch (error) {
-      patch(key, { state: (error as Error).message || "не получилось", error: true });
+      patch(key, { state: (error as Error).message || failed, error: true });
     }
   }
 
@@ -83,12 +91,12 @@ export function PhotoUploader({ eventId, left: initialLeft, limit, mine }: { eve
     if (input.current) input.current.value = "";
     if (list.length === 0) return;
     const accepted = list.slice(0, Math.max(0, left));
-    const queued = accepted.map((file, i) => ({ key: `${Date.now()}-${i}`, name: file.name, preview: null, state: "в очереди", error: false, done: false }));
+    const queued = accepted.map((file, i) => ({ key: `${Date.now()}-${i}`, name: file.name, preview: null, state: t("в очереди", "queued"), error: false, done: false }));
     // Молча обрезать нельзя: гость решит, что ушло всё.
     const rejected = list.length - accepted.length;
     setItems((prev) => [
       ...queued,
-      ...(rejected > 0 ? [{ key: `skip-${Date.now()}`, name: `Ещё ${rejected} фото не приняты`, preview: null, state: `больше ${limit} не принимаем`, error: true, done: false }] : []),
+      ...(rejected > 0 ? [{ key: `skip-${Date.now()}`, name: t(`Ещё ${rejected} фото не приняты`, `${rejected} more photos weren’t accepted`), preview: null, state: t(`больше ${limit} не принимаем`, `the limit is ${limit}`), error: true, done: false }] : []),
       ...prev,
     ]);
     setBusy(true);
@@ -110,13 +118,13 @@ export function PhotoUploader({ eventId, left: initialLeft, limit, mine }: { eve
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gold/10 text-gold">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.4-2h5.6l1.4 2h1.3A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z" /><circle cx="12" cy="12.5" r="3.5" /></svg>
         </span>
-        <span className="text-[17px] font-medium">{left > 0 ? (busy ? "Отправляем…" : "Выбрать фотографии") : "Вы прислали все фото"}</span>
-        <span className="flex items-center gap-1" aria-label={`Отправлено ${used} из ${limit}`}>
+        <span className="text-[17px] font-medium">{left > 0 ? (busy ? t("Отправляем…", "Uploading…") : t("Выбрать фотографии", "Choose photos")) : t("Вы прислали все фото", "You’ve sent all your photos")}</span>
+        <span className="flex items-center gap-1" aria-label={t(`Отправлено ${used} из ${limit}`, `${used} of ${limit} sent`)}>
           {Array.from({ length: limit }, (_, i) => (
             <motion.span key={i} className="block h-1.5 w-6 rounded-full" animate={{ backgroundColor: i < used ? "#8b6f47" : "#e6ddd1" }} transition={{ duration: 0.3 }} />
           ))}
         </span>
-        <span className="text-sm text-muted">{left > 0 ? `Осталось ${left} из ${limit}` : `Все ${limit} отправлены — спасибо!`}</span>
+        <span className="text-sm text-muted">{left > 0 ? t(`Осталось ${left} из ${limit}`, `${left} of ${limit} left`) : t(`Все ${limit} отправлены — спасибо!`, `All ${limit} sent — thank you!`)}</span>
       </motion.label>
 
       <AnimatePresence initial={false}>
@@ -152,13 +160,13 @@ export function PhotoUploader({ eventId, left: initialLeft, limit, mine }: { eve
 
       {mine.length > 0 ? (
         <div className="mt-6">
-          <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">Ваши фотографии</h4>
+          <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">{t("Ваши фотографии", "Your photos")}</h4>
           <ul className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
             {mine.map((photo) => (
               <li key={photo.id} className="relative overflow-hidden rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element -- снимки отдаёт своё API */}
                 <img src={`/api/media/${eventId}/${photo.id}`} alt="" loading="lazy" className="aspect-square w-full object-cover" />
-                <span className="absolute inset-x-1 bottom-1 rounded-md bg-ink/60 px-1.5 py-0.5 text-center text-[11px] text-card backdrop-blur-sm">{STATUS[photo.status] ?? photo.status}</span>
+                <span className="absolute inset-x-1 bottom-1 rounded-md bg-ink/60 px-1.5 py-0.5 text-center text-[11px] text-card backdrop-blur-sm">{photoStatus(t)[photo.status] ?? photo.status}</span>
               </li>
             ))}
           </ul>

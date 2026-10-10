@@ -46,14 +46,14 @@ export async function POST(
   ].find((r) => !r.ok) ?? { ok: true as const, retryAfterSec: 0 };
   if (!limited.ok) {
     return NextResponse.json(
-      { status: "rate_limited", message: "Слишком много попыток. Подождите минуту." },
+      { status: "rate_limited", message: "Слишком много попыток. Подождите минуту. · Too many attempts. Please wait a minute." },
       { status: 429, headers: { "retry-after": String(limited.retryAfterSec) } },
     );
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ status: "bad_request", message: "Пустой запрос" }, { status: 400 });
+    return NextResponse.json({ status: "bad_request", message: "Пустой запрос · Empty request" }, { status: 400 });
   }
 
   const event = await findEventByShortCode(shortCode);

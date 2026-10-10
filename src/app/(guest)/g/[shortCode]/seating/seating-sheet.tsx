@@ -4,12 +4,14 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import type { SeatingList } from "@/server/services/guest-hub";
 import { EASE_OUT } from "@/components/motion/motion";
+import { useT } from "@/components/i18n-provider";
 
 /** Цвета шаблона «Гортензия» — те же, что в `PRINT_TEMPLATES`. */
 const ACCENT = "#8092b0";
 const INK = "#303c53";
 
 export function SeatingSheet({ title, dateLabel, tables, meId }: { title: string; dateLabel: string; tables: SeatingList[]; meId: string }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const mine = tables.find((table) => table.guests.some((guest) => guest.id === meId));
 
@@ -69,7 +71,7 @@ export function SeatingSheet({ title, dateLabel, tables, meId }: { title: string
       />
 
       <header className="relative text-center">
-        <p className="font-serif text-[13px] tracking-[0.3em] uppercase opacity-70">План рассадки гостей</p>
+        <p className="font-serif text-[13px] tracking-[0.3em] uppercase opacity-70">{t("План рассадки гостей", "Seating plan")}</p>
         <h1 className="mt-2 font-script text-[46px] leading-[1.05] sm:text-6xl" style={{ color: ACCENT }}>
           {title}
         </h1>
@@ -78,17 +80,17 @@ export function SeatingSheet({ title, dateLabel, tables, meId }: { title: string
 
       {mine ? (
         <p className="relative mx-auto mt-6 w-fit rounded-full px-4 py-2 text-center font-serif text-lg" style={{ background: `${ACCENT}1f` }}>
-          Ваш стол — <b className="font-semibold">{mine.label}</b>
+          {t("Ваш стол — ", "Your table: ")}<b className="font-semibold">{mine.label}</b>
         </p>
       ) : null}
 
       <label className="relative mx-auto mt-6 block max-w-sm">
-        <span className="sr-only">Найти гостя или стол</span>
+        <span className="sr-only">{t("Найти гостя или стол", "Find a guest or table")}</span>
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Найти гостя или стол"
+          placeholder={t("Найти гостя или стол", "Find a guest or table")}
           className="h-12 w-full rounded-full border bg-white/80 px-5 text-center font-serif text-lg outline-none backdrop-blur focus:shadow-[0_0_0_4px_rgba(128,146,176,0.2)]"
           style={{ borderColor: `${ACCENT}66` }}
         />
@@ -96,7 +98,7 @@ export function SeatingSheet({ title, dateLabel, tables, meId }: { title: string
 
       {shown.length === 0 ? (
         <p className="relative mt-10 text-center font-serif text-lg opacity-70">
-          {tables.length === 0 ? "Рассадка ещё готовится." : "Никого не нашли."}
+          {tables.length === 0 ? t("Рассадка ещё готовится.", "The seating plan isn’t ready yet.") : t("Никого не нашли.", "No one found.")}
         </p>
       ) : (
         <ul className="relative mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2">
@@ -122,7 +124,7 @@ export function SeatingSheet({ title, dateLabel, tables, meId }: { title: string
                     <li key={guest.id} className={guest.id === meId ? "font-semibold" : ""}>
                       {guest.id === meId ? (
                         <span className="rounded-md px-1.5" style={{ background: `${ACCENT}2e` }}>
-                          {guest.name} · вы
+                          {guest.name} · {t("вы", "you")}
                         </span>
                       ) : (
                         guest.name

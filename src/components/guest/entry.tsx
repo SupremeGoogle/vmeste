@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import type { GuestHub } from "@/server/services/guest-hub";
 import { EASE_OUT, SPRING } from "@/components/motion/motion";
 import { BrandLogo } from "@/components/brand";
+import { useT } from "@/components/i18n-provider";
+import type { T } from "@/lib/i18n";
 
 export type EventInfo = { title: string; dateLabel: string; venue: string | null };
 const rise = {
@@ -15,6 +17,7 @@ const rise = {
 } as const;
 
 export function GuestHeader({ event }: { event: EventInfo }) {
+  const t = useT();
   const displayTitle = event.title.replace(/\s*[—–-]\s*свадьба\s*$/i, "");
   return (
       <motion.header
@@ -26,7 +29,7 @@ export function GuestHeader({ event }: { event: EventInfo }) {
         <div className="absolute top-5 left-1/2 -translate-x-1/2"><BrandLogo size={32} adaptive={false} /></div>
         <span className="guest-wedding-wreath" aria-hidden="true" />
         <motion.p variants={rise} className="guest-wedding-eyebrow">
-          Добро пожаловать на свадьбу
+          {t("Добро пожаловать на свадьбу", "Welcome to the wedding")}
         </motion.p>
         <motion.h1 variants={rise} className="guest-wedding-title font-script">
           {displayTitle}
@@ -50,13 +53,13 @@ export type LookupState =
   | { status: "ok"; matches: Match[] }
   | { status: "not_found" | "too_many" | "too_short" | "rate_limited" | "error" };
 
-const LOOKUP_HINT: Record<string, string> = {
-  not_found: "Не нашли. Попробуйте только фамилию — или подойдите к координатору.",
-  too_many: "Слишком много совпадений — добавьте фамилию.",
-  too_short: "Введите хотя бы две буквы.",
-  rate_limited: "Слишком много попыток. Подождите минуту.",
-  error: "Нет связи. Попробуйте ещё раз.",
-};
+const lookupHint = (t: T): Record<string, string> => ({
+  not_found: t("Не нашли. Попробуйте только фамилию — или подойдите к координатору.", "No match. Try just the last name — or ask the coordinator."),
+  too_many: t("Слишком много совпадений — добавьте фамилию.", "Too many matches — add the last name."),
+  too_short: t("Введите хотя бы две буквы.", "Type at least two letters."),
+  rate_limited: t("Слишком много попыток. Подождите минуту.", "Too many attempts. Please wait a minute."),
+  error: t("Нет связи. Попробуйте ещё раз.", "No connection. Please try again."),
+});
 
 export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoose, planHref = `/e/${code}/plan`, autoFocus = true, openEntry = false }: {
   code: string;
@@ -67,6 +70,8 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
   planHref?: string;
   autoFocus?: boolean;
 }) {
+  const t = useT();
+  const hints = lookupHint(t);
   const [query, setQuery] = useState("");
   const [state, setState] = useState<LookupState>({ status: "idle" });
   const [active, setActive] = useState(0);
@@ -151,9 +156,9 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
         router.refresh();
         return;
       }
-      setEnterError(body.message ?? "Не получилось войти. Попробуйте ещё раз.");
+      setEnterError(body.message ?? t("Не получилось войти. Попробуйте ещё раз.", "Couldn’t sign you in. Please try again."));
     } catch {
-      setEnterError("Нет связи. Попробуйте ещё раз.");
+      setEnterError(t("Нет связи. Попробуйте ещё раз.", "No connection. Please try again."));
     }
     setEntering(false);
   }
@@ -174,12 +179,12 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
 
   return (
     <section className="guest-card guest-finder-card mt-3 p-5 sm:p-7">
-      <h2 className="font-serif text-[28px] leading-tight sm:text-3xl">Найдите своё место</h2>
-      <p className="mt-1.5 text-[15px] leading-relaxed text-muted">Начните вводить имя или фамилию и выберите себя в списке.</p>
+      <h2 className="font-serif text-[28px] leading-tight sm:text-3xl">{t("Найдите своё место", "Find your seat")}</h2>
+      <p className="mt-1.5 text-[15px] leading-relaxed text-muted">{t("Начните вводить имя или фамилию и выберите себя в списке.", "Start typing your first or last name and pick yourself from the list.")}</p>
 
       {/* Без JavaScript это обычная форма: ищет на сервере и показывает стол. */}
       <form method="get" action={`/e/${code}/me`} className="relative mt-5" onSubmit={(e) => { if (open) { e.preventDefault(); choose(matches[active]); } }}>
-        <label htmlFor="guest-q" className="sr-only">Имя или фамилия</label>
+        <label htmlFor="guest-q" className="sr-only">{t("Имя или фамилия", "First or last name")}</label>
         <div className="relative">
           <svg className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden><circle cx="9" cy="9" r="6" /><path d="M13.5 13.5 18 18" strokeLinecap="round" /></svg>
           <input
@@ -197,7 +202,7 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
             required
             minLength={2}
             maxLength={80}
-            placeholder="Например, Петрова"
+            placeholder={t("Например, Петрова", "For example, Smith")}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -227,7 +232,7 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
             <motion.ul
               id={listId}
               role="listbox"
-              aria-label="Найденные гости"
+              aria-label={t("Найденные гости", "Matching guests")}
               initial={{ opacity: 0, y: -6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.15 } }}
@@ -257,9 +262,9 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
         </AnimatePresence>
 
         <AnimatePresence>
-          {shown.status in LOOKUP_HINT && !picked ? (
+          {shown.status in hints && !picked ? (
             <motion.p key={shown.status} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-3 text-sm text-muted" role="status">
-              {shown.status === "not_found" && openEntry ? "В списке гостей такого имени нет." : LOOKUP_HINT[shown.status]}
+              {shown.status === "not_found" && openEntry ? t("В списке гостей такого имени нет.", "There’s no one with that name on the guest list.") : hints[shown.status]}
             </motion.p>
           ) : null}
         </AnimatePresence>
@@ -273,7 +278,7 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
                 onClick={() => void enterAsNew()}
                 className="guest-button min-h-12 w-full rounded-2xl px-4 text-[16px] font-medium disabled:opacity-60"
               >
-                {entering ? "Входим…" : `Меня нет в списке — войти как «${query.trim()}»`}
+                {entering ? t("Входим…", "Signing in…") : t(`Меня нет в списке — войти как «${query.trim()}»`, `I’m not on the list — continue as “${query.trim()}”`)}
               </button>
               {enterError ? <p className="mt-2 text-sm text-muted" role="alert">{enterError}</p> : null}
             </motion.div>
@@ -281,7 +286,7 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
         </AnimatePresence>
 
         <noscript>
-          <button type="submit" className="guest-button mt-4 h-12 w-full rounded-2xl text-[16px] font-medium">Найти</button>
+          <button type="submit" className="guest-button mt-4 h-12 w-full rounded-2xl text-[16px] font-medium">{t("Найти", "Find")}</button>
         </noscript>
       </form>
 
@@ -291,20 +296,21 @@ export function GuestFinder({ code, lookupUrl = `/api/e/${code}/lookup`, onChoos
       </form>
 
       <p className="mt-6 text-center text-sm">
-        <a href={planHref} className="text-muted underline decoration-line underline-offset-4 hover:text-ink">Общий план зала</a>
+        <a href={planHref} className="text-muted underline decoration-line underline-offset-4 hover:text-ink">{t("Общий план зала", "Full floor plan")}</a>
       </p>
     </section>
   );
 }
 
 export function GuestSeatCard({ code, seat, planHref }: { code: string; seat: GuestHub["seat"]; planHref?: string }) {
+  const t = useT();
   if (!seat) {
     return (
       <section id="seat" className="guest-card guest-seat-card mt-6 scroll-mt-6 p-6 text-center">
         <span className="guest-seat-garland" aria-hidden="true" />
-        <p className="text-sm tracking-[0.2em] text-muted uppercase">Ваше место</p>
-        <p className="mt-3 font-serif text-2xl">Пока не назначено</p>
-        <p className="mt-2 text-[15px] text-muted">Подойдите к координатору — он подскажет, куда сесть.</p>
+        <p className="text-sm tracking-[0.2em] text-muted uppercase">{t("Ваше место", "Your seat")}</p>
+        <p className="mt-3 font-serif text-2xl">{t("Пока не назначено", "Not assigned yet")}</p>
+        <p className="mt-2 text-[15px] text-muted">{t("Подойдите к координатору — он подскажет, куда сесть.", "Ask the coordinator — they’ll show you where to sit.")}</p>
       </section>
     );
   }
@@ -312,7 +318,7 @@ export function GuestSeatCard({ code, seat, planHref }: { code: string; seat: Gu
     <section id="seat" className="guest-card guest-seat-card relative mt-6 scroll-mt-6 overflow-hidden p-6 text-center sm:p-8">
       <span className="guest-seat-garland" aria-hidden="true" />
       <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-gold-soft/25 blur-3xl" aria-hidden />
-      <p className="relative text-[12px] tracking-[0.28em] text-muted uppercase">Ваше место</p>
+      <p className="relative text-[12px] tracking-[0.28em] text-muted uppercase">{t("Ваше место", "Your seat")}</p>
       <motion.p
         className="relative mt-3 font-script text-[56px] leading-none text-gold sm:text-7xl"
         initial={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -321,11 +327,11 @@ export function GuestSeatCard({ code, seat, planHref }: { code: string; seat: Gu
       >
         {seat.tableLabel}
       </motion.p>
-      <p className="relative mt-3 text-[15px] text-muted">Место {seat.seatNumber}</p>
+      <p className="relative mt-3 text-[15px] text-muted">{t(`Место ${seat.seatNumber}`, `Seat ${seat.seatNumber}`)}</p>
 
       {seat.tablemates.length > 0 ? (
         <div className="relative mt-5">
-          <p className="text-[12px] tracking-[0.2em] text-muted uppercase">За столом с вами</p>
+          <p className="text-[12px] tracking-[0.2em] text-muted uppercase">{t("За столом с вами", "At your table")}</p>
           <motion.ul
             className="mt-3 flex flex-wrap justify-center gap-1.5"
             initial="hidden"
@@ -346,7 +352,7 @@ export function GuestSeatCard({ code, seat, planHref }: { code: string; seat: Gu
       ) : null}
 
       <a href={planHref ?? `/e/${code}/plan?t=${seat.tableId}`} className="relative mt-6 inline-flex min-h-11 items-center gap-1.5 text-[15px] text-gold underline decoration-gold/30 underline-offset-4 hover:decoration-gold">
-        Показать на плане зала →
+        {t("Показать на плане зала →", "Show on the floor plan →")}
       </a>
     </section>
   );

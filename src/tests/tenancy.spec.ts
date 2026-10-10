@@ -14,7 +14,7 @@ import { testDb, resetDb } from "./helpers/db";
 import { db } from "@/server/db";
 import { normalizeName } from "@/lib/name-normalize";
 import { listGuests, createGuest, getGuest, archiveGuest } from "@/server/repositories/guests";
-import { listEvents, findEventByShortCode, getEvent } from "@/server/repositories/events";
+import { listEvents, findEventByShortCode, getEvent, createEvent } from "@/server/repositories/events";
 import {
   addBlock, deleteBlock, listBlocks, moveBlock, setBlockVisible, updateBlockContent,
 } from "@/server/repositories/invites";
@@ -353,5 +353,18 @@ describe("карточка гостя", () => {
     const after = await testDb.guest.findUniqueOrThrow({ where: { id: a.guestId } });
     expect(await findGuestByLinkToken(after.linkToken)).not.toBeNull();
     expect(after.linkOpenedAt).toBeNull();
+  });
+});
+
+describe("публичный адрес приглашения", () => {
+  it("один адрес /i/{slug} на весь сайт: чужая организация его не займёт", async () => {
+    // Раньше адрес был уникален только внутри организации, и публичная
+    // ссылка с ответами гостей могла открыть чужую свадьбу.
+    expect(await createEvent(b.orgCtx, { title: "Копия", slug: "org-a", eventDate: new Date("2026-10-01") })).toBeNull();
+    await expect(
+      testDb.event.create({ data: { orgId: b.orgId, title: "Копия", slug: "org-a", shortCode: "CCCCCC", eventDate: new Date("2026-10-01") } }),
+    ).rejects.toThrow();
+    const created = await createEvent(b.orgCtx, { title: "Своя", slug: "org-b-2", eventDate: new Date("2026-10-01") });
+    expect(created?.orgId).toBe(b.orgId);
   });
 });

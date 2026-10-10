@@ -5,6 +5,9 @@ import { makeT, type Lang } from "@/lib/i18n";
 
 /**
  * Append a complete scenario atomically; keep custom, completed and edited stages.
+ * Повтором считается только этап с тем же названием и временем: происхождение
+ * этапа из шаблона не хранится, поэтому отредактированный этап добавится снова
+ * (подсказка в components/timing/timing-templates.tsx говорит об этом прямо).
  * `lang` — язык сообщений (кабинета); сами этапы — на языке мероприятия.
  */
 export async function applyTimingTemplate(ctx: EventContext, templateId: string, lang: Lang = "ru") {

@@ -18,6 +18,7 @@ import { readGuestSession, setGuestSession } from "@/server/guest-access/session
 import { rateLimit } from "@/server/rate-limit";
 import { clientAddress } from "@/server/rate-limit/client-key";
 import { SELF_REGISTRATION_CAP, samePerson, selfRegistrationNameProblem } from "@/server/services/self-registration";
+import { makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -26,28 +27,30 @@ const fail = (message: string, status = 400) => NextResponse.json({ ok: false, m
 export async function POST(request: Request, { params }: { params: Promise<{ shortCode: string }> }) {
   const { shortCode } = await params;
   const event = await findEventByShortCode(shortCode);
-  if (!event) return fail("Свадьба не найдена", 404);
-  if (!event.qrEntryOpen) return fail("Вход только по списку гостей — подойдите к координатору.", 403);
+  if (!event) return fail("Свадьба не найдена · Wedding not found", 404);
+  const lang = parseLang(event.language) ?? "ru";
+  const t = makeT(lang);
+  if (!event.qrEntryOpen) return fail(t("Вход только по списку гостей — подойдите к координатору.", "Entry is by the guest list only — please ask the coordinator."), 403);
 
   const address = clientAddress(request);
   if (
     !rateLimit(`qr-enter:${event.id}:${address}`, 20, 10 * 60_000).ok ||
     !rateLimit(`qr-enter:${event.id}:all`, 400, 60 * 60_000).ok
   ) {
-    return fail("Слишком много попыток. Подождите минуту.", 429);
+    return fail(t("Слишком много попыток. Подождите минуту.", "Too many attempts. Please wait a minute."), 429);
   }
 
   const body = (await request.json().catch(() => null)) as { name?: unknown } | null;
   const name = typeof body?.name === "string" ? body.name.trim().replace(/\s+/g, " ").slice(0, 80) : "";
-  const problem = selfRegistrationNameProblem(name);
+  const problem = selfRegistrationNameProblem(name, lang);
   if (problem) return fail(problem);
-  if (name.length < 2) return fail("Напишите имя полностью.");
+  if (name.length < 2) return fail(t("Напишите имя полностью.", "Please write your full name."));
 
   const full = await db.event.findUnique({
     where: { id: event.id },
     select: { guestLinkSecret: true, eventDate: true, allowPlusOne: true },
   });
-  if (!full) return fail("Свадьба не найдена", 404);
+  if (!full) return fail(t("Свадьба не найдена", "Wedding not found"), 404);
 
   const session = await readGuestSession(event.id, full.guestLinkSecret);
   const sessionGuest = session
@@ -56,7 +59,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sho
   const known = sessionGuest && samePerson(sessionGuest.displayName, name) ? sessionGuest : null;
 
   if (!known && (await db.guest.count({ where: { eventId: event.id, selfRegistered: true } })) >= SELF_REGISTRATION_CAP) {
-    return fail("Не получилось войти — подойдите к координатору.", 429);
+    return fail(t("Не получилось войти — подойдите к координатору.", "Couldn’t sign you in — please ask the coordinator."), 429);
   }
 
   // Пришёл на свадьбу — значит, «придёт»: в ответах он не должен висеть

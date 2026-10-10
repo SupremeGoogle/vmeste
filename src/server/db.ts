@@ -10,6 +10,7 @@
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { testDatabaseUrl } from "@/server/test-database-url";
 
 /** Модели, где строка всегда принадлежит одному мероприятию. */
 const EVENT_SCOPED = new Set([
@@ -97,11 +98,14 @@ function report(message: string) {
 function createClient() {
   // Prisma 7 подключается через driver adapter: пул pg живёт в приложении,
   // а не внутри Rust-движка. Это же даёт LISTEN/NOTIFY на этапе 6.
-  // В тестах — отдельная база, чтобы прогон не стирал наполнение для ручной проверки.
-  const connectionString =
-    process.env.NODE_ENV === "test"
-      ? (process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL)
-      : process.env.DATABASE_URL;
+  // В тестах — только отдельная база (server/test-database-url.ts): прогон
+  // стирает данные и не должен дотянуться до рабочей. Чистые модульные тесты
+  // .env не загружают — без адресов клиент никуда не подключится, и
+  // останавливать их незачем.
+  const anyDatabase = Boolean(process.env.TEST_DATABASE_URL || process.env.DATABASE_URL);
+  const connectionString = process.env.NODE_ENV === "test"
+    ? (anyDatabase ? testDatabaseUrl() : undefined)
+    : process.env.DATABASE_URL;
 
   // Пул и ожидание транзакции — по нагрузочному тесту 6 октября 2026: при
   // 10 подключениях и 2 с ожидания (по умолчанию) ответы на анкету под общей

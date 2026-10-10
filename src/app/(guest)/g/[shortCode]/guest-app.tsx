@@ -17,6 +17,8 @@ import { forgetMe, sendWish, type WishState } from "./actions";
 import { PhotoUploader } from "./photo-uploader";
 import { PhotoWall } from "@/components/guest/photo-wall";
 import { GuestHeader, GuestFinder as Finder, GuestSeatCard as SeatCard } from "@/components/guest/entry";
+import { useT } from "@/components/i18n-provider";
+import type { T } from "@/lib/i18n";
 
 type EventInfo = { title: string; dateLabel: string; venue: string | null };
 
@@ -25,7 +27,25 @@ const rise = {
   shown: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_OUT } },
 } as const;
 
+/** Кеш service worker'а (public/sw.js): там последняя копия личной страницы. */
+const GUEST_CACHE = "vmeste-guest-v2";
+
+/**
+ * «Выйти» на общем телефоне у входа: вместе с cookie стираем и сохранённую
+ * для работы без сети страницу — иначе следующий гость без связи увидел бы
+ * стол и соседей предыдущего.
+ */
+function leave(code: string) {
+  if (typeof caches !== "undefined") void caches.delete(GUEST_CACHE).catch(() => {});
+  return forgetMe(code);
+}
+
 export function GuestApp({ code, eventId, event, hub, openEntry = false }: { code: string; eventId: string; event: EventInfo; hub: GuestHub | null; openEntry?: boolean }) {
+  // Без сети на площадке гость, который уже находил себя, снова видит свой
+  // стол: страницу сохраняет service worker.
+  useEffect(() => {
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
   return (
     <main className="guest-wedding-page relative mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pb-16">
       {hub ? <LeaveButton code={code} /> : null}
@@ -49,15 +69,16 @@ export function GuestApp({ code, eventId, event, hub, openEntry = false }: { cod
 /** «Выйти» в углу шапки: снять гостевую сессию и вернуться к поиску себя. */
 function LeaveButton({ code }: { code: string }) {
   const [leaving, startLeaving] = useTransition();
+  const t = useT();
   return (
     <button
       type="button"
       disabled={leaving}
-      onClick={() => startLeaving(() => forgetMe(code))}
+      onClick={() => startLeaving(() => leave(code))}
       className="absolute top-4 right-4 z-40 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-card/80 px-3 text-[13px] text-muted backdrop-blur transition-colors hover:text-ink disabled:opacity-50"
     >
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M8 4H5a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 5 16h3M12.5 13.5 16 10l-3.5-3.5M16 10H8" /></svg>
-      {leaving ? "Выходим…" : "Выйти"}
+      {leaving ? t("Выходим…", "Signing out…") : t("Выйти", "Sign out")}
     </button>
   );
 }
@@ -89,10 +110,11 @@ function HubLink({ href, title, note }: { href: string; title: string; note: str
  * или перезагрузки гость остаётся там же.
  */
 function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: GuestHub }) {
+  const t = useT();
   const tabs: { id: Tab; label: string }[] = [
-    { id: "seat", label: "Мой стол" },
-    ...(hub.photos.enabled ? [{ id: "photos" as const, label: "Фото" }] : []),
-    ...(hub.wishes.enabled ? [{ id: "wish" as const, label: "Пожелание" }] : []),
+    { id: "seat", label: t("Мой стол", "My table") },
+    ...(hub.photos.enabled ? [{ id: "photos" as const, label: t("Фото", "Photos") }] : []),
+    ...(hub.wishes.enabled ? [{ id: "wish" as const, label: t("Пожелание", "Wishes") }] : []),
   ];
   const asked = useSearchParams().get("tab");
   const [tab, setTab] = useState<Tab>(tabs.some((item) => item.id === asked) ? (asked as Tab) : "seat");
@@ -109,7 +131,7 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
   return (
     <motion.div initial="hidden" animate="shown" variants={{ hidden: {}, shown: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } } }}>
       <motion.p variants={rise} className="mt-8 text-center font-serif text-xl text-muted">
-        Добро пожаловать,
+        {t("Добро пожаловать,", "Welcome,")}
       </motion.p>
       <motion.h2 variants={rise} className="mt-1 text-center font-serif text-[34px] leading-tight sm:text-4xl">
         {hub.displayName}
@@ -117,7 +139,7 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
 
       {tabs.length > 1 ? (
         <motion.div variants={rise} className="sticky top-3 z-30 mt-5 flex justify-center">
-          <div role="tablist" aria-label="Разделы" className="flex w-fit gap-1 rounded-full border border-line bg-card/90 p-1 text-[15px] shadow-[0_10px_30px_-18px_rgba(64,56,51,0.45)] backdrop-blur">
+          <div role="tablist" aria-label={t("Разделы", "Sections")} className="flex w-fit gap-1 rounded-full border border-line bg-card/90 p-1 text-[15px] shadow-[0_10px_30px_-18px_rgba(64,56,51,0.45)] backdrop-blur">
             {tabs.map((item) => {
               const active = item.id === tab;
               return (
@@ -162,26 +184,26 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
                   className="guest-button mt-4 flex min-h-14 items-center justify-center gap-2.5 rounded-2xl px-5 text-[16px] font-medium transition-transform duration-200 active:scale-[0.98]"
                 >
                   <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="2.5" y="3" width="6" height="6" rx="1.5" /><rect x="11.5" y="3" width="6" height="6" rx="1.5" /><rect x="2.5" y="11" width="6" height="6" rx="1.5" /><rect x="11.5" y="11" width="6" height="6" rx="1.5" /></svg>
-                  Рассадка всех гостей
+                  {t("Рассадка всех гостей", "Seating for all guests")}
                 </Link>
                 {hub.giftsEnabled ? (
                   <ul className="mt-4 grid gap-3">
-                    <HubLink href={`/g/${code}/gifts`} title="Виш-лист" note="Что паре хотелось бы получить" />
+                    <HubLink href={`/g/${code}/gifts`} title={t("Виш-лист", "Wishlist")} note={t("Что паре хотелось бы получить", "What the couple would love to receive")} />
                   </ul>
                 ) : null}
               </>
             ) : tab === "photos" ? (
               <section className="guest-card mt-6 p-5 sm:p-7">
-                <h3 className="font-serif text-[26px] leading-tight">Фотографии</h3>
+                <h3 className="font-serif text-[26px] leading-tight">{t("Фотографии", "Photos")}</h3>
                 <p className="mt-1 text-[15px] text-muted">
-                  До {hub.photos.limit} снимков — они сразу появятся в общей галерее.
+                  {t(`До ${hub.photos.limit} снимков — они сразу появятся в общей галерее.`, `Up to ${hub.photos.limit} photos — they’ll appear in the shared gallery right away.`)}
                 </p>
                 <PhotoUploader eventId={eventId} left={hub.photos.left} limit={hub.photos.limit} mine={hub.photos.mine} />
                 <div className="mt-7">
-                  <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">Общая галерея</h4>
+                  <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">{t("Общая галерея", "Shared gallery")}</h4>
                   {hub.photos.gallery.length === 0 ? (
                     <p className="mt-3 rounded-2xl border border-dashed border-line px-4 py-6 text-center text-[15px] text-muted">
-                      Пока пусто — здесь появятся снимки гостей.
+                      {t("Пока пусто — здесь появятся снимки гостей.", "Nothing here yet — guests’ photos will appear here.")}
                     </p>
                   ) : (
                     <div className="mt-3">
@@ -193,8 +215,10 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
                   <ul className="mt-6 grid gap-3">
                     <HubLink
                       href={`/g/${code}/album`}
-                      title="Альбом"
-                      note={hub.album.open ? "Снимки гостей со свадьбы — смотреть и скачать" : `Откроется ${hub.album.opensOn}, на следующий день после свадьбы`}
+                      title={t("Альбом", "Album")}
+                      note={hub.album.open
+                        ? t("Снимки гостей со свадьбы — смотреть и скачать", "Guests’ photos from the wedding — view and download")
+                        : t(`Откроется ${hub.album.opensOn}, на следующий день после свадьбы`, `Opens on ${hub.album.opensOn}, the day after the wedding`)}
                     />
                   </ul>
                 ) : null}
@@ -209,23 +233,28 @@ function Hub({ code, eventId, hub }: { code: string; eventId: string; hub: Guest
       </motion.div>
 
       <motion.p variants={rise} className="mt-8 text-center text-sm text-muted">
-        Не {hub.displayName.split(" ")[0]}?{" "}
+        {t(`Не ${hub.displayName.split(" ")[0]}?`, `Not ${hub.displayName.split(" ")[0]}?`)}{" "}
         <button
           type="button"
           disabled={leaving}
-          onClick={() => startLeaving(() => forgetMe(code))}
+          onClick={() => startLeaving(() => leave(code))}
           className="min-h-11 underline decoration-line underline-offset-4 hover:text-ink disabled:opacity-50"
         >
-          Найти себя заново
+          {t("Найти себя заново", "Find yourself again")}
         </button>
       </motion.p>
     </motion.div>
   );
 }
 
-const WISH_STATUS: Record<string, string> = { PENDING: "ждёт проверки", APPROVED: "показано в зале", REJECTED: "не подошло" };
+const wishStatus = (t: T): Record<string, string> => ({
+  PENDING: t("ждёт проверки", "awaiting review"),
+  APPROVED: t("показано в зале", "shown at the venue"),
+  REJECTED: t("не подошло", "not approved"),
+});
 
 function WishForm({ code, name, mine }: { code: string; name: string; mine: GuestHub["wishes"]["mine"] }) {
+  const t = useT();
   const [state, action, pending] = useActionState<WishState, FormData>(sendWish.bind(null, code), { ok: false, message: null });
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -235,24 +264,24 @@ function WishForm({ code, name, mine }: { code: string; name: string; mine: Gues
 
   return (
     <>
-      <h3 className="font-serif text-[26px] leading-tight">Пожелание молодожёнам</h3>
-      <p className="mt-1 text-[15px] text-muted">Несколько тёплых слов для молодожёнов.</p>
+      <h3 className="font-serif text-[26px] leading-tight">{t("Пожелание молодожёнам", "A wish for the couple")}</h3>
+      <p className="mt-1 text-[15px] text-muted">{t("Несколько тёплых слов для молодожёнов.", "A few warm words for the newlyweds.")}</p>
       <form ref={formRef} action={action} className="mt-5 space-y-3">
         <label className="block">
-          <span className="text-sm text-muted">Как подписать</span>
+          <span className="text-sm text-muted">{t("Как подписать", "Sign as")}</span>
           <input name="authorName" required maxLength={80} defaultValue={name} className="mt-1 h-12 w-full rounded-xl border border-line bg-card px-4 text-[16px] outline-none focus:border-gold-soft focus:shadow-[0_0_0_4px_rgba(201,163,106,0.18)]" />
         </label>
         <label className="block">
-          <span className="text-sm text-muted">Пожелание</span>
-          <textarea name="text" required minLength={3} maxLength={500} rows={4} placeholder="Желаем вам…" className="mt-1 w-full resize-none rounded-xl border border-line bg-card px-4 py-3 text-[16px] leading-relaxed outline-none focus:border-gold-soft focus:shadow-[0_0_0_4px_rgba(201,163,106,0.18)]" />
+          <span className="text-sm text-muted">{t("Пожелание", "Your wish")}</span>
+          <textarea name="text" required minLength={3} maxLength={500} rows={4} placeholder={t("Желаем вам…", "We wish you…")} className="mt-1 w-full resize-none rounded-xl border border-line bg-card px-4 py-3 text-[16px] leading-relaxed outline-none focus:border-gold-soft focus:shadow-[0_0_0_4px_rgba(201,163,106,0.18)]" />
         </label>
         <motion.button whileTap={{ scale: 0.98 }} disabled={pending} className="guest-button h-12 w-full rounded-xl text-[16px] font-medium disabled:opacity-60">
-          {pending ? "Отправляем…" : "Отправить"}
+          {pending ? t("Отправляем…", "Sending…") : t("Отправить", "Send")}
         </motion.button>
         <AnimatePresence mode="wait">
           {state.ok ? (
             <motion.p key="ok" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl bg-sage/25 px-4 py-3 text-center text-[15px]" role="status">
-              Спасибо! Пожелание отправлено.
+              {t("Спасибо! Пожелание отправлено.", "Thank you! Your wish has been sent.")}
             </motion.p>
           ) : state.message ? (
             <motion.p key="err" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl bg-blush/30 px-4 py-3 text-center text-[15px]" role="alert">
@@ -264,12 +293,12 @@ function WishForm({ code, name, mine }: { code: string; name: string; mine: Gues
 
       {mine.length > 0 ? (
         <div className="mt-6">
-          <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">Ваши пожелания</h4>
+          <h4 className="text-[12px] tracking-[0.22em] text-muted uppercase">{t("Ваши пожелания", "Your wishes")}</h4>
           <ul className="mt-3 space-y-2">
             {mine.map((wish) => (
               <li key={wish.id} className="rounded-xl border border-line bg-paper/70 px-4 py-3 text-[15px] leading-relaxed">
                 <p className="whitespace-pre-line">{wish.text}</p>
-                <p className="mt-1 text-xs text-muted">{WISH_STATUS[wish.status] ?? wish.status}</p>
+                <p className="mt-1 text-xs text-muted">{wishStatus(t)[wish.status] ?? wish.status}</p>
               </li>
             ))}
           </ul>

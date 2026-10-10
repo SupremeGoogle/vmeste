@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return Response.json({ error: "Некорректный запрос" }, { status: 400 });
+    return Response.json({ error: "Некорректный запрос · Invalid request" }, { status: 400 });
   }
 
   const { token, eventId, ...input } = parsed.data;
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     : eventId
       ? await identifyByEventSession(eventId)
       : null;
-  if (!guest) return Response.json({ error: "Приглашение не найдено" }, { status: 404 });
+  if (!guest) return Response.json({ error: "Приглашение не найдено · Invitation not found" }, { status: 404 });
 
   const result = await completeUpload(guest, input);
   if (!result.ok) {

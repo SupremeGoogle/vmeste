@@ -14,9 +14,10 @@ import { DayPlanList } from "@/components/timing/day-plan-list";
 import { DayPlanReminders } from "@/components/timing/day-plan-reminders";
 import { currentPlanTime } from "@/lib/wedding-day";
 import { plural } from "@/lib/plural";
+import { makeT, parseLang, type Lang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "План дня", referrer: "no-referrer" };
+export const metadata: Metadata = { title: "План дня · Day plan", referrer: "no-referrer" };
 
 /** Сколько песен показать на странице; полный список — в файле. */
 const SHOWN_SONGS = 100;
@@ -33,18 +34,22 @@ export default async function TeamPlanPage({ params, searchParams }: Props) {
   if (!ctx) notFound();
 
   const [event, steps, songs, now] = await Promise.all([
-    db.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { title: true, timezone: true } }),
+    db.event.findFirst({ where: { id: ctx.eventId, orgId: ctx.orgId }, select: { title: true, timezone: true, language: true } }),
     listDaySteps(ctx),
     djPlaylist(ctx.eventId, ctx.orgId),
     currentPlanTime(),
   ]);
   if (!event) notFound();
+  // Команда работает на языке мероприятия: ведущий английской свадьбы
+  // видит план и песни по-английски.
+  const lang: Lang = parseLang(event.language) ?? "ru";
+  const t = makeT(lang);
 
   async function run(data: FormData) {
     "use server";
     const ctx = await teamPlanAccess(token);
     if (!ctx) notFound();
-    const result = await runDayStep(ctx, String(data.get("stepId") ?? ""));
+    const result = await runDayStep(ctx, String(data.get("stepId") ?? ""), lang);
     revalidatePath(`/team/${token}`);
     revalidatePath(`/app/e/${ctx.eventId}/timing`);
     revalidatePath(`/app/e/${ctx.eventId}/raffle`);
@@ -55,7 +60,7 @@ export default async function TeamPlanPage({ params, searchParams }: Props) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pt-8 pb-16 text-stone-900 sm:px-6">
       <header>
-        <p className="text-sm text-stone-500">План дня для команды</p>
+        <p className="text-sm text-stone-500">{t("План дня для команды", "Day plan for the team")}</p>
         <h1 className="mt-1 font-serif text-[34px] leading-tight">{event.title}</h1>
       </header>
 
@@ -70,19 +75,20 @@ export default async function TeamPlanPage({ params, searchParams }: Props) {
             initialNow={now}
             calendarHref={`/team/${token}/calendar`}
             steps={steps.map((step) => ({ ...step, startsAt: step.startsAt.toISOString() }))}
+            lang={lang}
           />
         </div>
       ) : null}
 
-      <DayPlanList steps={steps} timezone={event.timezone} now={now} run={run} />
+      <DayPlanList steps={steps} timezone={event.timezone} now={now} run={run} lang={lang} />
 
       <section className="mt-10">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg">
-            Песни от гостей{songs.length > 0 ? ` · ${songs.length}` : ""}
+            {t("Песни от гостей", "Song requests")}{songs.length > 0 ? ` · ${songs.length}` : ""}
           </h2>
           {songs.length > 0 ? (
-            <a href={`/team/${token}/playlist`} className="text-sm text-stone-700 underline underline-offset-2">Скачать списком</a>
+            <a href={`/team/${token}/playlist`} className="text-sm text-stone-700 underline underline-offset-2">{t("Скачать списком", "Download as a list")}</a>
           ) : null}
         </div>
 
@@ -98,17 +104,17 @@ export default async function TeamPlanPage({ params, searchParams }: Props) {
                   )}
                 </p>
                 <p className="mt-0.5 text-stone-500">
-                  {[song.who, song.note].filter(Boolean).join(" — ") || "без подписи"}
+                  {[song.who, song.note].filter(Boolean).join(" — ") || t("без подписи", "unsigned")}
                 </p>
               </li>
             ))}
           </ol>
         ) : (
-          <p className="mt-3 text-sm text-stone-600">Гости пока не предлагали песен.</p>
+          <p className="mt-3 text-sm text-stone-600">{t("Гости пока не предлагали песен.", "No song requests from guests yet.")}</p>
         )}
         {songs.length > SHOWN_SONGS ? (
           <p className="mt-2 text-xs text-stone-500">
-            Показаны первые {SHOWN_SONGS} {plural(SHOWN_SONGS, "песня", "песни", "песен")} — остальные в файле.
+            {t(`Показаны первые ${SHOWN_SONGS} ${plural(SHOWN_SONGS, "песня", "песни", "песен")} — остальные в файле.`, `Showing the first ${SHOWN_SONGS} songs — the rest are in the file.`)}
           </p>
         ) : null}
       </section>

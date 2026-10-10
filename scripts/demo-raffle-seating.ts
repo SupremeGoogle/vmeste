@@ -32,7 +32,7 @@ async function main() {
     where: { user: { email: "1@1" } }, orderBy: { id: "asc" },
   });
   const event = await db.event.upsert({
-    where: { orgId_slug: { orgId: membership.orgId, slug: "showroom-raffle-seating" } },
+    where: { slug: "showroom-raffle-seating" },
     update: {},
     create: {
       orgId: membership.orgId, title: "Аня и Миша · демонстрация",

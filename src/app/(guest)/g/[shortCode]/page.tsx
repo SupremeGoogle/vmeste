@@ -11,13 +11,14 @@ import { notFound } from "next/navigation";
 import { findEventByShortCode } from "@/server/repositories/events";
 import { loadGuestHub } from "@/server/services/guest-hub";
 import { GuestApp } from "./guest-app";
+import { localeOf, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ shortCode: string }> }): Promise<Metadata> {
   const { shortCode } = await params;
   const event = await findEventByShortCode(shortCode);
-  return { title: event ? event.title : "Свадьба" };
+  return { title: event ? event.title : "Свадьба · Wedding" };
 }
 
 export default async function GuestPage({ params }: { params: Promise<{ shortCode: string }> }) {
@@ -26,7 +27,9 @@ export default async function GuestPage({ params }: { params: Promise<{ shortCod
   if (!event) notFound();
 
   const hub = await loadGuestHub(event.id);
-  const dateLabel = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: event.timezone }).format(event.eventDate);
+  // Дата — на языке мероприятия, как и вся гостевая часть.
+  const lang = parseLang(event.language) ?? "ru";
+  const dateLabel = new Intl.DateTimeFormat(localeOf(lang), { day: "numeric", month: "long", year: "numeric", timeZone: event.timezone }).format(event.eventDate);
 
   return (
     <GuestApp

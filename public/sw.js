@@ -8,8 +8,15 @@
  * Стратегия — network-first с коротким таймаутом: пока сеть есть, показываем
  * свежую рассадку (организатор мог пересадить гостя пять минут назад);
  * когда сети нет — отдаём последнюю сохранённую копию.
+ *
+ * Страницы: старая `/e/{код}` и нынешняя `/g/{код}` — личная страница гостя
+ * (его стол и соседи). Общий план со всеми гостями (`/g/{код}/seating`)
+ * не сохраняется: это чужие имена на телефоне. Для /g нужны и скрипты со
+ * стилями — без них страница не оживёт; это неизменяемые файлы /_next/static,
+ * и сохраняются только те, что запросила страница гостя.
+ * «Выйти» на странице гостя стирает этот кеш (общий телефон на входе).
  */
-const CACHE = "vmeste-guest-v1";
+const CACHE = "vmeste-guest-v2";
 const NETWORK_TIMEOUT_MS = 5000;
 
 self.addEventListener("install", (event) => {
@@ -31,6 +38,31 @@ function isGuestEntry(url) {
   return url.origin === self.location.origin && /^\/e\/[^/]+(\/me)?$/.test(url.pathname);
 }
 
+/** Личная страница гостя по QR — только сам документ, без запросов роутера. */
+function isGuestHub(request, url) {
+  return url.origin === self.location.origin && request.mode === "navigate" && /^\/g\/[^/]+\/?$/.test(url.pathname);
+}
+
+/** Скрипты, стили и шрифты, которые запросила страница гостя. */
+function isGuestAsset(request, url) {
+  if (url.origin !== self.location.origin || !url.pathname.startsWith("/_next/static/")) return false;
+  try {
+    const from = new URL(request.referrer);
+    return /^\/g\//.test(from.pathname) || from.pathname.startsWith("/_next/static/");
+  } catch {
+    return false;
+  }
+}
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) cache.put(request, response.clone());
+  return response;
+}
+
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
 
@@ -49,7 +81,8 @@ async function networkFirst(request) {
     // Ни сети, ни копии этой конкретной страницы — но, возможно, гость
     // раньше открывал другую страницу этого же мероприятия.
     const url = new URL(request.url);
-    const fallback = await cache.match(`/e/${url.pathname.split("/")[2]}`);
+    const code = url.pathname.split("/")[2];
+    const fallback = (await cache.match(`/g/${code}`, { ignoreSearch: true })) || (await cache.match(`/e/${code}`));
     if (fallback) return fallback;
 
     return new Response(
@@ -71,7 +104,9 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (!isGuestEntry(url)) return;
-
-  event.respondWith(networkFirst(request));
+  if (isGuestEntry(url) || isGuestHub(request, url)) {
+    event.respondWith(networkFirst(request));
+  } else if (isGuestAsset(request, url)) {
+    event.respondWith(cacheFirst(request));
+  }
 });

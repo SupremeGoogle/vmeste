@@ -67,13 +67,14 @@ describe("создание мероприятия", () => {
     expect(duplicate).toBeNull();
   });
 
-  it("тот же адрес в другой организации — можно: слаг уникален внутри своей", async () => {
+  it("тот же адрес в другой организации — нельзя: /i/{slug} общий на весь сайт", async () => {
+    // Иначе публичная ссылка и ответы гостей могли попасть в чужую свадьбу.
     const other = await createEvent(ctxB, {
       title: "Совпадение",
       slug: "anya-misha",
       eventDate: new Date("2026-11-01T12:00:00Z"),
     });
-    expect(other).not.toBeNull();
+    expect(other).toBeNull();
   });
 });
 

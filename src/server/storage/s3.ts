@@ -137,6 +137,18 @@ export function photoKeys(eventId: string): { storageKey: string; thumbKey: stri
   };
 }
 
+/**
+ * Ключ готового фото по ключу загрузки. Гость пишет только в ключ загрузки
+ * (подписанный PUT живёт 15 минут), а проверенный и перекодированный файл
+ * сервер кладёт сюда — под ключ, на который подписи у гостя нет. Иначе
+ * повторный PUT по той же ссылке подменял бы уже одобренное фото в обход
+ * перекодирования, фильтра 18+ и очистки EXIF. Префикс тот же, `photos/`:
+ * его подчищает срок хранения (services/retention.ts).
+ */
+export function processedKeyFor(uploadKey: string): string | null {
+  return thumbKeyFor(uploadKey) ? `${uploadKey}.final` : null;
+}
+
 /** Ключ превью по ключу фото: оба выдаёт `photoKeys` из одного id. */
 export function thumbKeyFor(storageKey: string): string | null {
   const match = /^events\/([^/]+)\/photos\/([^/.]+)$/.exec(storageKey);
@@ -255,12 +267,18 @@ export async function copyObject(fromKey: string, toKey: string): Promise<void> 
 
 export async function deleteObjects(keys: string[]): Promise<void> {
   if (keys.length === 0) return;
-  await s3().send(
+  const result = await s3().send(
     new DeleteObjectsCommand({
       Bucket: bucketName(),
       Delete: { Objects: keys.map((Key) => ({ Key })) },
     }),
   );
+  // Пакетное удаление не бросает, если часть ключей не удалилась, — а
+  // вызывающие (срок хранения, удаление свадьбы) стирают строки в БД только
+  // после файлов. Молчаливый частичный сбой оставил бы файлы без строк.
+  if (result.Errors?.length) {
+    throw new Error(`Хранилище не удалило ${result.Errors.length} из ${keys.length} объектов: ${result.Errors[0].Code ?? "?"}`);
+  }
 }
 
 /**

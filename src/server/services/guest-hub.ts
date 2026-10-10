@@ -11,6 +11,7 @@ import { identifyByEventSession } from "@/server/guest-access/identify";
 import { guestQuota, listApprovedPhotos, listGuestPhotos } from "@/server/services/photos";
 import { listGuestWishes } from "@/server/services/wishes";
 import { albumIsOpen, albumOpeningLabel } from "@/lib/wedding-day";
+import { parseLang } from "@/lib/i18n";
 
 export type HubSeat = { tableId: string; tableLabel: string; seatNumber: number; tablemates: string[] } | null;
 
@@ -47,14 +48,14 @@ export async function loadGuestHub(eventId: string): Promise<GuestHub | null> {
     listGuestPhotos(ref),
     listApprovedPhotos(eventId, 60),
     listGuestWishes(ref),
-    db.event.findFirst({ where: { id: eventId, orgId: guest.orgId }, select: { giftsEnabled: true, albumEnabled: true, eventDate: true, timezone: true, status: true } }),
+    db.event.findFirst({ where: { id: eventId, orgId: guest.orgId }, select: { giftsEnabled: true, albumEnabled: true, eventDate: true, timezone: true, status: true, language: true } }),
   ]);
 
   return {
     guestId: guest.guestId,
     displayName: guest.displayName,
     giftsEnabled: event?.giftsEnabled ?? false,
-    album: { enabled: event?.albumEnabled ?? false, open: event ? albumIsOpen(event) : false, opensOn: event ? albumOpeningLabel(event) : "" },
+    album: { enabled: event?.albumEnabled ?? false, open: event ? albumIsOpen(event) : false, opensOn: event ? albumOpeningLabel(event, parseLang(event.language) ?? "ru") : "" },
     seat: seat
       ? {
           tableId: seat.table.id,

@@ -41,9 +41,8 @@ const notFound = () =>
   );
 
 async function findPublicEvent(slug: string) {
-  return db.event.findFirst({
+  return db.event.findUnique({
     where: { slug, status: "PUBLISHED" },
-    orderBy: { eventDate: "asc" },
     select: {
       id: true, orgId: true, title: true, eventDate: true, timezone: true,
       rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true, language: true,

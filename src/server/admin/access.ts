@@ -144,54 +144,70 @@ export type VerifyResult =
 export async function verifySecondFactor(admin: AdminIdentity, code: string): Promise<VerifyResult> {
   const key = adminKey();
   if (!key) return { ok: false, message: "На сервере не задан ADMIN_SECRET." };
-  const record = await db.adminSecret.findUnique({ where: { userId: admin.userId } });
-  if (!record) return { ok: false, message: "Сначала настройте 2FA." };
-  if (record.lockedUntil && record.lockedUntil.getTime() > Date.now()) {
-    const minutes = Math.ceil((record.lockedUntil.getTime() - Date.now()) / 60_000);
-    return { ok: false, message: `Слишком много ошибок. Попробуйте через ${minutes} мин.` };
-  }
-  const secret = openSecret(record.totpSecret, key);
-  if (!secret) return { ok: false, message: "Секрет 2FA не читается — ADMIN_SECRET сменился? Нужен сброс 2FA." };
-
   const clean = code.trim();
-  const step = verifyTotp(secret, clean, record.lastStep);
-  const backupHash = !step && record.confirmedAt ? hashBackupCode(clean) : null;
-  const backupIndex = backupHash ? record.backupCodes.indexOf(backupHash) : -1;
 
-  if (!step && backupIndex < 0) {
-    const failed = record.failedCount + 1;
-    const lock = failed >= ADMIN_MAX_FAILURES;
-    await db.adminSecret.update({
+  // Чтение счётчика, последнего шага TOTP и резервных кодов и их запись —
+  // под блокировкой строки. Без неё параллельные запросы читали одно и то же
+  // состояние: двадцать неверных кодов разом оставляли счётчик на единице,
+  // а один резервный или TOTP-код проходил дважды.
+  const outcome = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 FROM admin_secrets WHERE "userId" = ${admin.userId} FOR UPDATE`;
+    const record = await tx.adminSecret.findUnique({ where: { userId: admin.userId } });
+    if (!record) return { kind: "message" as const, message: "Сначала настройте 2FA." };
+    if (record.lockedUntil && record.lockedUntil.getTime() > Date.now()) {
+      const minutes = Math.ceil((record.lockedUntil.getTime() - Date.now()) / 60_000);
+      return { kind: "message" as const, message: `Слишком много ошибок. Попробуйте через ${minutes} мин.` };
+    }
+    const secret = openSecret(record.totpSecret, key);
+    if (!secret) return { kind: "message" as const, message: "Секрет 2FA не читается — ADMIN_SECRET сменился? Нужен сброс 2FA." };
+
+    const step = verifyTotp(secret, clean, record.lastStep);
+    const backupHash = !step && record.confirmedAt ? hashBackupCode(clean) : null;
+    const backupIndex = backupHash ? record.backupCodes.indexOf(backupHash) : -1;
+
+    if (!step && backupIndex < 0) {
+      const failed = record.failedCount + 1;
+      const lock = failed >= ADMIN_MAX_FAILURES;
+      await tx.adminSecret.update({
+        where: { userId: admin.userId },
+        data: lock
+          ? { failedCount: 0, lockedUntil: new Date(Date.now() + ADMIN_LOCK_MINUTES * 60_000) }
+          : { failedCount: failed },
+      });
+      return { kind: "failed" as const, failed, lock };
+    }
+
+    const confirming = !record.confirmedAt;
+    const fresh = confirming ? newBackupCodes() : undefined;
+    await tx.adminSecret.update({
       where: { userId: admin.userId },
-      data: lock
-        ? { failedCount: 0, lockedUntil: new Date(Date.now() + ADMIN_LOCK_MINUTES * 60_000) }
-        : { failedCount: failed },
+      data: {
+        failedCount: 0,
+        lockedUntil: null,
+        ...(step ? { lastStep: step } : {}),
+        ...(backupIndex >= 0 ? { backupCodes: record.backupCodes.filter((_, index) => index !== backupIndex) } : {}),
+        ...(confirming ? { confirmedAt: new Date(), backupCodes: fresh!.map(hashBackupCode) } : {}),
+      },
     });
+    return { kind: "ok" as const, confirming, fresh, viaBackup: backupIndex >= 0, backupLeft: record.backupCodes.length - 1 };
+  });
+
+  if (outcome.kind === "message") return { ok: false, message: outcome.message };
+  if (outcome.kind === "failed") {
+    const { failed, lock } = outcome;
     await audit({ actor: { id: admin.userId, email: admin.email }, action: lock ? "admin.locked" : "admin.login_failed", detail: { attempt: failed } });
     if (lock) void notifyOwner(`Панель суперадмина: ${ADMIN_MAX_FAILURES} неверных кодов подряд для ${admin.email}. Ввод закрыт на ${ADMIN_LOCK_MINUTES} мин.`, "alert");
     return { ok: false, message: lock ? `Неверный код. Ввод закрыт на ${ADMIN_LOCK_MINUTES} минут.` : "Неверный код." };
   }
 
-  const confirming = !record.confirmedAt;
-  const fresh = confirming ? newBackupCodes() : undefined;
-  await db.adminSecret.update({
-    where: { userId: admin.userId },
-    data: {
-      failedCount: 0,
-      lockedUntil: null,
-      ...(step ? { lastStep: step } : {}),
-      ...(backupIndex >= 0 ? { backupCodes: record.backupCodes.filter((_, index) => index !== backupIndex) } : {}),
-      ...(confirming ? { confirmedAt: new Date(), backupCodes: fresh!.map(hashBackupCode) } : {}),
-    },
-  });
   await elevate(admin);
   await audit({
     actor: { id: admin.userId, email: admin.email },
-    action: confirming ? "admin.2fa_setup" : "admin.login",
-    detail: backupIndex >= 0 ? { via: "backup", left: record.backupCodes.length - 1 } : { via: "totp" },
+    action: outcome.confirming ? "admin.2fa_setup" : "admin.login",
+    detail: outcome.viaBackup ? { via: "backup", left: outcome.backupLeft } : { via: "totp" },
   });
-  void notifyOwner(`Вход в панель суперадмина: ${admin.email}${backupIndex >= 0 ? " (резервным кодом)" : ""}`, backupIndex >= 0 ? "warning" : "info");
-  return { ok: true, backupCodes: fresh };
+  void notifyOwner(`Вход в панель суперадмина: ${admin.email}${outcome.viaBackup ? " (резервным кодом)" : ""}`, outcome.viaBackup ? "warning" : "info");
+  return { ok: true, backupCodes: outcome.fresh };
 }
 
 /** Новые резервные коды взамен старых (нужен открытый вход в панель). */

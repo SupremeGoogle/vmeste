@@ -13,6 +13,7 @@
  * слабым интернетом лента из шестидесяти оригиналов не открылась бы.
  */
 import { useState } from "react";
+import { useT } from "@/components/i18n-provider";
 import { MasonryPhotoAlbum } from "react-photo-album";
 import "react-photo-album/masonry.css";
 import Lightbox from "yet-another-react-lightbox";
@@ -30,6 +31,7 @@ export function PhotoWall({ eventId, photos, download = false }: {
   /** Кнопка «скачать» в просмотре — в альбоме после свадьбы. */
   download?: boolean;
 }) {
+  const t = useT();
   const [index, setIndex] = useState(-1);
   const media = (id: string, full = false) => `/api/media/${eventId}/${id}${full ? "?size=full" : ""}`;
   // Без размеров (старое фото, сбой конвертации) — считаем квадратом,
@@ -40,7 +42,7 @@ export function PhotoWall({ eventId, photos, download = false }: {
     width: photo.width > 0 ? photo.width : 1000,
     height: photo.height > 0 ? photo.height : 1000,
     alt: "",
-    label: "Открыть снимок",
+    label: t("Открыть снимок", "Open photo"),
   }));
 
   return (
@@ -69,7 +71,10 @@ export function PhotoWall({ eventId, photos, download = false }: {
         plugins={download ? [Zoom, Counter, Download] : [Zoom, Counter]}
         controller={{ closeOnBackdropClick: true, closeOnPullDown: true }}
         carousel={{ finite: photos.length < 3 }}
-        labels={{ Previous: "Предыдущее", Next: "Следующее", Close: "Закрыть", Download: "Скачать", "Zoom in": "Приблизить", "Zoom out": "Отдалить" }}
+        labels={{
+          Previous: t("Предыдущее", "Previous"), Next: t("Следующее", "Next"), Close: t("Закрыть", "Close"),
+          Download: t("Скачать", "Download"), "Zoom in": t("Приблизить", "Zoom in"), "Zoom out": t("Отдалить", "Zoom out"),
+        }}
       />
     </>
   );

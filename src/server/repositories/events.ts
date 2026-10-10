@@ -5,6 +5,7 @@
 import { randomInt } from "node:crypto";
 import { db } from "@/server/db";
 import type { OrgContext } from "@/server/context";
+import { deletePrefix } from "@/server/storage/s3";
 
 /** Алфавит без визуально похожих символов: ни 0/O, ни 1/I/l.
  *  Код диктуют голосом и набирают в темноте зала. */
@@ -38,14 +39,17 @@ export async function listEvents(ctx: OrgContext) {
   });
 }
 
-/** Свободен ли адрес приглашения внутри организации. */
-export async function isSlugTaken(ctx: OrgContext, slug: string): Promise<boolean> {
-  const existing = await db.event.findFirst({
-    where: { orgId: ctx.orgId, slug },
-    select: { id: true },
-  });
+/**
+ * Свободен ли адрес приглашения. Адрес `/i/{slug}` общий на весь сайт,
+ * поэтому проверка — по всем организациям, а не по своей.
+ */
+export async function isSlugTaken(slug: string): Promise<boolean> {
+  const existing = await db.event.findUnique({ where: { slug }, select: { id: true } });
   return existing !== null;
 }
+
+/** Пояс площадки по умолчанию — Москва, как у большинства свадеб. */
+export const DEFAULT_TIMEZONE = "Europe/Moscow";
 
 /**
  * Создание мероприятия. Возвращает `null`, если адрес занят.
@@ -58,7 +62,7 @@ export async function createEvent(
   ctx: OrgContext,
   input: { title: string; slug: string; eventDate: Date; venueName?: string; timezone?: string; language?: "ru" | "en" },
 ) {
-  if (await isSlugTaken(ctx, input.slug)) return null;
+  if (await isSlugTaken(input.slug)) return null;
 
   try {
     return await db.event.create({
@@ -68,7 +72,7 @@ export async function createEvent(
       slug: input.slug,
       eventDate: input.eventDate,
       venueName: input.venueName,
-      timezone: input.timezone ?? "Europe/Moscow",
+      timezone: input.timezone ?? DEFAULT_TIMEZONE,
       language: input.language ?? "ru",
       shortCode: await uniqueShortCode(),
     },
@@ -120,11 +124,22 @@ export async function renameEvent(ctx: OrgContext, eventId: string, title: strin
  * Полное удаление мероприятия и всех его данных (гости, рассадка,
  * приглашение, фото, розыгрыш — всё висит на eventId с onDelete: Cascade).
  * Необратимо, поэтому в отличие от архивации это не «скрыть», а стереть.
+ *
+ * Сначала файлы в хранилище, потом строки: каскад в БД снимает строки, но
+ * не объекты в бакете, а удалённую свадьбу срок хранения уже не найдёт —
+ * её фото остались бы навсегда. Если хранилище не ответило, удаление
+ * падает целиком и его можно повторить: строки на месте, файлы найдутся.
+ * После строк — ещё один проход: гость мог дослать фото по ссылке,
+ * выданной до удаления.
  */
 export async function deleteEvent(ctx: OrgContext, eventId: string): Promise<boolean> {
+  const owned = await db.event.findFirst({ where: { id: eventId, orgId: ctx.orgId }, select: { id: true } });
+  if (!owned) return false;
+  await deletePrefix(`events/${eventId}/`);
   const deleted = await db.event.deleteMany({
     where: { id: eventId, orgId: ctx.orgId },
   });
+  await deletePrefix(`events/${eventId}/`).catch(() => {});
   return deleted.count === 1;
 }
 

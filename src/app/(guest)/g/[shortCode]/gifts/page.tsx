@@ -15,10 +15,15 @@ import { findEventByShortCode } from "@/server/repositories/events";
 import { identifyByEventSession } from "@/server/guest-access/identify";
 import { reserveGift } from "@/server/services/gifts";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Виш-лист" };
+/** Заголовок вкладки — на языке мероприятия, как и вся страница. */
+export async function generateMetadata({ params }: { params: Promise<{ shortCode: string }> }): Promise<Metadata> {
+  const event = await findEventByShortCode((await params).shortCode);
+  return { title: event?.language === "en" ? "Wishlist" : "Виш-лист" };
+}
 
 type Props = {
   params: Promise<{ shortCode: string }>;
@@ -32,10 +37,12 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
   if (!event) notFound();
   const guest = await identifyByEventSession(event.id);
   if (!guest) redirect(`/g/${event.shortCode}`);
+  const lang = parseLang(event.language) ?? "ru";
+  const t = makeT(lang);
 
   const back = (
     <Link href={`/g/${event.shortCode}`} className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[15px] text-muted hover:text-ink">
-      ← Моя страница
+      {t("← Моя страница", "← My page")}
     </Link>
   );
 
@@ -47,7 +54,7 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
     return (
       <main className="mx-auto w-full max-w-xl px-4 pt-4 pb-16 sm:pt-8">
         {back}
-        <p className="guest-card mt-6 p-6 text-center text-[15px] text-muted">Виш-лист пока закрыт.</p>
+        <p className="guest-card mt-6 p-6 text-center text-[15px] text-muted">{t("Виш-лист пока закрыт.", "The wishlist is closed for now.")}</p>
       </main>
     );
   }
@@ -81,15 +88,15 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
       {back}
 
       <header className="mt-4 text-center">
-        <h1 className="font-serif text-[34px] leading-tight sm:text-4xl">Наш виш-лист</h1>
+        <h1 className="font-serif text-[34px] leading-tight sm:text-4xl">{t("Наш виш-лист", "Our wishlist")}</h1>
         <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-muted">
           {gifts.length > 0
             ? gifts.some((gift) => gift.reservable)
-              ? "Отметьте, что хотите подарить, — у других гостей этот подарок станет занятым."
-              : "Идеи подарков от пары — выбирайте любой."
+              ? t("Отметьте, что хотите подарить, — у других гостей этот подарок станет занятым.", "Mark what you’d like to give — other guests will see it as taken.")
+              : t("Идеи подарков от пары — выбирайте любой.", "Gift ideas from the couple — pick any you like.")
             : hasEnvelope
-              ? "Поздравить можно переводом — реквизиты ниже."
-              : "Пара пока ничего сюда не добавила."}
+              ? t("Поздравить можно переводом — реквизиты ниже.", "You can send a gift by bank transfer — details below.")
+              : t("Пара пока ничего сюда не добавила.", "The couple hasn’t added anything yet.")}
         </p>
       </header>
 
@@ -98,7 +105,7 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
       ) : null}
 
       {gifts.length > 0 ? (
-        <ul className="mt-6 space-y-3" aria-label="Виш-лист">
+        <ul className="mt-6 space-y-3" aria-label={t("Виш-лист", "Wishlist")}>
           {gifts.map((gift) => {
             const mine = gift.reservation?.guestId === guest.guestId;
             const taken = Boolean(gift.reservation) && !mine;
@@ -111,32 +118,32 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
                 <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="font-serif text-[24px] leading-tight">{gift.title}</h2>
-                  {mine ? <span className="shrink-0 rounded-full bg-gold/10 px-2.5 py-1 text-xs text-gold">ваш</span> : null}
-                  {taken ? <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs text-muted">уже выбрали</span> : null}
+                  {mine ? <span className="shrink-0 rounded-full bg-gold/10 px-2.5 py-1 text-xs text-gold">{t("ваш", "yours")}</span> : null}
+                  {taken ? <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs text-muted">{t("уже выбрали", "taken")}</span> : null}
                 </div>
                 {gift.description ? <p className="mt-1.5 whitespace-pre-line text-[15px] leading-relaxed text-muted">{gift.description}</p> : null}
                 {gift.url ? (
                   <a href={gift.url} target="_blank" rel="noreferrer noopener" className="mt-2 inline-flex min-h-11 items-center text-[15px] underline decoration-line underline-offset-4">
-                    Где посмотреть ↗
+                    {t("Где посмотреть ↗", "Where to find it ↗")}
                   </a>
                 ) : null}
                 {!gift.reservable && !mine && !taken ? (
-                  <p className="mt-3 text-[15px] text-muted">Без брони — этот подарок может сделать любой гость.</p>
+                  <p className="mt-3 text-[15px] text-muted">{t("Без брони — этот подарок может сделать любой гость.", "No reservation needed — any guest can give this.")}</p>
                 ) : !taken && myGift && !mine ? (
-                  <p className="mt-3 text-[15px] text-muted">Вы уже выбрали «{myGift.title}».</p>
+                  <p className="mt-3 text-[15px] text-muted">{t(`Вы уже выбрали «${myGift.title}».`, `You’ve already chosen “${myGift.title}”.`)}</p>
                 ) : !taken ? (
                   <form action={choose} className="mt-3">
                     <input type="hidden" name="giftId" value={gift.id} />
                     <input type="hidden" name="release" value={mine ? "1" : "0"} />
                     <SubmitButton
-                      pendingText="Минуту…"
+                      pendingText={t("Минуту…", "One moment…")}
                       className={
                         mine
                           ? "min-h-12 w-full rounded-2xl border border-line bg-card text-[15px] text-muted"
                           : "min-h-12 w-full rounded-2xl border border-gold-soft bg-card text-[16px] font-medium text-gold transition-colors active:bg-paper"
                       }
                     >
-                      {mine ? "Снять мою бронь" : "Я подарю это"}
+                      {mine ? t("Снять мою бронь", "Cancel my reservation") : t("Я подарю это", "I’ll give this")}
                     </SubmitButton>
                   </form>
                 ) : null}
@@ -149,16 +156,19 @@ export default async function GuestGiftsPage({ params, searchParams }: Props) {
 
       {hasEnvelope ? (
         <section className="guest-card mt-6 p-6 text-center">
-          <h2 className="font-serif text-[26px] leading-tight">{settings.giftTransferLabel}</h2>
+          <h2 className="font-serif text-[26px] leading-tight">
+            {/* Подпись по умолчанию заведена по-русски; своё название организатора не трогаем. */}
+            {lang === "en" && settings.giftTransferLabel === "Подарок в конверте" ? "Cash gift" : settings.giftTransferLabel}
+          </h2>
           {settings.giftTransferDetails ? (
             <p className="mt-2 whitespace-pre-line break-words text-[15px] leading-relaxed text-muted">{settings.giftTransferDetails}</p>
           ) : null}
           {qr ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element -- QR собран на сервере, data: URL */}
-              <img src={qr} width={220} height={220} alt="QR-код для перевода" className="mx-auto mt-5 rounded-xl border border-line bg-white p-2" />
+              <img src={qr} width={220} height={220} alt={t("QR-код для перевода", "QR code for the transfer")} className="mx-auto mt-5 rounded-xl border border-line bg-white p-2" />
               <a href={settings.giftTransferUrl} target="_blank" rel="noreferrer noopener" className="guest-button mt-5 flex min-h-12 items-center justify-center rounded-2xl text-[16px] font-medium">
-                Перевести
+                {t("Перевести", "Send a gift")}
               </a>
             </>
           ) : null}

@@ -16,17 +16,22 @@ import { albumIsOpen, albumOpeningLabel } from "@/lib/wedding-day";
 import { albumFilter, albumScope, type AlbumScope } from "@/server/services/album";
 import { PhotoWall } from "@/components/guest/photo-wall";
 import { DownloadIcon } from "./download-icon";
+import { localeOf, makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Альбом" };
+/** Заголовок вкладки — на языке мероприятия, как и вся страница. */
+export async function generateMetadata({ params }: { params: Promise<{ shortCode: string }> }): Promise<Metadata> {
+  const event = await findEventByShortCode((await params).shortCode);
+  return { title: event?.language === "en" ? "Album" : "Альбом" };
+}
 
 const PAGE_SIZE = 48;
 
-const SCOPES: [AlbumScope, string][] = [
-  ["all", "Все"],
-  ["mine", "Мои"],
-  ["table", "Мой стол"],
+const SCOPES: [AlbumScope, string, string][] = [
+  ["all", "Все", "All"],
+  ["mine", "Мои", "Mine"],
+  ["table", "Мой стол", "My table"],
 ];
 
 type Props = {
@@ -47,15 +52,17 @@ export default async function AlbumPage({ params, searchParams }: Props) {
   const open = albumIsOpen({ ...event, albumEnabled: enabled });
   const scope = albumScope(query.scope);
   const path = `/g/${event.shortCode}/album`;
-  const dateLabel = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: event.timezone }).format(event.eventDate);
+  const lang = parseLang(event.language) ?? "ru";
+  const t = makeT(lang);
+  const dateLabel = new Intl.DateTimeFormat(localeOf(lang), { day: "numeric", month: "long", year: "numeric", timeZone: event.timezone }).format(event.eventDate);
 
   const header = (
     <>
       <Link href={`/g/${event.shortCode}`} className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[15px] text-muted hover:text-ink">
-        ← Моя страница
+        {t("← Моя страница", "← My page")}
       </Link>
       <header className="mt-4 text-center">
-        <h1 className="font-serif text-[40px] leading-tight sm:text-5xl">Альбом</h1>
+        <h1 className="font-serif text-[40px] leading-tight sm:text-5xl">{t("Альбом", "Album")}</h1>
         <p className="mt-1 text-[15px] text-muted">{event.title} · {dateLabel}</p>
       </header>
     </>
@@ -67,8 +74,8 @@ export default async function AlbumPage({ params, searchParams }: Props) {
         {header}
         <p className="guest-card mt-8 p-6 text-center text-[15px] leading-relaxed text-muted">
           {enabled
-            ? `Альбом откроется ${albumOpeningLabel(event)}, на следующий день после свадьбы. Ссылка та же — загляните сюда.`
-            : "Пара пока закрыла альбом."}
+            ? t(`Альбом откроется ${albumOpeningLabel(event, lang)}, на следующий день после свадьбы. Ссылка та же — загляните сюда.`, `The album opens on ${albumOpeningLabel(event, lang)}, the day after the wedding. Come back to this same link.`)
+            : t("Пара пока закрыла альбом.", "The couple has closed the album for now.")}
         </p>
       </main>
     );
@@ -93,37 +100,37 @@ export default async function AlbumPage({ params, searchParams }: Props) {
   ]);
 
   const empty =
-    scope === "mine" ? "Вы не присылали фотографий."
-    : scope === "table" && !seat ? "Вашего стола нет в рассадке."
-    : "Здесь пока нет снимков.";
+    scope === "mine" ? t("Вы не присылали фотографий.", "You haven’t sent any photos.")
+    : scope === "table" && !seat ? t("Вашего стола нет в рассадке.", "Your table isn’t in the seating plan.")
+    : t("Здесь пока нет снимков.", "There are no photos here yet.");
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pt-4 pb-16 sm:px-6 sm:pt-8">
       {header}
 
       <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-        <nav aria-label="Какие снимки показать" className="flex gap-1 rounded-full border border-line bg-card/70 p-1 text-[15px]">
-          {SCOPES.map(([value, label]) => (
+        <nav aria-label={t("Какие снимки показать", "Which photos to show")} className="flex gap-1 rounded-full border border-line bg-card/70 p-1 text-[15px]">
+          {SCOPES.map(([value, ru, en]) => (
             <Link
               key={value}
               href={`${path}?scope=${value}`}
               aria-current={scope === value ? "page" : undefined}
               className="inline-flex min-h-11 items-center rounded-full px-4 text-muted transition-colors hover:text-ink aria-[current=page]:bg-paper aria-[current=page]:text-ink"
             >
-              {label}
+              {t(ru, en)}
             </Link>
           ))}
         </nav>
         {total > 0 ? (
           <a href={`${path}/download?scope=${scope}`} className="guest-button inline-flex min-h-12 items-center gap-2.5 rounded-2xl px-5 text-[15px] font-medium">
             <DownloadIcon />
-            Скачать архив · {total}
+            {t("Скачать архив", "Download all")} · {total}
           </a>
         ) : null}
       </div>
 
       {scope === "table" && seat ? (
-        <p className="mt-4 text-center text-[15px] text-muted">Снимки гостей за столом «{seat.table.label}»</p>
+        <p className="mt-4 text-center text-[15px] text-muted">{t(`Снимки гостей за столом «${seat.table.label}»`, `Photos from guests at “${seat.table.label}”`)}</p>
       ) : null}
 
       {photos.length > 0 ? (
@@ -135,15 +142,15 @@ export default async function AlbumPage({ params, searchParams }: Props) {
       )}
 
       {pages > 1 ? (
-        <nav aria-label="Страницы альбома" className="mt-8 flex items-center justify-center gap-6 text-[15px]">
-          {page > 1 ? <Link href={`${path}?scope=${scope}&page=${page - 1}`} className="inline-flex min-h-11 items-center">← Назад</Link> : null}
-          <span className="text-muted">{page} из {pages}</span>
-          {page < pages ? <Link href={`${path}?scope=${scope}&page=${page + 1}`} className="inline-flex min-h-11 items-center">Дальше →</Link> : null}
+        <nav aria-label={t("Страницы альбома", "Album pages")} className="mt-8 flex items-center justify-center gap-6 text-[15px]">
+          {page > 1 ? <Link href={`${path}?scope=${scope}&page=${page - 1}`} className="inline-flex min-h-11 items-center">{t("← Назад", "← Back")}</Link> : null}
+          <span className="text-muted">{page} {t("из", "of")} {pages}</span>
+          {page < pages ? <Link href={`${path}?scope=${scope}&page=${page + 1}`} className="inline-flex min-h-11 items-center">{t("Дальше →", "Next →")}</Link> : null}
         </nav>
       ) : null}
 
       <p className="mt-12 text-center text-sm text-muted">
-        Альбом собран в <Link href="/" className="underline decoration-line underline-offset-4 hover:text-ink">«Вместе»</Link>
+        {t("Альбом собран в ", "Album made with ")}<Link href={lang === "en" ? "/en" : "/"} className="underline decoration-line underline-offset-4 hover:text-ink">{t("«Вместе»", "Vmeste")}</Link>
       </p>
     </main>
   );

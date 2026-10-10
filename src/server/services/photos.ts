@@ -26,7 +26,7 @@ import { NSFW_FLAG, nsfwScore } from "@/server/images/nsfw";
 import {
   ALLOWED_TYPES, MAX_UPLOAD_BYTES,
   deleteObjects, headObject, keyBelongsToEvent, photoKeys, presignUpload, putObject, readObject,
-  thumbKeyFor,
+  processedKeyFor, thumbKeyFor,
 } from "@/server/storage/s3";
 
 export type GuestRef = { orgId: string; eventId: string; guestId: string };
@@ -122,17 +122,23 @@ export async function completeUpload(
   input: CompleteInput,
 ): Promise<CompleteResult> {
   const thumbKey = thumbKeyFor(input.storageKey);
-  if (!thumbKey || !keyBelongsToEvent(input.storageKey, guest.eventId)) {
+  const finalKey = processedKeyFor(input.storageKey);
+  if (!thumbKey || !finalKey || !keyBelongsToEvent(input.storageKey, guest.eventId)) {
     return { ok: false, reason: "foreign", message: (await eventT(guest.eventId))("Файл не от этого мероприятия", "This file doesn’t belong to this event") };
   }
 
   // Повторное подтверждение того же файла (двойной клик, повтор запроса
   // после обрыва) не должно завести вторую строку на один объект.
+  // Файл, записанный в ключ загрузки повторно после подтверждения, никому
+  // не нужен — убираем.
   const already = await db.photo.findFirst({
-    where: { eventId: guest.eventId, storageKey: input.storageKey },
+    where: { eventId: guest.eventId, storageKey: finalKey },
     select: { id: true },
   });
-  if (already) return { ok: false, reason: "duplicate", message: (await eventT(guest.eventId))("Это фото уже отправлено", "This photo has already been sent") };
+  if (already) {
+    await deleteObjects([input.storageKey]).catch(() => {});
+    return { ok: false, reason: "duplicate", message: (await eventT(guest.eventId))("Это фото уже отправлено", "This photo has already been sent") };
+  }
 
   // Ранняя проверка — чтобы не перекодировать файл, который всё равно не
   // примем. Окончательная — ниже, в транзакции.
@@ -156,9 +162,9 @@ export async function completeUpload(
     return { ok: false, reason: "size", message: t("Файл слишком большой", "The file is too large") };
   }
 
-  // Исходник заменяется перекодированным файлом по тому же ключу: второй
-  // копии «на всякий случай» не держим — она весила бы в пять раз больше
-  // и хранила бы GPS из EXIF.
+  // Перекодированный файл ложится под серверный ключ (processedKeyFor), а
+  // исходник удаляется: второй копии «на всякий случай» не держим — она
+  // весила бы в пять раз больше и хранила бы GPS из EXIF.
   let converted;
   try {
     converted = await convertImage(await readObject(input.storageKey), GUEST_PHOTO);
@@ -171,7 +177,7 @@ export async function completeUpload(
     };
   }
   const [, , nsfw] = await Promise.all([
-    putObject(input.storageKey, converted.body, converted.contentType),
+    putObject(finalKey, converted.body, converted.contentType),
     putObject(thumbKey, converted.thumb!, converted.contentType),
     nsfwScore(converted.thumb!),
   ]);
@@ -193,7 +199,7 @@ export async function completeUpload(
       tx.photo.count({
         where: { eventId: guest.eventId, guestId: guest.guestId, status: { not: "REJECTED" } },
       }),
-      tx.photo.count({ where: { eventId: guest.eventId, storageKey: input.storageKey } }),
+      tx.photo.count({ where: { eventId: guest.eventId, storageKey: finalKey } }),
     ]);
     if (duplicate > 0) return { error: "duplicate" as const };
     if (used >= quota.limit) return { error: "limit" as const };
@@ -203,7 +209,7 @@ export async function completeUpload(
         orgId: guest.orgId,
         eventId: guest.eventId,
         guestId: guest.guestId,
-        storageKey: input.storageKey,
+        storageKey: finalKey,
         thumbKey,
         width: converted.width,
         height: converted.height,
@@ -217,11 +223,13 @@ export async function completeUpload(
     return { photo, left: quota.limit - used - 1 };
   });
 
+  // Исходник больше не нужен ни в одном исходе.
+  await deleteObjects([input.storageKey]).catch(() => {});
   if ("error" in saved) {
     if (saved.error === "duplicate") {
       return { ok: false, reason: "duplicate", message: t("Это фото уже отправлено", "This photo has already been sent") };
     }
-    await deleteObjects([input.storageKey, thumbKey]).catch(() => {});
+    await deleteObjects([finalKey, thumbKey]).catch(() => {});
     return { ok: false, reason: "limit", message: t("Лимит фотографий исчерпан", "Photo limit reached") };
   }
   // Экран в зале узнаёт о новом снимке так же, как о ручном одобрении.

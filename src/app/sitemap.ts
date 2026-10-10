@@ -11,11 +11,20 @@ const pair = (ru: string, en: string) => ({
 /** Русская и английская титульные — пара hreflang для поисковиков. */
 const LANDING_ALTERNATES = pair("/", "/en");
 
-/** Открытые страницы — те же, что разрешены в robots.ts. */
+/** Дата правки статьи: для статей она известна точно. */
+const articleDate = (article: { published: string; updated?: string }) => new Date(`${article.updated ?? article.published}T12:00:00Z`);
+
+/**
+ * Открытые страницы — те же, что разрешены в robots.ts.
+ *
+ * `lastModified` только там, где дата правки настоящая (статьи и списки
+ * статей). Раньше каждой странице ставилось время генерации sitemap — то
+ * есть «изменено сейчас» при каждом обходе, а Google такие даты учится
+ * игнорировать для всего сайта.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const page = (path: string, priority: number, changeFrequency: "weekly" | "monthly" | "yearly") => ({
     url: `${SITE_URL}${path}`,
-    lastModified: new Date(),
     changeFrequency,
     priority,
   });
@@ -30,9 +39,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Блог: списки статей — пара, статьи — пара, только если есть перевод.
   const blog = (["ru", "en"] as const).flatMap((lang) => [
-    { ...page(BLOG_PATH[lang], 0.6, "weekly"), alternates: pair(BLOG_PATH.ru, BLOG_PATH.en) },
+    {
+      ...page(BLOG_PATH[lang], 0.6, "weekly"),
+      ...(ARTICLES[lang].length ? { lastModified: new Date(Math.max(...ARTICLES[lang].map((article) => articleDate(article).getTime()))) } : {}),
+      alternates: pair(BLOG_PATH.ru, BLOG_PATH.en),
+    },
     ...ARTICLES[lang].map((article) => {
-      const entry = { ...page(articlePath(lang, article.slug), 0.6, "monthly"), lastModified: new Date(`${article.updated ?? article.published}T12:00:00Z`) };
+      const entry = { ...page(articlePath(lang, article.slug), 0.6, "monthly"), lastModified: articleDate(article) };
       if (!article.alternate) return entry;
       const other = articlePath(lang === "ru" ? "en" : "ru", article.alternate);
       const self = articlePath(lang, article.slug);

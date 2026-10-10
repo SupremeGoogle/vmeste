@@ -469,15 +469,11 @@ export type PublicInvite = {
  * директива требует включить `cacheComponents` на всё приложение, а это
  * отдельная миграция — панель организатора и вход по QR писались до неё.
  *
- * Слаг уникален внутри организации, а не глобально: две организации могут
- * назвать мероприятие `ivanovy`. Публичная ссылка ведёт на опубликованное —
- * при совпадении берётся ближайшее по дате. Именная ссылка этой
- * неоднозначности не подвержена: она находит мероприятие по токену гостя.
+ * Слаг уникален на весь сайт (schema.prisma), так что адрес однозначен.
  */
 async function loadInviteBySlug(slug: string): Promise<PublicInvite | null> {
-  const event = await db.event.findFirst({
+  const event = await db.event.findUnique({
     where: { slug, status: "PUBLISHED" },
-    orderBy: { eventDate: "asc" },
     select: {
       id: true, title: true, slug: true, eventDate: true, timezone: true,
       venueName: true, venueAddr: true, rsvpDeadline: true, allowPlusOne: true,

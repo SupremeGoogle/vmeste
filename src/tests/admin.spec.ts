@@ -181,6 +181,26 @@ describe("второй фактор", () => {
     expect((await access.verifySecondFactor(admin, "aaaaa-bbbbb")).ok).toBe(false);
   });
 
+  it("параллельные попытки: счётчик не теряет ошибки, код и резервный код проходят ровно раз", async () => {
+    const { user } = await makeUser("owner@example.com", { google: true });
+    const secret = await enroll(user.id);
+    await login(user.id);
+    const admin = (await access.getAdminIdentity())!;
+
+    // Двадцать неверных кодов разом: раньше все читали failedCount = 0,
+    // и блокировка не наступала.
+    await Promise.all(Array.from({ length: 20 }, () => access.verifySecondFactor(admin, "000000")));
+    expect((await testDb.adminSecret.findUniqueOrThrow({ where: { userId: user.id } })).lockedUntil).not.toBeNull();
+    await testDb.adminSecret.update({ where: { userId: user.id }, data: { lockedUntil: null, failedCount: 0 } });
+
+    const code = totpAt(secret, currentStep());
+    const totp = await Promise.all(Array.from({ length: 5 }, () => access.verifySecondFactor(admin, code)));
+    expect(totp.filter((result) => result.ok)).toHaveLength(1);
+
+    const backup = await Promise.all(Array.from({ length: 5 }, () => access.verifySecondFactor(admin, "AAAAA-BBBBB")));
+    expect(backup.filter((result) => result.ok)).toHaveLength(1);
+  });
+
   it("панель живёт ограниченное время", async () => {
     const { user } = await makeUser("owner@example.com", { google: true });
     await enroll(user.id);
