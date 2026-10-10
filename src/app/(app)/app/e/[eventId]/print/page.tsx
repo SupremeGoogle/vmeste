@@ -6,8 +6,11 @@ import { getSavedPrintDesigns } from "@/server/services/print-design";
 import { reconcilePrintDesign } from "@/lib/print-design";
 import { PrintDesigner } from "@/components/print/print-designer";
 import { notFound } from "next/navigation";
-import { getT } from "@/server/i18n";
+import { getT, getUiLang } from "@/server/i18n";
 import { localeOf } from "@/lib/i18n";
+import { readGuestAppearance } from "@/lib/guest-appearance";
+import { GuestAppearancePicker } from "@/components/guest/appearance/guest-appearance-picker";
+import { updateGuestAppearance } from "./guest-appearance-action";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +28,7 @@ export default async function PrintPage({ params }: { params: Promise<{ eventId:
   const date = new Intl.DateTimeFormat(localeOf(lang), { day: "numeric", month: "long", year: "numeric", timeZone: event.timezone }).format(event.eventDate);
   const design = reconcilePrintDesign(saved.qr, "qr", event.title, date, [], lang);
   return <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
+    <GuestAppearancePicker initial={readGuestAppearance(event.printDesign)?.id ?? null} title={event.title} date={date} guestUrl={`/g/${event.shortCode}`} lang={await getUiLang()} saveAction={updateGuestAppearance.bind(null, eventId)} />
     <PrintDesigner eventId={eventId} mode="qr" initial={design} title={event.title} date={date} tables={[]} qrData={qrData} shortCode={event.shortCode} lang={lang} />
     <section className="mx-auto mt-12 max-w-3xl border-t border-stone-200 pt-8">
       <div className="flex flex-wrap items-center justify-between gap-4">

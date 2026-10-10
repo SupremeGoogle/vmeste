@@ -1,7 +1,6 @@
 import type { EventContext } from "@/server/context";
 import { printDesignSchema, type PrintDesign, type PrintMode } from "@/lib/print-design";
-import type { Prisma } from "@/generated/prisma/client";
-import { readPrintDesignJson, writePrintDesignJson } from "@/server/repositories/print-design";
+import { readPrintDesignJson, mergePrintDesignJson } from "@/server/repositories/print-design";
 
 type SavedDesigns = Partial<Record<PrintMode, PrintDesign>>;
 
@@ -18,7 +17,5 @@ export async function getSavedPrintDesigns(ctx: EventContext): Promise<SavedDesi
 }
 
 export async function savePrintDesign(ctx: EventContext, design: PrintDesign): Promise<void> {
-  const value = await readPrintDesignJson(ctx);
-  const saved = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-  await writePrintDesignJson(ctx, { ...saved, [design.mode]: design } as Prisma.InputJsonValue);
+  await mergePrintDesignJson(ctx, { [design.mode]: design });
 }

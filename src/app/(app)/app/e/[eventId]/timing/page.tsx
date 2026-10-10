@@ -20,11 +20,12 @@ import { SubmitButton } from "@/components/forms/submit-button";
 import { ConfirmButton } from "@/components/invite/confirm-button";
 import { CopyFormLink } from "@/components/forms/copy-form-link";
 import { TimingTemplates } from "@/components/timing/timing-templates";
+import { TimingDesignStudio } from "@/components/timing/designs/timing-design-studio";
 import { applyTimingTemplate } from "@/server/services/timing-templates";
 import "@/components/timing/timing.css";
 import type { DayStep } from "@/generated/prisma/client";
 import { getUiLang } from "@/server/i18n";
-import { countWord, makeT } from "@/lib/i18n";
+import { countWord, makeT, localeOf } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +142,13 @@ export default async function TimingPage({ params, searchParams }: Props) {
       </div>
 
       <TimingTemplates apply={applyTemplate} hasSteps={steps.length > 0} eventLang={eventLang} />
+
+      <TimingDesignStudio eventId={eventId} title={event.title} lang={eventLang}
+        dateLabel={new Intl.DateTimeFormat(localeOf(eventLang), { timeZone: event.timezone, day: "numeric", month: "long", year: "numeric" }).format(event.eventDate)}
+        steps={steps.map((step) => ({ id: step.id, title: step.title,
+          time: new Intl.DateTimeFormat(localeOf(eventLang), { timeZone: event.timezone, hour: "2-digit", minute: "2-digit" }).format(step.startsAt),
+          dateLabel: new Intl.DateTimeFormat(localeOf(eventLang), { timeZone: event.timezone, day: "numeric", month: "long", year: "numeric" }).format(step.startsAt),
+        }))} />
 
       <DayPlanList steps={steps} timezone={event.timezone} now={now} run={run} lang={lang}>
         {(step) => (
