@@ -5,8 +5,13 @@
  * держит экран дольше нужного: уходит, как только готовы шрифты и картинка
  * маскота, но не раньше 0,5 с (иначе мигнёт) и не позже 1,5 с. Раньше она
  * стояла минимум 1,6 с и ещё 1,2 с уходила — почти 3 секунды на каждом заходе.
+ *
+ * Во встроенном браузере Instagram, VK, TikTok заставки нет вовсе: оттуда
+ * приходят из ленты и решают за секунды (7 октября — медиана 6 с на
+ * странице), секунда логотипа — шестая часть всего внимания.
  */
 import { useEffect, useState } from "react";
+import { IN_APP_UA } from "@/lib/in-app-browser";
 
 const SEEN = "vm-intro-seen";
 
@@ -25,6 +30,7 @@ export function LandingIntro({ lang = "ru" }: { lang?: "ru" | "en" }) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let seen = false;
     try { seen = sessionStorage.getItem(SEEN) === "1"; } catch { /* приватный режим */ }
+    if (IN_APP_UA.test(navigator.userAgent)) seen = true;
     if (seen) {
       frame = requestAnimationFrame(() => setPhase("hidden"));
       return () => cancelAnimationFrame(frame);
@@ -91,8 +97,9 @@ export function LandingIntro({ lang = "ru" }: { lang?: "ru" | "en" }) {
         </div>
       </div>
       <noscript><style>{".clay-loader{display:none}"}</style></noscript>
-      {/* Повторный заход за визит: прячем заставку до гидрации, без мигания. */}
-      <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${SEEN}")==="1")document.documentElement.classList.add("vm-intro-seen")}catch(e){}` }} />
+      {/* Повторный заход за визит или встроенный браузер соцсети: прячем
+          заставку до гидрации, без мигания. */}
+      <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${SEEN}")==="1"||new RegExp(${JSON.stringify(IN_APP_UA.source)}).test(navigator.userAgent))document.documentElement.classList.add("vm-intro-seen")}catch(e){}` }} />
     </>
   );
 }

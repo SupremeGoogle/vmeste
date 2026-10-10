@@ -15,9 +15,12 @@ import { redirect } from "next/navigation";
 import { googleEnabled } from "@/server/auth/google";
 import { rateLimit } from "@/server/rate-limit";
 import { getSessionUser, requestOrigin } from "@/server/auth/session";
+import { detectInAppBrowser, openInBrowserHref } from "@/lib/in-app-browser";
+import { SITE_URL } from "@/lib/site";
 import { AUTH_MESSAGES, PASSWORD_MIN, normalizeEmail, registerWithEmail, type AuthCode } from "@/server/services/email-auth";
 import { emailConfigured } from "@/server/email/send";
 import { GoogleButton, OrRule } from "../_auth/google-button";
+import { InAppNotice } from "../_auth/in-app-notice";
 import { cookies } from "next/headers";
 import { LangSwitch } from "@/components/lang-switch";
 import { LANG_COOKIE, parseLang, type Lang } from "@/lib/i18n";
@@ -43,6 +46,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_fail: "Google не подтвердил вход. Попробуйте ещё раз.",
   blocked: "Доступ к кабинету закрыт. Напишите в поддержку.",
   consent: "Отметьте согласие с условиями — без него кабинет не создать.",
+  inapp: "Google не пускает входить из встроенного браузера приложения — откройте страницу в браузере или продолжите по почте.",
 };
 
 /** AUTH_MESSAGES и ошибки Google — по-английски, по тем же кодам. */
@@ -63,6 +67,7 @@ const ERRORS_EN: Record<string, string> = {
   google_fail: "Google didn’t confirm the sign-in. Please try again.",
   blocked: "This account has been suspended. Please contact support.",
   consent: "Please check the consent box — we can’t create an account without it.",
+  inapp: "Google doesn’t allow signing in from in-app browsers — open this page in your browser or continue with email.",
 };
 
 const TEXT = {
@@ -119,8 +124,12 @@ export default async function RegisterPage({
   const { error, email, lang: langParam } = await searchParams;
   const lang = await pageLang(langParam);
   const t = TEXT[lang];
-  const enabled = googleEnabled();
+  // Во встроенном браузере Instagram и т. п. Google отвечает 403 — кнопку
+  // не показываем, вместо неё подсказка и форма по почте (lib/in-app-browser).
+  const inApp = detectInAppBrowser((await requestOrigin()).userAgent);
+  const enabled = googleEnabled() && !inApp;
   const emailOn = emailConfigured();
+  const pageUrl = `${SITE_URL}/register${lang === "en" ? "?lang=en" : ""}`;
   const message = !error ? null : lang === "en" ? (ERRORS_EN[error] ?? t.fallback) : (AUTH_MESSAGES[error as AuthCode] ?? GOOGLE_ERRORS[error] ?? t.fallback);
 
   return (
@@ -135,6 +144,12 @@ export default async function RegisterPage({
       </p>
       <div className="mx-auto my-7 h-px w-12 bg-stone-200" />
 
+      {inApp && (
+        <div className="mb-6">
+          <InAppNotice browser={inApp} url={pageUrl} openHref={openInBrowserHref(pageUrl, inApp.os)} lang={lang} />
+        </div>
+      )}
+
       {enabled && (
         <>
           <GoogleButton label={t.google} />
@@ -146,7 +161,7 @@ export default async function RegisterPage({
         </>
       )}
 
-      {!enabled && !emailOn && (
+      {!googleEnabled() && !emailOn && (
         <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {t.unavailable}
         </p>

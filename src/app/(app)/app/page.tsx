@@ -14,6 +14,10 @@ export default async function EventsPage() {
   if (!ctx) redirect("/login");
 
   const events = await listEvents(ctx);
+  // Первый вход после регистрации: пустой список с подсказкой «начните с
+  // кнопки выше» — лишний шаг между «Создать свадьбу» на главной и самой
+  // свадьбой. Сразу ведём в форму.
+  if (events.length === 0) redirect("/app/events/new?first=1");
   const lang = await getUiLang();
   const t = makeT(lang);
 
@@ -47,12 +51,6 @@ export default async function EventsPage() {
           {t("+ Новое мероприятие", "+ New event")}
         </Link>
       </div>
-
-      {events.length === 0 && (
-        <p className="mt-8 rounded-xl border border-dashed border-stone-300 p-8 text-center text-stone-600">
-          {t("Мероприятий пока нет — начните с кнопки выше.", "No events yet — start with the button above.")}
-        </p>
-      )}
 
       <ul className="rise-stagger mt-8 space-y-4">
         {events.map((event, i) => (

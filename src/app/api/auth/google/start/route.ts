@@ -9,14 +9,23 @@
 import { cookies } from "next/headers";
 import { beginAuth, googleEnabled } from "@/server/auth/google";
 import { cookieSecure } from "@/server/auth/cookies";
+import { detectInAppBrowser } from "@/lib/in-app-browser";
 
 export const dynamic = "force-dynamic";
 
 export const HANDSHAKE_COOKIE = "vmeste_oauth";
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!googleEnabled()) {
     return Response.redirect(new URL("/login?error=google_off", process.env.NEXT_PUBLIC_APP_URL));
+  }
+  // Из встроенного браузера Instagram и т. п. Google ответит тупиковым 403:
+  // возвращаем на ту же страницу с объяснением и входом по почте.
+  if (detectInAppBrowser(request.headers.get("user-agent"))) {
+    const from = request.headers.get("referer") ?? "";
+    const page = /\/register(\?|$)/.test(from) ? "/register" : "/login";
+    const lang = /[?&]lang=en\b/.test(from) ? "&lang=en" : "";
+    return Response.redirect(new URL(`${page}?error=inapp${lang}`, process.env.NEXT_PUBLIC_APP_URL));
   }
 
   const { url, state, verifier } = beginAuth();

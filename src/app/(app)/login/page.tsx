@@ -8,11 +8,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { verifyPassword } from "@/server/auth/password";
-import { createSession, getSessionUser } from "@/server/auth/session";
+import { createSession, getSessionUser, requestOrigin } from "@/server/auth/session";
+import { detectInAppBrowser, openInBrowserHref } from "@/lib/in-app-browser";
+import { SITE_URL } from "@/lib/site";
 import { rateLimit } from "@/server/rate-limit";
 import { googleEnabled } from "@/server/auth/google";
 import { emailConfigured } from "@/server/email/send";
 import { GoogleButton, OrRule } from "../_auth/google-button";
+import { InAppNotice } from "../_auth/in-app-notice";
 import { cookies } from "next/headers";
 import { LangSwitch } from "@/components/lang-switch";
 import { LANG_COOKIE, parseLang, type Lang } from "@/lib/i18n";
@@ -77,6 +80,7 @@ const LOGIN_ERRORS: Record<string, string> = {
   google_cancel: "Вход через Google отменён.",
   google_state: "Ссылка входа устарела, начните заново.",
   google_fail: "Google не подтвердил вход. Попробуйте ещё раз.",
+  inapp: "Google не пускает входить из встроенного браузера приложения — откройте страницу в браузере или войдите по почте.",
   link: "Ссылка из письма устарела или уже использована. Войдите или запросите новое письмо.",
   default: "Неверная почта или пароль.",
 };
@@ -89,6 +93,7 @@ const LOGIN_ERRORS_EN: Record<string, string> = {
   google_cancel: "Google sign-in was canceled.",
   google_state: "This sign-in link has expired — please start again.",
   google_fail: "Google didn’t confirm the sign-in. Please try again.",
+  inapp: "Google doesn’t allow signing in from in-app browsers — open this page in your browser or sign in with email.",
   link: "This email link has expired or has already been used. Sign in or request a new one.",
   default: "Incorrect email or password.",
 };
@@ -116,6 +121,9 @@ export default async function LoginPage({
   const lang = await pageLang(langParam);
   const t = TEXT[lang];
   const errors = lang === "en" ? LOGIN_ERRORS_EN : LOGIN_ERRORS;
+  // Встроенный браузер Instagram и т. п.: Google там отвечает 403 (lib/in-app-browser).
+  const inApp = detectInAppBrowser((await requestOrigin()).userAgent);
+  const pageUrl = `${SITE_URL}/login${lang === "en" ? "?lang=en" : ""}`;
 
   return (
     <main lang={lang} className="relative mx-auto max-w-sm px-5 py-16 sm:px-6 sm:py-24">
@@ -127,7 +135,9 @@ export default async function LoginPage({
       <p className="mt-2 text-center text-sm text-stone-600">{t.subtitle}</p>
       <div className="mx-auto my-7 h-px w-12 bg-stone-200" />
 
-      {googleEnabled() && (
+      {inApp && <InAppNotice browser={inApp} url={pageUrl} openHref={openInBrowserHref(pageUrl, inApp.os)} lang={lang} />}
+
+      {googleEnabled() && !inApp && (
         <>
           <GoogleButton label={t.google} />
           <p className="mt-3 text-center text-xs leading-relaxed text-stone-500">

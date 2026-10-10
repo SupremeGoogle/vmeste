@@ -19,10 +19,10 @@ import { makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ error?: string }> };
+type Props = { searchParams: Promise<{ error?: string; first?: string }> };
 
 export default async function NewEventPage({ searchParams }: Props) {
-  const { error } = await searchParams;
+  const { error, first } = await searchParams;
   const ctx = await getOrgContext();
   if (!ctx) redirect("/login");
   const uiLang = await getUiLang();
@@ -71,7 +71,12 @@ export default async function NewEventPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-6 sm:px-6 sm:py-10">
-      <h1 className="text-2xl font-semibold">{t("Новое мероприятие", "New event")}</h1>
+      <h1 className="text-2xl font-semibold">{first ? t("Ваша свадьба", "Your wedding") : t("Новое мероприятие", "New event")}</h1>
+      {first && (
+        <p className="mt-2 text-stone-600">
+          {t("Для начала — имена и дата. Шаблон приглашения, гостей и рассадку настроите уже в кабинете свадьбы.", "Start with the names and the date. You’ll set up the invitation, guests and seating inside your wedding’s dashboard.")}
+        </p>
+      )}
 
       {error ? (
         <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
@@ -105,6 +110,9 @@ export default async function NewEventPage({ searchParams }: Props) {
             />
           </label>
         </div>
+        <p className="-mt-2 text-xs text-stone-400">
+          {t("Точной даты ещё нет? Поставьте примерную — её можно поменять в настройках.", "No exact date yet? Pick an approximate one — you can change it in settings.")}
+        </p>
 
         <label className="block">
           <span className="text-sm text-stone-500">{t("Площадка", "Venue")}</span>
