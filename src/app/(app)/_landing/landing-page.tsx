@@ -21,7 +21,8 @@ import { faqItems } from "./faq-items";
 import { LegalLinks } from "../(legal)/_legal/links";
 import { LangSwitch } from "@/components/lang-switch";
 import { EN_LANDING_SCRIPT, RU_LANDING_SCRIPT, type Lang } from "@/lib/i18n";
-import { OPERATOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { OPERATOR, SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIAL } from "@/lib/site";
+import { WEDDING_PRICE_LABEL, WEDDING_PRICE_RUB } from "@/lib/pricing";
 import "./landing.css";
 import "./home.css";
 import "./clay.css";
@@ -72,6 +73,7 @@ function jsonLd(lang: Lang) {
         url: SITE_URL,
         logo: `${SITE_URL}/icon.png`,
         email: OPERATOR.email,
+        sameAs: [SOCIAL.instagram.url, SOCIAL.telegram.url],
         contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: OPERATOR.email, availableLanguage: en ? ["ru", "en"] : "ru" },
       },
       { "@type": "WebSite", "@id": `${url}/#site`, name, url, inLanguage: lang, publisher: { "@id": `${SITE_URL}/#org` } },
@@ -84,6 +86,7 @@ function jsonLd(lang: Lang) {
         inLanguage: lang,
         description: en ? EN_DESCRIPTION : SITE_DESCRIPTION,
         featureList: FEATURE_LIST[lang],
+        offers: { "@type": "Offer", price: String(WEDDING_PRICE_RUB), priceCurrency: "RUB", description: en ? "One wedding, paid once" : "Одна свадьба, оплата один раз" },
         publisher: { "@id": `${SITE_URL}/#org` },
       },
       {
@@ -111,9 +114,10 @@ type Copy = {
   features: { kicker: string; title: ReactNode; lead: string };
   invites: { kicker: string; title: ReactNode; lead: string };
   seating: { kicker: string; title: ReactNode; lead: string; step1: string; step2: string; steps: [string, string][] };
+  price: { kicker: string; title: ReactNode; per: string; includes: string[]; note: string };
   faq: { kicker: string; title: ReactNode; lead: string };
   final: { kicker: string; title: ReactNode; lead: string };
-  footer: { tagline: string; product: string; featuresLink: string; seatingLink: string; account: string; myAccount: string; signIn: string; create: string; faq: string; legal: string; brand: string; motto: string };
+  footer: { tagline: string; product: string; featuresLink: string; seatingLink: string; priceLink: string; contact: string; account: string; myAccount: string; signIn: string; create: string; faq: string; legal: string; brand: string; motto: string };
 };
 
 const COPY: Record<Lang, Copy> = {
@@ -143,6 +147,20 @@ const COPY: Record<Lang, Copy> = {
         ["Видит стол и место", "И схему зала, где этот стол подсвечен."],
       ],
     },
+    price: {
+      kicker: "Стоимость",
+      title: <>Одна цена — <em>вся свадьба</em></>,
+      per: "за одну свадьбу · один раз · без подписки",
+      includes: [
+        "Приглашение по ссылке и именные ссылки гостям",
+        "Анкета гостя: ответы, блюда, напитки, песни",
+        "Рассадка на плане зала и печать карточек",
+        "Вход по QR-коду — гость сразу видит свой стол",
+        "Фото гостей со свадьбы и общий альбом",
+        "Гостей сколько угодно",
+      ],
+      note: "Готовить свадьбу можно без регистрации и без оплаты — платите, когда публикуете приглашение.",
+    },
     faq: {
       kicker: "Вопросы и ответы",
       title: <>Мы рядом <em>на каждом шаге</em></>,
@@ -158,6 +176,8 @@ const COPY: Record<Lang, Copy> = {
       product: "Сервис",
       featuresLink: "Возможности",
       seatingLink: "Рассадка",
+      priceLink: "Стоимость",
+      contact: "На связи",
       account: "Кабинет",
       myAccount: "Личный кабинет",
       signIn: "Войти",
@@ -194,6 +214,20 @@ const COPY: Record<Lang, Copy> = {
         ["They see their table and seat", "Plus a floor plan with their table highlighted."],
       ],
     },
+    price: {
+      kicker: "Pricing",
+      title: <>One price — <em>your whole wedding</em></>,
+      per: "per wedding · paid once · no subscription",
+      includes: [
+        "Invitation link and a personal link for every guest",
+        "RSVP form: answers, meals, drinks, songs",
+        "Seating chart on a floor plan, printable place cards",
+        "QR entry — guests see their table right away",
+        "Guest photos from the wedding and a shared album",
+        "Unlimited guests",
+      ],
+      note: "You can prepare your wedding without signing up or paying — you pay when you publish the invitation.",
+    },
     faq: {
       kicker: "Questions & answers",
       title: <>We’re with you <em>every step of the way</em></>,
@@ -209,6 +243,8 @@ const COPY: Record<Lang, Copy> = {
       product: "Product",
       featuresLink: "Features",
       seatingLink: "Seating",
+      priceLink: "Pricing",
+      contact: "Contact",
       account: "Account",
       myAccount: "My account",
       signIn: "Sign in",
@@ -317,7 +353,25 @@ export async function LandingPage({ lang }: { lang: Lang }) {
           </div>
         </section>
 
-        <section id="voprosy" className="home-section">
+        <section id="cena" className="home-section home-price" aria-labelledby="home-price-title">
+          <div className="home-container">
+            <Reveal className="home-head home-head--center">
+              <span className="home-kicker">{t.price.kicker}</span>
+              <h2 id="home-price-title" className="home-h2">{t.price.title}</h2>
+            </Reveal>
+            <Reveal delay={100} className="home-price-card">
+              <p className="home-price-amount">{WEDDING_PRICE_LABEL}</p>
+              <p className="home-price-per">{t.price.per}</p>
+              <ul className="home-price-list">
+                {t.price.includes.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+              <Link href={destination} className="home-button">{cta} <span aria-hidden="true">→</span></Link>
+              <p className="home-price-note">{t.price.note}</p>
+            </Reveal>
+          </div>
+        </section>
+
+        <section id="voprosy" className="home-section home-section--sand">
           <div className="home-container home-faq">
             <Reveal className="home-faq-aside">
               <span className="home-kicker">{t.faq.kicker}</span>
@@ -360,6 +414,7 @@ export async function LandingPage({ lang }: { lang: Lang }) {
               <ul>
                 <li><a href="#vozmozhnosti">{t.footer.featuresLink}</a></li>
                 <li><a href="#demo">{t.footer.seatingLink}</a></li>
+                <li><a href="#cena">{t.footer.priceLink}</a></li>
                 {(lang === "en"
                   ? [["/en/wedding-invitations", "Online invitations"], ["/en/wedding-seating-chart", "Seating chart maker"], ["/en/wedding-rsvp", "Online RSVP"], ["/en/blog", "Blog"]]
                   : [["/elektronnoe-priglashenie-na-svadbu", "Электронные приглашения"], ["/rassadka-gostej-onlajn", "Рассадка гостей онлайн"], ["/anketa-gostya-na-svadbu", "Анкета гостя"], ["/blog", "Статьи"]]
@@ -380,6 +435,14 @@ export async function LandingPage({ lang }: { lang: Lang }) {
                   </>
                 )}
                 <li><a href="#voprosy">{t.footer.faq}</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4>{t.footer.contact}</h4>
+              <ul>
+                <li><a href={SOCIAL.instagram.url} target="_blank" rel="noopener">Instagram · @{SOCIAL.instagram.handle}</a></li>
+                <li><a href={SOCIAL.telegram.url} target="_blank" rel="noopener">Telegram · @{SOCIAL.telegram.handle}</a></li>
+                <li><a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a></li>
               </ul>
             </div>
             <div>

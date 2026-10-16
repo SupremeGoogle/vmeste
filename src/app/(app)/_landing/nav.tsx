@@ -19,6 +19,7 @@ const LINKS = [
   { href: "#vozmozhnosti", label: { ru: "Возможности", en: "Features" } },
   { href: "#priglasheniya", label: { ru: "Приглашения", en: "Invitations" } },
   { href: "#demo", label: { ru: "Рассадка", en: "Seating" } },
+  { href: "#cena", label: { ru: "Стоимость", en: "Pricing" } },
   { href: "#voprosy", label: { ru: "Вопросы", en: "FAQ" } },
 ];
 

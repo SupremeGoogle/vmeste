@@ -337,7 +337,7 @@
 .home-nav-links a[aria-current="true"]::after { transform: scaleX(1); }
 
 .home-nav-actions { display: flex; align-items: center; gap: 22px; }
-.home-nav-actions .home-button { min-height: 44px; padding: 0 22px; font-size: 14px; }
+.home-nav-actions .home-button { min-height: 44px; padding: 0 22px; font-size: 14px; white-space: nowrap; }
 
 .home-nav-login {
   color: var(--text);
@@ -1134,7 +1134,7 @@
 
 .home-footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, .7fr));
+  grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, .7fr));
   gap: 40px;
 }
 
@@ -1170,16 +1170,86 @@
   font-size: 13px;
 }
 
+/* ── Стоимость ────────────────────────────────────────────── */
+.home-price .home-head { margin-bottom: clamp(32px, 4vw, 48px); }
+
+.home-price-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: clamp(36px, 5vw, 56px) clamp(24px, 5vw, 56px);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--paper);
+  box-shadow: 0 40px 80px -56px rgba(53, 25, 31, .45);
+  text-align: center;
+}
+
+.home-price-amount {
+  margin: 0;
+  color: var(--wine);
+  font-family: var(--font-serif);
+  font-size: clamp(64px, 9vw, 96px);
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+
+.home-price-per {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.home-price-list {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin: 32px 0 36px;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.home-price-list li { display: flex; gap: 12px; }
+.home-price-list li::before { content: "✓"; flex: none; color: var(--gold); }
+
+.home-price-note {
+  max-width: 380px;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 /* ── Адаптив ──────────────────────────────────────────────── */
+/* Пять разделов в меню: на узком десктопе сжимаем промежутки,
+   чтобы кнопка «Создать свадьбу» не ломалась на две строки. */
+@media (max-width: 1180px) {
+  .home-nav-links { gap: 20px; }
+  .home-nav-actions { gap: 16px; }
+}
+
 @media (max-width: 1023px) {
-  .home-nav-links { gap: 24px; }
+  .home-nav-links { gap: 16px; }
   .home-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); }
 }
 
-@media (max-width: 860px) {
+/* Полное меню из пяти разделов помещается от ~1000px; уже — бургер. */
+@media (max-width: 1000px) {
   .home-nav-links,
   .home-nav-actions { display: none; }
   .home-burger { display: flex; }
+}
+
+@media (max-width: 860px) {
   .home-nav-bar { height: 64px; }
   .home-menu { max-height: calc(100dvh - 64px); }
 

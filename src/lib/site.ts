@@ -26,6 +26,12 @@ export const OPERATOR = {
   taxStatus: "плательщик налога на профессиональный доход (самозанятый)",
 };
 
+/** Соцсети: подвал главной и sameAs в разметке Organization. */
+export const SOCIAL = {
+  instagram: { handle: "vvvmesste", url: "https://www.instagram.com/vvvmesste/" },
+  telegram: { handle: "supremehn", url: "https://t.me/supremehn" },
+};
+
 /**
  * Коды подтверждения прав на сайт. Google и Яндекс подтверждены записью
  * в DNS, Bing — meta-тегом на главной (его удалять нельзя: Bing
