@@ -42,6 +42,7 @@ export function OperatorDetails() {
       <li>Сервис «Вместе», сайт <a href={SITE_URL}>{SITE_HOST}</a></li>
       {OPERATOR.name && <li>Исполнитель: {OPERATOR.name}, {OPERATOR.taxStatus}</li>}
       {OPERATOR.inn && <li>ИНН: {OPERATOR.inn}</li>}
+      {OPERATOR.phone && <li>Телефон: <a href={`tel:${OPERATOR.phone.replace(/[^+\d]/g, "")}`}>{OPERATOR.phone}</a></li>}
       <li>Электронная почта: <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a></li>
     </ul>
   );
