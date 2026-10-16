@@ -13,12 +13,17 @@ import { notifyEventCreated } from "@/server/notify/events";
 import { redirect } from "next/navigation";
 import { getOrgContext } from "@/server/context";
 import { DEFAULT_TIMEZONE, createEvent } from "@/server/repositories/events";
+import { applyTemplate } from "@/server/repositories/invites";
+import { seedDefaultSeating } from "@/server/services/seating-defaults";
 import { localTimeToUtc } from "@/lib/wedding-day";
 import { slugify } from "@/lib/slugify";
 import { getUiLang } from "@/server/i18n";
 import { makeT, parseLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
+
+/** Шаблон новой свадьбы (lib/invite-templates/lily.ts). */
+const DEFAULT_TEMPLATE = "lily";
 
 type Props = { searchParams: Promise<{ error?: string; first?: string }> };
 
@@ -74,8 +79,13 @@ export default async function NewEventPage({ searchParams }: Props) {
       );
     }
 
+    // Шаблон по умолчанию — «Лилия»: приглашение готово сразу, без
+    // экрана выбора шаблона. Поменять можно в разделе «Приглашение».
+    await applyTemplate({ ...ctx, eventId: event.id }, DEFAULT_TEMPLATE);
+    // Три стола для начала рассадки. Сбой здесь не мешает создать свадьбу.
+    await seedDefaultSeating({ ...ctx, eventId: event.id }, event.language === "en" ? "en" : "ru").catch(() => {});
     notifyEventCreated(event.title, event.eventDate);
-    redirect(`/app/e/${event.id}/settings`);
+    redirect(`/app/e/${event.id}`);
   }
 
   return (
