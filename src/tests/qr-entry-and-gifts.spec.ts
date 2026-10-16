@@ -42,7 +42,7 @@ async function makeEvent(opts: { qrEntryOpen?: boolean } = {}) {
   const slug = `qr-${Math.random().toString(36).slice(2, 8)}`;
   const org = await testDb.organization.create({ data: { name: slug, slug } });
   return testDb.event.create({
-    data: {
+    data: { paidAt: new Date(),
       orgId: org.id, title: "Свадьба", slug, shortCode: slug.slice(3).toUpperCase(), status: "PUBLISHED",
       eventDate: new Date(Date.now() + 24 * 3600 * 1000), giftsEnabled: true, qrEntryOpen: opts.qrEntryOpen ?? false,
     },

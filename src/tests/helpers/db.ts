@@ -12,6 +12,7 @@ const connectionString = testDatabaseUrl();
 export const testDb = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 export async function resetDb() {
+  await testDb.payment.deleteMany({});
   await testDb.organization.deleteMany({});
   await testDb.user.deleteMany({});
 }

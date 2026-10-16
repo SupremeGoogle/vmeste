@@ -42,7 +42,7 @@ const notFound = () =>
 
 async function findPublicEvent(slug: string) {
   return db.event.findUnique({
-    where: { slug, status: "PUBLISHED" },
+    where: { slug, status: "PUBLISHED", paidAt: { not: null } },
     select: {
       id: true, orgId: true, title: true, eventDate: true, timezone: true,
       rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true, language: true,

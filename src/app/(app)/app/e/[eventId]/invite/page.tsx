@@ -25,7 +25,9 @@
  * `revalidateTag`, потому что организатор сразу жмёт «посмотреть» и обязан
  * увидеть свою правку, а не версию из кеша (read-your-own-writes).
  */
-import { notifyPublished } from "@/server/notify/events";
+import { ensureEventUnlocked } from "@/server/billing";
+import { publishEvent } from "@/server/services/publish";
+import { WEDDING_PRICE_LABEL } from "@/lib/pricing";
 import { updateTag } from "next/cache";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -153,10 +155,9 @@ export default async function InvitePage({ params, searchParams }: Props) {
     "use server";
     const ctx = await requireEventContext(eventId);
     const t = await getT();
-    if (!(await saveSnapshot(ctx))) return { ok: false, message: t("Не получилось опубликовать — обновите страницу", "Couldn’t publish — please refresh the page") } as const;
-    await setEventStatus(ctx, eventId, "PUBLISHED");
-    const published = await getEvent(ctx, eventId);
-    if (published) notifyPublished(published.title, `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/i/${published.slug}`);
+    // Не оплачена — публикация ведёт на оплату (без регистрации — сначала на неё).
+    if (!(await ensureEventUnlocked(ctx))) return { ok: false, message: t("Публикация — после оплаты", "Publishing requires payment"), payPath: `/app/e/${eventId}/pay` } as const;
+    if (!(await publishEvent(ctx))) return { ok: false, message: t("Не получилось опубликовать — обновите страницу", "Couldn’t publish — please refresh the page") } as const;
     await invalidate(eventSlug);
     return { ok: true, path: `/i/${eventSlug}` } as const;
   }
@@ -421,6 +422,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
           unpublish={unpublish}
           saveChanges={saveChanges}
           discardChanges={discardChanges}
+          priceLabel={event.paidAt ? undefined : WEDDING_PRICE_LABEL}
         />
         </div>
       </div>

@@ -125,6 +125,8 @@ export function startRetentionSchedule(): void {
   const tick = async () => {
     try {
       const report = await runRetention();
+      const { purgeAbandonedGuestWorkspaces } = await import("@/server/services/guest-workspace");
+      await purgeAbandonedGuestWorkspaces();
       if (report.archived || report.purgedPhotos) {
         const { notifyOwner } = await import("@/server/notify/telegram");
         await notifyOwner(

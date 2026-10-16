@@ -168,7 +168,7 @@ describe("сохранение поля со страницы", () => {
     await resetDb();
     const org = await testDb.organization.create({ data: { name: "tili", slug: "tili" } });
     const event = await testDb.event.create({
-      data: { orgId: org.id, title: "Свадьба", slug: "tili", shortCode: "TILIAA", eventDate: DATE },
+      data: { paidAt: new Date(), orgId: org.id, title: "Свадьба", slug: "tili", shortCode: "TILIAA", eventDate: DATE },
     });
     ctx = { kind: "org", userId: "u", orgId: org.id, role: "OWNER", eventId: event.id };
     await applyTemplate(ctx, "tili");
@@ -226,7 +226,7 @@ describe("анкета «Тили-тесто»: ответ про музыку",
     await resetDb();
     const org = await testDb.organization.create({ data: { name: "m", slug: "m" } });
     const event = await testDb.event.create({
-      data: { orgId: org.id, title: "Свадьба", slug: "m", shortCode: "MUSICA", eventDate: DATE },
+      data: { paidAt: new Date(), orgId: org.id, title: "Свадьба", slug: "m", shortCode: "MUSICA", eventDate: DATE },
     });
     const token = randomBytes(16).toString("base64url");
     const guest = await testDb.guest.create({

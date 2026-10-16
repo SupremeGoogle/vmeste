@@ -120,7 +120,9 @@ export default async function RegisterPage({
 }: {
   searchParams: Promise<{ error?: string; email?: string; lang?: string }>;
 }) {
-  if (await getSessionUser()) redirect("/app");
+  // Из кабинета без регистрации сюда и приходят — его свадьба переедет в новый кабинет.
+  const current = await getSessionUser();
+  if (current && !current.isAnonymous) redirect("/app");
   const { error, email, lang: langParam } = await searchParams;
   const lang = await pageLang(langParam);
   const t = TEXT[lang];

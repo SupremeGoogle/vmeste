@@ -5,6 +5,9 @@ import { EventTabs } from "./event-tabs";
 import { RouteTransition } from "@/components/motion/motion";
 import { getDraftState } from "@/server/repositories/invite-draft";
 import { DraftReminder } from "./draft-reminder";
+import Link from "next/link";
+import { getT } from "@/server/i18n";
+import { WEDDING_PRICE_LABEL } from "@/lib/pricing";
 
 export default async function EventLayout({
   children,
@@ -18,6 +21,7 @@ export default async function EventLayout({
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
   const draft = await getDraftState(ctx);
+  const t = await getT();
 
   return (
     <div>
@@ -35,6 +39,15 @@ export default async function EventLayout({
           <EventTabs eventId={eventId} />
         </div>
         <DraftReminder eventId={eventId} dirty={draft.dirty} />
+        {/* Пока не оплачено, гостевые ссылки и QR молчат (server/billing.ts) —
+            организатор должен знать это до того, как разошлёт ссылки. */}
+        {!event.paidAt && (
+          <p className="border-t border-stone-200 bg-stone-50 px-4 py-2 text-center text-xs text-stone-600 sm:text-sm">
+            {t("Черновик для вас: гости пока ничего не видят. Публикация, ссылки гостям и вход по QR откроются после оплаты — ", "A private draft: guests can’t see anything yet. Publishing, guest links and QR entry open after payment — ")}
+            {WEDDING_PRICE_LABEL}{t(" за свадьбу. ", " per wedding. ")}
+            <Link href={`/app/e/${eventId}/pay`} className="font-medium text-stone-900 underline underline-offset-2">{t("Оплатить", "Pay")}</Link>
+          </p>
+        )}
       </div>
       <RouteTransition>{children}</RouteTransition>
     </div>

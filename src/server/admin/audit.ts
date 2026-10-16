@@ -43,4 +43,6 @@ export const AUDIT_LABELS: Record<string, string> = {
   "user.impersonate": "Вход под пользователем",
   "user.impersonate_end": "Возврат из-под пользователя",
   "event.status": "Изменён статус мероприятия",
+  "user.subscription_grant": "Выдана подписка",
+  "user.subscription_revoke": "Снята подписка",
 };

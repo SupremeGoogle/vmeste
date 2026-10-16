@@ -45,7 +45,7 @@ async function send(slug: string, fields: Record<string, string>) {
 async function makeEvent(slug: string, opts: { deadline?: Date } = {}) {
   const org = await testDb.organization.create({ data: { name: slug, slug } });
   return testDb.event.create({
-    data: {
+    data: { paidAt: new Date(),
       orgId: org.id, title: `Свадьба ${slug}`, slug, shortCode: Math.random().toString(36).slice(2, 8).toUpperCase(), status: "PUBLISHED",
       eventDate: new Date(Date.now() + 90 * 24 * 3600 * 1000), rsvpDeadline: opts.deadline ?? null,
     },

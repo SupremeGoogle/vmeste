@@ -473,7 +473,7 @@ export type PublicInvite = {
  */
 async function loadInviteBySlug(slug: string): Promise<PublicInvite | null> {
   const event = await db.event.findUnique({
-    where: { slug, status: "PUBLISHED" },
+    where: { slug, status: "PUBLISHED", paidAt: { not: null } },
     select: {
       id: true, title: true, slug: true, eventDate: true, timezone: true,
       venueName: true, venueAddr: true, rsvpDeadline: true, allowPlusOne: true,

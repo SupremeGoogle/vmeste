@@ -4,6 +4,10 @@
  */
 export const FAQ_ITEMS = [
   {
+    q: "Сколько это стоит?",
+    a: "1 490 ₽ за одну свадьбу — один раз, без подписки, гостей сколько угодно. Готовить свадьбу — список гостей, рассадку, приглашение — можно без регистрации и без оплаты; платите, когда публикуете приглашение и рассылаете ссылки гостям.",
+  },
+  {
     q: "Гостю нужно что-то устанавливать?",
     a: "Нет. Приглашение открывается по ссылке в браузере, а на входе достаточно снять QR-код камерой. Ни приложения, ни регистрации, ни пароля у гостя нет — только именная ссылка.",
   },
@@ -39,6 +43,10 @@ export const FAQ_ITEMS = [
 
 /** Те же вопросы для английской версии (/en) — и для её FAQPage. */
 export const FAQ_ITEMS_EN = [
+  {
+    q: "How much does it cost?",
+    a: "1,490 ₽ per wedding — paid once, no subscription, unlimited guests. You can prepare everything — guest list, seating chart, invitation — without signing up or paying; you pay when you publish the invitation and send links to your guests.",
+  },
   {
     q: "Do guests need to install anything?",
     a: "No. The invitation opens in any browser from a link, and at the venue guests just scan a QR code with their phone camera. No app, no sign-up, no password — just a personal link.",

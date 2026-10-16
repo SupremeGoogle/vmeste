@@ -10,7 +10,7 @@ import { BrandLogo } from "@/components/brand";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { rateLimit } from "@/server/rate-limit";
-import { createSession, requestOrigin } from "@/server/auth/session";
+import { createSession, requestOrigin, takeAfterAuth } from "@/server/auth/session";
 import { authMessage, confirmEmailCode, normalizeEmail, resendVerification } from "@/server/services/email-auth";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
@@ -44,7 +44,7 @@ async function confirm(formData: FormData) {
   const result = await confirmEmailCode(email, String(formData.get("code") ?? ""));
   if (!result.ok) redirect(page(email, `error=${result.code}${result.left ? `&left=${result.left}` : ""}`, lang));
   await createSession(result.userId);
-  redirect("/app");
+  redirect(await takeAfterAuth());
 }
 
 async function resend(formData: FormData) {

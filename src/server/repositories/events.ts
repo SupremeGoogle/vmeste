@@ -65,7 +65,7 @@ export async function createEvent(
   if (await isSlugTaken(input.slug)) return null;
 
   try {
-    return await db.event.create({
+    const event = await db.event.create({
     data: {
       orgId: ctx.orgId,
       title: input.title,
@@ -77,6 +77,10 @@ export async function createEvent(
       shortCode: await uniqueShortCode(),
     },
     });
+    // Подписка, выданная владельцем, открывает новую свадьбу сразу.
+    const { unlockEventsBySubscription } = await import("@/server/billing");
+    if (await unlockEventsBySubscription(ctx.userId, event.id)) return { ...event, paidAt: new Date() };
+    return event;
   } catch (error) {
     if ((error as { code?: string }).code === "P2002") return null;
     throw error;
@@ -98,10 +102,12 @@ export async function findEventByShortCode(shortCode: string) {
       id: true, orgId: true, title: true, slug: true, shortCode: true,
       status: true, eventDate: true, timezone: true, venueName: true,
       photosEnabled: true, wishesEnabled: true, qrEntryOpen: true, language: true,
+      paidAt: true,
     },
   });
 
-  return event && event.status !== "ARCHIVED" ? event : null;
+  // И неоплаченные: вход по QR открывается вместе с оплатой (server/billing.ts).
+  return event && event.status !== "ARCHIVED" && event.paidAt ? event : null;
 }
 
 export async function getEvent(ctx: OrgContext, eventId: string) {
@@ -159,11 +165,14 @@ export async function setEventStatus(
   ctx: OrgContext,
   eventId: string,
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
-) {
-  await db.event.updateMany({
-    where: { id: eventId, orgId: ctx.orgId },
+): Promise<boolean> {
+  // Опубликовать можно только оплаченную: проверка здесь, чтобы ни одна
+  // кнопка публикации не прошла мимо оплаты (server/billing.ts).
+  const updated = await db.event.updateMany({
+    where: { id: eventId, orgId: ctx.orgId, ...(status === "PUBLISHED" ? { paidAt: { not: null } } : {}) },
     data: { status },
   });
+  return updated.count === 1;
 }
 
 /** Срок ответа на приглашение. Пустая строка — снять срок. */

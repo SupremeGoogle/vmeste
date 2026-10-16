@@ -70,7 +70,7 @@ export async function identifyByToken(token: string): Promise<GuestIdentity | nu
  */
 export async function identifyBySlugSession(slug: string): Promise<GuestIdentity | null> {
   const event = await db.event.findUnique({
-    where: { slug, status: { not: "ARCHIVED" } },
+    where: { slug, status: { not: "ARCHIVED" }, paidAt: { not: null } },
     select: {
       id: true, orgId: true, title: true, guestLinkSecret: true,
       photosEnabled: true, wishesEnabled: true, language: true,
@@ -102,7 +102,7 @@ export async function identifyBySlugSession(slug: string): Promise<GuestIdentity
 /** Полная личность гостя по мероприятию и его cookie. */
 export async function identifyByEventSession(eventId: string): Promise<GuestIdentity | null> {
   const event = await db.event.findFirst({
-    where: { id: eventId, status: { not: "ARCHIVED" } },
+    where: { id: eventId, status: { not: "ARCHIVED" }, paidAt: { not: null } },
     select: {
       id: true, orgId: true, title: true, guestLinkSecret: true,
       photosEnabled: true, wishesEnabled: true, language: true,
@@ -138,9 +138,9 @@ export async function identifyByEventSession(eventId: string): Promise<GuestIden
 export async function identifyBySession(eventId: string): Promise<{ guestId: string } | null> {
   const event = await db.event.findUnique({
     where: { id: eventId },
-    select: { guestLinkSecret: true },
+    select: { guestLinkSecret: true, paidAt: true },
   });
-  if (!event) return null;
+  if (!event?.paidAt) return null;
 
   const session = await readGuestSession(eventId, event.guestLinkSecret);
   if (!session) return null;

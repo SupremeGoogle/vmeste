@@ -7,7 +7,8 @@
  * страницу: пока чего-то из неё нет, репетиция не проходится.
  */
 import { revalidatePath, updateTag } from "next/cache";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { ensureEventUnlocked } from "@/server/billing";
 import { requireEventContext } from "@/server/context";
 import Link from "next/link";
 import {
@@ -136,6 +137,8 @@ export default async function SettingsPage({ params, searchParams }: Props) {
     const current = await getEvent(ctx, eventId);
     if (!current) return;
     if (status !== "ARCHIVED" && retentionStage(current.eventDate) !== "active" && !(await isRetentionExempt(ctx.orgId))) return;
+    // Публикация неоплаченной свадьбы — через оплату (server/billing.ts).
+    if (status === "PUBLISHED" && !(await ensureEventUnlocked(ctx))) redirect(`/app/e/${eventId}/pay`);
     await setEventStatus(ctx, eventId, status);
     revalidatePath(`/app/e/${eventId}/settings`);
   }

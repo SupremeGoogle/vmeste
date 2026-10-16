@@ -5,7 +5,7 @@ import { BrandLogo } from "@/components/brand";
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSession } from "@/server/auth/session";
+import { createSession, takeAfterAuth } from "@/server/auth/session";
 import { PASSWORD_MIN, authMessage, resetPasswordWithToken, type AuthCode } from "@/server/services/email-auth";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
@@ -35,7 +35,7 @@ async function reset(formData: FormData) {
   if (!result.ok) back(result.code);
   else {
     await createSession(result.userId);
-    redirect("/app");
+    redirect(await takeAfterAuth());
   }
 }
 

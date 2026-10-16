@@ -10,6 +10,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getOrgContext } from "@/server/context";
+import { getSessionUser } from "@/server/auth/session";
 import { currentSessionId } from "@/server/auth/session";
 import {
   changeOwnPassword, closeOtherSessions, getOrganization, listMembers, renameOrganization,
@@ -40,6 +41,9 @@ export default async function OrgSettingsPage({ searchParams }: Props) {
   const { msg } = await searchParams;
   const ctx = await getOrgContext();
   if (!ctx) redirect("/login");
+  // Настройки кабинета (почта, пароль, входы) у кабинета без регистрации
+  // пусты — сначала завести настоящий.
+  if ((await getSessionUser())?.isAnonymous) redirect("/register");
 
   const [org, members] = await Promise.all([getOrganization(ctx), listMembers(ctx)]);
   if (!org) redirect("/login");

@@ -119,7 +119,7 @@ type Copy = {
 const COPY: Record<Lang, Copy> = {
   ru: {
     cta: (signedIn) => (signedIn ? "Перейти в кабинет" : "Создать свадьбу"),
-    register: "/register",
+    register: "/app",
     login: "/login",
     features: {
       kicker: "Возможности",
@@ -170,7 +170,7 @@ const COPY: Record<Lang, Copy> = {
   },
   en: {
     cta: (signedIn) => (signedIn ? "Go to my account" : "Create your wedding"),
-    register: "/register?lang=en",
+    register: "/app",
     login: "/login?lang=en",
     features: {
       kicker: "Features",

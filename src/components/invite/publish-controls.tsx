@@ -25,7 +25,8 @@ export const DRAFT_CHANGED = "invite-draft-changed";
 /** Сообщение напоминанию в шапке мероприятия: есть ли несохранённое. */
 export const DRAFT_STATE = "invite-draft-state";
 
-type ActionResult = { ok: true; path: string } | { ok: false; message: string };
+/** `payPath` — свадьба не оплачена: публикация ведёт на оплату (server/billing.ts). */
+type ActionResult = { ok: true; path: string } | { ok: false; message: string; payPath?: string };
 
 const noop = () => () => {};
 
@@ -38,6 +39,7 @@ export function PublishControls({
   unpublish,
   saveChanges,
   discardChanges,
+  priceLabel,
 }: {
   eventId: string;
   published: boolean;
@@ -48,6 +50,8 @@ export function PublishControls({
   unpublish: () => Promise<ActionResult>;
   saveChanges: () => Promise<ActionResult>;
   discardChanges: () => Promise<ActionResult>;
+  /** Цена публикации, пока свадьба не оплачена («1 490 ₽»); после оплаты — нет. */
+  priceLabel?: string;
 }) {
   const router = useRouter();
   const t = useT();
@@ -111,6 +115,10 @@ export function PublishControls({
     setError(null);
     start(async () => {
       const result = await action();
+      if (!result.ok && result.payPath) {
+        router.push(result.payPath);
+        return;
+      }
       if (!result.ok) {
         setError(result.message);
         return;
@@ -146,6 +154,7 @@ export function PublishControls({
           onClick={() => run(publish, () => { setPublished(true); setDirty(false); setDialog("published"); })}
         >
           {pending ? t("Публикуем…", "Publishing…") : t("Опубликовать", "Publish")}
+          {!pending && priceLabel && <span className="ml-1.5 font-normal opacity-70">· {priceLabel}</span>}
         </button>
       )}
 

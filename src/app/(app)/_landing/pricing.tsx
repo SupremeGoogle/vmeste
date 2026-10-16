@@ -10,6 +10,7 @@
  */
 import Link from "next/link";
 import { useState } from "react";
+import { WEDDING_PRICE_LABEL } from "@/lib/pricing";
 
 type Plan = {
   name: string;
@@ -24,7 +25,7 @@ const PLANS: Plan[] = [
   {
     name: "Свадьба целиком",
     note: "Всё, что есть в сервисе",
-    price: { event: "4 900 ₽", year: "39 000 ₽" },
+    price: { event: WEDDING_PRICE_LABEL, year: "39 000 ₽" },
     unit: { event: "за одно мероприятие", year: "в год, свадеб сколько угодно" },
     features: [
       "Гостей без ограничения",
@@ -104,7 +105,7 @@ export function Pricing() {
             </ul>
 
             <Link
-              href="/register"
+              href="/app"
               className={`mt-7 rounded-full px-5 py-2.5 text-center text-sm transition-transform hover:scale-[1.02] ${
                 plan.accent
                   ? "bg-stone-900 text-white"
@@ -117,9 +118,6 @@ export function Pricing() {
         ))}
       </div>
 
-      <p className="mt-6 text-center text-xs text-stone-500">
-        Цены — ориентир для демонстрации: сервис пока работает в тестовом режиме.
-      </p>
     </div>
   );
 }

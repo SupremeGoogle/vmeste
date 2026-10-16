@@ -40,10 +40,10 @@ export async function accessByScreenToken(token: string): Promise<ScreenAccess |
     where: { token },
     select: {
       id: true, eventId: true, orgId: true, revokedAt: true,
-      event: { select: { title: true } },
+      event: { select: { title: true, paidAt: true } },
     },
   });
-  if (!row || row.revokedAt) return null;
+  if (!row || row.revokedAt || !row.event.paidAt) return null;
 
   return {
     eventId: row.eventId,

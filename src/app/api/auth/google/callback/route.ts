@@ -13,7 +13,7 @@
 import { cookies } from "next/headers";
 import { db } from "@/server/db";
 import { exchangeCode, sameSecret } from "@/server/auth/google";
-import { createSession } from "@/server/auth/session";
+import { createSession, takeAfterAuth } from "@/server/auth/session";
 import { userForGoogleProfile } from "@/server/services/signup";
 import { HANDSHAKE_COOKIE } from "../start/route";
 
@@ -60,5 +60,5 @@ export async function GET(request: Request) {
   if (blocked?.blockedAt) return back("blocked");
 
   await createSession(userId);
-  return Response.redirect(new URL("/app", process.env.NEXT_PUBLIC_APP_URL));
+  return Response.redirect(new URL(await takeAfterAuth(), process.env.NEXT_PUBLIC_APP_URL));
 }

@@ -103,10 +103,11 @@ export async function submitRsvp(
         where: { archivedAt: null }, orderBy: { createdAt: "asc" }, take: 1,
         select: { mealOptionId: true, drinks: { select: { drinkOptionId: true } } },
       },
-      event: { select: { allowPlusOne: true, rsvpDeadline: true, language: true } },
+      event: { select: { allowPlusOne: true, rsvpDeadline: true, language: true, paidAt: true } },
     },
   });
-  if (!guest || guest.archivedAt) {
+  // Неоплаченная свадьба — черновик: гостям она не открыта (server/billing.ts).
+  if (!guest || guest.archivedAt || !guest.event.paidAt) {
     return { ok: false, reason: "gone", message: t("Приглашение не найдено", "Invitation not found") };
   }
   t = makeT(parseLang(guest.event.language) ?? lang ?? "ru");

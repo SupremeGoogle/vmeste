@@ -51,16 +51,27 @@ model User {
   // Права на всю платформу (панель /admin). Владелец платформы задаётся
   // почтой в SUPERADMIN_EMAILS и здесь не хранится: его нельзя разжаловать
   // из интерфейса, даже взломав другую учётку с правами ADMIN.
-  platformRole  PlatformRole?
+  platformRole      PlatformRole?
   // Заблокирован суперадмином: войти нельзя, все сессии погашены.
-  blockedAt     DateTime?
-  blockedReason String?
+  blockedAt         DateTime?
+  blockedReason     String?
+  // Кабинет без регистрации: человек пришёл с главной и сразу делает
+  // свадьбу. Почта в такой строке — заглушка на домене .invalid (письма
+  // туда не уходят, войти ею нельзя). При регистрации или входе всё
+  // нажитое переезжает в настоящий кабинет, а эта строка удаляется
+  // (services/guest-workspace.ts).
+  isAnonymous       Boolean       @default(false)
+  // Подписка, выданная владельцем платформы: пока она действует, свадьбы
+  // этого пользователя открываются без оплаты (server/admin/subscription.ts).
+  // Выдаёт только владелец с кодом 2FA на каждую выдачу.
+  subscriptionUntil DateTime?
 
   memberships Membership[]
   sessions    Session[]
   accounts    OAuthAccount[]
   adminSecret AdminSecret?
   emailTokens EmailToken[]
+  payments    Payment[]
 
   @@map("users")
 }
@@ -78,15 +89,15 @@ enum PlatformRole {
 /// Секрет хранится зашифрованным ключом из ADMIN_SECRET: утечка одной базы
 /// не даёт коды. Резервные коды — только хешами, каждый одноразовый.
 model AdminSecret {
-  userId       String    @id
-  totpSecret   String
-  confirmedAt  DateTime?
+  userId      String    @id
+  totpSecret  String
+  confirmedAt DateTime?
   /// Последний принятый 30-секундный шаг: один код дважды не проходит.
-  lastStep     Int       @default(0)
-  backupCodes  String[]
-  failedCount  Int       @default(0)
-  lockedUntil  DateTime?
-  updatedAt    DateTime  @updatedAt
+  lastStep    Int       @default(0)
+  backupCodes String[]
+  failedCount Int       @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -145,36 +156,38 @@ enum AuthProvider {
 /// Резерв хранится отдельно: уникальность giftId защищает от двух
 /// одновременных нажатий, удаление гостя освобождает подарок.
 model Gift {
-  id          String @id @default(cuid())
+  id          String           @id @default(cuid())
   orgId       String
   eventId     String
   title       String
-  description String @default("")
-  url         String @default("")
+  description String           @default("")
+  url         String           @default("")
   /// Картинка пункта виш-листа: адрес загруженной организатором картинки
   /// (`/api/asset/<eventId>/<id>`). Пусто — без картинки.
-  imageUrl    String @default("")
+  imageUrl    String           @default("")
   /// Можно ли гостю забронировать подарок. Выключено — это просто идея:
   /// «Я подарю это» нет, подарить может кто угодно и сколько угодно раз.
-  reservable  Boolean @default(true)
-  createdAt   DateTime @default(now())
-  event       Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  reservable  Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  event       Event            @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
   reservation GiftReservation?
+
   @@unique([eventId, id])
   @@index([eventId, createdAt])
   @@map("gifts")
 }
 
 model GiftReservation {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   orgId     String
   eventId   String
-  giftId    String @unique
+  giftId    String   @unique
   guestId   String
   createdAt DateTime @default(now())
-  event     Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
-  gift      Gift @relation(fields: [eventId, giftId], references: [eventId, id], onDelete: Cascade)
-  guest     Guest @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Cascade)
+  event     Event    @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  gift      Gift     @relation(fields: [eventId, giftId], references: [eventId, id], onDelete: Cascade)
+  guest     Guest    @relation(fields: [eventId, guestId], references: [eventId, id], onDelete: Cascade)
+
   @@unique([eventId, giftId])
   @@index([eventId, guestId])
   @@map("gift_reservations")
@@ -195,20 +208,21 @@ enum DayStepStatus {
 }
 
 model DayStep {
-  id              String @id @default(cuid())
+  id              String        @id @default(cuid())
   orgId           String
   eventId         String
   title           String
-  responsible     String @default("")
-  notes           String @default("")
+  responsible     String        @default("")
+  notes           String        @default("")
   startsAt        DateTime
-  reminderMinutes Int @default(10)
+  reminderMinutes Int           @default(10)
   action          DayStepAction @default(NONE)
   raffleId        String?
   status          DayStepStatus @default(PENDING)
   completedAt     DateTime?
   runStartedAt    DateTime?
-  event           Event @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  event           Event         @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+
   @@index([eventId, startsAt])
   @@map("day_steps")
 }
@@ -261,13 +275,13 @@ enum EmailTokenPurpose {
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id             String    @id @default(cuid())
+  userId         String
+  expiresAt      DateTime
+  createdAt      DateTime  @default(now())
   // Откуда вошли — для списка сессий в панели суперадмина.
-  ip        String?
-  userAgent String?
+  ip             String?
+  userAgent      String?
   // До какого момента этой сессии открыта панель /admin (после кода 2FA).
   adminUntil     DateTime?
   // Сессия «войти как пользователь»: кто из администраторов в ней сидит.
@@ -320,36 +334,36 @@ model Event {
   venueLat  Float?
   venueLng  Float?
 
-  rsvpDeadline       DateTime?
-  allowPlusOne       Boolean    @default(true)
-  photoLimitPerGuest Int        @default(5)
-  photosEnabled      Boolean    @default(true)
-  wishesEnabled      Boolean    @default(true)
-  raffleEnabled      Boolean    @default(true)
-  screenMode         ScreenMode @default(MIXED)
-  giftsEnabled       Boolean    @default(false)
-  giftTransferLabel  String     @default("Подарок в конверте")
-  giftTransferDetails String    @default("")
-  giftTransferUrl    String     @default("")
-  albumEnabled       Boolean    @default(true)
+  rsvpDeadline        DateTime?
+  allowPlusOne        Boolean    @default(true)
+  photoLimitPerGuest  Int        @default(5)
+  photosEnabled       Boolean    @default(true)
+  wishesEnabled       Boolean    @default(true)
+  raffleEnabled       Boolean    @default(true)
+  screenMode          ScreenMode @default(MIXED)
+  giftsEnabled        Boolean    @default(false)
+  giftTransferLabel   String     @default("Подарок в конверте")
+  giftTransferDetails String     @default("")
+  giftTransferUrl     String     @default("")
+  albumEnabled        Boolean    @default(true)
   /// Вход по QR на свадьбе для тех, кого нет в списке: гость пишет имя
   /// и попадает на свою страницу как «добавился сам». По умолчанию —
   /// только по списку.
-  qrEntryOpen        Boolean    @default(false)
-  teamPlanToken      String?    @unique
-  activeRaffleId     String?
+  qrEntryOpen         Boolean    @default(false)
+  teamPlanToken       String?    @unique
+  activeRaffleId      String?
 
   // Секрет для подписи гостевых cookie. Ротация обнуляет все гостевые сессии.
   /// Оформление приглашения: шаблон и его настройки. JSON, а не колонки,
   /// потому что набор осей будет меняться чаще, чем хочется писать
   /// миграции, а читается он всегда целиком и терпимо (`invite-theme.ts`).
-  inviteTheme Json @default("{}")
+  inviteTheme     Json  @default("{}")
   /// Что видят гости: снимок разделов и оформления, сделанный при
   /// публикации или «Сохранить изменения». Редактор правит живые строки
   /// (черновик), и гости их не видят, пока организатор не сохранит.
   /// Пусто — снимка ещё не было, гостям отдаются живые строки.
   publishedInvite Json?
-  printDesign Json @default("{}")
+  printDesign     Json  @default("{}")
 
   guestLinkSecret String @default(dbgenerated("encode(gen_random_bytes(32), 'hex')"))
 
@@ -363,25 +377,31 @@ model Event {
   hallWidth  Float @default(1000)
   hallHeight Float @default(700)
 
+  /// Когда свадьба оплачена. Пока пусто — это черновик для себя: гостевые
+  /// ссылки, вход по QR, экран и командная ссылка не открываются, а
+  /// публикация ведёт на оплату (server/billing.ts).
+  paidAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  blocks        InviteBlock[]
-  assets        EventAsset[]
-  guests        Guest[]
-  mealOptions   MealOption[]
-  drinkOptions  DrinkOption[]
-  tables        SeatTable[]
-  seats         Seat[]
-  photos        Photo[]
-  wishes        Wish[]
-  raffles       Raffle[]
-  screens       ScreenToken[]
-  rsvpQuestions RsvpQuestion[]
-  gifts         Gift[]
+  organization     Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  blocks           InviteBlock[]
+  assets           EventAsset[]
+  guests           Guest[]
+  mealOptions      MealOption[]
+  drinkOptions     DrinkOption[]
+  tables           SeatTable[]
+  seats            Seat[]
+  photos           Photo[]
+  wishes           Wish[]
+  raffles          Raffle[]
+  screens          ScreenToken[]
+  rsvpQuestions    RsvpQuestion[]
+  gifts            Gift[]
   giftReservations GiftReservation[]
-  daySteps      DayStep[]
+  daySteps         DayStep[]
+  payments         Payment[]
 
   @@unique([orgId, id])
   // Адрес /i/{slug} публичный и общий на весь сайт: уникальность внутри
@@ -602,7 +622,7 @@ model Guest {
   importBatchId  String?
   /// Гость вписал себя сам по общей ссылке на приглашение, а не был
   /// заведён организатором: в списке он помечен, чтобы его было видно.
-  selfRegistered Boolean   @default(false)
+  selfRegistered Boolean    @default(false)
 
   // Спутник (+1) ссылается на «родителя». Он же связывает семью:
   // поиск на входе возвращает всю группу, см. PLAN.md §7 вопрос 1.
@@ -612,16 +632,16 @@ model Guest {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  event         Event         @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
-  mealOption    MealOption?   @relation(fields: [eventId, mealOptionId], references: [eventId, id], onDelete: Restrict)
-  parentGuest   Guest?        @relation("PlusOne", fields: [eventId, parentGuestId], references: [eventId, id], onDelete: Restrict)
-  plusOnes      Guest[]       @relation("PlusOne")
-  seat          Seat?
-  photos        Photo[]
-  wishes        Wish[]
-  aliases       GuestAlias[]
-  drinks        GuestDrink[]
-  raffleEntries RaffleEntry[]
+  event            Event             @relation(fields: [orgId, eventId], references: [orgId, id], onDelete: Cascade)
+  mealOption       MealOption?       @relation(fields: [eventId, mealOptionId], references: [eventId, id], onDelete: Restrict)
+  parentGuest      Guest?            @relation("PlusOne", fields: [eventId, parentGuestId], references: [eventId, id], onDelete: Restrict)
+  plusOnes         Guest[]           @relation("PlusOne")
+  seat             Seat?
+  photos           Photo[]
+  wishes           Wish[]
+  aliases          GuestAlias[]
+  drinks           GuestDrink[]
+  raffleEntries    RaffleEntry[]
   giftReservations GiftReservation[]
 
   @@unique([eventId, id])
@@ -845,4 +865,45 @@ model GuestActionLog {
   @@index([eventId, createdAt])
   @@index([eventId, action, createdAt])
   @@map("guest_action_log")
+}
+
+// ────────────────────────────────────────────────────────────
+// Оплата свадьбы
+// ────────────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+/// Попытка оплаты одной свадьбы. Сумма фиксируется здесь в момент создания
+/// и сверяется с уведомлением платёжного сервиса: цена в коде может
+/// измениться, а уже выставленный счёт — нет. Строка не удаляется вместе
+/// со свадьбой — это бухгалтерия.
+model Payment {
+  id           String        @id @default(cuid())
+  /// Номер счёта для Robokassa (InvId): там нужен целочисленный и уникальный.
+  invId        Int           @unique @default(autoincrement())
+  eventId      String?
+  userId       String?
+  /// Сумма в копейках.
+  amount       Int
+  status       PaymentStatus @default(PENDING)
+  provider     String        @default("robokassa")
+  /// Тестовый платёж (IsTest=1): свадьбу открывает только вне прода.
+  isTest       Boolean       @default(false)
+  /// Что купили — на случай, если свадьбу потом удалят.
+  eventTitle   String        @default("")
+  email        String        @default("")
+  /// Как сервис сообщил об оплате: способ, комиссия — для сверки.
+  providerData Json?
+  createdAt    DateTime      @default(now())
+  paidAt       DateTime?
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([userId])
+  @@map("payments")
 }

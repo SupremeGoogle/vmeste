@@ -10,7 +10,7 @@ export function LuxuryHero({ signedIn }: { signedIn: boolean }) {
             <h1 id="luxe-title">Идеальная свадьба<br /><em>рождается вместе</em></h1>
             <p className="luxe-hero-description">Приглашения, гости, рассадка и самые красивые моменты праздника — в одном пространстве, созданном для вашего дня.</p>
             <div className="luxe-hero-actions">
-              <Link href={signedIn ? "/app" : "/register"} className="luxe-primary-button">{signedIn ? "Перейти в кабинет" : "Создать свою свадьбу"}<span aria-hidden="true">↗</span></Link>
+              <Link href="/app" className="luxe-primary-button">{signedIn ? "Перейти в кабинет" : "Создать свою свадьбу"}<span aria-hidden="true">↗</span></Link>
               <a href="#vozmozhnosti" className="luxe-text-link">Открыть возможности <span aria-hidden="true">→</span></a>
             </div>
             <p className="luxe-hero-note">Вся подготовка к свадьбе — в одном месте</p>

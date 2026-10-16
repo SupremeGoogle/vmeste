@@ -101,7 +101,7 @@ describe("анкета через базу", () => {
   async function world() {
     const org = await testDb.organization.create({ data: { name: "rf", slug: "rf" } });
     const event = await testDb.event.create({
-      data: {
+      data: { paidAt: new Date(),
         orgId: org.id, title: "Свадьба", slug: "rf", shortCode: "RF0001", eventDate: new Date("2027-04-23"),
         mealOptions: { create: [{ title: "Рыба", order: 0 }] },
       },

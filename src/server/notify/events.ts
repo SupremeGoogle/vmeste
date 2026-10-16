@@ -60,12 +60,12 @@ type Digest = { users: bigint; events: bigint; published: bigint; rsvps: bigint;
 export async function dailyDigestText(): Promise<string> {
   const [row] = await db.$queryRaw<Digest[]>`
     SELECT
-      (SELECT count(*) FROM users WHERE "createdAt" > now() - interval '1 day') AS users,
+      (SELECT count(*) FROM users WHERE NOT "isAnonymous" AND "createdAt" > now() - interval '1 day') AS users,
       (SELECT count(*) FROM events WHERE "createdAt" > now() - interval '1 day') AS events,
       (SELECT count(*) FROM events WHERE status = 'PUBLISHED') AS published,
       (SELECT count(*) FROM guests WHERE "rsvpAt" > now() - interval '1 day') AS rsvps,
       (SELECT count(*) FROM photos WHERE "createdAt" > now() - interval '1 day') AS photos,
-      (SELECT count(*) FROM users) AS "totalUsers",
+      (SELECT count(*) FROM users WHERE NOT "isAnonymous") AS "totalUsers",
       (SELECT count(*) FROM events) AS "totalEvents"`;
   const os = await import("node:os");
   const freeMb = Math.round(os.freemem() / 1048576);

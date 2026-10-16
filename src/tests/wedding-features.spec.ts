@@ -19,7 +19,7 @@ async function world(): Promise<World> {
   const tag = randomBytes(8).toString("hex");
   const org = await testDb.organization.create({ data: { name: "Проверка свадебных функций", slug: `feature-test-${tag}` } });
   orgIds.push(org.id);
-  const event = await testDb.event.create({ data: { orgId: org.id, title: "Тестовая свадьба", slug: tag, shortCode: tag, eventDate: new Date("2026-09-30T16:00Z"), timezone: "Europe/Kaliningrad", giftsEnabled: true, status: "PUBLISHED" } });
+  const event = await testDb.event.create({ data: { paidAt: new Date(), orgId: org.id, title: "Тестовая свадьба", slug: tag, shortCode: tag, eventDate: new Date("2026-09-30T16:00Z"), timezone: "Europe/Kaliningrad", giftsEnabled: true, status: "PUBLISHED" } });
   const guests: GuestIdentity[] = [];
   for (const name of ["Анна", "Борис", "Вера"]) {
     const guest = await testDb.guest.create({ data: { orgId: org.id, eventId: event.id, displayName: name, searchKey: name.toLowerCase(), linkToken: randomBytes(16).toString("hex") } });

@@ -22,9 +22,9 @@ export type PlatformStats = {
 export async function platformStats(): Promise<PlatformStats> {
   const [row] = await db.$queryRaw<Record<string, unknown>[]>`
     SELECT
-      (SELECT count(*) FROM users) AS users_total,
-      (SELECT count(*) FROM users WHERE "createdAt" > now() - interval '7 days') AS users_new7,
-      (SELECT count(*) FROM users WHERE "createdAt" > now() - interval '30 days') AS users_new30,
+      (SELECT count(*) FROM users WHERE NOT "isAnonymous") AS users_total,
+      (SELECT count(*) FROM users WHERE NOT "isAnonymous" AND "createdAt" > now() - interval '7 days') AS users_new7,
+      (SELECT count(*) FROM users WHERE NOT "isAnonymous" AND "createdAt" > now() - interval '30 days') AS users_new30,
       (SELECT count(DISTINCT "userId") FROM oauth_accounts WHERE provider = 'GOOGLE') AS users_google,
       (SELECT count(*) FROM users WHERE "blockedAt" IS NOT NULL) AS users_blocked,
       (SELECT count(DISTINCT "userId") FROM sessions WHERE "createdAt" > now() - interval '7 days') AS users_active7,
@@ -72,7 +72,7 @@ export async function dailySeries(days = 30): Promise<{ day: string; users: numb
       SELECT generate_series(date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') - (${days - 1} || ' days')::interval, date_trunc('day', now() AT TIME ZONE 'Europe/Moscow'), interval '1 day') AS day
     )
     SELECT d.day,
-      (SELECT count(*) FROM users u WHERE date_trunc('day', (u."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Moscow') = d.day) AS users,
+      (SELECT count(*) FROM users u WHERE NOT u."isAnonymous" AND date_trunc('day', (u."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Moscow') = d.day) AS users,
       (SELECT count(*) FROM events e WHERE date_trunc('day', (e."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Moscow') = d.day) AS events,
       (SELECT count(*) FROM guests g WHERE g."rsvpAt" IS NOT NULL AND date_trunc('day', (g."rsvpAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Moscow') = d.day) AS rsvps
     FROM days d ORDER BY d.day
@@ -96,7 +96,8 @@ export async function listUsers(query: string, limit = 50, offset = 0): Promise<
       (SELECT count(*) FROM events e JOIN memberships m ON m."orgId" = e."orgId" WHERE m."userId" = u.id) AS events,
       (SELECT count(*) FROM guests g JOIN memberships m ON m."orgId" = g."orgId" WHERE m."userId" = u.id AND g."archivedAt" IS NULL AND g.role = 'GUEST') AS guests
     FROM users u
-    WHERE ${query.trim()} = '' OR u.email ILIKE ${like} OR u.name ILIKE ${like}
+    -- Кабинеты без регистрации — не пользователи, пока не зарегистрировались.
+    WHERE NOT u."isAnonymous" AND (${query.trim()} = '' OR u.email ILIKE ${like} OR u.name ILIKE ${like})
     ORDER BY u."createdAt" DESC
     LIMIT ${limit} OFFSET ${offset}
   `;

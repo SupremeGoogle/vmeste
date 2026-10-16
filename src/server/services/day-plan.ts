@@ -32,8 +32,8 @@ export function listDaySteps(ctx: EventContext) {
 /** Доступ по командной ссылке — как сотрудник, но только к плану. */
 export async function teamPlanAccess(token: string): Promise<EventContext | null> {
   if (!/^[A-Za-z0-9_-]{32}$/.test(token)) return null;
-  const event = await db.event.findUnique({ where: { teamPlanToken: token }, select: { id: true, orgId: true, status: true } });
-  if (!event || event.status === "ARCHIVED") return null;
+  const event = await db.event.findUnique({ where: { teamPlanToken: token }, select: { id: true, orgId: true, status: true, paidAt: true } });
+  if (!event || event.status === "ARCHIVED" || !event.paidAt) return null;
   return { kind: "org", userId: "team-link", orgId: event.orgId, eventId: event.id, role: "STAFF" };
 }
 

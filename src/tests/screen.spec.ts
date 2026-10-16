@@ -27,7 +27,7 @@ type World = {
 async function makeWorld(slug: string, code: string): Promise<World> {
   const org = await testDb.organization.create({ data: { name: slug, slug } });
   const event = await testDb.event.create({
-    data: {
+    data: { paidAt: new Date(),
       orgId: org.id, title: `Свадьба ${slug}`, slug, shortCode: code,
       eventDate: new Date("2026-09-12"),
     },

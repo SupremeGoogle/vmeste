@@ -331,7 +331,7 @@ export async function findGuestByLinkToken(linkToken: string) {
           id: true, orgId: true, title: true, slug: true, status: true,
           eventDate: true, timezone: true, venueName: true, venueAddr: true,
           rsvpDeadline: true, allowPlusOne: true, guestLinkSecret: true,
-          photosEnabled: true, wishesEnabled: true, language: true,
+          photosEnabled: true, wishesEnabled: true, language: true, paidAt: true,
         },
       },
       mealOption: { select: { id: true, title: true } },
@@ -347,7 +347,10 @@ export async function findGuestByLinkToken(linkToken: string) {
     },
   });
 
-  if (!guest || guest.archivedAt) return null;
+  // Неоплаченная свадьба — черновик организатора: именные ссылки молчат,
+  // пока её не оплатят (server/billing.ts). Проверка здесь, а не в
+  // маршрутах: всех, кто ходит по токену, она закрывает разом.
+  if (!guest || guest.archivedAt || !guest.event.paidAt) return null;
   return guest;
 }
 

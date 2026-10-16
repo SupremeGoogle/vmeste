@@ -20,7 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
-  if (!user) redirect("/login");
+  // Без сессии — не форма входа, а кабинет без регистрации (app/start).
+  if (!user) redirect("/app/start");
 
   async function logout() {
     "use server";
@@ -55,17 +56,35 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             <LangSwitch current={lang} stay />
             <ThemeToggle />
             {admin && <Link href={admin.elevated ? "/admin" : "/admin/verify"} className="rounded-md bg-stone-900 px-2 py-1 text-xs text-white">{t("Управление", "Admin")}</Link>}
-            {/* Имя на телефоне режем: «Организатор Анастасия Петровна»
-                вытеснила бы кнопку выхода за край экрана. */}
-            <Link href="/app/settings" className="max-w-[42vw] truncate hover:text-stone-900 sm:max-w-none">
-              {user.name}
-            </Link>
-            <form action={logout}>
-              <button type="submit" className="text-stone-500 hover:text-stone-900">{t("Выйти", "Sign out")}</button>
-            </form>
+            {user.isAnonymous ? (
+              <>
+                {/* Выйти из кабинета без регистрации — значит потерять его:
+                    вместо «Выйти» — вход и регистрация, черновик переедет. */}
+                <Link href={lang === "en" ? "/login?lang=en" : "/login"} className="hover:text-stone-900">{t("Войти", "Sign in")}</Link>
+                <Link href={lang === "en" ? "/register?lang=en" : "/register"} className="rounded-md bg-stone-900 px-2.5 py-1 text-xs text-white">{t("Сохранить кабинет", "Save my account")}</Link>
+              </>
+            ) : (
+              <>
+                {/* Имя на телефоне режем: «Организатор Анастасия Петровна»
+                    вытеснила бы кнопку выхода за край экрана. */}
+                <Link href="/app/settings" className="max-w-[42vw] truncate hover:text-stone-900 sm:max-w-none">
+                  {user.name}
+                </Link>
+                <form action={logout}>
+                  <button type="submit" className="text-stone-500 hover:text-stone-900">{t("Выйти", "Sign out")}</button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </header>
+      {user.isAnonymous && (
+        <p className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900 sm:text-sm">
+          {t("Вы работаете без регистрации — всё сохраняется в этом браузере. ", "You’re working without an account — everything is saved in this browser. ")}
+          <Link href={lang === "en" ? "/register?lang=en" : "/register"} className="underline underline-offset-2">{t("Зарегистрируйтесь", "Sign up")}</Link>
+          {t(", чтобы не потерять доступ; почта понадобится и для публикации.", " so you don’t lose access; you’ll also need it to publish.")}
+        </p>
+      )}
       {children}
     </div>
     </I18nProvider>

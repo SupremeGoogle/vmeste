@@ -55,7 +55,7 @@ async function makeWorld(slug: string, code: string): Promise<World> {
   });
 
   const event = await testDb.event.create({
-    data: {
+    data: { paidAt: new Date(),
       orgId: org.id,
       title: `Свадьба ${slug}`,
       slug,
@@ -362,7 +362,7 @@ describe("публичный адрес приглашения", () => {
     // ссылка с ответами гостей могла открыть чужую свадьбу.
     expect(await createEvent(b.orgCtx, { title: "Копия", slug: "org-a", eventDate: new Date("2026-10-01") })).toBeNull();
     await expect(
-      testDb.event.create({ data: { orgId: b.orgId, title: "Копия", slug: "org-a", shortCode: "CCCCCC", eventDate: new Date("2026-10-01") } }),
+      testDb.event.create({ data: { paidAt: new Date(), orgId: b.orgId, title: "Копия", slug: "org-a", shortCode: "CCCCCC", eventDate: new Date("2026-10-01") } }),
     ).rejects.toThrow();
     const created = await createEvent(b.orgCtx, { title: "Своя", slug: "org-b-2", eventDate: new Date("2026-10-01") });
     expect(created?.orgId).toBe(b.orgId);

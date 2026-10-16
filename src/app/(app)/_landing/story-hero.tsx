@@ -127,7 +127,7 @@ export function StoryHero({ signedIn }: { signedIn: boolean }) {
               >
                 <span className="story-stage-kicker">{scene.label}</span>
                 <Heading>{scene.title[0]}<br />{scene.title[1]}</Heading>
-                <Link href={signedIn ? "/app" : "/register"} className="story-scene-action">
+                <Link href="/app" className="story-scene-action">
                   {signedIn ? "Перейти в кабинет" : "Создать свадьбу"}
                   <span aria-hidden="true">→</span>
                 </Link>

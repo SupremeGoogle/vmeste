@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { verifyPassword } from "@/server/auth/password";
-import { createSession, getSessionUser, requestOrigin } from "@/server/auth/session";
+import { createSession, getSessionUser, requestOrigin, takeAfterAuth } from "@/server/auth/session";
 import { detectInAppBrowser, openInBrowserHref } from "@/lib/in-app-browser";
 import { SITE_URL } from "@/lib/site";
 import { rateLimit } from "@/server/rate-limit";
@@ -69,7 +69,7 @@ async function login(formData: FormData) {
   if (user.blockedAt) redirect(`/login?error=blocked${q}`);
 
   await createSession(user.id);
-  redirect("/app");
+  redirect(await takeAfterAuth());
 }
 
 const LOGIN_ERRORS: Record<string, string> = {
@@ -116,7 +116,9 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string; lang?: string }>;
 }) {
-  if (await getSessionUser()) redirect("/app");
+  // Кабинет без регистрации входу не мешает: войдя, человек заберёт черновик с собой.
+  const current = await getSessionUser();
+  if (current && !current.isAnonymous) redirect("/app");
   const { error, lang: langParam } = await searchParams;
   const lang = await pageLang(langParam);
   const t = TEXT[lang];

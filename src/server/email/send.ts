@@ -16,6 +16,8 @@ export function emailConfigured(): boolean {
 }
 
 export async function sendEmail(email: Email): Promise<boolean> {
+  // Кабинет без регистрации: почта — заглушка на несуществующем домене.
+  if (/@guest\.invalid$/i.test(email.to)) return false;
   const key = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!key || !from) {

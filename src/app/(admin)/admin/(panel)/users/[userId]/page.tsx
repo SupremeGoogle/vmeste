@@ -7,6 +7,8 @@ import { isOwnerEmail } from "@/server/admin/config";
 import { listEvents } from "@/server/admin/stats";
 import { blockUser, deleteUser, impersonate, openEventAsOrganizer, resetSecondFactor, revokeSessions, setPlatformRole, unblockUser, type OpResult } from "@/server/admin/operations";
 import { UserActions } from "./user-actions";
+import { SubscriptionForm } from "./subscription-form";
+import { grantSubscription, revokeSubscription, type GrantResult } from "@/server/admin/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ export default async function AdminUser({ params }: { params: Promise<{ userId: 
     where: { id: userId },
     select: {
       id: true, email: true, name: true, createdAt: true, emailVerified: true, platformRole: true, blockedAt: true, blockedReason: true,
+      isAnonymous: true, subscriptionUntil: true,
       accounts: { select: { provider: true, email: true, lastLogin: true } },
       sessions: { orderBy: { createdAt: "desc" }, take: 10, select: { id: true, createdAt: true, expiresAt: true, ip: true, userAgent: true, impersonatorId: true, adminUntil: true } },
       memberships: { select: { role: true, organization: { select: { id: true, name: true } } } },
@@ -58,6 +61,20 @@ export default async function AdminUser({ params }: { params: Promise<{ userId: 
       default: return { ok: false, message: "Неизвестное действие." };
     }
   }
+
+  // Подписка — только владельцу и только со свежим кодом 2FA; правила
+  // повторяются на сервере (admin/subscription.ts), здесь — только кнопки.
+  async function subscription(input: { action: "grant" | "revoke"; months?: number; code: string; reason?: string }): Promise<GrantResult> {
+    "use server";
+    const current = await requireAdmin("OWNER");
+    if (input.action === "grant") return grantSubscription(current, userId, Number(input.months), String(input.code ?? ""), String(input.reason ?? ""));
+    if (input.action === "revoke") return revokeSubscription(current, userId, String(input.code ?? ""));
+    return { ok: false, message: "Неизвестное действие." };
+  }
+  const subscriptionUntil = user.subscriptionUntil && user.subscriptionUntil > new Date()
+    ? user.subscriptionUntil.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })
+    : null;
+  const canGrant = admin.role === "OWNER" && !self && !owner && !isAdmin && !user.isAnonymous && user.emailVerified && !user.blockedAt;
 
   async function open(form: FormData) {
     "use server";
@@ -102,6 +119,8 @@ export default async function AdminUser({ params }: { params: Promise<{ userId: 
           {self ? "Это ваша учётная запись — её настройки в разделе «Безопасность»." : owner ? "Владельца платформы изменить нельзя." : isAdmin ? "Администраторов меняет только владелец." : "Режим просмотра: действия недоступны."}
         </p>
       )}
+
+      {canGrant && <SubscriptionForm act={subscription} until={subscriptionUntil} email={user.email} />}
 
       <section className="rounded-2xl border border-stone-200 bg-white p-5">
         <h2 className="text-sm font-medium">Мероприятия ({events.length})</h2>

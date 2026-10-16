@@ -247,7 +247,7 @@ export function FeatureTabs({ lang = "ru" }: { lang?: "ru" | "en" }) {
             ))}
           </ul>
           <p className="mt-7">
-            <Link href={lang === "en" ? "/register?lang=en" : "/register"} className="text-sm text-stone-900 underline underline-offset-4">
+            <Link href="/app" className="text-sm text-stone-900 underline underline-offset-4">
               {lang === "en" ? "Try it for your wedding →" : "Попробовать на своей свадьбе →"}
             </Link>
           </p>
