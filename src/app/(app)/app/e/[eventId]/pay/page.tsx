@@ -10,11 +10,11 @@ import { redirect } from "next/navigation";
 import { requireEventContext } from "@/server/context";
 import { getEvent } from "@/server/repositories/events";
 import { getSessionUser, rememberAfterAuth } from "@/server/auth/session";
-import { ensureEventUnlocked, hasActiveSubscription, paymentsEnabled, startPayment } from "@/server/billing";
+import { ensureEventUnlocked, hasActiveSubscription, paymentsEnabled, priceKopecksFor, startPayment } from "@/server/billing";
 import { rateLimit } from "@/server/rate-limit";
 import { getUiLang } from "@/server/i18n";
 import { makeT } from "@/lib/i18n";
-import { WEDDING_PRICE_LABEL } from "@/lib/pricing";
+import { WEDDING_PRICE_KOPECKS, formatRub } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +32,10 @@ export default async function PayPage({ params, searchParams }: Props) {
   const t = makeT(lang);
   const q = lang === "en" ? "?lang=en" : "";
   const subscribed = !event.paidAt && !user.isAnonymous && (await hasActiveSubscription(user.id));
+  // Сумма будущего счёта: та же функция, что выставит его (billing.priceKopecksFor).
+  const kopecks = user.isAnonymous ? WEDDING_PRICE_KOPECKS : priceKopecksFor(user.email);
+  const priceLabel = formatRub(kopecks / 100);
+  const testPrice = kopecks !== WEDDING_PRICE_KOPECKS;
 
   async function toAuth(formData: FormData) {
     "use server";
@@ -95,7 +99,7 @@ export default async function PayPage({ params, searchParams }: Props) {
           <p className="text-sm text-stone-500">{event.title}</p>
           <h2 className="mt-1 font-serif text-2xl sm:text-3xl">{t("Публикация свадьбы", "Publish your wedding")}</h2>
           <p className="mt-4 flex items-baseline gap-2">
-            <span className="tile-value text-4xl">{WEDDING_PRICE_LABEL}</span>
+            <span className="tile-value text-4xl">{priceLabel}</span>
             <span className="text-sm text-stone-500">{t("один раз за эту свадьбу, без подписки", "once for this wedding, no subscription")}</span>
           </p>
           <ul className="mt-5 space-y-2 text-sm text-stone-700">
@@ -142,8 +146,13 @@ export default async function PayPage({ params, searchParams }: Props) {
               </label>
               {message && <p className="text-sm text-red-700">{message}</p>}
               <button type="submit" className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-stone-900 px-5 text-base font-medium text-white" data-rybbit-event="pay_start">
-                {t("Оплатить", "Pay")} {WEDDING_PRICE_LABEL}
+                {t("Оплатить", "Pay")} {priceLabel}
               </button>
+              {testPrice && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">
+                  {t("Тестовая цена для владельца платформы (PAYMENT_TEST_PRICE_RUB). У всех остальных — обычная.", "Owner test price (PAYMENT_TEST_PRICE_RUB). Everyone else pays the regular price.")}
+                </p>
+              )}
               <p className="text-center text-xs leading-relaxed text-stone-500">
                 {t("Оплата через Robokassa: СБП, банковская карта, SberPay. Чек придёт на ", "Paid via Robokassa: SBP, bank card, SberPay. The receipt goes to ")}
                 <span className="text-stone-700">{user.email}</span>.

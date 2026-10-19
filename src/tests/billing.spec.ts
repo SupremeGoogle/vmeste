@@ -137,6 +137,31 @@ describe("оплата свадьбы", () => {
     expect(await billing.startPayment(ctx)).toEqual({ ok: false, reason: "paid" });
   });
 
+  it("тестовая цена — только владельцу и только меньше обычной", async () => {
+    process.env.PAYMENT_TEST_PRICE_RUB = "50";
+    try {
+      expect(billing.priceKopecksFor("owner@example.com")).toBe(5_000);
+      expect(billing.priceKopecksFor("Owner@Example.com")).toBe(5_000);
+      expect(billing.priceKopecksFor("client@example.com")).toBe(149_000);
+      process.env.PAYMENT_TEST_PRICE_RUB = "5000";
+      expect(billing.priceKopecksFor("owner@example.com")).toBe(149_000);
+      process.env.PAYMENT_TEST_PRICE_RUB = "1; drop";
+      expect(billing.priceKopecksFor("owner@example.com")).toBe(149_000);
+
+      process.env.PAYMENT_TEST_PRICE_RUB = "50";
+      const { ctx, event } = await wedding("testprice");
+      await testDb.user.update({ where: { id: ctx.userId }, data: { email: "owner@example.com" } });
+      const started = await billing.startPayment(ctx);
+      expect(started.ok && new URL(started.url).searchParams.get("OutSum")).toBe("50.00");
+      const payment = await testDb.payment.findFirstOrThrow({ where: { eventId: event.id } });
+      expect(payment.amount).toBe(5_000);
+      expect(await billing.confirmPayment(payment.invId, 149_000, {})).toBe("amount");
+      expect(await billing.confirmPayment(payment.invId, 5_000, {})).toBe("paid");
+    } finally {
+      delete process.env.PAYMENT_TEST_PRICE_RUB;
+    }
+  });
+
   it("ResultURL: подделка — 400 и свадьба закрыта, верное уведомление — OK{InvId}", async () => {
     const { ctx, event } = await wedding("route");
     await billing.startPayment(ctx);

@@ -22,7 +22,8 @@
  */
 import { db } from "@/server/db";
 import { operationState, paymentUrl, robokassaConfig } from "@/server/payments/robokassa";
-import { WEDDING_PRICE_KOPECKS, WEDDING_PRICE_LABEL } from "@/lib/pricing";
+import { WEDDING_PRICE_KOPECKS, WEDDING_PRICE_RUB, formatRub } from "@/lib/pricing";
+import { isOwnerEmail } from "@/server/admin/config";
 import type { EventContext } from "@/server/context";
 
 export function paymentsEnabled(): boolean {
@@ -38,6 +39,21 @@ export type StartPaymentResult =
   | { ok: true; url: string }
   | { ok: false; reason: "paid" | "anonymous" | "disabled" | "missing" };
 
+/**
+ * Сколько стоит свадьба для этого пользователя, в копейках.
+ *
+ * PAYMENT_TEST_PRICE_RUB (например, 50) — тестовая цена для проверки боевой
+ * оплаты. Действует только для владельца платформы (SUPERADMIN_EMAILS) и
+ * только если меньше обычной цены; всем остальным — 1 490 ₽. После проверки
+ * строку из .env убирают.
+ */
+export function priceKopecksFor(email: string): number {
+  const raw = process.env.PAYMENT_TEST_PRICE_RUB?.trim() ?? "";
+  const rub = /^\d{1,4}$/.test(raw) ? Number(raw) : 0;
+  if (rub >= 1 && rub < WEDDING_PRICE_RUB && isOwnerEmail(email)) return rub * 100;
+  return WEDDING_PRICE_KOPECKS;
+}
+
 /** Новый счёт на свадьбу и ссылка на оплату. Каждая попытка — свой счёт:
  *  Robokassa не принимает повторную оплату одного InvId. */
 export async function startPayment(ctx: EventContext, lang: "ru" | "en" = "ru"): Promise<StartPaymentResult> {
@@ -52,9 +68,10 @@ export async function startPayment(ctx: EventContext, lang: "ru" | "en" = "ru"):
   if (!event) return { ok: false, reason: "missing" };
   if (event.paidAt) return { ok: false, reason: "paid" };
 
+  const amount = priceKopecksFor(user.email);
   const payment = await db.payment.create({
     data: {
-      eventId: event.id, userId: ctx.userId, amount: WEDDING_PRICE_KOPECKS,
+      eventId: event.id, userId: ctx.userId, amount,
       isTest: config.test, eventTitle: event.title.slice(0, 200), email: user.email,
     },
     select: { invId: true },
@@ -66,7 +83,7 @@ export async function startPayment(ctx: EventContext, lang: "ru" | "en" = "ru"):
     ok: true,
     url: paymentUrl(config, {
       invId: payment.invId,
-      kopecks: WEDDING_PRICE_KOPECKS,
+      kopecks: amount,
       description,
       itemName: lang === "en" ? "Vmeste: one wedding" : "Сервис «Вместе»: одна свадьба",
       email: user.email,
@@ -110,7 +127,7 @@ export async function confirmPayment(invId: number, kopecks: number, providerDat
   if (payment.eventId) await dropGuestCaches(payment.eventId);
 
   const { notifyOwner } = await import("@/server/notify/telegram");
-  void notifyOwner(`Оплата ${WEDDING_PRICE_LABEL.replace(" ", " ")}: «${payment.eventTitle}», счёт ${invId}`).catch(() => false);
+  void notifyOwner(`Оплата ${formatRub(payment.amount / 100).replace(" ", " ")}: «${payment.eventTitle}», счёт ${invId}`).catch(() => false);
   return "paid";
 }
 
