@@ -44,7 +44,7 @@ export function CookieNotice({ lang = "ru" }: { lang?: "ru" | "en" }) {
     <div
       role="region"
       aria-label={en ? "Cookie notice" : "Уведомление о cookie"}
-      className="cookie-notice fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-xl flex-col gap-3 rounded-2xl border border-stone-200 bg-card p-4 text-sm text-stone-700 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:gap-4"
+      className="cookie-notice fixed inset-x-3 bottom-3 z-50 mx-auto flex max-w-xl flex-col gap-3 rounded-2xl p-4 text-sm backdrop-blur sm:flex-row sm:items-center sm:gap-4"
     >
       <p className="flex-1 leading-relaxed">
         {en ? (
@@ -58,7 +58,7 @@ export function CookieNotice({ lang = "ru" }: { lang?: "ru" | "en" }) {
       <button
         type="button"
         onClick={close}
-        className="cookie-notice__ok shrink-0 rounded-full bg-stone-900 px-5 py-2 text-white transition-opacity hover:opacity-90"
+        className="cookie-notice__ok shrink-0 rounded-full px-5 py-2 transition-opacity hover:opacity-90"
       >
         {en ? "Got it" : "Понятно"}
       </button>

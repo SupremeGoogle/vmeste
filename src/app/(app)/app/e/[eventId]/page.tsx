@@ -20,6 +20,7 @@ import { PRINT_TEMPLATES, pageScale, paperSize, reconcilePrintDesign } from "@/l
 import { formatEventDateTime } from "@/lib/format-datetime";
 import { CountUp } from "@/components/motion/motion";
 import { IphoneFrame } from "@/components/invite/iphone-frame";
+import { CopyFormLink } from "@/components/forms/copy-form-link";
 import { getUiLang } from "@/server/i18n";
 import { countWord, localeOf, makeT, type Lang } from "@/lib/i18n";
 
@@ -90,6 +91,9 @@ export default async function EventDashboard({
   const qrSheet = paperSize(qrDesign.paper, qrDesign.orientation);
   const qrFont = (size: number) => size * pageScale(qrDesign.paper) * (270 / qrSheet.w) * qrDesign.textScale;
   const visibleQr = qrDesign.elements.some((item) => item.kind === "qr" && !item.hidden && item.page === 0);
+
+  const linkButton = "flex min-h-11 flex-1 basis-44 items-center justify-center rounded-xl border border-stone-300 px-4 text-center text-sm text-stone-700";
+  const linkHint = "text-center text-xs text-stone-400";
 
   const tiles = [
     {
@@ -172,9 +176,14 @@ export default async function EventDashboard({
               <Link href={`/app/e/${eventId}/invite${hasInvite ? "?edit=1" : ""}`} className="flex min-h-11 items-center justify-center rounded-xl bg-stone-900 px-4 text-center text-sm font-medium text-white">
                 {hasInvite ? t("Редактировать приглашение", "Edit invitation") : t("Выбрать шаблон", "Choose a template")}
               </Link>
-              <a href={previewUrl} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-stone-300 px-4 text-center text-sm text-stone-700">
-                {t("Открыть предпросмотр ↗", "Open preview ↗")}
-              </a>
+              {/* Предпросмотр — закрытая страница кабинета, а копируем ссылку для гостей. */}
+              <div className="flex flex-wrap gap-2">
+                <a href={previewUrl} target="_blank" rel="noreferrer" className={linkButton}>
+                  {t("Открыть предпросмотр ↗", "Open preview ↗")}
+                </a>
+                <CopyFormLink path={`/i/${event.slug}`} className={linkButton} />
+              </div>
+              {event.status !== "PUBLISHED" && <p className={linkHint}>{t("Гости откроют ссылку после публикации", "Guests can open the link once it’s published")}</p>}
             </div>
           </div>
         </section>
@@ -198,9 +207,13 @@ export default async function EventDashboard({
             <Link href={`/app/e/${eventId}/print`} className="flex min-h-11 items-center justify-center rounded-xl bg-stone-900 px-4 text-center text-sm font-medium text-white">
               {t("Настроить и скачать PDF", "Customize and download PDF")}
             </Link>
-            <a href={`/e/${event.shortCode}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-stone-300 px-4 text-center text-sm text-stone-700">
-              {t("Проверить страницу гостя ↗", "Check the guest page ↗")}
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a href={`/e/${event.shortCode}`} target="_blank" rel="noreferrer" className={linkButton}>
+                {t("Проверить страницу гостя ↗", "Check the guest page ↗")}
+              </a>
+              <CopyFormLink path={`/e/${event.shortCode}`} className={linkButton} />
+            </div>
+            {!event.paidAt && <p className={linkHint}>{t("Ссылка заработает после оплаты", "The link works once the wedding is paid for")}</p>}
           </div>
         </section>
       </div>

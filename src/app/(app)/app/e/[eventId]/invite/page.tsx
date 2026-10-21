@@ -120,12 +120,12 @@ function sectionHint(content: unknown): string {
 
 type Props = {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ error?: string; edit?: string; rsvp?: string }>;
+  searchParams: Promise<{ error?: string; edit?: string; rsvp?: string; published?: string }>;
 };
 
 export default async function InvitePage({ params, searchParams }: Props) {
   const { eventId } = await params;
-  const { error, edit, rsvp } = await searchParams;
+  const { error, edit, rsvp, published } = await searchParams;
   const ctx = await requireEventContext(eventId);
   const event = await getEvent(ctx, eventId);
   if (!event) notFound();
@@ -423,6 +423,7 @@ export default async function InvitePage({ params, searchParams }: Props) {
           saveChanges={saveChanges}
           discardChanges={discardChanges}
           priceLabel={event.paidAt ? undefined : WEDDING_PRICE_LABEL}
+          justPublished={published === "1"}
         />
         </div>
       </div>

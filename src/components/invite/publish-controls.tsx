@@ -20,6 +20,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/i18n-provider";
+import { Confetti } from "@/components/motion/confetti";
 
 export const DRAFT_CHANGED = "invite-draft-changed";
 /** Сообщение напоминанию в шапке мероприятия: есть ли несохранённое. */
@@ -40,6 +41,7 @@ export function PublishControls({
   saveChanges,
   discardChanges,
   priceLabel,
+  justPublished,
 }: {
   eventId: string;
   published: boolean;
@@ -52,12 +54,22 @@ export function PublishControls({
   discardChanges: () => Promise<ActionResult>;
   /** Цена публикации, пока свадьба не оплачена («1 490 ₽»); после оплаты — нет. */
   priceLabel?: string;
+  /** Только что опубликовали со страницы оплаты (`?published=1`) — сразу окно со ссылкой. */
+  justPublished?: boolean;
 }) {
   const router = useRouter();
   const t = useT();
   const [published, setPublished] = useState(initialPublished);
   const [dirty, setDirty] = useState(initialDirty);
-  const [dialog, setDialog] = useState<null | "published" | "saved">(null);
+  const [dialog, setDialog] = useState<null | "published" | "saved">(justPublished && initialPublished ? "published" : null);
+
+  // Метку из адреса убираем, иначе окно всплывёт снова при обновлении страницы.
+  useEffect(() => {
+    if (!justPublished) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("published");
+    window.history.replaceState(null, "", url);
+  }, [justPublished]);
   const [intro, setIntro] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -202,6 +214,7 @@ export function PublishControls({
         <p role="alert" className="fixed inset-x-3 bottom-24 z-50 mx-auto max-w-md rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-800">{error}</p>
       ) : null}
 
+      {dialog === "published" ? <Confetti /> : null}
       <Dialog open={dialog !== null} onClose={() => setDialog(null)}>
         <p className="text-4xl" aria-hidden>{dialog === "saved" ? "✓" : "🎉"}</p>
         <h2 className="mt-3 font-serif text-2xl text-stone-900">{dialog === "saved" ? t("Изменения сохранены", "Changes saved") : t("Приглашение опубликовано", "Invitation published")}</h2>
@@ -244,7 +257,7 @@ function LinkBox({ url }: { url: string }) {
           void navigator.clipboard.writeText(url).then(() => {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
-          }).catch(() => {});
+          }).catch(() => { window.prompt(t("Скопируйте ссылку", "Copy the link"), url); });
         }}
       >
         {copied ? t("Скопировано ✓", "Copied ✓") : t("Скопировать", "Copy")}

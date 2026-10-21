@@ -14,6 +14,7 @@ import { publishEvent } from "@/server/services/publish";
 import { eventTag, inviteSlugTag } from "@/lib/cache-tags";
 import { getT } from "@/server/i18n";
 import { RefreshWhilePending } from "./refresh";
+import { Confetti } from "@/components/motion/confetti";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,8 @@ export default async function PaymentDonePage({ params, searchParams }: Props) {
       updateTag(eventTag(eventId));
       updateTag(inviteSlugTag(done.slug));
     }
-    redirect(`/app/e/${eventId}/invite`);
+    // `published=1` — редактор сразу покажет окно со ссылкой: открыть или скопировать.
+    redirect(`/app/e/${eventId}/invite${done ? "?edit=1&published=1" : ""}`);
   }
 
   const card = "rounded-2xl border border-stone-200 bg-card p-5 sm:p-7";
@@ -81,6 +83,7 @@ export default async function PaymentDonePage({ params, searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-12">
+      <Confetti />
       <section className={card}>
         <p className="text-3xl" aria-hidden="true">✓</p>
         <h2 className="mt-2 font-serif text-2xl sm:text-3xl">{t("Оплата прошла", "Payment received")}</h2>
@@ -88,7 +91,7 @@ export default async function PaymentDonePage({ params, searchParams }: Props) {
           {t(`Свадьба «${event.title}» открыта: ссылки гостям, вход по QR и экран в зале работают. Чек придёт на почту.`, `“${event.title}” is unlocked: guest links, QR entry and the venue screen now work. The receipt will be emailed to you.`)}
         </p>
         {event.status === "PUBLISHED" ? (
-          <Link href={`/app/e/${eventId}/invite`} className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-5 text-white">{t("К приглашению", "Go to the invitation")}</Link>
+          <Link href={`/app/e/${eventId}/invite?edit=1&published=1`} className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-5 text-white">{t("К приглашению", "Go to the invitation")}</Link>
         ) : (
           <form action={publish} className="mt-6 flex flex-col gap-2 sm:flex-row">
             <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-stone-900 px-5 text-white" data-rybbit-event="invite_publish_after_pay">{t("Опубликовать приглашение", "Publish the invitation")}</button>
